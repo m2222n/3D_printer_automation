@@ -1,0 +1,76 @@
+# ===========================================
+# Formlabs 원격제어 시스템 - Docker Compose
+# ===========================================
+
+version: '3.8'
+
+services:
+  # ===========================================
+  # API 서버
+  # ===========================================
+  api:
+    build: .
+    container_name: formlabs-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Seoul
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - formlabs-network
+    # 로그 설정
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================
+  # PostgreSQL (Phase 2에서 활성화)
+  # ===========================================
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: formlabs-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: formlabs
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+  #     POSTGRES_DB: formlabs_db
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   networks:
+  #     - formlabs-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U formlabs"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # ===========================================
+  # Redis (선택적 - 캐싱용)
+  # ===========================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: formlabs-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - formlabs-network
+
+networks:
+  formlabs-network:
+    driver: bridge
+
+# volumes:
+#   postgres_data:
