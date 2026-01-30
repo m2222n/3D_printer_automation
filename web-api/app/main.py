@@ -48,8 +48,11 @@ async def lifespan(app: FastAPI):
         
         # 폴링 시작
         await start_polling_service()
-        
-        logger.info(f"✅ 모니터링 대상 프린터: {len(settings.PRINTER_SERIALS)}대")
+
+        # 실제 조회된 프린터 수 표시
+        current_data = polling_service.get_current_data()
+        printer_count = len(current_data.printers) if current_data else 0
+        logger.info(f"✅ 모니터링 대상 프린터: {printer_count}대")
         logger.info(f"✅ 폴링 주기: {settings.POLLING_INTERVAL_SECONDS}초")
         
     except Exception as e:

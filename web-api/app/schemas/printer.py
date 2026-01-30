@@ -6,7 +6,7 @@ Web API 응답 데이터 구조 정의
 
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -29,12 +29,19 @@ class PrinterReadyState(str, Enum):
     """프린터 준비 상태"""
     READY = "READY"
     NOT_READY = "NOT_READY"
+    # Formlabs API 실제 응답 값
+    READY_TO_PRINT_READY = "READY_TO_PRINT_READY"
+    READY_TO_PRINT_NOT_READY = "READY_TO_PRINT_NOT_READY"
 
 
 class BuildPlatformState(str, Enum):
     """빌드 플랫폼 상태"""
     EMPTY = "EMPTY"
     HAS_PARTS = "HAS_PARTS"
+    # Formlabs API 실제 응답 값
+    BUILD_PLATFORM_CONTENTS_EMPTY = "BUILD_PLATFORM_CONTENTS_EMPTY"
+    BUILD_PLATFORM_CONTENTS_HAS_PARTS = "BUILD_PLATFORM_CONTENTS_HAS_PARTS"
+    BUILD_PLATFORM_CONTENTS_MISSING = "BUILD_PLATFORM_CONTENTS_MISSING"
 
 
 # ===========================================
@@ -155,7 +162,12 @@ class Printer(BaseModel):
     def is_online(self) -> bool:
         """온라인 여부 (5분 이내 통신)"""
         if self.printer_status and self.printer_status.last_pinged_at:
-            elapsed = datetime.now() - self.printer_status.last_pinged_at
+            now = datetime.now(timezone.utc)
+            last_ping = self.printer_status.last_pinged_at
+            # timezone-naive인 경우 UTC로 간주
+            if last_ping.tzinfo is None:
+                last_ping = last_ping.replace(tzinfo=timezone.utc)
+            elapsed = now - last_ping
             return elapsed.total_seconds() < 300
         return False
 

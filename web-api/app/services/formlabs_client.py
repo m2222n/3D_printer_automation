@@ -157,12 +157,18 @@ class FormlabsAPIClient:
     
     async def get_target_printers(self) -> List[Printer]:
         """
-        설정된 4대 프린터만 조회
+        설정된 프린터만 조회 (설정 없으면 전체)
         """
         all_printers = await self.get_all_printers()
-        
-        # 설정된 시리얼만 필터링
+
+        # 설정된 시리얼만 필터링 (플레이스홀더면 전체 사용)
         target_serials = set(self.settings.PRINTER_SERIALS)
+        placeholder_serials = {"PRINTER_SERIAL_1", "PRINTER_SERIAL_2", "PRINTER_SERIAL_3", "PRINTER_SERIAL_4"}
+
+        # 플레이스홀더이거나 빈 리스트면 전체 프린터 반환
+        if not target_serials or target_serials == placeholder_serials:
+            return all_printers
+
         return [p for p in all_printers if p.serial in target_serials]
     
     def _parse_printer(self, data: Dict) -> Printer:
@@ -387,7 +393,7 @@ class FormlabsAPIClient:
             resin_remaining_percent=resin_percent,
             is_resin_low=is_resin_low,
             is_online=is_online,
-            is_ready=printer.printer_status.ready_to_print == "READY" if printer.printer_status else False,
+            is_ready=printer.printer_status.ready_to_print in ("READY", "READY_TO_PRINT_READY") if printer.printer_status else False,
             has_error=has_error,
             last_update=datetime.now()
         )
