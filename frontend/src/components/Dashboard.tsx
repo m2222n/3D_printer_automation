@@ -1,0 +1,184 @@
+/**
+ * 대시보드 컴포넌트
+ * 프린터 4대 상태 모니터링
+ */
+
+import { useDashboard } from '../hooks/useDashboard';
+import PrinterCard from './PrinterCard';
+
+export default function Dashboard() {
+  const { dashboard, isLoading, error, isConnected, refresh } = useDashboard();
+
+  // 로딩 상태
+  if (isLoading && !dashboard) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">프린터 상태를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error && !dashboard) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">연결 오류</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={refresh}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* 헤더 */}
+      <header className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                3D 프린터 모니터링
+              </h1>
+              <p className="text-sm text-gray-500 mt-0.5">Form 4 프린터 대시보드</p>
+            </div>
+
+            {/* 연결 상태 */}
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${
+                isConnected
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${
+                  isConnected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
+                }`}></span>
+                {isConnected ? '실시간' : '폴링'}
+              </div>
+
+              <button
+                onClick={refresh}
+                disabled={isLoading}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                title="새로고침"
+              >
+                <svg
+                  className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* 요약 통계 */}
+        {dashboard && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <StatCard
+              label="전체"
+              value={dashboard.total_printers}
+              color="gray"
+            />
+            <StatCard
+              label="출력 중"
+              value={dashboard.printers_printing}
+              color="blue"
+            />
+            <StatCard
+              label="대기 중"
+              value={dashboard.printers_idle}
+              color="gray"
+            />
+            <StatCard
+              label="오류/오프라인"
+              value={dashboard.printers_error + dashboard.printers_offline}
+              color="red"
+            />
+          </div>
+        )}
+
+        {/* 프린터 카드 그리드 */}
+        {dashboard && dashboard.printers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {dashboard.printers.map((printer) => (
+              <PrinterCard key={printer.serial} printer={printer} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-500">등록된 프린터가 없습니다.</p>
+          </div>
+        )}
+
+        {/* 에러 배너 (데이터는 있지만 에러 발생 시) */}
+        {error && dashboard && (
+          <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg">
+            <div className="flex items-start gap-3">
+              <span className="text-red-500">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm text-red-700">{error}</p>
+                <button
+                  onClick={refresh}
+                  className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium"
+                >
+                  다시 시도
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 마지막 업데이트 시간 */}
+        {dashboard && (
+          <div className="mt-6 text-center text-sm text-gray-400">
+            마지막 업데이트: {new Date(dashboard.last_update).toLocaleString('ko-KR')}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+// 통계 카드 컴포넌트
+interface StatCardProps {
+  label: string;
+  value: number;
+  color: 'gray' | 'blue' | 'green' | 'red';
+}
+
+function StatCard({ label, value, color }: StatCardProps) {
+  const colorStyles = {
+    gray: 'bg-gray-50 border-gray-200 text-gray-900',
+    blue: 'bg-blue-50 border-blue-200 text-blue-600',
+    green: 'bg-green-50 border-green-200 text-green-600',
+    red: 'bg-red-50 border-red-200 text-red-600',
+  };
+
+  return (
+    <div className={`rounded-lg border p-3 sm:p-4 ${colorStyles[color]}`}>
+      <p className="text-xs sm:text-sm text-gray-500">{label}</p>
+      <p className="text-2xl sm:text-3xl font-bold mt-1">{value}</p>
+    </div>
+  );
+}

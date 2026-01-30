@@ -5,9 +5,12 @@ Phase 1: Web API 모니터링 시스템
 """
 
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.core.config import get_settings
 from app.services.polling_service import start_polling_service, stop_polling_service, get_polling_service
@@ -111,7 +114,30 @@ Web API 기반 모니터링 시스템
     
     # API 라우터 등록
     app.include_router(api_router, prefix="/api/v1")
-    
+
+    # 프론트엔드 정적 파일 서빙
+    frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+    if frontend_dist.exists():
+        # 정적 자산 (CSS, JS, 이미지 등)
+        app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
+
+        # SPA 폴백: API가 아닌 모든 경로에서 index.html 반환
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(request: Request, full_path: str):
+            # API 경로는 제외
+            if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("redoc"):
+                return None
+
+            # 정적 파일이 있으면 반환
+            file_path = frontend_dist / full_path
+            if file_path.is_file():
+                return FileResponse(file_path)
+
+            # 그 외에는 index.html 반환 (SPA 라우팅)
+            return FileResponse(frontend_dist / "index.html")
+
+        logger.info(f"📦 프론트엔드 정적 파일 서빙 활성화: {frontend_dist}")
+
     return app
 
 
@@ -119,10 +145,14 @@ Web API 기반 모니터링 시스템
 app = create_app()
 
 
-# 헬스체크 (루트)
+# 헬스체크 (루트) - 프론트엔드가 없을 때만 JSON 반환
 @app.get("/", tags=["Health"])
 async def root():
-    """서비스 상태 확인"""
+    """서비스 상태 확인 (프론트엔드가 없을 때)"""
+    frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
+    if frontend_dist.exists():
+        return FileResponse(frontend_dist / "index.html")
+
     settings = get_settings()
     return {
         "service": settings.APP_NAME,
