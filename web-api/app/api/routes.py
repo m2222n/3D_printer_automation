@@ -238,6 +238,43 @@ async def get_token_status():
 
 
 @router.get(
+    "/system/debug/raw-printer/{serial}",
+    tags=["System"],
+    summary="프린터 원본 데이터 조회 (디버그용)",
+    description="Formlabs API에서 받은 원본 데이터를 확인합니다."
+)
+async def get_raw_printer_data(serial: str):
+    """Formlabs API 원본 응답 확인 (디버그용)"""
+    try:
+        from app.core.auth import get_auth_manager
+        import httpx
+
+        auth = await get_auth_manager()
+        token = await auth.get_valid_token()
+        settings = get_settings()
+
+        url = f"{settings.FORMLABS_API_BASE_URL}/developer/v1/printers/{serial}/"
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(
+                url,
+                headers={
+                    "Authorization": f"bearer {token}",
+                    "Content-Type": "application/json"
+                }
+            )
+
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {"error": response.status_code, "detail": response.text}
+
+    except Exception as e:
+        logger.error(f"원본 데이터 조회 오류: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
     "/system/config",
     tags=["System"],
     summary="시스템 설정 조회",

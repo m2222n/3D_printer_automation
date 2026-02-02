@@ -205,27 +205,39 @@ class FormlabsAPIClient:
             )
         
         # cartridge_status 파싱
+        # API 응답 구조: cartridge_status.cartridge.{initial_volume_ml, volume_dispensed_ml}
         cartridge_status = None
         if "cartridge_status" in data and data["cartridge_status"]:
             cs = data["cartridge_status"]
-            cartridge_status = CartridgeStatus(
-                serial=cs.get("serial"),
-                material_code=cs.get("material_code"),
-                material_name=cs.get("material_name"),
-                initial_ml=cs.get("initial_ml", 0),
-                remaining_ml=cs.get("remaining_ml", 0),
-            )
+            cartridge = cs.get("cartridge")
+
+            if cartridge:
+                initial_ml = cartridge.get("initial_volume_ml", 0) or 0
+                dispensed_ml = cartridge.get("volume_dispensed_ml", 0) or 0
+                remaining_ml = max(0, initial_ml - dispensed_ml)
+
+                cartridge_status = CartridgeStatus(
+                    serial=cartridge.get("serial"),
+                    material_code=cartridge.get("material"),
+                    material_name=cartridge.get("display_name"),
+                    initial_ml=initial_ml,
+                    remaining_ml=remaining_ml,
+                )
         
         # tank_status 파싱
+        # API 응답 구조: tank_status.tank.{serial, material, ...}
         tank_status = None
         if "tank_status" in data and data["tank_status"]:
             ts = data["tank_status"]
-            tank_status = TankStatus(
-                serial=ts.get("serial"),
-                material_code=ts.get("material_code"),
-                print_count=ts.get("print_count", 0),
-                days_since_first_print=ts.get("days_since_first_print", 0),
-            )
+            tank = ts.get("tank")
+
+            if tank:
+                tank_status = TankStatus(
+                    serial=tank.get("serial"),
+                    material_code=tank.get("material"),
+                    print_count=tank.get("print_count", 0),
+                    days_since_first_print=tank.get("days_since_first_print", 0),
+                )
         
         return Printer(
             serial=data.get("serial", ""),
