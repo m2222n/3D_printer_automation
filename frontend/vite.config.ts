@@ -8,6 +8,12 @@ export default defineConfig({
   server: {
     port: 5180,
     proxy: {
+      // Local API (프리셋, 파일 업로드, 프린트 제어)
+      '/api/v1/local': {
+        target: 'http://localhost:8086',
+        changeOrigin: true,
+      },
+      // Web API (프린터 모니터링)
       '/api': {
         target: 'http://localhost:8085',
         changeOrigin: true,

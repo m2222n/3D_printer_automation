@@ -16,6 +16,8 @@ from app.core.config import get_settings
 from app.services.polling_service import start_polling_service, stop_polling_service, get_polling_service
 from app.services.notification_service import notification_handler
 from app.api.routes import router as api_router
+from app.local.routes import router as local_router
+from app.local.database import init_local_db
 
 # 로깅 설정
 logging.basicConfig(
@@ -49,6 +51,9 @@ async def lifespan(app: FastAPI):
         # 알림 핸들러 등록
         polling_service.on_notification(notification_handler)
         
+        # Local API DB 초기화
+        init_local_db()
+
         # 폴링 시작
         await start_polling_service()
 
@@ -114,6 +119,7 @@ Web API 기반 모니터링 시스템
     
     # API 라우터 등록
     app.include_router(api_router, prefix="/api/v1")
+    app.include_router(local_router, prefix="/api/v1/local")
 
     # 프론트엔드 정적 파일 서빙
     frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
