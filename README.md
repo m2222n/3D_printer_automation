@@ -45,17 +45,19 @@
 │  │   REST API  │  │  WebSocket  │  │   Background Services   │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
-          │                                        │
-          ▼                                        ▼
-┌──────────────────┐                    ┌──────────────────┐
-│  Formlabs Cloud  │                    │   HCR Robots     │
-│   (Web API)      │                    │  (Modbus TCP)    │
-└──────────────────┘                    └──────────────────┘
-          │                                        │
-          ▼                                        ▼
-┌──────────────────┐                    ┌──────────────────┐
-│   Form 4 x 4     │                    │  HCR-12, HCR-10L │
-└──────────────────┘                    └──────────────────┘
+          │                    │                       │
+          ▼                    ▼                       ▼
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│  Formlabs Cloud  │  │  PreFormServer   │  │   HCR Robots     │
+│   (Web API)      │  │  (Local API)     │  │  (Modbus TCP)    │
+│   - 모니터링     │  │   - 원격 제어    │  │   - 작업 지시    │
+└──────────────────┘  └──────────────────┘  └──────────────────┘
+          │                    │                       │
+          ▼                    ▼                       ▼
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│   Form 4 x 4     │  │   Form 4 x 4     │  │  HCR-12, HCR-10L │
+│   (상태 조회)    │  │  (프린트 전송)   │  │                  │
+└──────────────────┘  └──────────────────┘  └──────────────────┘
 ```
 
 ---
@@ -65,7 +67,7 @@
 | Phase | 항목 | 상태 | 설명 |
 |-------|------|------|------|
 | **Phase 1** | Web API 모니터링 | ✅ 완료 | Formlabs Cloud API 연동, 실시간 대시보드 |
-| **Phase 2** | Local API 원격 제어 | 🔜 예정 | PreFormServer 연동, STL 업로드, 원격 프린팅 |
+| **Phase 2** | Local API 원격 제어 | ✅ 완료 | PreFormServer 연동, STL 업로드, 원격 프린팅 |
 | **Phase 3** | HCR 로봇 연동 | 📋 계획 | Modbus TCP 통신, 로봇 작업 지시 |
 | **Phase 4** | YOLO 비전 검사 | 📋 계획 | 부품 식별, 불량 검출, 완료 감지 |
 
@@ -114,6 +116,51 @@
 
 ---
 
+## Phase 2: Local API 원격 제어
+
+### 주요 기능
+- **PreFormServer 연동**: 공장 PC에서 실행되는 PreFormServer와 통신
+- **STL 파일 업로드**: 드래그앤드롭으로 STL 파일 업로드 (100MB 제한)
+- **프리셋 관리**: 부품별 최적 출력 설정 저장 및 재사용
+- **원격 프린팅**: Scene 생성 → 모델 임포트 → 프린터 전송
+
+### API 엔드포인트
+
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| `GET` | `/api/v1/local/health` | Local API 상태 확인 |
+| `POST` | `/api/v1/local/printers/discover` | 네트워크 프린터 검색 |
+| `GET` | `/api/v1/local/presets` | 프리셋 목록 조회 |
+| `POST` | `/api/v1/local/presets` | 프리셋 생성 |
+| `PUT` | `/api/v1/local/presets/{id}` | 프리셋 수정 |
+| `DELETE` | `/api/v1/local/presets/{id}` | 프리셋 삭제 |
+| `POST` | `/api/v1/local/upload` | STL 파일 업로드 |
+| `GET` | `/api/v1/local/files` | 업로드된 파일 목록 |
+| `POST` | `/api/v1/local/print` | 프린트 작업 시작 |
+| `GET` | `/api/v1/local/print/{id}` | 프린트 작업 상태 |
+
+### 네트워크 구조
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       사무실 (501 오피스)                         │
+│  ┌───────────┐                                                   │
+│  │  서버     │ ◀═══ WireGuard VPN ═══▶ ┌───────────────────────┐│
+│  │ (FastAPI) │                         │       공장            ││
+│  └───────────┘                         │  ┌───────────┐        ││
+│                                        │  │  공장 PC  │        ││
+│                                        │  │PreFormServer       ││
+│                                        │  └─────┬─────┘        ││
+│                                        │        │              ││
+│                                        │  ┌─────┴─────┐        ││
+│                                        │  │ Form 4 x4 │        ││
+│                                        │  └───────────┘        ││
+│                                        └───────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 프로젝트 구조
 
 ```
@@ -123,16 +170,23 @@
 ├── docs/                        # 문서
 │   └── Phase1_WebAPI_개발설계서.docx
 │
-├── web-api/                     # Phase 1: 백엔드 (FastAPI)
+├── web-api/                     # 백엔드 (FastAPI) - Phase 1 + 2 통합
 │   ├── app/
 │   │   ├── main.py              # 앱 진입점
 │   │   ├── core/
 │   │   │   ├── config.py        # 설정 관리
 │   │   │   └── auth.py          # OAuth2 인증
-│   │   ├── services/
-│   │   │   ├── formlabs_client.py     # Formlabs API 클라이언트
+│   │   ├── services/            # Phase 1: Web API 서비스
+│   │   │   ├── formlabs_client.py     # Formlabs Cloud API
 │   │   │   ├── polling_service.py     # 상태 폴링 서비스
 │   │   │   └── notification_service.py # 알림 서비스
+│   │   ├── local/               # Phase 2: Local API
+│   │   │   ├── routes.py        # /api/v1/local/* 라우터
+│   │   │   ├── schemas.py       # 프리셋/작업 스키마
+│   │   │   ├── models.py        # SQLAlchemy 모델
+│   │   │   ├── services.py      # 프리셋/작업 서비스
+│   │   │   ├── database.py      # SQLite 설정
+│   │   │   └── preform_client.py # PreFormServer 클라이언트
 │   │   ├── api/
 │   │   │   └── routes.py        # REST API + WebSocket
 │   │   └── schemas/
@@ -142,16 +196,20 @@
 │   ├── docker-compose.yml
 │   └── requirements.txt
 │
-├── frontend/                    # Phase 1: 프론트엔드 (React)
+├── frontend/                    # 프론트엔드 (React + TypeScript)
 │   ├── src/
-│   │   ├── components/          # UI 컴포넌트
+│   │   ├── components/
+│   │   │   ├── Dashboard.tsx    # Phase 1: 프린터 모니터링
+│   │   │   ├── PrinterCard.tsx  # 프린터 카드 컴포넌트
+│   │   │   ├── FileUpload.tsx   # Phase 2: STL 업로드
+│   │   │   ├── PresetManager.tsx # Phase 2: 프리셋 관리
+│   │   │   └── PrintControl.tsx # Phase 2: 프린트 제어
 │   │   ├── types/               # TypeScript 타입
 │   │   ├── hooks/               # 커스텀 훅
 │   │   └── services/            # API 서비스
 │   ├── vite.config.ts
 │   └── package.json
 │
-├── local-api/                   # Phase 2: Local API (예정)
 ├── robot-control/               # Phase 3: 로봇 제어 (예정)
 ├── vision/                      # Phase 4: 비전 검사 (예정)
 └── shared/                      # 공유 유틸리티 (예정)
@@ -300,6 +358,17 @@ npm run dev
         ↓
 ⑬ 박스/트레이 적재 → 로봇2
 ```
+
+---
+
+## 확인된 프린터
+
+| 이름 | 시리얼 | 연결 방식 |
+|------|--------|----------|
+| CapableGecko | Form4-CapableGecko | WiFi |
+| HeavenlyTuna | Form4-HeavenlyTuna | USB |
+| CorrectPelican | Form4-CorrectPelican | WiFi |
+| ShrewdStork | Form4-ShrewdStork | USB |
 
 ---
 
