@@ -196,12 +196,29 @@ class FormlabsAPIClient:
                     print_finished_at=self._parse_datetime(cpr.get("print_finished_at")),
                 )
             
+            # Enum 값 안전 파싱 (Formlabs API가 새 값 추가해도 오류 방지)
+            ready_to_print = ps.get("ready_to_print")
+            try:
+                from app.schemas.printer import PrinterReadyState
+                PrinterReadyState(ready_to_print)
+            except (ValueError, KeyError):
+                logger.warning(f"⚠️ 알 수 없는 ready_to_print 값: {ready_to_print}")
+                ready_to_print = None
+
+            build_platform = ps.get("build_platform_contents")
+            try:
+                from app.schemas.printer import BuildPlatformState
+                BuildPlatformState(build_platform)
+            except (ValueError, KeyError):
+                logger.warning(f"⚠️ 알 수 없는 build_platform_contents 값: {build_platform}")
+                build_platform = None
+
             printer_status = PrinterStatus(
                 status=ps.get("status"),
                 last_pinged_at=self._parse_datetime(ps.get("last_pinged_at")),
                 current_print_run=current_run,
-                ready_to_print=ps.get("ready_to_print"),
-                build_platform_contents=ps.get("build_platform_contents"),
+                ready_to_print=ready_to_print,
+                build_platform_contents=build_platform,
             )
         
         # cartridge_status 파싱
