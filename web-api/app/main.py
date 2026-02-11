@@ -7,7 +7,7 @@ Phase 1: Web API 모니터링 시스템
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -132,7 +132,7 @@ Web API 기반 모니터링 시스템
         async def serve_spa(request: Request, full_path: str):
             # API 경로는 제외
             if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("redoc"):
-                return None
+                raise HTTPException(status_code=404, detail="Not found")
 
             # 정적 파일이 있으면 반환
             file_path = frontend_dist / full_path
