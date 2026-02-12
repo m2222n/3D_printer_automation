@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getPrintJobs, startPrintJob, getFiles } from '../services/localApi';
 import { getPrintHistory, getDashboard } from '../services/api';
-import type { PrintJob } from '../types/local';
+import type { PrintJob, MaterialCode } from '../types/local';
 import { getJobStatusLabel, MATERIAL_NAMES } from '../types/local';
 import type { PrintHistoryItem, PrinterSummary, PrintStatus } from '../types/printer';
 
@@ -25,7 +25,7 @@ export function HistoryPage() {
   const [reprintingId, setReprintingId] = useState<string | null>(null);
   const [reprintSuccess, setReprintSuccess] = useState<string | null>(null);
   const [reprintError, setReprintError] = useState<string | null>(null);
-  // 재출력 모달 상태
+  // 재출력 모달 상태 (클라우드 + 로컬 공용)
   const [reprintModal, setReprintModal] = useState<{
     item: PrintHistoryItem;
     selectedPrinter: string;
@@ -34,6 +34,16 @@ export function HistoryPage() {
     stlFile: string; // STL 파일명
     materialCode: string; // 재료 코드
     layerThickness: number; // 레이어 두께
+  } | null>(null);
+  // 로컬 재출력 모달 상태
+  const [localReprintModal, setLocalReprintModal] = useState<{
+    job: PrintJob;
+    selectedPrinter: string;
+    mode: 'now' | 'queue';
+    scheduledAt: string;
+    stlFile: string;
+    materialCode: string;
+    layerThickness: number;
   } | null>(null);
   // 업로드된 파일 목록 (STL 변경용)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
@@ -83,33 +93,71 @@ export function HistoryPage() {
     return printer?.name || serial;
   };
 
-  // 재출력 가능한 프린터 목록
-  const idlePrinters = printers.filter((p) => p.status === 'IDLE');
-
-  // 로컬 작업 재출력
-  const handleLocalReprint = useCallback(async (job: PrintJob) => {
-    if (idlePrinters.length === 0) {
-      setReprintError('대기 중인 프린터가 없습니다.');
+  // 로컬 작업 재출력 모달 열기
+  const handleLocalReprint = useCallback((job: PrintJob) => {
+    if (printers.length === 0) {
+      setReprintError('등록된 프린터가 없습니다.');
       setTimeout(() => setReprintError(null), 3000);
       return;
     }
 
-    if (!confirm(
-      `"${job.stl_filename}"을(를) ${getPrinterName(idlePrinters[0].serial)}에서 재출력하시겠습니까?`
-    )) return;
+    setLocalReprintModal({
+      job,
+      selectedPrinter: job.printer_serial,
+      mode: 'now',
+      scheduledAt: '',
+      stlFile: job.stl_filename,
+      materialCode: job.settings.material_code || 'FLGPGR05',
+      layerThickness: job.settings.layer_thickness_mm || 0.05,
+    });
+  }, [printers]);
+
+  // 로컬 작업 재출력 실행
+  const handleLocalReprintConfirm = useCallback(async () => {
+    if (!localReprintModal) return;
+    const { job, selectedPrinter, mode, scheduledAt, stlFile, materialCode, layerThickness } = localReprintModal;
+
+    const printerInfo = printers.find((p) => p.serial === selectedPrinter);
+    if (mode === 'now' && printerInfo?.status !== 'IDLE') {
+      setReprintError(`${getPrinterName(selectedPrinter)}은(는) 현재 대기 중이 아닙니다. 예약을 사용하세요.`);
+      setTimeout(() => setReprintError(null), 5000);
+      return;
+    }
+
+    if (mode === 'queue' && scheduledAt) {
+      const scheduledDate = new Date(scheduledAt);
+      if (scheduledDate <= new Date()) {
+        setReprintError('예약 시간은 현재 시간 이후여야 합니다.');
+        setTimeout(() => setReprintError(null), 5000);
+        return;
+      }
+    }
 
     setReprintingId(job.id);
     setReprintError(null);
     setReprintSuccess(null);
+    setLocalReprintModal(null);
 
     try {
+      let scheduledAtISO: string | undefined;
+      if (mode === 'queue' && scheduledAt) {
+        scheduledAtISO = scheduledAt + ':00+09:00';
+      }
+
       await startPrintJob({
         preset_id: job.preset_id || undefined,
-        stl_file: job.stl_filename,
-        printer_serial: idlePrinters[0].serial,
-        settings: job.settings,
+        stl_file: stlFile,
+        printer_serial: selectedPrinter,
+        scheduled_at: scheduledAtISO,
+        settings: {
+          ...job.settings,
+          material_code: materialCode as MaterialCode,
+          layer_thickness_mm: layerThickness,
+        },
       });
-      setReprintSuccess(`"${job.stl_filename}" 재출력 작업이 대기열에 추가되었습니다.`);
+
+      const actionLabel = mode === 'now' ? '재출력 작업이 시작되었습니다' : '예약 작업이 대기열에 추가되었습니다';
+      setReprintSuccess(`"${stlFile}" ${actionLabel}.`);
       setTimeout(() => setReprintSuccess(null), 5000);
       await loadData();
     } catch (err) {
@@ -118,7 +166,7 @@ export function HistoryPage() {
     } finally {
       setReprintingId(null);
     }
-  }, [idlePrinters, loadData]);
+  }, [localReprintModal, printers, loadData]);
 
   // 클라우드 이력 재출력 모달 열기
   const openReprintModal = (item: PrintHistoryItem) => {
@@ -348,10 +396,10 @@ export function HistoryPage() {
         )}
       </main>
 
-      {/* 재출력 모달 */}
+      {/* 클라우드 재출력 모달 */}
       {reprintModal && (
         <ReprintModal
-          item={reprintModal.item}
+          title={reprintModal.item.name}
           printers={printers}
           selectedPrinter={reprintModal.selectedPrinter}
           mode={reprintModal.mode}
@@ -360,7 +408,15 @@ export function HistoryPage() {
           materialCode={reprintModal.materialCode}
           layerThickness={reprintModal.layerThickness}
           uploadedFiles={uploadedFiles}
-          onPrinterChange={(serial) => setReprintModal({ ...reprintModal, selectedPrinter: serial })}
+          partInfo={reprintModal.item.parts.length > 0 ? reprintModal.item.parts.map((p) => p.display_name).join(', ') : undefined}
+          onPrinterChange={(serial) => {
+            const printer = printers.find((p) => p.serial === serial);
+            setReprintModal({
+              ...reprintModal,
+              selectedPrinter: serial,
+              ...(printer?.cartridge_material_code ? { materialCode: printer.cartridge_material_code } : {}),
+            });
+          }}
           onModeChange={(mode) => setReprintModal({ ...reprintModal, mode })}
           onScheduledAtChange={(val) => setReprintModal({ ...reprintModal, scheduledAt: val })}
           onStlFileChange={(val) => setReprintModal({ ...reprintModal, stlFile: val })}
@@ -368,6 +424,36 @@ export function HistoryPage() {
           onLayerThicknessChange={(val) => setReprintModal({ ...reprintModal, layerThickness: val })}
           onConfirm={handleCloudReprint}
           onCancel={() => setReprintModal(null)}
+        />
+      )}
+
+      {/* 로컬 재출력 모달 */}
+      {localReprintModal && (
+        <ReprintModal
+          title={localReprintModal.job.stl_filename}
+          printers={printers}
+          selectedPrinter={localReprintModal.selectedPrinter}
+          mode={localReprintModal.mode}
+          scheduledAt={localReprintModal.scheduledAt}
+          stlFile={localReprintModal.stlFile}
+          materialCode={localReprintModal.materialCode}
+          layerThickness={localReprintModal.layerThickness}
+          uploadedFiles={uploadedFiles}
+          onPrinterChange={(serial) => {
+            const printer = printers.find((p) => p.serial === serial);
+            setLocalReprintModal({
+              ...localReprintModal,
+              selectedPrinter: serial,
+              ...(printer?.cartridge_material_code ? { materialCode: printer.cartridge_material_code } : {}),
+            });
+          }}
+          onModeChange={(mode) => setLocalReprintModal({ ...localReprintModal, mode })}
+          onScheduledAtChange={(val) => setLocalReprintModal({ ...localReprintModal, scheduledAt: val })}
+          onStlFileChange={(val) => setLocalReprintModal({ ...localReprintModal, stlFile: val })}
+          onMaterialCodeChange={(val) => setLocalReprintModal({ ...localReprintModal, materialCode: val })}
+          onLayerThicknessChange={(val) => setLocalReprintModal({ ...localReprintModal, layerThickness: val })}
+          onConfirm={handleLocalReprintConfirm}
+          onCancel={() => setLocalReprintModal(null)}
         />
       )}
     </div>
@@ -621,7 +707,7 @@ function CloudHistoryCard({
 // ===========================================
 
 function ReprintModal({
-  item,
+  title,
   printers,
   selectedPrinter,
   mode,
@@ -630,6 +716,7 @@ function ReprintModal({
   materialCode,
   layerThickness,
   uploadedFiles,
+  partInfo,
   onPrinterChange,
   onModeChange,
   onScheduledAtChange,
@@ -639,7 +726,7 @@ function ReprintModal({
   onConfirm,
   onCancel,
 }: {
-  item: PrintHistoryItem;
+  title: string;
   printers: PrinterSummary[];
   selectedPrinter: string;
   mode: 'now' | 'queue';
@@ -648,6 +735,7 @@ function ReprintModal({
   materialCode: string;
   layerThickness: number;
   uploadedFiles: string[];
+  partInfo?: string;
   onPrinterChange: (serial: string) => void;
   onModeChange: (mode: 'now' | 'queue') => void;
   onScheduledAtChange: (val: string) => void;
@@ -731,7 +819,7 @@ function ReprintModal({
         {/* 헤더 */}
         <div className="px-6 py-4 border-b bg-gray-50 flex-shrink-0">
           <h3 className="font-semibold text-gray-900">재출력</h3>
-          <p className="text-sm text-gray-500 mt-0.5 truncate">{item.name}</p>
+          <p className="text-sm text-gray-500 mt-0.5 truncate">{title}</p>
         </div>
 
         <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
@@ -757,15 +845,31 @@ function ReprintModal({
                     className="text-blue-600"
                   />
                   <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-900">{printer.name}</span>
-                    <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
-                      printer.status === 'IDLE' ? 'bg-green-100 text-green-700' :
-                      printer.status === 'PRINTING' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {printer.status === 'IDLE' ? '대기 중' :
-                       printer.status === 'PRINTING' ? '출력 중' : printer.status}
-                    </span>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-gray-900">{printer.name}</span>
+                      <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                        printer.status === 'IDLE' ? 'bg-green-100 text-green-700' :
+                        printer.status === 'PRINTING' ? 'bg-blue-100 text-blue-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {printer.status === 'IDLE' ? '대기 중' :
+                         printer.status === 'PRINTING' ? '출력 중' : printer.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                      {printer.cartridge_material_name && (
+                        <span>레진: {printer.cartridge_material_name}</span>
+                      )}
+                      {printer.resin_remaining_ml != null && (
+                        <span className={printer.is_resin_low ? 'text-red-500 font-medium' : ''}>
+                          잔량: {printer.resin_remaining_ml.toFixed(0)}ml
+                          {printer.resin_remaining_percent != null && ` (${printer.resin_remaining_percent.toFixed(0)}%)`}
+                        </span>
+                      )}
+                      {!printer.cartridge_material_name && printer.resin_remaining_ml == null && (
+                        <span className="text-gray-400">카트리지 정보 없음</span>
+                      )}
+                    </div>
                   </div>
                 </label>
               ))}
@@ -962,10 +1066,10 @@ function ReprintModal({
           )}
 
           {/* 파트 정보 */}
-          {item.parts.length > 0 && (
+          {partInfo && (
             <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5">
               <span className="font-medium">원본 파트:</span>{' '}
-              {item.parts.map((p) => p.display_name).join(', ')}
+              {partInfo}
             </div>
           )}
         </div>
@@ -1045,6 +1149,7 @@ function getCloudStatusStyle(status: PrintStatus): string {
     case 'PAUSED': return 'bg-orange-100 text-orange-700';
     case 'ABORTED': return 'bg-orange-100 text-orange-700';
     case 'ERROR': return 'bg-red-100 text-red-700';
+    case 'WAITING_FOR_RESOLUTION': return 'bg-amber-100 text-amber-700';
     default: return 'bg-gray-100 text-gray-700';
   }
 }

@@ -14,7 +14,8 @@ export type PrintStatus =
   | 'PAUSED'
   | 'FINISHED'
   | 'ABORTED'
-  | 'ERROR';
+  | 'ERROR'
+  | 'WAITING_FOR_RESOLUTION';
 
 export type PrinterReadyState =
   | 'READY'
@@ -118,6 +119,8 @@ export interface PrinterSummary {
   resin_remaining_ml: number | null;
   resin_remaining_percent: number | null;
   is_resin_low: boolean;
+  cartridge_material_code: string | null;
+  cartridge_material_name: string | null;
   is_online: boolean;
   is_ready: boolean;
   has_error: boolean;

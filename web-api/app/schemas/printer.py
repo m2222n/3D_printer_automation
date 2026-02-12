@@ -30,6 +30,7 @@ class PrintStatus(str, Enum):
     FINISHED = "FINISHED"       # 완료
     ABORTED = "ABORTED"         # 취소됨
     ERROR = "ERROR"             # 오류
+    WAITING_FOR_RESOLUTION = "WAITING_FOR_RESOLUTION"  # 사용자 개입 대기 (mixer 없음 등)
 
 
 class PrinterReadyState(str, Enum):
@@ -202,6 +203,8 @@ class PrinterSummary(BaseModel):
     resin_remaining_ml: Optional[float] = None
     resin_remaining_percent: Optional[float] = None
     is_resin_low: bool = False
+    cartridge_material_code: Optional[str] = None
+    cartridge_material_name: Optional[str] = None
     
     # 상태 플래그
     is_online: bool = True

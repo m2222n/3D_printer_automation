@@ -19,6 +19,24 @@ from app.schemas.printer import (
 
 logger = logging.getLogger(__name__)
 
+# Formlabs material code → 사람이 읽기 쉬운 이름 매핑
+MATERIAL_CODE_NAMES = {
+    "FLGPCL05": "Clear V5",
+    "FLGPGR05": "Grey V5",
+    "FLGPWH05": "White V5",
+    "FLGPBK05": "Black V5",
+    "FLGPCL04": "Clear V4",
+    "FLGPGR04": "Grey V4",
+    "FLGPWH04": "White V4",
+    "FLGPBK04": "Black V4",
+    "FLRGWH01": "Rigid White",
+    "FLFLGR02": "Flexible Grey",
+    "FLTOTL05": "Tough 2000",
+    "FLDUCL02": "Durable Clear",
+    "FLHTAM02": "High Temp Amber",
+    "FLDCBL01": "Draft Clear Blue",
+}
+
 
 class FormlabsAPIClient:
     """
@@ -436,10 +454,19 @@ class FormlabsAPIClient:
         resin_ml = None
         resin_percent = None
         is_resin_low = False
+        cartridge_material_code = None
+        cartridge_material_name = None
         if printer.cartridge_status:
             resin_ml = printer.cartridge_status.remaining_ml
             resin_percent = printer.cartridge_status.remaining_percent
             is_resin_low = printer.cartridge_status.is_low
+            cartridge_material_code = printer.cartridge_status.material_code
+            cartridge_material_name = printer.cartridge_status.material_name
+            # Formlabs API에서 display_name이 없는 경우 material_code로 매핑
+            if not cartridge_material_name and cartridge_material_code:
+                cartridge_material_name = MATERIAL_CODE_NAMES.get(
+                    cartridge_material_code, cartridge_material_code
+                )
         
         return PrinterSummary(
             serial=printer.serial,
@@ -453,6 +480,8 @@ class FormlabsAPIClient:
             resin_remaining_ml=resin_ml,
             resin_remaining_percent=resin_percent,
             is_resin_low=is_resin_low,
+            cartridge_material_code=cartridge_material_code,
+            cartridge_material_name=cartridge_material_name,
             is_online=is_online,
             is_ready=printer.printer_status.ready_to_print in ("READY", "READY_TO_PRINT_READY") if printer.printer_status else False,
             has_error=has_error,
