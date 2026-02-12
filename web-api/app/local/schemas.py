@@ -113,6 +113,9 @@ class PrintJobCreate(BaseModel):
     # 프리셋 없이 직접 설정 시
     settings: Optional[PrintSettings] = None
 
+    # 예약 출력 시간 (KST, None이면 즉시 출력)
+    scheduled_at: Optional[datetime] = None
+
 
 class PrintJobStatus(str, Enum):
     """프린트 작업 상태"""
@@ -134,6 +137,7 @@ class PrintJobResponse(BaseModel):
     settings: PrintSettings
     scene_id: Optional[str] = None  # PreFormServer scene ID
     error_message: Optional[str] = None
+    scheduled_at: Optional[datetime] = None  # 예약 출력 시간
     created_at: datetime
     updated_at: datetime
 

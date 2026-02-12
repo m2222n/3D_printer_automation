@@ -1,13 +1,15 @@
 /**
  * 이전 작업 내용 페이지
- * 프린트 히스토리 조회, 프린터별 필터, 재출력 버튼
+ * 프린트 히스토리 조회, 프린터별 필터, 재출력 기능
+ * - 클라우드 이력: 상세 정보(오류/중단 메시지, 파트 목록) + 재출력
+ * - 로컬 작업: 이 시스템으로 시작한 작업 이력
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { getPrintJobs, startPrintJob } from '../services/localApi';
+import { getPrintJobs, startPrintJob, getFiles } from '../services/localApi';
 import { getPrintHistory, getDashboard } from '../services/api';
 import type { PrintJob } from '../types/local';
-import { getJobStatusLabel } from '../types/local';
+import { getJobStatusLabel, MATERIAL_NAMES } from '../types/local';
 import type { PrintHistoryItem, PrinterSummary, PrintStatus } from '../types/printer';
 
 type HistoryFilter = 'all' | string; // 'all' or printer serial
@@ -18,24 +20,38 @@ export function HistoryPage() {
   const [cloudHistory, setCloudHistory] = useState<PrintHistoryItem[]>([]);
   const [printers, setPrinters] = useState<PrinterSummary[]>([]);
   const [filter, setFilter] = useState<HistoryFilter>('all');
-  const [source, setSource] = useState<HistorySource>('local');
+  const [source, setSource] = useState<HistorySource>('cloud');
   const [isLoading, setIsLoading] = useState(true);
   const [reprintingId, setReprintingId] = useState<string | null>(null);
   const [reprintSuccess, setReprintSuccess] = useState<string | null>(null);
   const [reprintError, setReprintError] = useState<string | null>(null);
+  // 재출력 모달 상태
+  const [reprintModal, setReprintModal] = useState<{
+    item: PrintHistoryItem;
+    selectedPrinter: string;
+    mode: 'now' | 'queue';
+    scheduledAt: string; // datetime-local 값 (KST)
+    stlFile: string; // STL 파일명
+    materialCode: string; // 재료 코드
+    layerThickness: number; // 레이어 두께
+  } | null>(null);
+  // 업로드된 파일 목록 (STL 변경용)
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   // 데이터 로드
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [jobList, history, dashboard] = await Promise.all([
+      const [jobList, history, dashboard, fileList] = await Promise.all([
         getPrintJobs(0, 100),
         getPrintHistory(1, 50).catch(() => ({ items: [], total_count: 0, page: 1, page_size: 50 })),
         getDashboard(),
+        getFiles().catch(() => ({ files: [] })),
       ]);
       setLocalJobs(jobList);
       setCloudHistory(history.items);
       setPrinters(dashboard.printers);
+      setUploadedFiles(fileList.files.map((f) => f.filename));
     } catch (err) {
       console.error('히스토리 로드 실패:', err);
     } finally {
@@ -67,17 +83,19 @@ export function HistoryPage() {
     return printer?.name || serial;
   };
 
-  // 재출력 핸들러
-  const handleReprint = useCallback(async (job: PrintJob) => {
-    const availablePrinter = printers.find((p) => p.status === 'IDLE');
-    if (!availablePrinter) {
+  // 재출력 가능한 프린터 목록
+  const idlePrinters = printers.filter((p) => p.status === 'IDLE');
+
+  // 로컬 작업 재출력
+  const handleLocalReprint = useCallback(async (job: PrintJob) => {
+    if (idlePrinters.length === 0) {
       setReprintError('대기 중인 프린터가 없습니다.');
       setTimeout(() => setReprintError(null), 3000);
       return;
     }
 
     if (!confirm(
-      `"${job.stl_filename}"을(를) ${getPrinterName(availablePrinter.serial)}에서 재출력하시겠습니까?`
+      `"${job.stl_filename}"을(를) ${getPrinterName(idlePrinters[0].serial)}에서 재출력하시겠습니까?`
     )) return;
 
     setReprintingId(job.id);
@@ -88,7 +106,7 @@ export function HistoryPage() {
       await startPrintJob({
         preset_id: job.preset_id || undefined,
         stl_file: job.stl_filename,
-        printer_serial: availablePrinter.serial,
+        printer_serial: idlePrinters[0].serial,
         settings: job.settings,
       });
       setReprintSuccess(`"${job.stl_filename}" 재출력 작업이 대기열에 추가되었습니다.`);
@@ -100,7 +118,90 @@ export function HistoryPage() {
     } finally {
       setReprintingId(null);
     }
-  }, [printers, loadData]);
+  }, [idlePrinters, loadData]);
+
+  // 클라우드 이력 재출력 모달 열기
+  const openReprintModal = (item: PrintHistoryItem) => {
+    if (printers.length === 0) {
+      setReprintError('등록된 프린터가 없습니다.');
+      setTimeout(() => setReprintError(null), 3000);
+      return;
+    }
+    // 기본 STL 파일명 추출
+    const defaultStl = item.parts.length > 0
+      ? item.parts[0].display_name + '.stl'
+      : item.name + '.stl';
+
+    // 기본: 같은 프린터, 모드: 바로 출력
+    setReprintModal({
+      item,
+      selectedPrinter: item.printer_serial,
+      mode: 'now',
+      scheduledAt: '',
+      stlFile: defaultStl,
+      materialCode: item.material_code || 'FLGPGR05',
+      layerThickness: 0.05,
+    });
+  };
+
+  // 클라우드 이력 재출력 실행
+  const handleCloudReprint = useCallback(async () => {
+    if (!reprintModal) return;
+    const { item, selectedPrinter, mode, scheduledAt, stlFile, materialCode, layerThickness } = reprintModal;
+
+    const printerInfo = printers.find((p) => p.serial === selectedPrinter);
+    if (mode === 'now' && printerInfo?.status !== 'IDLE') {
+      setReprintError(`${getPrinterName(selectedPrinter)}은(는) 현재 대기 중이 아닙니다. 예약을 사용하세요.`);
+      setTimeout(() => setReprintError(null), 5000);
+      return;
+    }
+
+    // 예약 모드에서 시간 미지정 시 경고
+    if (mode === 'queue' && scheduledAt) {
+      const scheduledDate = new Date(scheduledAt);
+      if (scheduledDate <= new Date()) {
+        setReprintError('예약 시간은 현재 시간 이후여야 합니다.');
+        setTimeout(() => setReprintError(null), 5000);
+        return;
+      }
+    }
+
+    setReprintingId(item.guid);
+    setReprintError(null);
+    setReprintSuccess(null);
+    setReprintModal(null);
+
+    try {
+      // 예약 시간 처리 (KST → ISO 문자열)
+      let scheduledAtISO: string | undefined;
+      if (mode === 'queue' && scheduledAt) {
+        // datetime-local은 로컬 시간이므로 KST로 간주하여 +09:00 추가
+        scheduledAtISO = scheduledAt + ':00+09:00';
+      }
+
+      await startPrintJob({
+        stl_file: stlFile,
+        printer_serial: selectedPrinter,
+        scheduled_at: scheduledAtISO,
+        settings: {
+          material_code: materialCode,
+          layer_thickness_mm: layerThickness,
+          source: 'cloud_reprint',
+          original_guid: item.guid,
+        } as unknown as import('../types/local').PrintSettings,
+      });
+
+      const actionLabel = mode === 'now' ? '재출력 작업이 시작되었습니다' : '예약 작업이 대기열에 추가되었습니다';
+      setReprintSuccess(`"${item.name}" ${actionLabel}.`);
+      setTimeout(() => setReprintSuccess(null), 5000);
+      await loadData();
+    } catch (err) {
+      setReprintError(err instanceof Error ? err.message : '재출력 실패');
+      setTimeout(() => setReprintError(null), 5000);
+    } finally {
+      setReprintingId(null);
+    }
+  }, [reprintModal, printers, loadData]);
 
   return (
     <div className="bg-gray-100">
@@ -207,7 +308,7 @@ export function HistoryPage() {
         ) : source === 'local' ? (
           /* 로컬 작업 히스토리 */
           completedLocalJobs.length === 0 ? (
-            <EmptyState message="완료된 작업이 없습니다" />
+            <EmptyState message="완료된 로컬 작업이 없습니다" sub="이 시스템으로 프린트를 시작하면 이곳에 기록됩니다" />
           ) : (
             <div className="space-y-2">
               <p className="text-sm text-gray-500 mb-3">
@@ -218,7 +319,7 @@ export function HistoryPage() {
                   key={job.id}
                   job={job}
                   printerName={getPrinterName(job.printer_serial)}
-                  onReprint={() => handleReprint(job)}
+                  onReprint={() => handleLocalReprint(job)}
                   isReprinting={reprintingId === job.id}
                 />
               ))}
@@ -229,7 +330,7 @@ export function HistoryPage() {
           filteredCloudHistory.length === 0 ? (
             <EmptyState message="클라우드 프린트 이력이 없습니다" />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm text-gray-500 mb-3">
                 총 {filteredCloudHistory.length}건
               </p>
@@ -238,17 +339,45 @@ export function HistoryPage() {
                   key={item.guid}
                   item={item}
                   printerName={getPrinterName(item.printer_serial)}
+                  onReprint={() => openReprintModal(item)}
+                  isReprinting={reprintingId === item.guid}
                 />
               ))}
             </div>
           )
         )}
       </main>
+
+      {/* 재출력 모달 */}
+      {reprintModal && (
+        <ReprintModal
+          item={reprintModal.item}
+          printers={printers}
+          selectedPrinter={reprintModal.selectedPrinter}
+          mode={reprintModal.mode}
+          scheduledAt={reprintModal.scheduledAt}
+          stlFile={reprintModal.stlFile}
+          materialCode={reprintModal.materialCode}
+          layerThickness={reprintModal.layerThickness}
+          uploadedFiles={uploadedFiles}
+          onPrinterChange={(serial) => setReprintModal({ ...reprintModal, selectedPrinter: serial })}
+          onModeChange={(mode) => setReprintModal({ ...reprintModal, mode })}
+          onScheduledAtChange={(val) => setReprintModal({ ...reprintModal, scheduledAt: val })}
+          onStlFileChange={(val) => setReprintModal({ ...reprintModal, stlFile: val })}
+          onMaterialCodeChange={(val) => setReprintModal({ ...reprintModal, materialCode: val })}
+          onLayerThicknessChange={(val) => setReprintModal({ ...reprintModal, layerThickness: val })}
+          onConfirm={handleCloudReprint}
+          onCancel={() => setReprintModal(null)}
+        />
+      )}
     </div>
   );
 }
 
+// ===========================================
 // 로컬 작업 카드
+// ===========================================
+
 function LocalJobCard({
   job,
   printerName,
@@ -292,7 +421,6 @@ function LocalJobCard({
           </div>
         </div>
 
-        {/* 재출력 버튼 */}
         <button
           onClick={onReprint}
           disabled={isReprinting}
@@ -309,9 +437,7 @@ function LocalJobCard({
             </span>
           ) : (
             <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <ReprintIcon />
               재출력
             </span>
           )}
@@ -321,76 +447,581 @@ function LocalJobCard({
   );
 }
 
-// 클라우드 히스토리 카드
+// ===========================================
+// 클라우드 히스토리 카드 (상세 정보 포함)
+// ===========================================
+
 function CloudHistoryCard({
   item,
   printerName,
+  onReprint,
+  isReprinting,
 }: {
   item: PrintHistoryItem;
   printerName: string;
+  onReprint: () => void;
+  isReprinting: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const isError = item.status === 'ERROR';
+  const isAborted = item.status === 'ABORTED';
+  const hasIssue = isError || isAborted;
+
+  const borderColor = isError ? 'border-red-200' :
+    isAborted ? 'border-orange-200' : 'border-gray-200';
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow">
-      <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900 truncate">{item.name}</p>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getCloudStatusStyle(item.status)}`}>
-              {getCloudStatusLabel(item.status)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className="text-xs text-gray-500">{printerName}</span>
-            {item.started_at && (
-              <>
-                <span className="text-gray-300">|</span>
-                <span className="text-xs text-gray-400">
-                  {new Date(item.started_at).toLocaleString('ko-KR')}
+    <div className={`bg-white rounded-lg border ${borderColor} overflow-hidden hover:shadow-sm transition-shadow`}>
+      {/* 메인 영역 */}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          {/* 좌측: 썸네일 + 정보 */}
+          <div className="flex gap-3 flex-1 min-w-0">
+            {/* 썸네일 */}
+            {item.thumbnail_url && (
+              <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-gray-100 border">
+                <img
+                  src={item.thumbnail_url}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+            )}
+
+            <div className="flex-1 min-w-0">
+              {/* 제목 + 상태 */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${getCloudStatusStyle(item.status)}`}>
+                  {getCloudStatusLabel(item.status)}
                 </span>
-              </>
-            )}
-            {item.duration_minutes && (
-              <>
-                <span className="text-gray-300">|</span>
-                <span className="text-xs text-gray-400">
-                  {item.duration_minutes < 60
-                    ? `${item.duration_minutes}분`
-                    : `${Math.floor(item.duration_minutes / 60)}시간 ${item.duration_minutes % 60}분`
-                  }
-                </span>
-              </>
-            )}
-            {item.material_name && (
-              <>
-                <span className="text-gray-300">|</span>
-                <span className="text-xs text-gray-400">{item.material_name}</span>
-              </>
-            )}
-            {item.layer_count > 0 && (
-              <>
-                <span className="text-gray-300">|</span>
-                <span className="text-xs text-gray-400">{item.layer_count} 레이어</span>
-              </>
-            )}
+                {item.print_run_success === 'SUCCESS' && (
+                  <span className="text-green-500 text-xs flex-shrink-0">&#10003;</span>
+                )}
+              </div>
+
+              {/* 메타 정보 */}
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="text-xs text-gray-500">{printerName}</span>
+                {item.started_at && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-xs text-gray-400">
+                      {new Date(item.started_at).toLocaleString('ko-KR')}
+                    </span>
+                  </>
+                )}
+                {item.duration_minutes != null && item.duration_minutes > 0 && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-xs text-gray-400">
+                      {item.duration_minutes < 60
+                        ? `${item.duration_minutes}분`
+                        : `${Math.floor(item.duration_minutes / 60)}시간 ${item.duration_minutes % 60}분`
+                      }
+                    </span>
+                  </>
+                )}
+                {item.material_name && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-xs text-gray-400">{item.material_name}</span>
+                  </>
+                )}
+                {item.volume_ml != null && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-xs text-gray-400">{item.volume_ml.toFixed(1)}ml</span>
+                  </>
+                )}
+                {item.layer_count > 0 && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-xs text-gray-400">{item.layer_count} 레이어</span>
+                  </>
+                )}
+              </div>
+
+              {/* 오류/중단 메시지 - 항상 표시 */}
+              {hasIssue && (
+                <div className={`mt-2 px-2.5 py-1.5 rounded text-xs ${
+                  isError ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700'
+                }`}>
+                  <span className="font-medium">{isError ? '오류' : '중단'}:</span>{' '}
+                  {item.message || (isError ? '상세 오류 정보가 없습니다' : '사용자에 의해 중단되었습니다')}
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* 우측: 버튼 영역 */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* 상세 보기 토글 */}
+            {item.parts.length > 0 && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 rounded transition-colors"
+                title="상세 보기"
+              >
+                <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            )}
+
+            {/* 재출력 버튼 */}
+            <button
+              onClick={onReprint}
+              disabled={isReprinting}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                isReprinting
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              }`}
+            >
+              {isReprinting ? (
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  처리 중
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <ReprintIcon />
+                  재출력
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 확장: 파트 목록 */}
+      {expanded && item.parts.length > 0 && (
+        <div className="border-t bg-gray-50 px-4 py-3">
+          <p className="text-xs font-medium text-gray-500 mb-2">포함된 파트 ({item.parts.length}개)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {item.parts.map((part, idx) => (
+              <div key={idx} className="flex items-center justify-between text-xs bg-white rounded px-2.5 py-1.5 border border-gray-100">
+                <span className="text-gray-700 truncate">{part.display_name}</span>
+                {part.volume_ml != null && (
+                  <span className="text-gray-400 ml-2 flex-shrink-0">{part.volume_ml.toFixed(1)}ml</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===========================================
+// 재출력 모달
+// ===========================================
+
+function ReprintModal({
+  item,
+  printers,
+  selectedPrinter,
+  mode,
+  scheduledAt,
+  stlFile,
+  materialCode,
+  layerThickness,
+  uploadedFiles,
+  onPrinterChange,
+  onModeChange,
+  onScheduledAtChange,
+  onStlFileChange,
+  onMaterialCodeChange,
+  onLayerThicknessChange,
+  onConfirm,
+  onCancel,
+}: {
+  item: PrintHistoryItem;
+  printers: PrinterSummary[];
+  selectedPrinter: string;
+  mode: 'now' | 'queue';
+  scheduledAt: string;
+  stlFile: string;
+  materialCode: string;
+  layerThickness: number;
+  uploadedFiles: string[];
+  onPrinterChange: (serial: string) => void;
+  onModeChange: (mode: 'now' | 'queue') => void;
+  onScheduledAtChange: (val: string) => void;
+  onStlFileChange: (val: string) => void;
+  onMaterialCodeChange: (val: string) => void;
+  onLayerThicknessChange: (val: number) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const [showSettings, setShowSettings] = useState(false);
+  const selectedPrinterInfo = printers.find((p) => p.serial === selectedPrinter);
+  const canPrintNow = selectedPrinterInfo?.status === 'IDLE';
+
+  // KST 시간 picker 로컬 상태
+  const now = new Date();
+  const [schedDate, setSchedDate] = useState(() => {
+    if (scheduledAt) return scheduledAt.slice(0, 10);
+    // 기본: 오늘 날짜 (KST)
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    return kst.toISOString().slice(0, 10);
+  });
+  const [schedAmPm, setSchedAmPm] = useState<'AM' | 'PM'>(() => {
+    if (scheduledAt) {
+      const h = parseInt(scheduledAt.slice(11, 13), 10);
+      return h >= 12 ? 'PM' : 'AM';
+    }
+    return 'AM';
+  });
+  const [schedHour, setSchedHour] = useState(() => {
+    if (scheduledAt) {
+      let h = parseInt(scheduledAt.slice(11, 13), 10);
+      if (h === 0) h = 12;
+      else if (h > 12) h -= 12;
+      return h;
+    }
+    return 9; // 기본 오전 9시
+  });
+  const [schedMinute, setSchedMinute] = useState(() => {
+    if (scheduledAt) return parseInt(scheduledAt.slice(14, 16), 10);
+    return 0;
+  });
+  const [schedEnabled, setSchedEnabled] = useState(!!scheduledAt);
+
+  // 로컬 state → 부모에 전달
+  useEffect(() => {
+    if (!schedEnabled) {
+      if (scheduledAt !== '') onScheduledAtChange('');
+      return;
+    }
+    // 12시간 → 24시간 변환
+    let h24 = schedHour;
+    if (schedAmPm === 'AM') {
+      if (h24 === 12) h24 = 0;
+    } else {
+      if (h24 !== 12) h24 += 12;
+    }
+    const hh = h24.toString().padStart(2, '0');
+    const mm = schedMinute.toString().padStart(2, '0');
+    const val = `${schedDate}T${hh}:${mm}`;
+    if (val !== scheduledAt) onScheduledAtChange(val);
+  }, [schedEnabled, schedDate, schedAmPm, schedHour, schedMinute]);
+
+  // 오늘 날짜 (KST, date input min용)
+  const todayKST = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  // 재료 목록
+  const materialOptions: { code: string; name: string }[] = Object.entries(MATERIAL_NAMES).map(
+    ([code, name]) => ({ code, name })
+  );
+
+  // 레이어 두께 옵션
+  const layerOptions = [
+    { value: 0.025, label: '25μm (최고 품질)' },
+    { value: 0.05, label: '50μm (고품질)' },
+    { value: 0.1, label: '100μm (표준)' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+        {/* 헤더 */}
+        <div className="px-6 py-4 border-b bg-gray-50 flex-shrink-0">
+          <h3 className="font-semibold text-gray-900">재출력</h3>
+          <p className="text-sm text-gray-500 mt-0.5 truncate">{item.name}</p>
+        </div>
+
+        <div className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
+          {/* 프린터 선택 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">프린터 선택</label>
+            <div className="space-y-1.5">
+              {printers.map((printer) => (
+                <label
+                  key={printer.serial}
+                  className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                    selectedPrinter === printer.serial
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="printer"
+                    value={printer.serial}
+                    checked={selectedPrinter === printer.serial}
+                    onChange={() => onPrinterChange(printer.serial)}
+                    className="text-blue-600"
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-900">{printer.name}</span>
+                    <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                      printer.status === 'IDLE' ? 'bg-green-100 text-green-700' :
+                      printer.status === 'PRINTING' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {printer.status === 'IDLE' ? '대기 중' :
+                       printer.status === 'PRINTING' ? '출력 중' : printer.status}
+                    </span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 출력 모드 선택 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">출력 방식</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => onModeChange('now')}
+                className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  mode === 'now'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                바로 출력
+                {!canPrintNow && mode === 'now' && (
+                  <p className="text-xs text-red-500 mt-0.5">프린터가 대기 중이 아닙니다</p>
+                )}
+              </button>
+              <button
+                onClick={() => onModeChange('queue')}
+                className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  mode === 'queue'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                예약 (대기열)
+              </button>
+            </div>
+          </div>
+
+          {/* 예약 시간 선택 (예약 모드일 때만) */}
+          {mode === 'queue' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-gray-700">
+                  예약 날짜 (KST)
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={schedEnabled}
+                    onChange={(e) => setSchedEnabled(e.target.checked)}
+                    className="rounded text-blue-600"
+                  />
+                  <span className="text-xs text-gray-500">시간 지정</span>
+                </label>
+              </div>
+
+              {schedEnabled ? (
+                <div className="space-y-2">
+                  {/* 예약 날짜 (달력) */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">예약 날짜</label>
+                    <input
+                      type="date"
+                      value={schedDate}
+                      onChange={(e) => setSchedDate(e.target.value)}
+                      min={todayKST}
+                      className="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+
+                  {/* 시간 선택: 오전/오후 + 시 + 분 */}
+                  <div className="flex gap-2">
+                    {/* 오전/오후 */}
+                    <select
+                      value={schedAmPm}
+                      onChange={(e) => setSchedAmPm(e.target.value as 'AM' | 'PM')}
+                      className="px-2.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      <option value="AM">오전</option>
+                      <option value="PM">오후</option>
+                    </select>
+
+                    {/* 시 (1~12) */}
+                    <select
+                      value={schedHour}
+                      onChange={(e) => setSchedHour(parseInt(e.target.value, 10))}
+                      className="flex-1 px-2.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                        <option key={h} value={h}>{h}시</option>
+                      ))}
+                    </select>
+
+                    {/* 분 (00~50, 10분 단위) */}
+                    <select
+                      value={schedMinute}
+                      onChange={(e) => setSchedMinute(parseInt(e.target.value, 10))}
+                      className="flex-1 px-2.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      {[0, 10, 20, 30, 40, 50].map((m) => (
+                        <option key={m} value={m}>{m.toString().padStart(2, '0')}분</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 선택된 시간 미리보기 */}
+                  {scheduledAt && (
+                    <p className="text-xs text-blue-600">
+                      {new Date(scheduledAt).toLocaleString('ko-KR', {
+                        year: 'numeric', month: 'long', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit', hour12: true
+                      })} 에 출력 시작
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">시간 미지정 시 즉시 대기열에 추가됩니다</p>
+              )}
+            </div>
+          )}
+
+          {/* 설정 변경 토글 */}
+          <div>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <svg className={`w-4 h-4 transition-transform ${showSettings ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <span className="font-medium">STL / 설정 변경</span>
+              <span className="text-xs text-gray-400">(기존 설정 그대로 출력하려면 접어두세요)</span>
+            </button>
+          </div>
+
+          {/* STL + 설정 변경 영역 */}
+          {showSettings && (
+            <div className="space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              {/* STL 파일 변경 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">STL 파일</label>
+                {uploadedFiles.length > 0 ? (
+                  <select
+                    value={stlFile}
+                    onChange={(e) => onStlFileChange(e.target.value)}
+                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    {/* 기존 파일이 업로드 목록에 없으면 별도 옵션으로 표시 */}
+                    {!uploadedFiles.includes(stlFile) && (
+                      <option value={stlFile}>{stlFile} (원본)</option>
+                    )}
+                    {uploadedFiles.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-xs text-gray-500 p-2 bg-white rounded border">
+                    <span className="font-medium">{stlFile}</span>
+                    <span className="text-gray-400 ml-1">(업로드된 파일 없음)</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 재료 변경 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">재료 (레진)</label>
+                <select
+                  value={materialCode}
+                  onChange={(e) => onMaterialCodeChange(e.target.value)}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  {materialOptions.map((mat) => (
+                    <option key={mat.code} value={mat.code}>
+                      {mat.name} ({mat.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 레이어 두께 */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">레이어 두께</label>
+                <select
+                  value={layerThickness}
+                  onChange={(e) => onLayerThicknessChange(parseFloat(e.target.value))}
+                  className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  {layerOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* 파트 정보 */}
+          {item.parts.length > 0 && (
+            <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5">
+              <span className="font-medium">원본 파트:</span>{' '}
+              {item.parts.map((p) => p.display_name).join(', ')}
+            </div>
+          )}
+        </div>
+
+        {/* 하단 버튼 */}
+        <div className="px-6 py-3 border-t bg-gray-50 flex justify-end gap-2 flex-shrink-0">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={mode === 'now' && !canPrintNow}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              mode === 'now' && !canPrintNow
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {mode === 'now' ? '바로 출력' : scheduledAt ? '예약 추가' : '대기열 추가'}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// 빈 상태
-function EmptyState({ message }: { message: string }) {
+// ===========================================
+// 공통 컴포넌트
+// ===========================================
+
+function EmptyState({ message, sub }: { message: string; sub?: string }) {
   return (
     <div className="text-center py-16 bg-white rounded-xl border">
       <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
       <h3 className="text-lg font-medium text-gray-700 mb-2">{message}</h3>
-      <p className="text-sm text-gray-500">프린트 제어에서 작업을 시작하면 이곳에 기록됩니다</p>
+      <p className="text-sm text-gray-500">{sub || '프린트 제어에서 작업을 시작하면 이곳에 기록됩니다'}</p>
     </div>
   );
 }
+
+function ReprintIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+  );
+}
+
+// ===========================================
+// 유틸 함수
+// ===========================================
 
 function getCloudStatusLabel(status: PrintStatus): string {
   switch (status) {
@@ -412,7 +1043,7 @@ function getCloudStatusStyle(status: PrintStatus): string {
     case 'QUEUED': return 'bg-gray-100 text-gray-700';
     case 'PREPRINT': return 'bg-yellow-100 text-yellow-700';
     case 'PAUSED': return 'bg-orange-100 text-orange-700';
-    case 'ABORTED': return 'bg-gray-100 text-gray-700';
+    case 'ABORTED': return 'bg-orange-100 text-orange-700';
     case 'ERROR': return 'bg-red-100 text-red-700';
     default: return 'bg-gray-100 text-gray-700';
   }

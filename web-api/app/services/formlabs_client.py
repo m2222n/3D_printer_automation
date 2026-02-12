@@ -14,7 +14,7 @@ from app.core.auth import FormlabsAuthManager, get_auth_manager
 from app.schemas.printer import (
     Printer, PrinterStatus, CurrentPrintRun,
     CartridgeStatus, TankStatus, PrinterSummary,
-    PrintStatus, PrintHistoryItem, now_kst
+    PrintStatus, PrintHistoryItem, PrintHistoryPart, now_kst
 )
 
 logger = logging.getLogger(__name__)
@@ -321,15 +321,47 @@ class FormlabsAPIClient:
         history = []
         for item in items:
             try:
+                # duration 계산
+                started = self._parse_datetime(item.get("print_started_at"))
+                finished = self._parse_datetime(item.get("print_finished_at"))
+                duration_min = None
+                if started and finished:
+                    duration_min = int((finished - started).total_seconds() / 60)
+
+                # print_run_success 파싱
+                prs = item.get("print_run_success")
+                prs_value = prs.get("print_run_success") if isinstance(prs, dict) else None
+
+                # 썸네일
+                thumb = item.get("print_thumbnail")
+                thumb_url = thumb.get("thumbnail") if isinstance(thumb, dict) else None
+
+                # 파트 목록
+                parts = []
+                for part in item.get("parts", []):
+                    parts.append(PrintHistoryPart(
+                        display_name=part.get("display_name", ""),
+                        volume_ml=part.get("volume_ml"),
+                        stl_path=part.get("name"),
+                    ))
+
                 history.append(PrintHistoryItem(
                     guid=item.get("guid", ""),
                     name=item.get("name", ""),
                     printer_serial=item.get("printer", ""),
                     status=item.get("status", PrintStatus.FINISHED),
-                    started_at=self._parse_datetime(item.get("print_started_at")),
-                    finished_at=self._parse_datetime(item.get("print_finished_at")),
+                    started_at=started,
+                    finished_at=finished,
+                    duration_minutes=duration_min,
                     layer_count=item.get("layer_count", 0),
-                    material_code=item.get("material_code"),
+                    material_code=item.get("material"),
+                    material_name=item.get("material_name"),
+                    estimated_ml_used=item.get("volume_ml"),
+                    message=item.get("message"),
+                    print_run_success=prs_value,
+                    thumbnail_url=thumb_url,
+                    volume_ml=item.get("volume_ml"),
+                    parts=parts,
                 ))
             except Exception as e:
                 logger.error(f"이력 파싱 오류: {e}")

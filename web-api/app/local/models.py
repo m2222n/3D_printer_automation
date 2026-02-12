@@ -61,6 +61,9 @@ class PrintJob(Base):
     estimated_print_time_ms = Column(Integer, nullable=True)
     estimated_material_ml = Column(Float, nullable=True)
 
+    # 예약 출력 시간 (KST, None이면 즉시 출력)
+    scheduled_at = Column(DateTime(timezone=True), nullable=True)
+
     # 타임스탬프
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

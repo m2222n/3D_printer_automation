@@ -253,6 +253,13 @@ class Notification(BaseModel):
 # 프린트 이력 스키마
 # ===========================================
 
+class PrintHistoryPart(BaseModel):
+    """프린트 이력 파트 정보"""
+    display_name: str
+    volume_ml: Optional[float] = None
+    stl_path: Optional[str] = None  # 원본 STL 경로
+
+
 class PrintHistoryItem(BaseModel):
     """프린트 이력 항목"""
     guid: str
@@ -260,19 +267,26 @@ class PrintHistoryItem(BaseModel):
     printer_serial: str
     printer_name: Optional[str] = None
     status: PrintStatus
-    
+
     # 시간 정보
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     duration_minutes: Optional[int] = None
-    
+
     # 레이어 정보
     layer_count: int = 0
-    
+
     # 재료 정보
     material_code: Optional[str] = None
     material_name: Optional[str] = None
     estimated_ml_used: Optional[float] = None
+
+    # 상세 정보 (확장)
+    message: Optional[str] = None  # 오류/중단 메시지
+    print_run_success: Optional[str] = None  # SUCCESS / null
+    thumbnail_url: Optional[str] = None
+    volume_ml: Optional[float] = None  # 전체 사용 레진량
+    parts: List[PrintHistoryPart] = []  # 포함된 파트 목록
 
 
 class PrintHistoryResponse(BaseModel):

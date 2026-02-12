@@ -129,6 +129,7 @@ export interface PrintJob {
   settings: PrintSettings;
   scene_id: string | null;
   error_message: string | null;
+  scheduled_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -139,6 +140,7 @@ export interface PrintJobCreate {
   printer_serial: string;
   copies?: number;
   settings?: PrintSettings;
+  scheduled_at?: string;
 }
 
 // ===========================================

@@ -214,7 +214,7 @@ export function QueuePage() {
                   {/* 작업 정보 */}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 truncate">{job.stl_filename}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-xs text-gray-500">
                         {getPrinterName(job.printer_serial)}
                       </span>
@@ -222,6 +222,17 @@ export function QueuePage() {
                       <span className="text-xs text-gray-400">
                         {new Date(job.created_at).toLocaleString('ko-KR')}
                       </span>
+                      {job.scheduled_at && (
+                        <>
+                          <span className="text-gray-300">|</span>
+                          <span className="text-xs text-blue-600 font-medium">
+                            {new Date(job.scheduled_at).toLocaleString('ko-KR', {
+                              month: 'short', day: 'numeric',
+                              hour: '2-digit', minute: '2-digit', hour12: true
+                            })} 예약
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 

@@ -153,6 +153,12 @@ export interface Notification {
 // 프린트 이력
 // ===========================================
 
+export interface PrintHistoryPart {
+  display_name: string;
+  volume_ml: number | null;
+  stl_path: string | null;
+}
+
 export interface PrintHistoryItem {
   guid: string;
   name: string;
@@ -166,6 +172,12 @@ export interface PrintHistoryItem {
   material_code: string | null;
   material_name: string | null;
   estimated_ml_used: number | null;
+  // 상세 정보 (확장)
+  message: string | null;
+  print_run_success: string | null;
+  thumbnail_url: string | null;
+  volume_ml: number | null;
+  parts: PrintHistoryPart[];
 }
 
 export interface PrintHistoryResponse {

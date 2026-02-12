@@ -147,7 +147,8 @@ class PrintJobService:
             stl_filename=stl_filename,
             printer_serial=data.printer_serial,
             status=PrintJobStatus.PENDING.value,
-            settings=settings.model_dump()
+            settings=settings.model_dump(),
+            scheduled_at=data.scheduled_at
         )
         self.db.add(job)
         self.db.commit()
@@ -215,6 +216,7 @@ class PrintJobService:
             settings=PrintSettings(**job.settings),
             scene_id=job.scene_id,
             error_message=job.error_message,
+            scheduled_at=job.scheduled_at,
             created_at=job.created_at,
             updated_at=job.updated_at
         )
