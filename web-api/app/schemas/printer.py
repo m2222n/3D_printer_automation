@@ -6,8 +6,15 @@ Web API 응답 데이터 구조 정의
 
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from enum import Enum
+
+# 한국 표준시 (KST = UTC+9)
+KST = timezone(timedelta(hours=9))
+
+def now_kst() -> datetime:
+    """현재 한국 시간 반환"""
+    return datetime.now(KST)
 
 
 # ===========================================
@@ -202,7 +209,7 @@ class PrinterSummary(BaseModel):
     has_error: bool = False
     
     # 마지막 업데이트
-    last_update: datetime = Field(default_factory=datetime.now)
+    last_update: datetime = Field(default_factory=now_kst)
 
 
 class DashboardData(BaseModel):
@@ -213,7 +220,7 @@ class DashboardData(BaseModel):
     printers_idle: int
     printers_error: int
     printers_offline: int
-    last_update: datetime = Field(default_factory=datetime.now)
+    last_update: datetime = Field(default_factory=now_kst)
 
 
 # ===========================================
@@ -235,7 +242,7 @@ class Notification(BaseModel):
     printer_name: str
     title: str
     message: str
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=now_kst)
     
     # 추가 정보 (선택)
     job_name: Optional[str] = None

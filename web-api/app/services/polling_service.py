@@ -16,7 +16,8 @@ from app.core.config import get_settings
 from app.services.formlabs_client import FormlabsAPIClient, get_formlabs_client
 from app.schemas.printer import (
     Printer, PrinterSummary, DashboardData,
-    PrintStatus, NotificationType, Notification
+    PrintStatus, NotificationType, Notification,
+    now_kst
 )
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class PrinterState:
     last_job_guid: Optional[str] = None
     last_resin_ml: float = 0
     was_online: bool = True
-    last_update: datetime = field(default_factory=datetime.now)
+    last_update: datetime = field(default_factory=now_kst)
 
 
 class PrinterPollingService:
@@ -252,7 +253,7 @@ class PrinterPollingService:
         prev_state.last_job_guid = current_job_guid
         prev_state.last_resin_ml = current_resin_ml
         prev_state.was_online = is_online
-        prev_state.last_update = datetime.now()
+        prev_state.last_update = now_kst()
     
     async def _emit_notification(self, notification: Notification):
         """알림 발생 및 핸들러 호출"""
@@ -283,7 +284,7 @@ class PrinterPollingService:
             printers_idle=idle,
             printers_error=error,
             printers_offline=offline,
-            last_update=datetime.now()
+            last_update=now_kst()
         )
     
     def get_current_data(self) -> Optional[DashboardData]:

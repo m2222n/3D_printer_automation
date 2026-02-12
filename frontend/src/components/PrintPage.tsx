@@ -1,38 +1,22 @@
 /**
  * 프린트 제어 페이지
  * 프린터 4대 각각 독립 컨테이너로 관리
+ * 각 컨테이너에 파일 업로드 + 프리셋 + 프린트 제어 포함
  * 상단 탭으로 빠른 이동 (스크롤 앵커)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FileUpload } from './FileUpload';
-import { PresetManager } from './PresetManager';
 import { PrinterPrintControl } from './PrinterPrintControl';
 import { getLocalApiHealth } from '../services/localApi';
 import { getDashboard } from '../services/api';
-import type { Preset } from '../types/local';
 import type { LocalApiHealth } from '../types/local';
 import type { PrinterSummary } from '../types/printer';
 
 export function PrintPage() {
-  const [selectedFile, setSelectedFile] = useState<string | undefined>();
-  const [selectedPreset, setSelectedPreset] = useState<Preset | null>(null);
   const [printers, setPrinters] = useState<PrinterSummary[]>([]);
   const [apiHealth, setApiHealth] = useState<LocalApiHealth | null>(null);
   const [activePrinterSerial, setActivePrinterSerial] = useState<string | null>(null);
   const printerRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-  const handleFileSelect = (filename: string) => {
-    setSelectedFile(filename);
-    setSelectedPreset(null);
-  };
-
-  const handlePresetSelect = (preset: Preset) => {
-    setSelectedPreset(preset);
-    if (preset.stl_filename) {
-      setSelectedFile(preset.stl_filename);
-    }
-  };
 
   // 프린터 목록 및 API 상태 로드
   const loadData = useCallback(async () => {
@@ -114,23 +98,12 @@ export function PrintPage() {
       )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* 공통: 파일 업로드 & 프리셋 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <FileUpload onFileSelect={handleFileSelect} />
-          <PresetManager onPresetSelect={handlePresetSelect} selectedFile={selectedFile} />
-        </div>
-
-        {/* 구분선 */}
-        <div className="border-t border-gray-300 my-6"></div>
-
-        {/* 프린터별 독립 컨테이너 */}
-        <h3 className="text-base font-semibold text-gray-800 mb-4">프린터별 프린트 제어</h3>
         {printers.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl border">
             <p className="text-gray-500">프린터 정보를 불러오는 중...</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {printers.map((printer) => (
               <div
                 key={printer.serial}
@@ -139,8 +112,6 @@ export function PrintPage() {
               >
                 <PrinterPrintControl
                   printer={printer}
-                  selectedPreset={selectedPreset}
-                  selectedFile={selectedFile}
                   isPreformConnected={isPreformConnected}
                 />
               </div>

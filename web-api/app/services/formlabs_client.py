@@ -14,7 +14,7 @@ from app.core.auth import FormlabsAuthManager, get_auth_manager
 from app.schemas.printer import (
     Printer, PrinterStatus, CurrentPrintRun,
     CartridgeStatus, TankStatus, PrinterSummary,
-    PrintStatus, PrintHistoryItem
+    PrintStatus, PrintHistoryItem, now_kst
 )
 
 logger = logging.getLogger(__name__)
@@ -424,7 +424,7 @@ class FormlabsAPIClient:
             is_online=is_online,
             is_ready=printer.printer_status.ready_to_print in ("READY", "READY_TO_PRINT_READY") if printer.printer_status else False,
             has_error=has_error,
-            last_update=datetime.now()
+            last_update=now_kst()
         )
 
 
