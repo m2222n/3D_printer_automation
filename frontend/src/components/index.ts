@@ -1,6 +1,10 @@
 export { default as Dashboard } from './Dashboard';
 export { default as PrinterCard } from './PrinterCard';
+export { PrinterDetail } from './PrinterDetail';
 export { FileUpload } from './FileUpload';
 export { PresetManager } from './PresetManager';
 export { PrintControl } from './PrintControl';
+export { PrinterPrintControl } from './PrinterPrintControl';
 export { PrintPage } from './PrintPage';
+export { QueuePage } from './QueuePage';
+export { HistoryPage } from './HistoryPage';

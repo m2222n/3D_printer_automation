@@ -1,18 +1,25 @@
 /**
  * 대시보드 컴포넌트
  * 프린터 4대 상태 모니터링
+ * - 전체 뷰: 4개 카드 요약
+ * - 프린터별 탭: 상세 정보
  */
 
+import { useState } from 'react';
 import { useDashboard } from '../hooks/useDashboard';
 import PrinterCard from './PrinterCard';
+import { PrinterDetail } from './PrinterDetail';
+
+type MonitoringTab = 'all' | string; // 'all' or printer serial
 
 export default function Dashboard() {
   const { dashboard, isLoading, error, isConnected, refresh } = useDashboard();
+  const [activeMonitorTab, setActiveMonitorTab] = useState<MonitoringTab>('all');
 
   // 로딩 상태
   if (isLoading && !dashboard) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-[60vh] bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">프린터 상태를 불러오는 중...</p>
@@ -24,9 +31,9 @@ export default function Dashboard() {
   // 에러 상태
   if (error && !dashboard) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="min-h-[60vh] bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <div className="text-red-500 text-5xl mb-4">!</div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">연결 오류</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
@@ -40,6 +47,10 @@ export default function Dashboard() {
     );
   }
 
+  const selectedPrinter = dashboard?.printers.find(
+    (p) => p.serial === activeMonitorTab
+  );
+
   return (
     <div className="bg-gray-100">
       {/* 서브 헤더 */}
@@ -48,7 +59,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                Form 4 프린터 대시보드
+                프린터 모니터링
               </h2>
             </div>
 
@@ -90,51 +101,87 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* 요약 통계 */}
-        {dashboard && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <StatCard
-              label="전체"
-              value={dashboard.total_printers}
-              color="gray"
-            />
-            <StatCard
-              label="출력 중"
-              value={dashboard.printers_printing}
-              color="blue"
-            />
-            <StatCard
-              label="대기 중"
-              value={dashboard.printers_idle}
-              color="gray"
-            />
-            <StatCard
-              label="오류/오프라인"
-              value={dashboard.printers_error + dashboard.printers_offline}
-              color="red"
-            />
+      {/* 프린터 서브 탭 */}
+      {dashboard && dashboard.printers.length > 0 && (
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setActiveMonitorTab('all')}
+                className={`py-2.5 px-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  activeMonitorTab === 'all'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                전체
+              </button>
+              {dashboard.printers.map((printer) => (
+                <button
+                  key={printer.serial}
+                  onClick={() => setActiveMonitorTab(printer.serial)}
+                  className={`py-2.5 px-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
+                    activeMonitorTab === printer.serial
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${getStatusDotColor(printer.status)}`}></span>
+                  {printer.name}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* 프린터 카드 그리드 */}
-        {dashboard && dashboard.printers.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {dashboard.printers.map((printer) => (
-              <PrinterCard key={printer.serial} printer={printer} />
-            ))}
-          </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {activeMonitorTab === 'all' ? (
+          <>
+            {/* 요약 통계 */}
+            {dashboard && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                <StatCard label="전체" value={dashboard.total_printers} color="gray" />
+                <StatCard label="출력 중" value={dashboard.printers_printing} color="blue" />
+                <StatCard label="대기 중" value={dashboard.printers_idle} color="gray" />
+                <StatCard label="오류/오프라인" value={dashboard.printers_error + dashboard.printers_offline} color="red" />
+              </div>
+            )}
+
+            {/* 프린터 카드 그리드 */}
+            {dashboard && dashboard.printers.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {dashboard.printers.map((printer) => (
+                  <div
+                    key={printer.serial}
+                    className="cursor-pointer"
+                    onClick={() => setActiveMonitorTab(printer.serial)}
+                  >
+                    <PrinterCard printer={printer} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">등록된 프린터가 없습니다.</p>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">등록된 프린터가 없습니다.</p>
-          </div>
+          /* 프린터 상세 뷰 */
+          selectedPrinter && (
+            <PrinterDetail
+              printer={selectedPrinter}
+              onBack={() => setActiveMonitorTab('all')}
+            />
+          )
         )}
 
         {/* 에러 배너 (데이터는 있지만 에러 발생 시) */}
         {error && dashboard && (
           <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg">
             <div className="flex items-start gap-3">
-              <span className="text-red-500">⚠️</span>
+              <span className="text-red-500">!</span>
               <div className="flex-1">
                 <p className="text-sm text-red-700">{error}</p>
                 <button
@@ -157,6 +204,18 @@ export default function Dashboard() {
       </main>
     </div>
   );
+}
+
+// 상태별 도트 색상
+function getStatusDotColor(status: string): string {
+  switch (status) {
+    case 'PRINTING': return 'bg-blue-500 animate-pulse';
+    case 'FINISHED': return 'bg-green-500';
+    case 'IDLE': return 'bg-gray-400';
+    case 'ERROR': return 'bg-red-500';
+    case 'OFFLINE': return 'bg-gray-300';
+    default: return 'bg-gray-400';
+  }
 }
 
 // 통계 카드 컴포넌트
