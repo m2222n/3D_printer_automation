@@ -10,8 +10,13 @@
 export type PrintStatus =
   | 'QUEUED'
   | 'PREPRINT'
+  | 'PREHEAT'
+  | 'PRECOAT'
   | 'PRINTING'
+  | 'POSTCOAT'
+  | 'PAUSING'
   | 'PAUSED'
+  | 'ABORTING'
   | 'FINISHED'
   | 'ABORTED'
   | 'ERROR'
@@ -40,6 +45,10 @@ export type NotificationType =
 export type PrinterDisplayStatus =
   | 'IDLE'
   | 'PRINTING'
+  | 'PREHEAT'
+  | 'PAUSING'
+  | 'PAUSED'
+  | 'ABORTING'
   | 'FINISHED'
   | 'ERROR'
   | 'OFFLINE';
@@ -114,8 +123,13 @@ export interface PrinterSummary {
   current_job_name: string | null;
   progress_percent: number | null;
   remaining_minutes: number | null;
+  elapsed_minutes: number | null;
+  estimated_total_minutes: number | null;
   current_layer: number | null;
   total_layers: number | null;
+  print_started_at: string | null;
+  print_phase: string | null;
+  temperature: number | null;
   resin_remaining_ml: number | null;
   resin_remaining_percent: number | null;
   is_resin_low: boolean;
@@ -123,6 +137,8 @@ export interface PrinterSummary {
   cartridge_material_name: string | null;
   is_online: boolean;
   is_ready: boolean;
+  ready_to_print: string | null;
+  build_platform_contents: string | null;
   has_error: boolean;
   last_update: string;
 }
@@ -208,6 +224,13 @@ export function getStatusColor(status: PrinterDisplayStatus): string {
   switch (status) {
     case 'PRINTING':
       return 'blue';
+    case 'PREHEAT':
+      return 'orange';
+    case 'PAUSING':
+    case 'PAUSED':
+      return 'yellow';
+    case 'ABORTING':
+      return 'red';
     case 'FINISHED':
       return 'green';
     case 'IDLE':
@@ -225,6 +248,14 @@ export function getStatusLabel(status: PrinterDisplayStatus): string {
   switch (status) {
     case 'PRINTING':
       return '출력 중';
+    case 'PREHEAT':
+      return '예열 중';
+    case 'PAUSING':
+      return '일시정지 중';
+    case 'PAUSED':
+      return '일시정지됨';
+    case 'ABORTING':
+      return '중단 중';
     case 'FINISHED':
       return '완료';
     case 'IDLE':

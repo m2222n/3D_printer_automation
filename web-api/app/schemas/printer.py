@@ -25,8 +25,13 @@ class PrintStatus(str, Enum):
     """프린트 작업 상태"""
     QUEUED = "QUEUED"           # 대기열
     PREPRINT = "PREPRINT"       # 준비 중
+    PREHEAT = "PREHEAT"         # 예열 중
+    PRECOAT = "PRECOAT"         # 초기 코팅
     PRINTING = "PRINTING"       # 출력 중
+    POSTCOAT = "POSTCOAT"       # 후처리 코팅
+    PAUSING = "PAUSING"         # 일시정지 중
     PAUSED = "PAUSED"           # 일시정지
+    ABORTING = "ABORTING"       # 중단 중
     FINISHED = "FINISHED"       # 완료
     ABORTED = "ABORTED"         # 취소됨
     ERROR = "ERROR"             # 오류
@@ -139,6 +144,7 @@ class PrinterStatus(BaseModel):
     current_print_run: Optional[CurrentPrintRun] = None
     ready_to_print: Optional[PrinterReadyState] = None
     build_platform_contents: Optional[BuildPlatformState] = None
+    temperature: Optional[float] = None  # 프린터 온도 (°C)
 
 
 class Printer(BaseModel):
@@ -190,27 +196,38 @@ class PrinterSummary(BaseModel):
     """대시보드용 프린터 요약 정보"""
     serial: str
     name: str
-    status: str  # IDLE, PRINTING, FINISHED, ERROR, OFFLINE
-    
+    status: str  # IDLE, PRINTING, PREHEAT, PAUSED, PAUSING, ABORTING, FINISHED, ERROR, OFFLINE
+
     # 출력 진행 정보 (출력 중일 때만)
     current_job_name: Optional[str] = None
     progress_percent: Optional[float] = None
     remaining_minutes: Optional[int] = None
+    elapsed_minutes: Optional[int] = None
+    estimated_total_minutes: Optional[int] = None
     current_layer: Optional[int] = None
     total_layers: Optional[int] = None
-    
+    print_started_at: Optional[datetime] = None
+
+    # 프린트 단계 (PREHEAT, PRECOAT, PRINTING, POSTCOAT 등)
+    print_phase: Optional[str] = None
+
+    # 프린터 온도 (°C)
+    temperature: Optional[float] = None
+
     # 소모품 정보
     resin_remaining_ml: Optional[float] = None
     resin_remaining_percent: Optional[float] = None
     is_resin_low: bool = False
     cartridge_material_code: Optional[str] = None
     cartridge_material_name: Optional[str] = None
-    
+
     # 상태 플래그
     is_online: bool = True
     is_ready: bool = True
+    ready_to_print: Optional[str] = None  # "READY", "NOT_READY" 등
+    build_platform_contents: Optional[str] = None  # "EMPTY", "HAS_PARTS" 등
     has_error: bool = False
-    
+
     # 마지막 업데이트
     last_update: datetime = Field(default_factory=now_kst)
 

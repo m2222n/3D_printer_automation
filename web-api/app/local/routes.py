@@ -20,7 +20,8 @@ from app.local.preform_client import get_preform_client, PreFormServerClient
 from app.local.schemas import (
     PresetCreate, PresetUpdate, PresetResponse, PresetListResponse,
     PrintJobCreate, PrintJobResponse, PrintJobStatus,
-    DiscoveredPrinter, PrintSettings
+    DiscoveredPrinter, PrintSettings,
+    SceneEstimate, ScenePrepareRequest
 )
 
 logger = logging.getLogger(__name__)
@@ -389,6 +390,120 @@ async def list_print_jobs(
     """프린트 작업 목록 조회"""
     service = PrintJobService(db)
     return service.list(skip=skip, limit=limit)
+
+
+# ===========================================
+# 슬라이스 준비 + 예측
+# ===========================================
+
+@router.post(
+    "/scene/prepare",
+    response_model=SceneEstimate,
+    tags=["Scene"],
+    summary="슬라이스 준비 및 예측"
+)
+async def prepare_scene(data: ScenePrepareRequest):
+    """
+    STL 파일을 슬라이스 준비하고 예측 결과 반환
+
+    - Scene 생성 → 모델 임포트 → 자동 방향/서포트/배치 → 예측 결과
+    - 프린터로 전송하지 않음 (확인 후 별도 전송)
+    - 반환된 scene_id로 /scene/{scene_id}/print 호출하여 프린터 전송
+    """
+    client = await get_preform_client()
+
+    if not await client.health_check():
+        raise HTTPException(
+            status_code=503,
+            detail="PreFormServer에 연결할 수 없습니다"
+        )
+
+    # 파일 존재 확인
+    stl_path = Path(settings.UPLOAD_DIR) / data.stl_file
+    if not stl_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"STL 파일을 찾을 수 없습니다: {data.stl_file}"
+        )
+
+    result = await client.prepare_scene(
+        stl_path=str(stl_path),
+        machine_type=data.machine_type,
+        material_code=data.material_code,
+        layer_thickness_mm=data.layer_thickness_mm,
+        support_density=data.support_density,
+        touchpoint_size=data.touchpoint_size,
+    )
+
+    if not result["success"]:
+        raise HTTPException(
+            status_code=500,
+            detail=f"슬라이스 준비 실패: {result.get('error', '알 수 없는 오류')}"
+        )
+
+    return result["estimate"]
+
+
+@router.post(
+    "/scene/{scene_id}/print",
+    tags=["Scene"],
+    summary="준비된 Scene을 프린터로 전송"
+)
+async def print_prepared_scene(
+    scene_id: str,
+    printer_serial: str = Query(..., description="프린터 시리얼 번호"),
+    job_name: Optional[str] = Query(None, description="작업 이름"),
+):
+    """
+    슬라이스 준비가 완료된 Scene을 프린터로 전송
+
+    - /scene/prepare로 얻은 scene_id 사용
+    - 예측 결과 확인 후 프린트 시작 시 호출
+    """
+    client = await get_preform_client()
+
+    if not await client.health_check():
+        raise HTTPException(
+            status_code=503,
+            detail="PreFormServer에 연결할 수 없습니다"
+        )
+
+    success = await client.send_to_printer(
+        scene_id=scene_id,
+        printer_serial=printer_serial,
+        job_name=job_name or "print-job"
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail="프린터 전송 실패"
+        )
+
+    return {
+        "success": True,
+        "message": "프린터로 전송 완료",
+        "scene_id": scene_id,
+        "printer_serial": printer_serial,
+    }
+
+
+@router.delete(
+    "/scene/{scene_id}",
+    tags=["Scene"],
+    summary="준비된 Scene 삭제"
+)
+async def delete_scene(scene_id: str):
+    """
+    슬라이스 준비된 Scene을 삭제 (프린트 취소 시)
+    """
+    client = await get_preform_client()
+    success = await client.delete_scene(scene_id)
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Scene 삭제 실패")
+
+    return {"success": True, "message": "Scene이 삭제되었습니다"}
 
 
 # ===========================================

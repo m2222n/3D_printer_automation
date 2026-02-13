@@ -271,8 +271,9 @@ class PrinterPollingService:
         """대시보드용 데이터 구성"""
         summaries = [self.client.printer_to_summary(p) for p in printers]
         
-        # 통계 계산
-        printing = sum(1 for s in summaries if s.status == "PRINTING")
+        # 통계 계산 (활성 작업 상태: PRINTING, PREHEAT, PAUSING, PAUSED, ABORTING)
+        active_statuses = {"PRINTING", "PREHEAT", "PAUSING", "PAUSED", "ABORTING"}
+        printing = sum(1 for s in summaries if s.status in active_statuses)
         idle = sum(1 for s in summaries if s.status == "IDLE")
         error = sum(1 for s in summaries if s.status == "ERROR")
         offline = sum(1 for s in summaries if s.status == "OFFLINE")

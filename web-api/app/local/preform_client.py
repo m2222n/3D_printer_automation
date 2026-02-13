@@ -12,7 +12,7 @@ from pathlib import Path
 
 from app.core.config import get_settings
 from app.local.schemas import (
-    DiscoveredPrinter, SceneInfo, PrintSettings,
+    DiscoveredPrinter, SceneInfo, SceneEstimate, PrintSettings,
     MaterialCode, SupportDensity
 )
 
@@ -350,6 +350,92 @@ class PreFormServerClient:
         except Exception as e:
             logger.error(f"Scene 정보 조회 오류: {e}")
             return None
+
+    async def prepare_scene(
+        self,
+        stl_path: str,
+        machine_type: str = "FORM-4-0",
+        material_code: str = "FLGPGR05",
+        layer_thickness_mm: float = 0.05,
+        support_density: str = "normal",
+        touchpoint_size: float = 0.5
+    ) -> Dict[str, Any]:
+        """
+        STL 파일을 슬라이스 준비하고 예측 결과 반환 (프린터 전송 안 함)
+
+        워크플로우:
+        1. Scene 생성
+        2. 모델 임포트
+        3. 자동 방향/서포트/배치
+        4. Scene 정보 조회 (예측 시간/재료)
+
+        Returns:
+            Dict: {success, scene_id, estimate, error}
+        """
+        result: Dict[str, Any] = {
+            "success": False,
+            "scene_id": None,
+            "estimate": None,
+            "error": None
+        }
+
+        # 1. Scene 생성
+        scene_id = await self.create_scene(
+            machine_type=machine_type,
+            material_code=material_code,
+            layer_thickness_mm=layer_thickness_mm
+        )
+        if not scene_id:
+            result["error"] = "Scene 생성 실패"
+            return result
+        result["scene_id"] = scene_id
+
+        try:
+            # 2. 모델 임포트
+            if not await self.import_model(scene_id, stl_path):
+                result["error"] = "모델 임포트 실패"
+                return result
+
+            # 3. 자동 준비
+            if not await self.auto_orient(scene_id):
+                logger.warning("자동 방향 설정 실패, 계속 진행")
+
+            if not await self.auto_support(
+                scene_id,
+                density=support_density,
+                touchpoint_size=touchpoint_size
+            ):
+                logger.warning("자동 서포트 생성 실패, 계속 진행")
+
+            if not await self.auto_layout(scene_id):
+                logger.warning("자동 배치 실패, 계속 진행")
+
+            # 4. Scene 정보 조회 (예측 결과)
+            scene_info = await self.get_scene_info(scene_id)
+            if scene_info:
+                est_time_ms = scene_info.estimated_print_time_ms
+                est_time_min = round(est_time_ms / 60000, 1) if est_time_ms else None
+
+                result["estimate"] = SceneEstimate(
+                    scene_id=scene_id,
+                    estimated_print_time_ms=est_time_ms,
+                    estimated_print_time_min=est_time_min,
+                    estimated_material_ml=scene_info.estimated_material_ml,
+                    layer_count=None,  # Scene info에서 직접 제공 안 함
+                    machine_type=scene_info.machine_type,
+                    material_code=scene_info.material_code,
+                    model_count=scene_info.model_count,
+                )
+                result["success"] = True
+            else:
+                result["error"] = "Scene 정보 조회 실패"
+
+            return result
+
+        except Exception as e:
+            result["error"] = str(e)
+            await self.delete_scene(scene_id)
+            return result
 
     async def send_to_printer(self, scene_id: str, printer_serial: str, job_name: str = "print-job") -> bool:
         """

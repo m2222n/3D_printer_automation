@@ -14,6 +14,8 @@ import type {
   PrintJobCreate,
   DiscoveredPrinter,
   LocalApiHealth,
+  SceneEstimate,
+  ScenePrepareRequest,
 } from '../types/local';
 
 const LOCAL_API_BASE = '/api/v1/local';
@@ -162,5 +164,36 @@ export async function printWithPreset(
 ): Promise<PrintJob> {
   return fetchLocalApi<PrintJob>(`/presets/${presetId}/print?printer_serial=${printerSerial}`, {
     method: 'POST',
+  });
+}
+
+// ===========================================
+// 슬라이스 준비 + 예측
+// ===========================================
+
+export async function prepareScene(data: ScenePrepareRequest): Promise<SceneEstimate> {
+  return fetchLocalApi<SceneEstimate>('/scene/prepare', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function printPreparedScene(
+  sceneId: string,
+  printerSerial: string,
+  jobName?: string
+): Promise<{ success: boolean; message: string }> {
+  let url = `/scene/${sceneId}/print?printer_serial=${printerSerial}`;
+  if (jobName) {
+    url += `&job_name=${encodeURIComponent(jobName)}`;
+  }
+  return fetchLocalApi<{ success: boolean; message: string }>(url, {
+    method: 'POST',
+  });
+}
+
+export async function deleteScene(sceneId: string): Promise<void> {
+  await fetchLocalApi<{ success: boolean }>(`/scene/${sceneId}`, {
+    method: 'DELETE',
   });
 }

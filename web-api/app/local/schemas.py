@@ -163,3 +163,25 @@ class SceneInfo(BaseModel):
     model_count: int
     estimated_print_time_ms: Optional[int] = None
     estimated_material_ml: Optional[float] = None
+
+
+class SceneEstimate(BaseModel):
+    """슬라이스 예측 결과"""
+    scene_id: str
+    estimated_print_time_ms: Optional[int] = None
+    estimated_print_time_min: Optional[float] = None  # 분 단위 변환
+    estimated_material_ml: Optional[float] = None
+    layer_count: Optional[int] = None
+    machine_type: str = ""
+    material_code: str = ""
+    model_count: int = 0
+
+
+class ScenePrepareRequest(BaseModel):
+    """슬라이스 준비 요청"""
+    stl_file: str = Field(..., description="업로드된 STL 파일명")
+    machine_type: str = "FORM-4-0"
+    material_code: str = "FLGPGR05"
+    layer_thickness_mm: float = 0.05
+    support_density: str = "normal"
+    touchpoint_size: float = 0.5

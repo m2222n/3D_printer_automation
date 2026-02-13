@@ -1130,10 +1130,15 @@ function ReprintIcon() {
 function getCloudStatusLabel(status: PrintStatus): string {
   switch (status) {
     case 'PRINTING': return '출력 중';
+    case 'PREHEAT': return '예열 중';
+    case 'PRECOAT': return '초기 코팅';
+    case 'POSTCOAT': return '후처리 코팅';
     case 'FINISHED': return '완료';
     case 'QUEUED': return '대기';
     case 'PREPRINT': return '준비 중';
+    case 'PAUSING': return '일시정지 중';
     case 'PAUSED': return '일시정지';
+    case 'ABORTING': return '중단 중';
     case 'ABORTED': return '중단됨';
     case 'ERROR': return '오류';
     default: return status;
@@ -1143,10 +1148,15 @@ function getCloudStatusLabel(status: PrintStatus): string {
 function getCloudStatusStyle(status: PrintStatus): string {
   switch (status) {
     case 'PRINTING': return 'bg-blue-100 text-blue-700';
+    case 'PREHEAT': return 'bg-orange-100 text-orange-700';
+    case 'PRECOAT': return 'bg-blue-100 text-blue-700';
+    case 'POSTCOAT': return 'bg-blue-100 text-blue-700';
     case 'FINISHED': return 'bg-green-100 text-green-700';
     case 'QUEUED': return 'bg-gray-100 text-gray-700';
     case 'PREPRINT': return 'bg-yellow-100 text-yellow-700';
-    case 'PAUSED': return 'bg-orange-100 text-orange-700';
+    case 'PAUSING': return 'bg-yellow-100 text-yellow-700';
+    case 'PAUSED': return 'bg-yellow-100 text-yellow-700';
+    case 'ABORTING': return 'bg-red-100 text-red-700';
     case 'ABORTED': return 'bg-orange-100 text-orange-700';
     case 'ERROR': return 'bg-red-100 text-red-700';
     case 'WAITING_FOR_RESOLUTION': return 'bg-amber-100 text-amber-700';

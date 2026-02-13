@@ -237,6 +237,7 @@ class FormlabsAPIClient:
                 current_print_run=current_run,
                 ready_to_print=ready_to_print,
                 build_platform_contents=build_platform,
+                temperature=ps.get("temperature"),
             )
         
         # cartridge_status 파싱
@@ -424,32 +425,69 @@ class FormlabsAPIClient:
     # 유틸리티
     # ===========================================
     
+    # 프린트 단계 → 한국어 매핑
+    PHASE_LABELS = {
+        "PREHEAT": "예열 중",
+        "PRECOAT": "초기 코팅",
+        "PRINTING": "출력 중",
+        "POSTCOAT": "후처리 코팅",
+        "PAUSING": "일시정지 중",
+        "PAUSED": "일시정지됨",
+        "ABORTING": "중단 중",
+    }
+
     def printer_to_summary(self, printer: Printer) -> PrinterSummary:
         """Printer를 대시보드용 PrinterSummary로 변환"""
-        
+
         # 기본 상태 결정
         status = "IDLE"
         is_online = printer.is_online
         has_error = False
         current_run = None
-        
+        print_phase = None
+        temperature = None
+
         if not is_online:
             status = "OFFLINE"
         elif printer.printer_status:
             ps = printer.printer_status
+
+            # 프린터 온도
+            temperature = ps.temperature
+
             current_run = ps.current_print_run
-            
-            if current_run:
-                if current_run.status == PrintStatus.PRINTING:
+
+            if current_run and current_run.status:
+                run_status = current_run.status
+                if run_status == PrintStatus.PRINTING:
                     status = "PRINTING"
-                elif current_run.status == PrintStatus.FINISHED:
+                    print_phase = "출력 중"
+                elif run_status == PrintStatus.PREHEAT:
+                    status = "PREHEAT"
+                    print_phase = "예열 중"
+                elif run_status == PrintStatus.PRECOAT:
+                    status = "PRINTING"  # UI에서는 출력 중으로 표시
+                    print_phase = "초기 코팅"
+                elif run_status == PrintStatus.POSTCOAT:
+                    status = "PRINTING"
+                    print_phase = "후처리 코팅"
+                elif run_status == PrintStatus.PAUSING:
+                    status = "PAUSING"
+                    print_phase = "일시정지 중"
+                elif run_status == PrintStatus.PAUSED:
+                    status = "PAUSED"
+                    print_phase = "일시정지됨"
+                elif run_status == PrintStatus.ABORTING:
+                    status = "ABORTING"
+                    print_phase = "중단 중"
+                elif run_status == PrintStatus.FINISHED:
                     status = "FINISHED"
-                elif current_run.status == PrintStatus.ERROR:
+                elif run_status == PrintStatus.ERROR:
                     status = "ERROR"
                     has_error = True
-                elif current_run.status == PrintStatus.PAUSED:
-                    status = "PAUSED"
-        
+                elif run_status == PrintStatus.ABORTED:
+                    status = "IDLE"  # 중단 후 대기
+
         # 레진 정보
         resin_ml = None
         resin_percent = None
@@ -467,7 +505,7 @@ class FormlabsAPIClient:
                 cartridge_material_name = MATERIAL_CODE_NAMES.get(
                     cartridge_material_code, cartridge_material_code
                 )
-        
+
         return PrinterSummary(
             serial=printer.serial,
             name=printer.display_name,
@@ -475,8 +513,13 @@ class FormlabsAPIClient:
             current_job_name=current_run.name if current_run else None,
             progress_percent=current_run.progress_percent if current_run else None,
             remaining_minutes=current_run.estimated_remaining_minutes if current_run else None,
+            elapsed_minutes=current_run.elapsed_minutes if current_run else None,
+            estimated_total_minutes=(current_run.estimated_duration_ms // 60000) if current_run and current_run.estimated_duration_ms else None,
             current_layer=current_run.currently_printing_layer if current_run else None,
             total_layers=current_run.layer_count if current_run else None,
+            print_started_at=current_run.print_started_at if current_run else None,
+            print_phase=print_phase,
+            temperature=temperature,
             resin_remaining_ml=resin_ml,
             resin_remaining_percent=resin_percent,
             is_resin_low=is_resin_low,
@@ -484,6 +527,8 @@ class FormlabsAPIClient:
             cartridge_material_name=cartridge_material_name,
             is_online=is_online,
             is_ready=printer.printer_status.ready_to_print in ("READY", "READY_TO_PRINT_READY") if printer.printer_status else False,
+            ready_to_print=printer.printer_status.ready_to_print if printer.printer_status else None,
+            build_platform_contents=printer.printer_status.build_platform_contents if printer.printer_status else None,
             has_error=has_error,
             last_update=now_kst()
         )

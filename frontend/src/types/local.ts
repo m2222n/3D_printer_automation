@@ -162,6 +162,30 @@ export interface LocalApiHealth {
 }
 
 // ===========================================
+// 슬라이스 예측
+// ===========================================
+
+export interface SceneEstimate {
+  scene_id: string;
+  estimated_print_time_ms: number | null;
+  estimated_print_time_min: number | null;
+  estimated_material_ml: number | null;
+  layer_count: number | null;
+  machine_type: string;
+  material_code: string;
+  model_count: number;
+}
+
+export interface ScenePrepareRequest {
+  stl_file: string;
+  machine_type?: string;
+  material_code?: string;
+  layer_thickness_mm?: number;
+  support_density?: string;
+  touchpoint_size?: number;
+}
+
+// ===========================================
 // 유틸리티 함수
 // ===========================================
 
