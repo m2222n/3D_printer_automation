@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { getPrintJobs, startPrintJob, getFiles } from '../services/localApi';
+import { getPrintJobs, startPrintJob, getFiles, getNotesBulk, createNote, updateNote, deleteNote } from '../services/localApi';
+import type { PrintNoteItem } from '../services/localApi';
 import { getPrintHistory, getDashboard } from '../services/api';
 import type { PrintJob, MaterialCode } from '../types/local';
 import { getJobStatusLabel, MATERIAL_NAMES } from '../types/local';
@@ -14,10 +15,12 @@ import type { PrintHistoryItem, PrinterSummary, PrintStatus } from '../types/pri
 
 type HistoryFilter = 'all' | string; // 'all' or printer serial
 type HistorySource = 'local' | 'cloud';
+type OutcomeFilter = 'all' | 'success' | 'failed' | 'aborted';
 
 export function HistoryPage() {
   const [localJobs, setLocalJobs] = useState<PrintJob[]>([]);
   const [cloudHistory, setCloudHistory] = useState<PrintHistoryItem[]>([]);
+  const [cloudTotalCount, setCloudTotalCount] = useState(0);
   const [printers, setPrinters] = useState<PrinterSummary[]>([]);
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [source, setSource] = useState<HistorySource>('cloud');
@@ -25,6 +28,13 @@ export function HistoryPage() {
   const [reprintingId, setReprintingId] = useState<string | null>(null);
   const [reprintSuccess, setReprintSuccess] = useState<string | null>(null);
   const [reprintError, setReprintError] = useState<string | null>(null);
+  // 날짜 범위 필터
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  // Outcome 필터
+  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('all');
+  // Notes 메모
+  const [notesMap, setNotesMap] = useState<Record<string, PrintNoteItem[]>>({});
   // 재출력 모달 상태 (클라우드 + 로컬 공용)
   const [reprintModal, setReprintModal] = useState<{
     item: PrintHistoryItem;
@@ -52,22 +62,38 @@ export function HistoryPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
+      // 백엔드 필터 구성
+      const apiFilters: { printer_serial?: string; status?: string; date_from?: string; date_to?: string } = {};
+      if (filter !== 'all') apiFilters.printer_serial = filter;
+      if (outcomeFilter === 'success') apiFilters.status = 'FINISHED';
+      else if (outcomeFilter === 'failed') apiFilters.status = 'ERROR';
+      else if (outcomeFilter === 'aborted') apiFilters.status = 'ABORTED';
+      if (dateFrom) apiFilters.date_from = new Date(dateFrom + 'T00:00:00+09:00').toISOString();
+      if (dateTo) apiFilters.date_to = new Date(dateTo + 'T23:59:59+09:00').toISOString();
+
       const [jobList, history, dashboard, fileList] = await Promise.all([
         getPrintJobs(0, 100),
-        getPrintHistory(1, 50).catch(() => ({ items: [], total_count: 0, page: 1, page_size: 50 })),
+        getPrintHistory(1, 100, apiFilters).catch(() => ({ items: [], total_count: 0, page: 1, page_size: 100 })),
         getDashboard(),
         getFiles().catch(() => ({ files: [] })),
       ]);
       setLocalJobs(jobList);
       setCloudHistory(history.items);
+      setCloudTotalCount(history.total_count);
       setPrinters(dashboard.printers);
       setUploadedFiles(fileList.files.map((f) => f.filename));
+
+      // 클라우드 이력의 메모 일괄 조회
+      if (history.items.length > 0) {
+        const guids = history.items.map((item) => item.guid);
+        getNotesBulk(guids).then(setNotesMap).catch(() => {});
+      }
     } catch (err) {
       console.error('히스토리 로드 실패:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [filter, outcomeFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     loadData();
@@ -81,11 +107,68 @@ export function HistoryPage() {
     return job.printer_serial === filter;
   });
 
-  // 클라우드 히스토리 필터
+  // 클라우드 히스토리 (백엔드에서 필터링됨, 로컬 Outcome 추가 필터)
   const filteredCloudHistory = cloudHistory.filter((item) => {
-    if (filter === 'all') return true;
-    return item.printer_serial === filter;
+    // 로컬 작업의 경우 프론트에서 Outcome 필터 적용 (날짜/프린터는 백엔드 처리)
+    if (outcomeFilter === 'success' && item.status !== 'FINISHED') return false;
+    if (outcomeFilter === 'failed' && item.status !== 'ERROR') return false;
+    if (outcomeFilter === 'aborted' && item.status !== 'ABORTED') return false;
+    return true;
   });
+
+  // CSV Export
+  const handleExportCSV = useCallback(() => {
+    const items = source === 'cloud' ? filteredCloudHistory : completedLocalJobs;
+    if (items.length === 0) return;
+
+    const headers = ['작업명', '프린터', '상태', '시작 시간', '소요 시간(분)', '재료', '사용량(ml)', '레이어'];
+    const rows = source === 'cloud'
+      ? (items as PrintHistoryItem[]).map((item) => [
+          item.name,
+          getPrinterName(item.printer_serial),
+          getCloudStatusLabel(item.status),
+          item.started_at ? new Date(item.started_at).toLocaleString('ko-KR') : '',
+          item.duration_minutes?.toString() || '',
+          item.material_name || '',
+          item.volume_ml?.toFixed(1) || '',
+          item.layer_count.toString(),
+        ])
+      : (items as PrintJob[]).map((job) => [
+          job.stl_filename,
+          getPrinterName(job.printer_serial),
+          getJobStatusLabel(job.status),
+          new Date(job.created_at).toLocaleString('ko-KR'),
+          '',
+          MATERIAL_NAMES[job.settings.material_code as keyof typeof MATERIAL_NAMES] || '',
+          '',
+          '',
+        ]);
+
+    const bom = '\uFEFF';
+    const csv = bom + [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.download = `print_history_${dateStr}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [source, filteredCloudHistory, completedLocalJobs, printers]);
+
+  // 날짜 퀵 필터
+  const setQuickDateRange = useCallback((days: number) => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    setDateFrom(from.toISOString().slice(0, 10));
+    setDateTo(to.toISOString().slice(0, 10));
+  }, []);
+
+  const clearDateRange = useCallback(() => {
+    setDateFrom('');
+    setDateTo('');
+  }, []);
 
   // 프린터 이름 가져오기
   const getPrinterName = (serial: string): string => {
@@ -335,6 +418,103 @@ export function HistoryPage() {
         </div>
       </div>
 
+      {/* 필터 바 */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* 날짜 범위 */}
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                placeholder="시작일"
+              />
+              <span className="text-gray-400 text-sm">~</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                placeholder="종료일"
+              />
+            </div>
+
+            {/* 퀵 날짜 버튼 */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setQuickDateRange(30)}
+                className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                  dateFrom && dateTo ? 'border-gray-200 text-gray-500 hover:bg-gray-50' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                Last 30 Days
+              </button>
+              <button
+                onClick={() => setQuickDateRange(90)}
+                className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+              >
+                Last 90 Days
+              </button>
+              {(dateFrom || dateTo) && (
+                <button
+                  onClick={clearDateRange}
+                  className="px-2.5 py-1.5 text-xs font-medium rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+
+            {/* 구분선 */}
+            <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+            {/* Outcome 필터 */}
+            <div className="flex items-center gap-1">
+              {([
+                { key: 'all', label: '전체' },
+                { key: 'success', label: '성공' },
+                { key: 'failed', label: '실패' },
+                { key: 'aborted', label: '중단' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setOutcomeFilter(opt.key)}
+                  className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                    outcomeFilter === opt.key
+                      ? opt.key === 'success' ? 'border-green-500 bg-green-50 text-green-700'
+                        : opt.key === 'failed' ? 'border-red-500 bg-red-50 text-red-700'
+                        : opt.key === 'aborted' ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 구분선 */}
+            <div className="flex-1" />
+
+            {/* CSV Export */}
+            <button
+              onClick={handleExportCSV}
+              disabled={
+                (source === 'cloud' ? filteredCloudHistory.length : completedLocalJobs.length) === 0
+              }
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              CSV Export
+            </button>
+          </div>
+        </div>
+      </div>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* 알림 메시지 */}
         {reprintSuccess && (
@@ -380,7 +560,10 @@ export function HistoryPage() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-gray-500 mb-3">
-                총 {filteredCloudHistory.length}건
+                총 {cloudTotalCount}건{filteredCloudHistory.length !== cloudTotalCount ? ` (표시: ${filteredCloudHistory.length}건)` : ''}
+                {(dateFrom || dateTo || outcomeFilter !== 'all' || filter !== 'all') && (
+                  <span className="text-blue-500 ml-2">필터 적용됨</span>
+                )}
               </p>
               {filteredCloudHistory.map((item) => (
                 <CloudHistoryCard
@@ -389,6 +572,30 @@ export function HistoryPage() {
                   printerName={getPrinterName(item.printer_serial)}
                   onReprint={() => openReprintModal(item)}
                   isReprinting={reprintingId === item.guid}
+                  notes={notesMap[item.guid] || []}
+                  onAddNote={async (content) => {
+                    const note = await createNote(item.guid, content);
+                    setNotesMap((prev) => ({
+                      ...prev,
+                      [item.guid]: [note, ...(prev[item.guid] || [])],
+                    }));
+                  }}
+                  onUpdateNote={async (noteId, content) => {
+                    const updated = await updateNote(noteId, content);
+                    setNotesMap((prev) => ({
+                      ...prev,
+                      [item.guid]: (prev[item.guid] || []).map((n) =>
+                        n.id === noteId ? { ...n, content: updated.content, updated_at: updated.updated_at } : n
+                      ),
+                    }));
+                  }}
+                  onDeleteNote={async (noteId) => {
+                    await deleteNote(noteId);
+                    setNotesMap((prev) => ({
+                      ...prev,
+                      [item.guid]: (prev[item.guid] || []).filter((n) => n.id !== noteId),
+                    }));
+                  }}
                 />
               ))}
             </div>
@@ -542,13 +749,26 @@ function CloudHistoryCard({
   printerName,
   onReprint,
   isReprinting,
+  notes,
+  onAddNote,
+  onUpdateNote,
+  onDeleteNote,
 }: {
   item: PrintHistoryItem;
   printerName: string;
   onReprint: () => void;
   isReprinting: boolean;
+  notes: PrintNoteItem[];
+  onAddNote: (content: string) => Promise<void>;
+  onUpdateNote: (noteId: string, content: string) => Promise<void>;
+  onDeleteNote: (noteId: string) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [newNote, setNewNote] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [noteLoading, setNoteLoading] = useState(false);
   const isError = item.status === 'ERROR';
   const isAborted = item.status === 'ABORTED';
   const hasIssue = isError || isAborted;
@@ -643,6 +863,24 @@ function CloudHistoryCard({
 
           {/* 우측: 버튼 영역 */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* 메모 버튼 */}
+            <button
+              onClick={() => setShowNotes(!showNotes)}
+              className={`p-1.5 rounded transition-colors ${
+                showNotes ? 'text-blue-600 bg-blue-50' : notes.length > 0 ? 'text-blue-500 hover:text-blue-600' : 'text-gray-400 hover:text-gray-600'
+              }`}
+              title={`메모 ${notes.length > 0 ? `(${notes.length})` : ''}`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+              {notes.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {notes.length}
+                </span>
+              )}
+            </button>
+
             {/* 상세 보기 토글 */}
             {item.parts.length > 0 && (
               <button
@@ -682,19 +920,157 @@ function CloudHistoryCard({
         </div>
       </div>
 
-      {/* 확장: 파트 목록 */}
-      {expanded && item.parts.length > 0 && (
-        <div className="border-t bg-gray-50 px-4 py-3">
-          <p className="text-xs font-medium text-gray-500 mb-2">포함된 파트 ({item.parts.length}개)</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {item.parts.map((part, idx) => (
-              <div key={idx} className="flex items-center justify-between text-xs bg-white rounded px-2.5 py-1.5 border border-gray-100">
-                <span className="text-gray-700 truncate">{part.display_name}</span>
-                {part.volume_ml != null && (
-                  <span className="text-gray-400 ml-2 flex-shrink-0">{part.volume_ml.toFixed(1)}ml</span>
-                )}
+      {/* 확장: 상세 정보 (Activity Log + 파트) */}
+      {expanded && (
+        <div className="border-t bg-gray-50 px-4 py-3 space-y-3">
+          {/* Activity Log 타임라인 */}
+          <div>
+            <p className="text-xs font-medium text-gray-500 mb-2">Activity Log</p>
+            <div className="space-y-0">
+              {buildActivityLog(item).map((event, idx) => (
+                <div key={idx} className="flex gap-3 items-start">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 ${event.color}`} />
+                    {idx < buildActivityLog(item).length - 1 && <div className="w-px h-6 bg-gray-200" />}
+                  </div>
+                  <div className="flex-1 pb-2">
+                    <p className="text-xs text-gray-700">{event.label}</p>
+                    {event.time && <p className="text-[10px] text-gray-400">{event.time}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 파트 목록 */}
+          {item.parts.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">포함된 파트 ({item.parts.length}개)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {item.parts.map((part, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs bg-white rounded px-2.5 py-1.5 border border-gray-100">
+                    <span className="text-gray-700 truncate">{part.display_name}</span>
+                    {part.volume_ml != null && (
+                      <span className="text-gray-400 ml-2 flex-shrink-0">{part.volume_ml.toFixed(1)}ml</span>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 메모 패널 */}
+      {showNotes && (
+        <div className="border-t bg-blue-50/50 px-4 py-3">
+          <p className="text-xs font-medium text-gray-600 mb-2">메모</p>
+
+          {/* 기존 메모 목록 */}
+          {notes.length > 0 && (
+            <div className="space-y-1.5 mb-2">
+              {notes.map((note) => (
+                <div key={note.id} className="flex items-start gap-2 text-xs bg-white rounded-lg px-3 py-2 border border-gray-100">
+                  {editingNoteId === note.id ? (
+                    <div className="flex-1">
+                      <textarea
+                        value={editingContent}
+                        onChange={(e) => setEditingContent(e.target.value)}
+                        className="w-full px-2 py-1 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                        rows={2}
+                      />
+                      <div className="flex gap-1 mt-1">
+                        <button
+                          onClick={async () => {
+                            if (!editingContent.trim()) return;
+                            setNoteLoading(true);
+                            try {
+                              await onUpdateNote(note.id, editingContent.trim());
+                              setEditingNoteId(null);
+                            } finally {
+                              setNoteLoading(false);
+                            }
+                          }}
+                          disabled={noteLoading}
+                          className="px-2 py-0.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 disabled:opacity-50"
+                        >
+                          저장
+                        </button>
+                        <button
+                          onClick={() => setEditingNoteId(null)}
+                          className="px-2 py-0.5 text-gray-500 hover:text-gray-700 text-xs"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="flex-1 text-gray-700 whitespace-pre-wrap">{note.content}</p>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-gray-400 text-[10px]">
+                          {note.created_at ? new Date(note.created_at).toLocaleDateString('ko-KR') : ''}
+                        </span>
+                        <button
+                          onClick={() => { setEditingNoteId(note.id); setEditingContent(note.content); }}
+                          className="p-0.5 text-gray-400 hover:text-blue-500"
+                          title="수정"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setNoteLoading(true);
+                            try { await onDeleteNote(note.id); } finally { setNoteLoading(false); }
+                          }}
+                          className="p-0.5 text-gray-400 hover:text-red-500"
+                          title="삭제"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 새 메모 입력 */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newNote.trim()) {
+                  setNoteLoading(true);
+                  onAddNote(newNote.trim()).then(() => setNewNote('')).finally(() => setNoteLoading(false));
+                }
+              }}
+              placeholder="메모 추가..."
+              className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+            />
+            <button
+              onClick={async () => {
+                if (!newNote.trim()) return;
+                setNoteLoading(true);
+                try {
+                  await onAddNote(newNote.trim());
+                  setNewNote('');
+                } finally {
+                  setNoteLoading(false);
+                }
+              }}
+              disabled={!newNote.trim() || noteLoading}
+              className="px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              추가
+            </button>
           </div>
         </div>
       )}
@@ -1143,6 +1519,66 @@ function getCloudStatusLabel(status: PrintStatus): string {
     case 'ERROR': return '오류';
     default: return status;
   }
+}
+
+function buildActivityLog(item: PrintHistoryItem): { label: string; time: string; color: string }[] {
+  const log: { label: string; time: string; color: string }[] = [];
+  const fmt = (iso: string | null) => {
+    if (!iso) return '';
+    return new Date(iso).toLocaleString('ko-KR', {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+  };
+
+  // 시작
+  if (item.started_at) {
+    log.push({ label: '프린트 시작', time: fmt(item.started_at), color: 'bg-blue-500' });
+  }
+
+  // 재료 정보
+  if (item.material_name) {
+    log.push({
+      label: `재료: ${item.material_name}${item.volume_ml ? ` (${item.volume_ml.toFixed(1)}ml)` : ''}`,
+      time: '',
+      color: 'bg-gray-300',
+    });
+  }
+
+  // 레이어 정보
+  if (item.layer_count > 0) {
+    log.push({
+      label: `총 ${item.layer_count} 레이어`,
+      time: '',
+      color: 'bg-gray-300',
+    });
+  }
+
+  // 소요 시간
+  if (item.duration_minutes != null && item.duration_minutes > 0) {
+    const h = Math.floor(item.duration_minutes / 60);
+    const m = item.duration_minutes % 60;
+    const dur = h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+    log.push({ label: `소요 시간: ${dur}`, time: '', color: 'bg-gray-300' });
+  }
+
+  // 완료/오류/중단
+  if (item.finished_at || item.status === 'FINISHED') {
+    log.push({ label: '프린트 완료', time: fmt(item.finished_at), color: 'bg-green-500' });
+  } else if (item.status === 'ERROR') {
+    log.push({
+      label: `오류 발생${item.message ? ': ' + item.message : ''}`,
+      time: fmt(item.finished_at),
+      color: 'bg-red-500',
+    });
+  } else if (item.status === 'ABORTED') {
+    log.push({
+      label: `사용자에 의해 중단${item.message ? ': ' + item.message : ''}`,
+      time: fmt(item.finished_at),
+      color: 'bg-orange-500',
+    });
+  }
+
+  return log;
 }
 
 function getCloudStatusStyle(status: PrintStatus): string {

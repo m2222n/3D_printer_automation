@@ -197,3 +197,75 @@ export async function deleteScene(sceneId: string): Promise<void> {
     method: 'DELETE',
   });
 }
+
+// ===========================================
+// 메모 (Notes) API
+// ===========================================
+
+export interface PrintNoteItem {
+  id: string;
+  print_guid?: string;
+  content: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export async function getNotes(printGuid: string): Promise<PrintNoteItem[]> {
+  return fetchLocalApi<PrintNoteItem[]>(`/notes/${printGuid}`);
+}
+
+export async function getNotesBulk(guids: string[]): Promise<Record<string, PrintNoteItem[]>> {
+  if (guids.length === 0) return {};
+  return fetchLocalApi<Record<string, PrintNoteItem[]>>(`/notes?guids=${guids.join(',')}`);
+}
+
+export async function createNote(printGuid: string, content: string): Promise<PrintNoteItem> {
+  return fetchLocalApi<PrintNoteItem>(`/notes/${printGuid}`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function updateNote(noteId: string, content: string): Promise<PrintNoteItem> {
+  return fetchLocalApi<PrintNoteItem>(`/notes/${noteId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function deleteNote(noteId: string): Promise<void> {
+  await fetchLocalApi<{ detail: string }>(`/notes/${noteId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ===========================================
+// 알림 (Notifications) API
+// ===========================================
+
+export interface NotificationEventItem {
+  id: string;
+  event_type: string;
+  printer_serial: string;
+  printer_name: string | null;
+  job_name: string | null;
+  message: string | null;
+  is_read: boolean;
+  created_at: string | null;
+}
+
+export interface NotificationsResponse {
+  events: NotificationEventItem[];
+  unread_count: number;
+}
+
+export async function getNotifications(limit: number = 50, unreadOnly: boolean = false): Promise<NotificationsResponse> {
+  return fetchLocalApi<NotificationsResponse>(`/notifications?limit=${limit}&unread_only=${unreadOnly}`);
+}
+
+export async function markNotificationsRead(ids?: string[]): Promise<{ unread_count: number }> {
+  return fetchLocalApi<{ detail: string; unread_count: number }>('/notifications/mark-read', {
+    method: 'POST',
+    body: JSON.stringify(ids ? { ids } : {}),
+  });
+}

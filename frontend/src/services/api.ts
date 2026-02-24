@@ -49,9 +49,57 @@ export async function getPrinter(serial: string): Promise<Printer> {
 // 프린트 이력 조회
 export async function getPrintHistory(
   page: number = 1,
-  pageSize: number = 20
+  pageSize: number = 20,
+  filters?: {
+    printer_serial?: string;
+    status?: string;
+    date_from?: string; // ISO 8601
+    date_to?: string;   // ISO 8601
+  }
 ): Promise<PrintHistoryResponse> {
-  return fetchApi<PrintHistoryResponse>(`/prints?page=${page}&page_size=${pageSize}`);
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
+  if (filters?.printer_serial) params.set('printer_serial', filters.printer_serial);
+  if (filters?.status) params.set('status', filters.status);
+  if (filters?.date_from) params.set('date_from', filters.date_from);
+  if (filters?.date_to) params.set('date_to', filters.date_to);
+  return fetchApi<PrintHistoryResponse>(`/prints?${params.toString()}`);
+}
+
+// 통계 조회
+export interface StatisticsData {
+  total_prints: number;
+  total_material_ml: number;
+  material_usage: { code: string; name: string; total_ml: number; count: number }[];
+  prints_over_time: { date: string; count: number }[];
+  printer_stats: {
+    serial: string;
+    name: string;
+    total_prints: number;
+    completed: number;
+    failed: number;
+    total_duration_minutes: number;
+    total_material_ml: number;
+    days_printed: number;
+    total_days: number;
+    utilization_percent: number;
+  }[];
+}
+
+export async function getStatistics(
+  filters?: {
+    printer_serial?: string;
+    date_from?: string;
+    date_to?: string;
+  }
+): Promise<StatisticsData> {
+  const params = new URLSearchParams();
+  if (filters?.printer_serial) params.set('printer_serial', filters.printer_serial);
+  if (filters?.date_from) params.set('date_from', filters.date_from);
+  if (filters?.date_to) params.set('date_to', filters.date_to);
+  const query = params.toString();
+  return fetchApi<StatisticsData>(`/statistics${query ? '?' + query : ''}`);
 }
 
 // 서버 상태 확인

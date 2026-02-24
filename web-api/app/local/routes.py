@@ -543,3 +543,205 @@ async def print_with_preset(
     )
 
     return await start_print_job(job_data, background_tasks, db)
+
+
+# ===========================================
+# 메모 (Notes) API
+# ===========================================
+
+@router.get(
+    "/notes/{print_guid}",
+    tags=["Notes"],
+    summary="프린트 작업 메모 조회"
+)
+async def get_notes(print_guid: str, db: Session = Depends(get_local_db)):
+    """특정 프린트 작업의 메모 목록 조회"""
+    from app.local.models import PrintNote
+    notes = db.query(PrintNote).filter(
+        PrintNote.print_guid == print_guid
+    ).order_by(PrintNote.created_at.desc()).all()
+    return [
+        {
+            "id": n.id,
+            "print_guid": n.print_guid,
+            "content": n.content,
+            "created_at": n.created_at.isoformat() if n.created_at else None,
+            "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+        }
+        for n in notes
+    ]
+
+
+@router.get(
+    "/notes",
+    tags=["Notes"],
+    summary="여러 프린트 작업의 메모 일괄 조회"
+)
+async def get_notes_bulk(
+    guids: str = Query(..., description="콤마로 구분된 print_guid 목록"),
+    db: Session = Depends(get_local_db)
+):
+    """여러 프린트 작업의 메모를 한 번에 조회"""
+    from app.local.models import PrintNote
+    guid_list = [g.strip() for g in guids.split(",") if g.strip()]
+    notes = db.query(PrintNote).filter(
+        PrintNote.print_guid.in_(guid_list)
+    ).order_by(PrintNote.created_at.desc()).all()
+    result: dict = {}
+    for n in notes:
+        if n.print_guid not in result:
+            result[n.print_guid] = []
+        result[n.print_guid].append({
+            "id": n.id,
+            "content": n.content,
+            "created_at": n.created_at.isoformat() if n.created_at else None,
+            "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+        })
+    return result
+
+
+@router.post(
+    "/notes/{print_guid}",
+    tags=["Notes"],
+    summary="프린트 작업에 메모 추가"
+)
+async def create_note(
+    print_guid: str,
+    body: dict,
+    db: Session = Depends(get_local_db)
+):
+    """프린트 작업에 메모를 추가"""
+    from app.local.models import PrintNote
+    content = body.get("content", "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="메모 내용이 비어있습니다")
+
+    note = PrintNote(print_guid=print_guid, content=content)
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+
+    return {
+        "id": note.id,
+        "print_guid": note.print_guid,
+        "content": note.content,
+        "created_at": note.created_at.isoformat() if note.created_at else None,
+    }
+
+
+@router.put(
+    "/notes/{note_id}",
+    tags=["Notes"],
+    summary="메모 수정"
+)
+async def update_note(
+    note_id: str,
+    body: dict,
+    db: Session = Depends(get_local_db)
+):
+    """메모 내용 수정"""
+    from app.local.models import PrintNote
+    note = db.query(PrintNote).filter(PrintNote.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
+
+    content = body.get("content", "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="메모 내용이 비어있습니다")
+
+    note.content = content
+    db.commit()
+    db.refresh(note)
+
+    return {
+        "id": note.id,
+        "print_guid": note.print_guid,
+        "content": note.content,
+        "updated_at": note.updated_at.isoformat() if note.updated_at else None,
+    }
+
+
+@router.delete(
+    "/notes/{note_id}",
+    tags=["Notes"],
+    summary="메모 삭제"
+)
+async def delete_note(note_id: str, db: Session = Depends(get_local_db)):
+    """메모 삭제"""
+    from app.local.models import PrintNote
+    note = db.query(PrintNote).filter(PrintNote.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")
+
+    db.delete(note)
+    db.commit()
+    return {"detail": "삭제되었습니다"}
+
+
+# ===========================================
+# 알림 (Notifications) API
+# ===========================================
+
+@router.get(
+    "/notifications",
+    tags=["Notifications"],
+    summary="알림 이벤트 목록 조회"
+)
+async def get_notifications(
+    limit: int = Query(50, ge=1, le=200),
+    unread_only: bool = Query(False),
+    db: Session = Depends(get_local_db)
+):
+    """알림 이벤트 목록 조회"""
+    from app.local.models import NotificationEvent
+    query = db.query(NotificationEvent)
+    if unread_only:
+        query = query.filter(NotificationEvent.is_read == 0)
+    events = query.order_by(NotificationEvent.created_at.desc()).limit(limit).all()
+    unread_count = db.query(NotificationEvent).filter(NotificationEvent.is_read == 0).count()
+
+    return {
+        "events": [
+            {
+                "id": e.id,
+                "event_type": e.event_type,
+                "printer_serial": e.printer_serial,
+                "printer_name": e.printer_name,
+                "job_name": e.job_name,
+                "message": e.message,
+                "is_read": bool(e.is_read),
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in events
+        ],
+        "unread_count": unread_count,
+    }
+
+
+@router.post(
+    "/notifications/mark-read",
+    tags=["Notifications"],
+    summary="알림 읽음 처리"
+)
+async def mark_notifications_read(
+    body: dict = None,
+    db: Session = Depends(get_local_db)
+):
+    """알림 읽음 처리 (전체 또는 특정 ID)"""
+    from app.local.models import NotificationEvent
+    body = body or {}
+    ids = body.get("ids", [])
+
+    if ids:
+        db.query(NotificationEvent).filter(
+            NotificationEvent.id.in_(ids)
+        ).update({"is_read": 1}, synchronize_session=False)
+    else:
+        # 전체 읽음 처리
+        db.query(NotificationEvent).filter(
+            NotificationEvent.is_read == 0
+        ).update({"is_read": 1}, synchronize_session=False)
+
+    db.commit()
+    unread_count = db.query(NotificationEvent).filter(NotificationEvent.is_read == 0).count()
+    return {"detail": "읽음 처리 완료", "unread_count": unread_count}

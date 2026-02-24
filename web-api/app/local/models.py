@@ -70,3 +70,34 @@ class PrintJob(Base):
 
     def __repr__(self):
         return f"<PrintJob {self.id[:8]} - {self.status}>"
+
+
+class NotificationEvent(Base):
+    """알림 이벤트 DB 모델"""
+    __tablename__ = "notification_events"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    event_type = Column(String(30), nullable=False, index=True)  # PRINT_STARTED, PRINT_COMPLETE, PRINT_ERROR, LOW_RESIN, PRINTER_OFFLINE
+    printer_serial = Column(String(100), nullable=False, index=True)
+    printer_name = Column(String(100), nullable=True)
+    job_name = Column(String(255), nullable=True)
+    message = Column(Text, nullable=True)
+    is_read = Column(Integer, default=0, index=True)  # 0=unread, 1=read
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self):
+        return f"<NotificationEvent {self.event_type} - {self.printer_name}>"
+
+
+class PrintNote(Base):
+    """프린트 작업 메모 DB 모델"""
+    __tablename__ = "print_notes"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    print_guid = Column(String(100), nullable=False, index=True)  # Cloud print guid 또는 local job id
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<PrintNote {self.id[:8]} for {self.print_guid[:8]}>"

@@ -217,6 +217,127 @@ async def get_printer_history(
 
 
 # ===========================================
+# 통계 API
+# ===========================================
+
+@router.get(
+    "/statistics",
+    tags=["Statistics"],
+    summary="프린트 통계 조회",
+    description="기간별 프린트 통계를 조회합니다."
+)
+async def get_statistics(
+    printer_serial: Optional[str] = Query(None, description="특정 프린터로 필터링"),
+    date_from: Optional[datetime] = Query(None, description="시작 날짜 (ISO 8601)"),
+    date_to: Optional[datetime] = Query(None, description="종료 날짜 (ISO 8601)"),
+):
+    """프린트 통계 조회 (재료 사용량, 일별 출력 추이, 프린터별 통계)"""
+    try:
+        client = await get_formlabs_client()
+        polling_service = await get_polling_service()
+
+        # 전체 이력 조회
+        items = await client.get_print_history(
+            printer_serial=printer_serial,
+            date_from=date_from,
+            date_to=date_to,
+            limit=500
+        )
+
+        # 1. Material Usage 집계
+        material_usage: dict = {}
+        for item in items:
+            code = item.material_code or 'UNKNOWN'
+            name = item.material_name or code
+            ml = item.volume_ml or 0
+            if code not in material_usage:
+                material_usage[code] = {"code": code, "name": name, "total_ml": 0, "count": 0}
+            material_usage[code]["total_ml"] += ml
+            material_usage[code]["count"] += 1
+
+        # 2. Prints Over Time (일별 집계)
+        daily_counts: dict = {}
+        for item in items:
+            if item.started_at:
+                day = item.started_at.strftime('%Y-%m-%d') if isinstance(item.started_at, datetime) else str(item.started_at)[:10]
+                if day not in daily_counts:
+                    daily_counts[day] = 0
+                daily_counts[day] += 1
+
+        # 날짜순 정렬
+        sorted_daily = sorted(daily_counts.items())
+
+        # 3. 프린터별 통계
+        printer_stats: dict = {}
+        current_data = polling_service.get_current_data()
+        printer_names = {}
+        if current_data:
+            for p in current_data.printers:
+                printer_names[p.serial] = p.name
+
+        for item in items:
+            serial = item.printer_serial
+            if serial not in printer_stats:
+                printer_stats[serial] = {
+                    "serial": serial,
+                    "name": printer_names.get(serial, serial),
+                    "total_prints": 0,
+                    "completed": 0,
+                    "failed": 0,
+                    "total_duration_minutes": 0,
+                    "total_material_ml": 0,
+                    "print_days": set(),
+                }
+            stats = printer_stats[serial]
+            stats["total_prints"] += 1
+            if item.status and item.status.value == "FINISHED":
+                stats["completed"] += 1
+            elif item.status and item.status.value in ("ERROR", "ABORTED"):
+                stats["failed"] += 1
+            if item.duration_minutes and item.duration_minutes > 0:
+                stats["total_duration_minutes"] += item.duration_minutes
+            if item.volume_ml:
+                stats["total_material_ml"] += item.volume_ml
+            if item.started_at:
+                day_str = item.started_at.strftime('%Y-%m-%d') if isinstance(item.started_at, datetime) else str(item.started_at)[:10]
+                stats["print_days"].add(day_str)
+
+        # set을 count로 변환
+        for stats in printer_stats.values():
+            stats["days_printed"] = len(stats["print_days"])
+            del stats["print_days"]
+            # 가동률 계산 (조회 기간 대비)
+            if date_from and date_to:
+                total_days = max((date_to - date_from).days, 1)
+            elif sorted_daily:
+                from datetime import datetime as dt
+                first = dt.fromisoformat(sorted_daily[0][0])
+                last = dt.fromisoformat(sorted_daily[-1][0])
+                total_days = max((last - first).days + 1, 1)
+            else:
+                total_days = 90
+            stats["total_days"] = total_days
+            stats["utilization_percent"] = round(
+                (stats["total_duration_minutes"] / 60) / (total_days * 24) * 100, 1
+            )
+            stats["total_material_ml"] = round(stats["total_material_ml"], 1)
+
+        total_ml = sum(m["total_ml"] for m in material_usage.values())
+
+        return {
+            "total_prints": len(items),
+            "total_material_ml": round(total_ml, 1),
+            "material_usage": list(material_usage.values()),
+            "prints_over_time": [{"date": d, "count": c} for d, c in sorted_daily],
+            "printer_stats": list(printer_stats.values()),
+        }
+
+    except Exception as e:
+        logger.error(f"통계 조회 오류: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===========================================
 # 시스템 API
 # ===========================================
 

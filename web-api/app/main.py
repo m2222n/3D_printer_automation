@@ -48,9 +48,29 @@ async def lifespan(app: FastAPI):
     try:
         polling_service = await get_polling_service()
         
-        # 알림 핸들러 등록
+        # 알림 핸들러 등록 (기존 Email/Slack/FCM)
         polling_service.on_notification(notification_handler)
-        
+
+        # 알림 이벤트 DB 저장 핸들러 등록
+        async def save_notification_to_db(notification):
+            """알림 이벤트를 DB에 저장"""
+            try:
+                from app.local.database import get_local_db_session
+                from app.local.models import NotificationEvent
+                with get_local_db_session() as db:
+                    event = NotificationEvent(
+                        event_type=notification.type.value if hasattr(notification.type, 'value') else str(notification.type),
+                        printer_serial=notification.printer_serial,
+                        printer_name=notification.printer_name,
+                        job_name=notification.job_name,
+                        message=notification.message,
+                    )
+                    db.add(event)
+            except Exception as e:
+                logger.error(f"알림 DB 저장 실패: {e}")
+
+        polling_service.on_notification(save_notification_to_db)
+
         # Local API DB 초기화
         init_local_db()
 
