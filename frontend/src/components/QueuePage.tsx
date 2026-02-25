@@ -12,7 +12,11 @@ import type { PrinterSummary } from '../types/printer';
 
 type QueueFilter = 'all' | string; // 'all' or printer serial
 
-export function QueuePage() {
+interface QueuePageProps {
+  onOpenPrinterModal?: (serial: string) => void;
+}
+
+export function QueuePage({ onOpenPrinterModal }: QueuePageProps) {
   const [jobs, setJobs] = useState<PrintJob[]>([]);
   const [printers, setPrinters] = useState<PrinterSummary[]>([]);
   const [filter, setFilter] = useState<QueueFilter>('all');
@@ -215,9 +219,12 @@ export function QueuePage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 truncate">{job.stl_filename}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-xs text-gray-500">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onOpenPrinterModal?.(job.printer_serial); }}
+                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                      >
                         {getPrinterName(job.printer_serial)}
-                      </span>
+                      </button>
                       <span className="text-gray-300">|</span>
                       <span className="text-xs text-gray-400">
                         {new Date(job.created_at).toLocaleString('ko-KR')}

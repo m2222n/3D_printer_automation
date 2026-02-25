@@ -5,16 +5,45 @@
  * - 프린터별 탭: 상세 정보
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDashboard } from '../hooks/useDashboard';
 import PrinterCard from './PrinterCard';
 import { PrinterDetail } from './PrinterDetail';
+import { PrinterTimeline } from './PrinterTimeline';
+import { getPrintHistory } from '../services/api';
+import type { PrintHistoryItem } from '../types/printer';
 
 type MonitoringTab = 'all' | string; // 'all' or printer serial
 
-export default function Dashboard() {
+interface DashboardProps {
+  onOpenPrinterModal?: (serial: string) => void;
+}
+
+export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
   const { dashboard, isLoading, error, isConnected, refresh } = useDashboard();
   const [activeMonitorTab, setActiveMonitorTab] = useState<MonitoringTab>('all');
+  const [historyItems, setHistoryItems] = useState<PrintHistoryItem[]>([]);
+
+  // 최근 48시간 프린트 이력 로드
+  const loadHistory = useCallback(async () => {
+    try {
+      const dateFrom = new Date();
+      dateFrom.setHours(dateFrom.getHours() - 48);
+      const res = await getPrintHistory(1, 200, {
+        date_from: dateFrom.toISOString(),
+      });
+      setHistoryItems(res.items);
+    } catch {
+      // 이력 로드 실패 시 타임라인만 비어있음
+    }
+  }, []);
+
+  // 초기 로드 + 5분마다 갱신
+  useEffect(() => {
+    loadHistory();
+    const interval = setInterval(loadHistory, 300000);
+    return () => clearInterval(interval);
+  }, [loadHistory]);
 
   // 로딩 상태
   if (isLoading && !dashboard) {
@@ -165,6 +194,15 @@ export default function Dashboard() {
               <div className="text-center py-12">
                 <p className="text-gray-500">등록된 프린터가 없습니다.</p>
               </div>
+            )}
+
+            {/* 타임라인 간트 차트 */}
+            {dashboard && dashboard.printers.length > 0 && (
+              <PrinterTimeline
+                printers={dashboard.printers}
+                historyItems={historyItems}
+                onPrinterClick={(serial) => onOpenPrinterModal ? onOpenPrinterModal(serial) : setActiveMonitorTab(serial)}
+              />
             )}
           </>
         ) : (

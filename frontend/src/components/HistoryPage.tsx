@@ -17,7 +17,11 @@ type HistoryFilter = 'all' | string; // 'all' or printer serial
 type HistorySource = 'local' | 'cloud';
 type OutcomeFilter = 'all' | 'success' | 'failed' | 'aborted';
 
-export function HistoryPage() {
+interface HistoryPageProps {
+  onOpenPrinterModal?: (serial: string) => void;
+}
+
+export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
   const [localJobs, setLocalJobs] = useState<PrintJob[]>([]);
   const [cloudHistory, setCloudHistory] = useState<PrintHistoryItem[]>([]);
   const [cloudTotalCount, setCloudTotalCount] = useState(0);
@@ -549,6 +553,7 @@ export function HistoryPage() {
                   printerName={getPrinterName(job.printer_serial)}
                   onReprint={() => handleLocalReprint(job)}
                   isReprinting={reprintingId === job.id}
+                  onPrinterClick={() => onOpenPrinterModal?.(job.printer_serial)}
                 />
               ))}
             </div>
@@ -572,6 +577,7 @@ export function HistoryPage() {
                   printerName={getPrinterName(item.printer_serial)}
                   onReprint={() => openReprintModal(item)}
                   isReprinting={reprintingId === item.guid}
+                  onPrinterClick={() => onOpenPrinterModal?.(item.printer_serial)}
                   notes={notesMap[item.guid] || []}
                   onAddNote={async (content) => {
                     const note = await createNote(item.guid, content);
@@ -676,11 +682,13 @@ function LocalJobCard({
   printerName,
   onReprint,
   isReprinting,
+  onPrinterClick,
 }: {
   job: PrintJob;
   printerName: string;
   onReprint: () => void;
   isReprinting: boolean;
+  onPrinterClick?: () => void;
 }) {
   const isSent = job.status === 'sent';
   const isFailed = job.status === 'failed';
@@ -700,7 +708,12 @@ function LocalJobCard({
             </span>
           </div>
           <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-xs text-gray-500">{printerName}</span>
+            <button
+              onClick={onPrinterClick}
+              className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {printerName}
+            </button>
             <span className="text-gray-300">|</span>
             <span className="text-xs text-gray-400">
               {new Date(job.created_at).toLocaleString('ko-KR')}
@@ -753,6 +766,7 @@ function CloudHistoryCard({
   onAddNote,
   onUpdateNote,
   onDeleteNote,
+  onPrinterClick,
 }: {
   item: PrintHistoryItem;
   printerName: string;
@@ -762,6 +776,7 @@ function CloudHistoryCard({
   onAddNote: (content: string) => Promise<void>;
   onUpdateNote: (noteId: string, content: string) => Promise<void>;
   onDeleteNote: (noteId: string) => Promise<void>;
+  onPrinterClick?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -809,7 +824,12 @@ function CloudHistoryCard({
 
               {/* 메타 정보 */}
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-xs text-gray-500">{printerName}</span>
+                <button
+                  onClick={onPrinterClick}
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  {printerName}
+                </button>
                 {item.started_at && (
                   <>
                     <span className="text-gray-300">|</span>

@@ -3,7 +3,7 @@
  * 백엔드와 REST API 통신
  */
 
-import type { DashboardData, Printer, PrintHistoryResponse } from '../types/printer';
+import type { DashboardData, Printer, PrinterSummary, PrintHistoryResponse } from '../types/printer';
 
 const API_BASE = '/api/v1';
 
@@ -41,9 +41,14 @@ export async function getPrinters(): Promise<Printer[]> {
   return fetchApi<Printer[]>('/printers');
 }
 
-// 특정 프린터 상태 조회
+// 특정 프린터 상태 조회 (raw)
 export async function getPrinter(serial: string): Promise<Printer> {
   return fetchApi<Printer>(`/printers/${serial}`);
+}
+
+// 특정 프린터 요약 조회 (PrinterSummary)
+export async function getPrinterSummary(serial: string): Promise<PrinterSummary> {
+  return fetchApi<PrinterSummary>(`/printers/${serial}`);
 }
 
 // 프린트 이력 조회

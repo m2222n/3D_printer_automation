@@ -12,7 +12,11 @@ import { getDashboard } from '../services/api';
 import type { LocalApiHealth } from '../types/local';
 import type { PrinterSummary } from '../types/printer';
 
-export function PrintPage() {
+interface PrintPageProps {
+  onOpenPrinterModal?: (serial: string) => void;
+}
+
+export function PrintPage({ onOpenPrinterModal }: PrintPageProps) {
   const [printers, setPrinters] = useState<PrinterSummary[]>([]);
   const [apiHealth, setApiHealth] = useState<LocalApiHealth | null>(null);
   const [activePrinterSerial, setActivePrinterSerial] = useState<string | null>(null);
@@ -75,22 +79,32 @@ export function PrintPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
               {printers.map((printer) => (
-                <button
-                  key={printer.serial}
-                  onClick={() => scrollToPrinter(printer.serial)}
-                  className={`py-2.5 px-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
-                    activePrinterSerial === printer.serial
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${
-                    printer.status === 'IDLE' ? 'bg-green-500' :
-                    printer.status === 'PRINTING' ? 'bg-blue-500 animate-pulse' :
-                    printer.status === 'ERROR' ? 'bg-red-500' : 'bg-gray-400'
-                  }`}></span>
-                  {printer.name}
-                </button>
+                <div key={printer.serial} className="flex items-center">
+                  <button
+                    onClick={() => scrollToPrinter(printer.serial)}
+                    className={`py-2.5 px-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
+                      activePrinterSerial === printer.serial
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${
+                      printer.status === 'IDLE' ? 'bg-green-500' :
+                      printer.status === 'PRINTING' ? 'bg-blue-500 animate-pulse' :
+                      printer.status === 'ERROR' ? 'bg-red-500' : 'bg-gray-400'
+                    }`}></span>
+                    {printer.name}
+                  </button>
+                  <button
+                    onClick={() => onOpenPrinterModal?.(printer.serial)}
+                    className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="프린터 상세 정보"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
               ))}
             </div>
           </div>

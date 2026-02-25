@@ -135,6 +135,11 @@ export interface PrinterSummary {
   is_resin_low: boolean;
   cartridge_material_code: string | null;
   cartridge_material_name: string | null;
+  machine_type: string | null;
+  firmware_version: string | null;
+  tank_serial: string | null;
+  tank_material_code: string | null;
+  tank_print_count: number | null;
   is_online: boolean;
   is_ready: boolean;
   ready_to_print: string | null;

@@ -4,6 +4,7 @@ import { PrintPage } from './components/PrintPage';
 import { QueuePage } from './components/QueuePage';
 import { HistoryPage } from './components/HistoryPage';
 import { StatisticsPage } from './components/StatisticsPage';
+import { PrinterInfoModal } from './components/PrinterInfoModal';
 import { getNotifications, markNotificationsRead } from './services/localApi';
 import type { NotificationEventItem } from './services/localApi';
 import './App.css';
@@ -31,6 +32,7 @@ function App() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const [notifError, setNotifError] = useState(false);
+  const [modalPrinterSerial, setModalPrinterSerial] = useState<string | null>(null);
 
   // 알림 로드
   const loadNotifications = useCallback(async () => {
@@ -71,16 +73,20 @@ function App() {
     } catch { /* ignore */ }
   };
 
+  const openPrinterModal = useCallback((serial: string) => {
+    setModalPrinterSerial(serial);
+  }, []);
+
   const renderContent = () => {
     switch (activeTab) {
       case 'monitoring':
-        return <Dashboard />;
+        return <Dashboard onOpenPrinterModal={openPrinterModal} />;
       case 'print':
-        return <PrintPage />;
+        return <PrintPage onOpenPrinterModal={openPrinterModal} />;
       case 'queue':
-        return <QueuePage />;
+        return <QueuePage onOpenPrinterModal={openPrinterModal} />;
       case 'history':
-        return <HistoryPage />;
+        return <HistoryPage onOpenPrinterModal={openPrinterModal} />;
       case 'statistics':
         return <StatisticsPage />;
     }
@@ -179,6 +185,14 @@ function App() {
 
       {/* 탭 컨텐츠 */}
       {renderContent()}
+
+      {/* 프린터 상세 모달 (글로벌) */}
+      {modalPrinterSerial && (
+        <PrinterInfoModal
+          serial={modalPrinterSerial}
+          onClose={() => setModalPrinterSerial(null)}
+        />
+      )}
     </div>
   );
 }

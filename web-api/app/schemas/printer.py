@@ -221,6 +221,15 @@ class PrinterSummary(BaseModel):
     cartridge_material_code: Optional[str] = None
     cartridge_material_name: Optional[str] = None
 
+    # 기기 정보
+    machine_type: Optional[str] = None  # "FORM-4-0"
+    firmware_version: Optional[str] = None  # "1.15.0-2808"
+
+    # 탱크 정보
+    tank_serial: Optional[str] = None
+    tank_material_code: Optional[str] = None
+    tank_print_count: Optional[int] = None
+
     # 상태 플래그
     is_online: bool = True
     is_ready: bool = True
