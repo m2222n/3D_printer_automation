@@ -394,6 +394,7 @@ class PreFormServerClient:
             # 2. 모델 임포트
             if not await self.import_model(scene_id, stl_path):
                 result["error"] = "모델 임포트 실패"
+                await self.delete_scene(scene_id)
                 return result
 
             # 3. 자동 준비
@@ -429,6 +430,7 @@ class PreFormServerClient:
                 result["success"] = True
             else:
                 result["error"] = "Scene 정보 조회 실패"
+                await self.delete_scene(scene_id)
 
             return result
 

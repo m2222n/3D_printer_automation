@@ -249,6 +249,7 @@ class DashboardData(BaseModel):
 
 class NotificationType(str, Enum):
     """알림 종류"""
+    PRINT_STARTED = "PRINT_STARTED"
     PRINT_COMPLETE = "PRINT_COMPLETE"
     PRINT_ERROR = "PRINT_ERROR"
     LOW_RESIN = "LOW_RESIN"

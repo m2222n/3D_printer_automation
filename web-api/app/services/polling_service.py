@@ -182,7 +182,25 @@ class PrinterPollingService:
             current_resin_ml = printer.cartridge_status.remaining_ml
         
         # =====================
-        # 1. 프린트 완료 감지
+        # 1. 프린트 시작 감지
+        # =====================
+        if (
+            current_status == PrintStatus.PRINTING and
+            prev_state.last_status != PrintStatus.PRINTING and
+            prev_state.last_status is not None
+        ):
+            await self._emit_notification(Notification(
+                type=NotificationType.PRINT_STARTED,
+                printer_serial=serial,
+                printer_name=printer.display_name,
+                title="프린트 시작",
+                message=f"{printer.display_name}에서 프린트가 시작되었습니다.",
+                job_name=printer.printer_status.current_print_run.name if printer.printer_status and printer.printer_status.current_print_run else None
+            ))
+            logger.info(f"🖨️ 프린트 시작: {printer.display_name}")
+
+        # =====================
+        # 2. 프린트 완료 감지
         # =====================
         if (
             prev_state.last_status == PrintStatus.PRINTING and

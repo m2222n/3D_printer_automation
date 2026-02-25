@@ -209,3 +209,19 @@ __marimo__/
 # Claude Code files (contains sensitive info, not tracked)
 CLAUDE.md
 CLAUDE.local.md
+
+# Runtime data
+*.db
+web-api/uploads/
+web-api/data/
+
+# Work logs (local only)
+WORK_LOG.md
+work_log.csv
+*.xlsx
+
+# OpenMV binaries & IDE installer
+OpenMV/.DS_Store
+OpenMV/*.zip
+OpenMV/*.exe
+OpenMV/firmware_*/
