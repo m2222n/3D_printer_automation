@@ -140,6 +140,11 @@ export interface PrinterSummary {
   tank_serial: string | null;
   tank_material_code: string | null;
   tank_print_count: number | null;
+  is_remote_print_enabled: boolean | null;
+  group_name: string | null;
+  location: string | null;
+  last_print_finished_at: string | null;
+  last_print_thumbnail: string | null;
   is_online: boolean;
   is_ready: boolean;
   ready_to_print: string | null;

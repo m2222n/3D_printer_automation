@@ -9,9 +9,10 @@ import { getStatusLabel, formatDuration, formatResinAmount } from '../types/prin
 interface PrinterDetailProps {
   printer: PrinterSummary;
   onBack: () => void;
+  onNameClick?: (serial: string) => void;
 }
 
-export function PrinterDetail({ printer, onBack }: PrinterDetailProps) {
+export function PrinterDetail({ printer, onBack, onNameClick }: PrinterDetailProps) {
   const isPrinting = printer.status === 'PRINTING';
   const isOffline = printer.status === 'OFFLINE';
 
@@ -34,7 +35,16 @@ export function PrinterDetail({ printer, onBack }: PrinterDetailProps) {
           {/* 프린터 기본 정보 카드 */}
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">{printer.name}</h3>
+              {onNameClick ? (
+                <button
+                  onClick={() => onNameClick(printer.serial)}
+                  className="text-xl font-bold text-blue-600 hover:text-blue-800 hover:underline text-left"
+                >
+                  {printer.name}
+                </button>
+              ) : (
+                <h3 className="text-xl font-bold text-gray-900">{printer.name}</h3>
+              )}
               <StatusBadge status={printer.status} />
             </div>
 

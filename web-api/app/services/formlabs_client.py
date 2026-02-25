@@ -284,6 +284,9 @@ class FormlabsAPIClient:
             tank_status=tank_status,
             firmware_version=data.get("firmware_version"),
             created_at=self._parse_datetime(data.get("created_at")),
+            is_remote_print_enabled=data.get("is_remote_print_enabled"),
+            group_name=data.get("group_name"),
+            location=data.get("location"),
         )
     
     def _parse_datetime(self, value: Optional[str]) -> Optional[datetime]:
@@ -530,6 +533,11 @@ class FormlabsAPIClient:
             tank_serial=printer.tank_status.serial if printer.tank_status else None,
             tank_material_code=printer.tank_status.material_code if printer.tank_status else None,
             tank_print_count=printer.tank_status.print_count if printer.tank_status else None,
+            is_remote_print_enabled=printer.is_remote_print_enabled,
+            group_name=printer.group_name,
+            location=printer.location,
+            last_print_finished_at=current_run.print_finished_at if current_run and current_run.print_finished_at else None,
+            last_print_thumbnail=None,  # 별도 API 호출 필요, 추후 연동
             is_online=is_online,
             is_ready=printer.printer_status.ready_to_print in ("READY", "READY_TO_PRINT_READY") if printer.printer_status else False,
             ready_to_print=printer.printer_status.ready_to_print if printer.printer_status else None,

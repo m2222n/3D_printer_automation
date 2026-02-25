@@ -26,6 +26,7 @@ const TABS: TabConfig[] = [
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabType>('monitoring');
+  const [tabResetKey, setTabResetKey] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationEventItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -80,15 +81,15 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'monitoring':
-        return <Dashboard onOpenPrinterModal={openPrinterModal} />;
+        return <Dashboard key={tabResetKey} onOpenPrinterModal={openPrinterModal} />;
       case 'print':
-        return <PrintPage onOpenPrinterModal={openPrinterModal} />;
+        return <PrintPage key={tabResetKey} onOpenPrinterModal={openPrinterModal} />;
       case 'queue':
-        return <QueuePage onOpenPrinterModal={openPrinterModal} />;
+        return <QueuePage key={tabResetKey} onOpenPrinterModal={openPrinterModal} />;
       case 'history':
-        return <HistoryPage onOpenPrinterModal={openPrinterModal} />;
+        return <HistoryPage key={tabResetKey} onOpenPrinterModal={openPrinterModal} />;
       case 'statistics':
-        return <StatisticsPage />;
+        return <StatisticsPage key={tabResetKey} />;
     }
   };
 
@@ -98,9 +99,15 @@ function App() {
       <header className="bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
-            <h1 className="text-lg font-bold text-gray-900">
+            <button
+              onClick={() => {
+                setActiveTab('monitoring');
+                setTabResetKey((k) => k + 1);
+              }}
+              className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors"
+            >
               3D 프린터 자동화 시스템
-            </h1>
+            </button>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 hidden sm:block">
                 Formlabs Form 4
@@ -169,7 +176,14 @@ function App() {
             {TABS.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  if (activeTab === tab.key) {
+                    // 같은 탭 재클릭 → 컴포넌트 리셋 (전체 뷰로 돌아가기)
+                    setTabResetKey((k) => k + 1);
+                  } else {
+                    setActiveTab(tab.key);
+                  }
+                }}
                 className={`py-3 px-2 sm:px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                   activeTab === tab.key
                     ? 'border-blue-500 text-blue-600'

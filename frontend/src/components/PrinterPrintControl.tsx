@@ -15,6 +15,7 @@ import { MATERIAL_NAMES, type MaterialCode } from '../types/local';
 interface PrinterPrintControlProps {
   printer: PrinterSummary;
   isPreformConnected: boolean;
+  onNameClick?: (serial: string) => void;
 }
 
 /** 밀리초를 "X시간 Y분" 형태로 변환 */
@@ -26,6 +27,7 @@ function formatMs(ms: number): string {
 export function PrinterPrintControl({
   printer,
   isPreformConnected,
+  onNameClick,
 }: PrinterPrintControlProps) {
   const [selectedFile, setSelectedFile] = useState<string | undefined>();
   const [selectedPreset, setSelectedPreset] = useState<Preset | null>(null);
@@ -204,7 +206,16 @@ export function PrinterPrintControl({
         <div className="flex items-center gap-3">
           <div className={`w-3 h-3 rounded-full ${dotColor}`} />
           <div>
-            <h4 className="font-semibold text-gray-900">{printer.name}</h4>
+            {onNameClick ? (
+              <button
+                onClick={() => onNameClick(printer.serial)}
+                className="font-semibold text-blue-600 hover:text-blue-800 hover:underline text-left"
+              >
+                {printer.name}
+              </button>
+            ) : (
+              <h4 className="font-semibold text-gray-900">{printer.name}</h4>
+            )}
             <p className="text-xs text-gray-500">{printer.serial}</p>
           </div>
         </div>

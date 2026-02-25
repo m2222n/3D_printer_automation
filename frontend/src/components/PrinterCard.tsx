@@ -3,6 +3,7 @@ import { getStatusLabel, formatDuration, formatResinAmount } from '../types/prin
 
 interface PrinterCardProps {
   printer: PrinterSummary;
+  onNameClick?: (serial: string) => void;
 }
 
 function getStatusStyles(status: string): { bg: string; text: string; dot: string } {
@@ -29,7 +30,7 @@ function getStatusStyles(status: string): { bg: string; text: string; dot: strin
   }
 }
 
-export default function PrinterCard({ printer }: PrinterCardProps) {
+export default function PrinterCard({ printer, onNameClick }: PrinterCardProps) {
   const statusStyles = getStatusStyles(printer.status);
   const isOffline = printer.status === 'OFFLINE';
   // 활성 작업이 있는 상태들
@@ -48,7 +49,16 @@ export default function PrinterCard({ printer }: PrinterCardProps) {
       {/* 헤더 */}
       <div className="px-4 py-3 border-b bg-white/50">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900 truncate">{printer.name}</h3>
+          {onNameClick ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); onNameClick(printer.serial); }}
+              className="font-semibold text-blue-600 hover:text-blue-800 hover:underline truncate text-left"
+            >
+              {printer.name}
+            </button>
+          ) : (
+            <h3 className="font-semibold text-gray-900 truncate">{printer.name}</h3>
+          )}
           <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${statusStyles.bg} ${statusStyles.text}`}>
             <span className={`w-2 h-2 rounded-full ${statusStyles.dot} ${(isPrinting || isPreheat) ? 'animate-pulse' : ''}`}></span>
             {getStatusLabel(printer.status)}

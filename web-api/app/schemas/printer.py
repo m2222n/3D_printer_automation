@@ -152,15 +152,20 @@ class Printer(BaseModel):
     serial: str
     alias: Optional[str] = None  # 사용자 지정 이름
     machine_type: Optional[str] = None  # "FORM-4-0"
-    
+
     # 상태 정보
     printer_status: Optional[PrinterStatus] = None
     cartridge_status: Optional[CartridgeStatus] = None
     tank_status: Optional[TankStatus] = None
-    
+
     # 메타데이터
     firmware_version: Optional[str] = None
     created_at: Optional[datetime] = None
+
+    # 설정 (Formlabs Cloud)
+    is_remote_print_enabled: Optional[bool] = None
+    group_name: Optional[str] = None
+    location: Optional[str] = None
     
     @property
     def display_name(self) -> str:
@@ -229,6 +234,15 @@ class PrinterSummary(BaseModel):
     tank_serial: Optional[str] = None
     tank_material_code: Optional[str] = None
     tank_print_count: Optional[int] = None
+
+    # 설정 (PreForm Settings 탭용)
+    is_remote_print_enabled: Optional[bool] = None
+    group_name: Optional[str] = None
+    location: Optional[str] = None
+
+    # 최근 작업 썸네일/완료 시간
+    last_print_finished_at: Optional[datetime] = None
+    last_print_thumbnail: Optional[str] = None
 
     # 상태 플래그
     is_online: bool = True

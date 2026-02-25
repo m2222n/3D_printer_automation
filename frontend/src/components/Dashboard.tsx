@@ -146,18 +146,28 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
                 전체
               </button>
               {dashboard.printers.map((printer) => (
-                <button
-                  key={printer.serial}
-                  onClick={() => setActiveMonitorTab(printer.serial)}
-                  className={`py-2.5 px-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
-                    activeMonitorTab === printer.serial
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${getStatusDotColor(printer.status)}`}></span>
-                  {printer.name}
-                </button>
+                <div key={printer.serial} className="flex items-center">
+                  <button
+                    onClick={() => setActiveMonitorTab(printer.serial)}
+                    className={`py-2.5 px-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
+                      activeMonitorTab === printer.serial
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${getStatusDotColor(printer.status)}`}></span>
+                    {printer.name}
+                  </button>
+                  <button
+                    onClick={() => onOpenPrinterModal?.(printer.serial)}
+                    className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="프린터 상세 정보"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -186,7 +196,7 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
                     className="cursor-pointer"
                     onClick={() => setActiveMonitorTab(printer.serial)}
                   >
-                    <PrinterCard printer={printer} />
+                    <PrinterCard printer={printer} onNameClick={onOpenPrinterModal} />
                   </div>
                 ))}
               </div>
@@ -211,6 +221,7 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
             <PrinterDetail
               printer={selectedPrinter}
               onBack={() => setActiveMonitorTab('all')}
+              onNameClick={onOpenPrinterModal}
             />
           )
         )}

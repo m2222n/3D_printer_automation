@@ -60,8 +60,14 @@ function formatTimeKST(date: Date): string {
 
 export function PrinterTimeline({ printers, historyItems, onPrinterClick }: PrinterTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   const [chartWidth, setChartWidth] = useState(600);
   const [dayOffset, setDayOffset] = useState(0); // 0 = 오늘, -1 = 어제, ...
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -69,6 +75,43 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
     status: string;
     time: string;
   } | null>(null);
+
+  // 달력 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+        setShowCalendar(false);
+      }
+    };
+    if (showCalendar) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showCalendar]);
+
+  // 현재 선택된 날짜
+  const selectedDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    return d;
+  }, [dayOffset]);
+
+  // 달력 열 때 해당 월로 이동
+  const openCalendar = () => {
+    setCalendarMonth({ year: selectedDate.getFullYear(), month: selectedDate.getMonth() });
+    setShowCalendar((v) => !v);
+  };
+
+  // 달력에서 날짜 선택
+  const selectDate = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(date);
+    target.setHours(0, 0, 0, 0);
+    const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff <= 0) {
+      setDayOffset(diff);
+      setShowCalendar(false);
+    }
+  };
 
   // 컨테이너 너비 추적
   useEffect(() => {
@@ -217,9 +260,30 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <span className="text-sm text-gray-600 min-w-[100px] text-center font-medium">
-            {dateLabel}
-          </span>
+
+          {/* 날짜 클릭 → 달력 */}
+          <div className="relative" ref={calendarRef}>
+            <button
+              onClick={openCalendar}
+              className="text-sm text-gray-600 min-w-[100px] text-center font-medium hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors flex items-center gap-1.5 justify-center"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {dateLabel}
+            </button>
+
+            {showCalendar && (
+              <MiniCalendar
+                year={calendarMonth.year}
+                month={calendarMonth.month}
+                selectedDate={selectedDate}
+                onSelect={selectDate}
+                onMonthChange={(year, month) => setCalendarMonth({ year, month })}
+              />
+            )}
+          </div>
+
           <button
             onClick={() => setDayOffset((d) => Math.min(d + 1, 0))}
             disabled={dayOffset >= 0}
@@ -451,6 +515,131 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// 미니 달력 컴포넌트
+interface MiniCalendarProps {
+  year: number;
+  month: number; // 0-indexed
+  selectedDate: Date;
+  onSelect: (date: Date) => void;
+  onMonthChange: (year: number, month: number) => void;
+}
+
+function MiniCalendar({ year, month, selectedDate, onSelect, onMonthChange }: MiniCalendarProps) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const selected = new Date(selectedDate);
+  selected.setHours(0, 0, 0, 0);
+
+  // 해당 월의 첫날과 마지막날
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDayOfWeek = firstDay.getDay(); // 0=일, 1=월, ...
+
+  // 달력 셀 생성
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < startDayOfWeek; i++) cells.push(null);
+  for (let d = 1; d <= lastDay.getDate(); d++) cells.push(new Date(year, month, d));
+
+  const monthLabel = `${year}년 ${month + 1}월`;
+
+  const prevMonth = () => {
+    if (month === 0) onMonthChange(year - 1, 11);
+    else onMonthChange(year, month - 1);
+  };
+
+  const nextMonth = () => {
+    // 미래 월로는 제한
+    const nextM = month === 11 ? 0 : month + 1;
+    const nextY = month === 11 ? year + 1 : year;
+    const nextFirst = new Date(nextY, nextM, 1);
+    if (nextFirst <= today) {
+      onMonthChange(nextY, nextM);
+    }
+  };
+
+  const isNextDisabled = (() => {
+    const nextM = month === 11 ? 0 : month + 1;
+    const nextY = month === 11 ? year + 1 : year;
+    return new Date(nextY, nextM, 1) > today;
+  })();
+
+  return (
+    <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border z-50 p-3 w-64">
+      {/* 월 네비게이션 */}
+      <div className="flex items-center justify-between mb-2">
+        <button
+          onClick={prevMonth}
+          className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span className="text-sm font-semibold text-gray-900">{monthLabel}</span>
+        <button
+          onClick={nextMonth}
+          disabled={isNextDisabled}
+          className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* 요일 헤더 */}
+      <div className="grid grid-cols-7 mb-1">
+        {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
+          <div key={d} className="text-center text-[10px] text-gray-400 font-medium py-1">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* 날짜 그리드 */}
+      <div className="grid grid-cols-7">
+        {cells.map((date, i) => {
+          if (!date) return <div key={`empty-${i}`} />;
+
+          const isFuture = date > today;
+          const isToday = date.getTime() === today.getTime();
+          const isSelected = date.getTime() === selected.getTime();
+
+          return (
+            <button
+              key={date.getDate()}
+              onClick={() => !isFuture && onSelect(date)}
+              disabled={isFuture}
+              className={`w-8 h-8 mx-auto rounded-full text-xs font-medium transition-colors ${
+                isSelected
+                  ? 'bg-blue-500 text-white'
+                  : isToday
+                  ? 'bg-blue-100 text-blue-700 font-bold'
+                  : isFuture
+                  ? 'text-gray-300 cursor-not-allowed'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {date.getDate()}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 오늘 바로가기 */}
+      <div className="mt-2 pt-2 border-t">
+        <button
+          onClick={() => onSelect(today)}
+          className="w-full text-xs text-blue-600 hover:bg-blue-50 rounded py-1 font-medium transition-colors"
+        >
+          오늘로 이동
+        </button>
       </div>
     </div>
   );

@@ -10,8 +10,11 @@ import type { PrinterSummary } from '../types/printer';
 
 type PrinterFilter = 'all' | string;
 
-// 천 단위 구분자 (공백)
+// 레진 양 포맷 (소수점 이하 적절히 표시)
 function formatNumber(n: number): string {
+  if (n === 0) return '0';
+  if (n < 1) return n.toFixed(2);
+  if (n < 10) return n.toFixed(1);
   return Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
 }
 
@@ -102,11 +105,17 @@ export function StatisticsPage() {
                   className="bg-transparent text-sm focus:outline-none w-28"
                 />
               </div>
+              <button onClick={() => setQuickDateRange(1)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                1D
+              </button>
+              <button onClick={() => setQuickDateRange(7)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                1W
+              </button>
               <button onClick={() => setQuickDateRange(30)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
-                30D
+                1M
               </button>
               <button onClick={() => setQuickDateRange(90)} className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
-                90D
+                3M
               </button>
               {(dateFrom || dateTo) && (
                 <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="px-2 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-lg transition-colors">

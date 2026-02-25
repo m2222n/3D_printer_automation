@@ -127,6 +127,7 @@ export function PrintPage({ onOpenPrinterModal }: PrintPageProps) {
                 <PrinterPrintControl
                   printer={printer}
                   isPreformConnected={isPreformConnected}
+                  onNameClick={onOpenPrinterModal}
                 />
               </div>
             ))}
