@@ -1,17 +1,3 @@
-"""
-공장 PC 파일 수신 서버
-======================
-FastAPI 서버에서 STL 파일을 받아 로컬에 저장.
-PreFormServer와 함께 공장 PC에서 실행.
-
-사용법:
-    python file_receiver.py
-
-설정:
-    - 포트: 8089
-    - 저장 경로: C:\STL_Files
-"""
-
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import json
