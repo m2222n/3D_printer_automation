@@ -228,9 +228,9 @@ PrivateKey = <Private Key provided by Faridh>
 DNS = 203.248.252.2
 
 [Peer]
-PublicKey = UWK6c3GPmuOyDrTwrgsNUvYx9J6kM6f3S4eRatKaang=
+PublicKey = <WireGuard_Public_Key>
 AllowedIPs = 10.145.113.0/24
-Endpoint = 106.244.6.242:56461
+Endpoint = <PUBLIC_IP>:<PORT>
 PersistentKeepalive = 25
 ```
 

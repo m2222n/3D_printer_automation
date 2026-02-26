@@ -42,7 +42,7 @@ services:
   #   restart: unless-stopped
   #   environment:
   #     POSTGRES_USER: formlabs
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
   #     POSTGRES_DB: formlabs_db
   #   volumes:
   #     - postgres_data:/var/lib/postgresql/data
