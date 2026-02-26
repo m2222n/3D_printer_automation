@@ -164,7 +164,7 @@ export function PrinterPrintControl({
       // 복제 + 재배치 + 재검증
       const result = await duplicateModel(estimate.scene_id, modelId, duplicateCount);
 
-      // estimate 갱신
+      // estimate 갱신 (정밀 시간 + 간섭 + 스크린샷 포함)
       setEstimate(prev => prev ? {
         ...prev,
         model_count: result.model_count,
@@ -172,6 +172,11 @@ export function PrinterPrintControl({
         estimated_print_time_min: result.estimated_print_time_min,
         estimated_material_ml: result.estimated_material_ml,
         validation: result.validation,
+        precise_total_s: result.precise_total_s,
+        precise_preprint_s: result.precise_preprint_s,
+        precise_printing_s: result.precise_printing_s,
+        interferences: result.interferences,
+        screenshot_url: result.screenshot_url ?? prev.screenshot_url,
       } : prev);
       setDuplicateCount(1);
     } catch (err) {
@@ -435,13 +440,43 @@ export function PrinterPrintControl({
                   다시 설정
                 </button>
               </div>
+
+              {/* 스크린샷 미리보기 */}
+              {estimate.screenshot_url && (
+                <div className="mb-3 bg-white rounded-lg p-2 border border-indigo-100">
+                  <img
+                    src={estimate.screenshot_url}
+                    alt="빌드 플레이트 미리보기"
+                    className="w-full h-48 object-contain rounded"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
-                {estimate.estimated_print_time_ms && (
+                {/* 정밀 시간 or 기본 시간 */}
+                {(estimate.precise_total_s || estimate.estimated_print_time_ms) && (
                   <div className="bg-white rounded-lg px-3 py-2">
-                    <div className="text-xs text-gray-500">예상 출력 시간</div>
-                    <div className="text-sm font-bold text-indigo-700">
-                      {formatMs(estimate.estimated_print_time_ms)}
+                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                      예상 출력 시간
+                      {estimate.precise_total_s && (
+                        <span className="text-[10px] text-indigo-500 font-medium">(정밀)</span>
+                      )}
                     </div>
+                    <div className="text-sm font-bold text-indigo-700">
+                      {estimate.precise_total_s
+                        ? formatMs(estimate.precise_total_s * 1000)
+                        : estimate.estimated_print_time_ms
+                          ? formatMs(estimate.estimated_print_time_ms)
+                          : '-'}
+                    </div>
+                    {/* 정밀 시간 세부 (준비 + 프린팅) */}
+                    {estimate.precise_preprint_s != null && estimate.precise_printing_s != null && (
+                      <div className="mt-1 text-[10px] text-gray-400 space-y-0.5">
+                        <div>준비: {formatMs(estimate.precise_preprint_s * 1000)}</div>
+                        <div>프린팅: {formatMs(estimate.precise_printing_s * 1000)}</div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {estimate.estimated_material_ml !== null && (
@@ -509,6 +544,28 @@ export function PrinterPrintControl({
                   </div>
                 </div>
               </div>
+
+              {/* 간섭 검사 결과 */}
+              {estimate.interferences && estimate.interferences.length > 0 && (
+                <div className="col-span-2 mt-1">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                    <div className="text-xs font-medium text-orange-700 mb-1">
+                      모델 간 간섭 감지 ({estimate.interferences.length}쌍)
+                    </div>
+                    <div className="text-xs text-orange-600">
+                      모델이 서로 겹쳐있습니다. 자동 재배치를 다시 시도하거나 복제 수를 줄여주세요.
+                    </div>
+                  </div>
+                </div>
+              )}
+              {estimate.interferences && estimate.interferences.length === 0 && estimate.model_count > 1 && (
+                <div className="col-span-2 mt-1">
+                  <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-center gap-2 text-xs text-green-700">
+                    <span className="text-green-500 font-bold">✓</span>
+                    모델 간 간섭 없음
+                  </div>
+                </div>
+              )}
 
               {/* 유효성 검사 결과 */}
               {estimate.validation && (

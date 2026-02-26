@@ -444,6 +444,133 @@ class PreFormServerClient:
             return []
 
     # ===========================================
+    # 스크린샷 / 정밀 시간 예측 / 간섭 검사
+    # ===========================================
+
+    async def save_screenshot(
+        self,
+        scene_id: str,
+        file_path: str,
+        view_type: str = "ZOOM_ON_MODELS",
+        image_size_px: int = 820,
+    ) -> bool:
+        """
+        Scene의 스크린샷을 공장 PC에 저장
+
+        Args:
+            scene_id: Scene ID
+            file_path: 공장 PC의 저장 경로 (예: C:\\STL_Files\\screenshots\\xxx.png)
+            view_type: 카메라 뷰 (ZOOM_ON_MODELS, FULL_BUILD_VOLUME, FULL_PLATFORM_WIDTH)
+            image_size_px: 이미지 크기 (px)
+
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            client = await self._get_client()
+            response = await client.post(
+                f"/scene/{scene_id}/save-screenshot/",
+                json={
+                    "file": file_path,
+                    "view_type": view_type,
+                    "image_size_px": image_size_px,
+                    "crop_to_models": True,
+                    "models": "ALL",
+                }
+            )
+
+            if response.status_code == 200:
+                logger.info(f"✅ 스크린샷 저장: {file_path}")
+                return True
+            else:
+                logger.error(f"스크린샷 저장 실패: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"스크린샷 저장 오류: {e}")
+            return False
+
+    async def estimate_print_time(self, scene_id: str) -> Optional[Dict[str, Any]]:
+        """
+        정밀 프린트 시간 예측
+
+        Returns:
+            Dict: {total_print_time_s, preprint_time_s, printing_time_s}
+        """
+        try:
+            client = await self._get_client()
+            # 정밀 시간 계산은 오래 걸릴 수 있으므로 타임아웃 확장
+            response = await client.post(
+                f"/scene/{scene_id}/estimate-print-time/",
+                timeout=httpx.Timeout(300.0)  # 5분 타임아웃
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"✅ 정밀 시간 예측: {data.get('total_print_time_s', 0):.0f}초")
+                return data
+            else:
+                logger.error(f"시간 예측 실패: {response.status_code} - {response.text}")
+                return None
+
+        except Exception as e:
+            logger.error(f"시간 예측 오류: {e}")
+            return None
+
+    async def get_interferences(
+        self,
+        scene_id: str,
+        collision_offset_mm: Optional[float] = None,
+    ) -> List[List[str]]:
+        """
+        모델 간 간섭(충돌) 검사
+
+        Args:
+            scene_id: Scene ID
+            collision_offset_mm: 간섭 판단 최소 거리 (mm), None이면 기본값
+
+        Returns:
+            List[List[str]]: 간섭하는 모델 쌍 ID 리스트
+        """
+        try:
+            client = await self._get_client()
+            body = {}
+            if collision_offset_mm is not None:
+                body["collision_offset_mm"] = collision_offset_mm
+
+            response = await client.post(
+                f"/scene/{scene_id}/interferences/",
+                json=body if body else None,
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                pairs = data if isinstance(data, list) else []
+                logger.info(f"✅ 간섭 검사 완료: {len(pairs)}개 충돌 발견")
+                return pairs
+            else:
+                logger.error(f"간섭 검사 실패: {response.status_code} - {response.text}")
+                return []
+
+        except Exception as e:
+            logger.error(f"간섭 검사 오류: {e}")
+            return []
+
+    async def _download_screenshot_from_factory(self, filename: str) -> Optional[bytes]:
+        """공장 PC file_receiver에서 스크린샷 이미지 다운로드"""
+        try:
+            url = f"http://{self.settings.FILE_RECEIVER_HOST}:{self.settings.FILE_RECEIVER_PORT}/screenshots/{filename}"
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(url)
+            if response.status_code == 200:
+                return response.content
+            logger.error(f"스크린샷 다운로드 실패: {response.status_code}")
+            return None
+        except Exception as e:
+            logger.error(f"스크린샷 다운로드 오류: {e}")
+            return None
+
+    # ===========================================
     # 프린트 작업
     # ===========================================
 
@@ -490,6 +617,9 @@ class PreFormServerClient:
         3. 자동 방향/서포트/배치
         4. Scene 정보 조회 (예측 시간/재료)
         4.5 유효성 검사
+        5. 정밀 시간 예측
+        6. 간섭 검사
+        7. 스크린샷 저장
 
         Returns:
             Dict: {success, scene_id, estimate, error}
@@ -547,6 +677,30 @@ class PreFormServerClient:
                 # 4.5 유효성 검사
                 validation = await self.validate_scene(scene_id)
 
+                # 5. 정밀 시간 예측
+                precise_time = await self.estimate_print_time(scene_id)
+                precise_total_s = None
+                precise_preprint_s = None
+                precise_printing_s = None
+                if precise_time:
+                    precise_total_s = precise_time.get("total_print_time_s")
+                    precise_preprint_s = precise_time.get("preprint_time_s")
+                    precise_printing_s = precise_time.get("printing_time_s")
+                    # 정밀 시간이 있으면 기존 시간 대체
+                    if precise_total_s:
+                        est_time_ms = int(precise_total_s * 1000)
+                        est_time_min = round(precise_total_s / 60, 1)
+
+                # 6. 간섭 검사
+                interferences = await self.get_interferences(scene_id)
+
+                # 7. 스크린샷 저장
+                screenshot_filename = f"{scene_id}.png"
+                screenshot_path = f"C:\\STL_Files\\screenshots\\{screenshot_filename}"
+                screenshot_url = None
+                if await self.save_screenshot(scene_id, screenshot_path):
+                    screenshot_url = f"/api/v1/local/scene/{scene_id}/screenshot/{screenshot_filename}"
+
                 result["estimate"] = SceneEstimate(
                     scene_id=scene_id,
                     estimated_print_time_ms=est_time_ms,
@@ -557,6 +711,11 @@ class PreFormServerClient:
                     material_code=scene_info.material_code,
                     model_count=scene_info.model_count,
                     validation=validation,
+                    precise_total_s=precise_total_s,
+                    precise_preprint_s=precise_preprint_s,
+                    precise_printing_s=precise_printing_s,
+                    interferences=interferences,
+                    screenshot_url=screenshot_url,
                 )
                 result["success"] = True
             else:

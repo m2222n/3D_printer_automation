@@ -176,6 +176,14 @@ class SceneEstimate(BaseModel):
     material_code: str = ""
     model_count: int = 0
     validation: Optional[Dict[str, Any]] = None  # 유효성 검사 결과
+    # 정밀 시간 예측 (estimate-print-time API)
+    precise_total_s: Optional[float] = None       # 총 프린트 시간 (초)
+    precise_preprint_s: Optional[float] = None    # 프린트 전 준비 시간 (초)
+    precise_printing_s: Optional[float] = None    # 실제 프린팅 시간 (초)
+    # 간섭 검사 (interferences API)
+    interferences: Optional[List[List[str]]] = None  # 간섭하는 모델 쌍 ID 리스트
+    # 스크린샷 (save-screenshot API)
+    screenshot_url: Optional[str] = None          # 미리보기 이미지 URL
 
 
 class ScenePrepareRequest(BaseModel):

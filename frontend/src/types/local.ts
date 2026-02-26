@@ -175,6 +175,14 @@ export interface SceneEstimate {
   material_code: string;
   model_count: number;
   validation?: Record<string, unknown> | null;
+  // 정밀 시간 예측
+  precise_total_s?: number | null;
+  precise_preprint_s?: number | null;
+  precise_printing_s?: number | null;
+  // 간섭 검사
+  interferences?: string[][] | null;
+  // 스크린샷
+  screenshot_url?: string | null;
 }
 
 export interface ScenePrepareRequest {
@@ -195,6 +203,11 @@ export interface DuplicateResult {
   estimated_print_time_min: number | null;
   estimated_material_ml: number | null;
   validation: Record<string, unknown> | null;
+  precise_total_s?: number | null;
+  precise_preprint_s?: number | null;
+  precise_printing_s?: number | null;
+  interferences?: string[][] | null;
+  screenshot_url?: string | null;
 }
 
 // ===========================================

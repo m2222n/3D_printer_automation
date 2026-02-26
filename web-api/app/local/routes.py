@@ -570,6 +570,29 @@ async def duplicate_model(scene_id: str, model_id: str, data: DuplicateModelRequ
     est_time_ms = scene_info.estimated_print_time_ms if scene_info else None
     est_time_min = round(est_time_ms / 60000, 1) if est_time_ms else None
 
+    # 정밀 시간 예측
+    precise_time = await client.estimate_print_time(scene_id)
+    precise_total_s = None
+    precise_preprint_s = None
+    precise_printing_s = None
+    if precise_time:
+        precise_total_s = precise_time.get("total_print_time_s")
+        precise_preprint_s = precise_time.get("preprint_time_s")
+        precise_printing_s = precise_time.get("printing_time_s")
+        if precise_total_s:
+            est_time_ms = int(precise_total_s * 1000)
+            est_time_min = round(precise_total_s / 60, 1)
+
+    # 간섭 검사
+    interferences = await client.get_interferences(scene_id)
+
+    # 스크린샷 갱신
+    screenshot_filename = f"{scene_id}.png"
+    screenshot_path = f"C:\\STL_Files\\screenshots\\{screenshot_filename}"
+    screenshot_url = None
+    if await client.save_screenshot(scene_id, screenshot_path):
+        screenshot_url = f"/api/v1/local/scene/{scene_id}/screenshot/{screenshot_filename}"
+
     return {
         "success": True,
         "model_count": scene_info.model_count if scene_info else 0,
@@ -577,6 +600,11 @@ async def duplicate_model(scene_id: str, model_id: str, data: DuplicateModelRequ
         "estimated_print_time_min": est_time_min,
         "estimated_material_ml": scene_info.estimated_material_ml if scene_info else None,
         "validation": validation,
+        "precise_total_s": precise_total_s,
+        "precise_preprint_s": precise_preprint_s,
+        "precise_printing_s": precise_printing_s,
+        "interferences": interferences,
+        "screenshot_url": screenshot_url,
     }
 
 
@@ -594,6 +622,133 @@ async def list_materials():
 
     materials = await client.list_materials()
     return {"materials": materials}
+
+
+# ===========================================
+# 스크린샷 / 정밀 시간 예측 / 간섭 검사
+# ===========================================
+
+@router.get(
+    "/scene/{scene_id}/screenshot/{filename}",
+    tags=["Scene"],
+    summary="스크린샷 이미지 프록시"
+)
+async def get_screenshot(scene_id: str, filename: str):
+    """
+    공장 PC에 저장된 스크린샷 이미지를 프록시로 서빙
+
+    - PreFormServer의 save-screenshot으로 공장 PC에 저장된 PNG 반환
+    - 프론트엔드에서 직접 img src로 사용 가능
+    """
+    from fastapi.responses import Response
+
+    client = await get_preform_client()
+    image_data = await client._download_screenshot_from_factory(filename)
+
+    if not image_data:
+        raise HTTPException(status_code=404, detail="스크린샷을 찾을 수 없습니다")
+
+    content_type = "image/png" if filename.endswith(".png") else "image/webp"
+    return Response(
+        content=image_data,
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=3600"}
+    )
+
+
+@router.post(
+    "/scene/{scene_id}/estimate-time",
+    tags=["Scene"],
+    summary="정밀 프린트 시간 예측"
+)
+async def estimate_print_time(scene_id: str):
+    """
+    슬라이스 완료된 Scene의 정밀 시간 예측
+
+    - 기본 예측보다 정확한 시간 반환 (프린트 전 준비 + 실제 프린팅 분리)
+    - 계산에 시간이 걸릴 수 있음 (최대 수 분)
+    """
+    client = await get_preform_client()
+
+    if not await client.health_check():
+        raise HTTPException(status_code=503, detail="PreFormServer에 연결할 수 없습니다")
+
+    result = await client.estimate_print_time(scene_id)
+    if not result:
+        raise HTTPException(status_code=500, detail="시간 예측 실패")
+
+    # 분 단위 변환 추가
+    total_s = result.get("total_print_time_s", 0)
+    result["total_print_time_min"] = round(total_s / 60, 1) if total_s else 0
+
+    return result
+
+
+@router.post(
+    "/scene/{scene_id}/interferences",
+    tags=["Scene"],
+    summary="모델 간 간섭(충돌) 검사"
+)
+async def get_interferences(
+    scene_id: str,
+    collision_offset_mm: Optional[float] = Query(None, ge=0, description="간섭 판단 최소 거리 (mm)")
+):
+    """
+    Scene 내 모델들의 간섭(겹침) 검사
+
+    - 모델 복제(duplicate) 후 겹치는 모델 쌍 확인
+    - collision_offset_mm: 이 거리보다 가까우면 간섭으로 판단
+    """
+    client = await get_preform_client()
+
+    if not await client.health_check():
+        raise HTTPException(status_code=503, detail="PreFormServer에 연결할 수 없습니다")
+
+    pairs = await client.get_interferences(scene_id, collision_offset_mm)
+    return {
+        "interferences": pairs,
+        "count": len(pairs),
+        "has_interferences": len(pairs) > 0,
+    }
+
+
+@router.post(
+    "/scene/{scene_id}/screenshot",
+    tags=["Scene"],
+    summary="스크린샷 수동 저장"
+)
+async def save_screenshot(
+    scene_id: str,
+    view_type: str = Query("ZOOM_ON_MODELS", description="카메라 뷰 (ZOOM_ON_MODELS, FULL_BUILD_VOLUME, FULL_PLATFORM_WIDTH)"),
+    image_size_px: int = Query(820, ge=100, le=2000, description="이미지 크기 (px)"),
+):
+    """
+    Scene의 스크린샷을 수동으로 저장
+
+    - prepare_scene에서 자동으로 저장되지만, 복제 후 다시 찍을 때 사용
+    - 반환된 screenshot_url로 이미지 접근 가능
+    """
+    client = await get_preform_client()
+
+    if not await client.health_check():
+        raise HTTPException(status_code=503, detail="PreFormServer에 연결할 수 없습니다")
+
+    screenshot_filename = f"{scene_id}.png"
+    screenshot_path = f"C:\\STL_Files\\screenshots\\{screenshot_filename}"
+
+    success = await client.save_screenshot(
+        scene_id, screenshot_path,
+        view_type=view_type,
+        image_size_px=image_size_px,
+    )
+
+    if not success:
+        raise HTTPException(status_code=500, detail="스크린샷 저장 실패")
+
+    return {
+        "success": True,
+        "screenshot_url": f"/api/v1/local/scene/{scene_id}/screenshot/{screenshot_filename}",
+    }
 
 
 # ===========================================

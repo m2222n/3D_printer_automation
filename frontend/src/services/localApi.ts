@@ -227,6 +227,53 @@ export async function listMaterials(): Promise<{ materials: Array<{ code?: strin
 }
 
 // ===========================================
+// 스크린샷 / 정밀 시간 예측 / 간섭 검사
+// ===========================================
+
+export interface PrecisePrintTime {
+  total_print_time_s: number;
+  total_print_time_min: number;
+  preprint_time_s: number;
+  printing_time_s: number;
+}
+
+export interface InterferencesResult {
+  interferences: string[][];
+  count: number;
+  has_interferences: boolean;
+}
+
+export async function estimatePrintTime(sceneId: string): Promise<PrecisePrintTime> {
+  return fetchLocalApi<PrecisePrintTime>(`/scene/${sceneId}/estimate-time`, {
+    method: 'POST',
+  });
+}
+
+export async function getInterferences(
+  sceneId: string,
+  collisionOffsetMm?: number
+): Promise<InterferencesResult> {
+  let url = `/scene/${sceneId}/interferences`;
+  if (collisionOffsetMm !== undefined) {
+    url += `?collision_offset_mm=${collisionOffsetMm}`;
+  }
+  return fetchLocalApi<InterferencesResult>(url, {
+    method: 'POST',
+  });
+}
+
+export async function saveScreenshot(
+  sceneId: string,
+  viewType: string = 'ZOOM_ON_MODELS',
+  imageSizePx: number = 820
+): Promise<{ success: boolean; screenshot_url: string }> {
+  return fetchLocalApi<{ success: boolean; screenshot_url: string }>(
+    `/scene/${sceneId}/screenshot?view_type=${viewType}&image_size_px=${imageSizePx}`,
+    { method: 'POST' }
+  );
+}
+
+// ===========================================
 // 메모 (Notes) API
 // ===========================================
 
