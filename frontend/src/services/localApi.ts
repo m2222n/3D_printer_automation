@@ -16,6 +16,7 @@ import type {
   LocalApiHealth,
   SceneEstimate,
   ScenePrepareRequest,
+  DuplicateResult,
 } from '../types/local';
 
 const LOCAL_API_BASE = '/api/v1/local';
@@ -196,6 +197,33 @@ export async function deleteScene(sceneId: string): Promise<void> {
   await fetchLocalApi<{ success: boolean }>(`/scene/${sceneId}`, {
     method: 'DELETE',
   });
+}
+
+// ===========================================
+// Scene 유효성 검사 / 모델 복제 / 재료 목록
+// ===========================================
+
+export async function validateScene(sceneId: string): Promise<Record<string, unknown>> {
+  return fetchLocalApi<Record<string, unknown>>(`/scene/${sceneId}/validate`);
+}
+
+export async function getSceneModels(sceneId: string): Promise<{ models: Array<{ id: string; name?: string }> }> {
+  return fetchLocalApi<{ models: Array<{ id: string; name?: string }> }>(`/scene/${sceneId}/models`);
+}
+
+export async function duplicateModel(
+  sceneId: string,
+  modelId: string,
+  count: number
+): Promise<DuplicateResult> {
+  return fetchLocalApi<DuplicateResult>(`/scene/${sceneId}/models/${modelId}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify({ count }),
+  });
+}
+
+export async function listMaterials(): Promise<{ materials: Array<{ code?: string; name?: string; [key: string]: unknown }> }> {
+  return fetchLocalApi<{ materials: Array<{ code?: string; name?: string; [key: string]: unknown }> }>('/materials');
 }
 
 // ===========================================

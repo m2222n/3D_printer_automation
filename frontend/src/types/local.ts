@@ -174,6 +174,7 @@ export interface SceneEstimate {
   machine_type: string;
   material_code: string;
   model_count: number;
+  validation?: Record<string, unknown> | null;
 }
 
 export interface ScenePrepareRequest {
@@ -183,6 +184,17 @@ export interface ScenePrepareRequest {
   layer_thickness_mm?: number;
   support_density?: string;
   touchpoint_size?: number;
+  hollow?: boolean;
+  hollow_wall_thickness_mm?: number;
+}
+
+export interface DuplicateResult {
+  success: boolean;
+  model_count: number;
+  estimated_print_time_ms: number | null;
+  estimated_print_time_min: number | null;
+  estimated_material_ml: number | null;
+  validation: Record<string, unknown> | null;
 }
 
 // ===========================================

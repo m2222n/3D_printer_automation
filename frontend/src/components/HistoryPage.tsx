@@ -107,8 +107,12 @@ export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
   const completedLocalJobs = localJobs.filter((job) => {
     const isDone = ['sent', 'failed'].includes(job.status);
     if (!isDone) return false;
-    if (filter === 'all') return true;
-    return job.printer_serial === filter;
+    if (filter !== 'all' && job.printer_serial !== filter) return false;
+    // Outcome 필터 적용
+    if (outcomeFilter === 'success' && job.status !== 'sent') return false;
+    if (outcomeFilter === 'failed' && job.status !== 'failed') return false;
+    if (outcomeFilter === 'aborted') return false; // 로컬 작업에는 중단 상태 없음
+    return true;
   });
 
   // 클라우드 히스토리 (백엔드에서 필터링됨, 로컬 Outcome 추가 필터)
@@ -545,6 +549,9 @@ export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
             <div className="space-y-2">
               <p className="text-sm text-gray-500 mb-3">
                 총 {completedLocalJobs.length}건
+                {(outcomeFilter !== 'all' || filter !== 'all') && (
+                  <span className="text-blue-500 ml-2">필터 적용됨</span>
+                )}
               </p>
               {completedLocalJobs.map((job) => (
                 <LocalJobCard

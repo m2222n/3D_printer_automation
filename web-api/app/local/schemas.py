@@ -5,7 +5,7 @@
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
 import uuid
@@ -175,6 +175,7 @@ class SceneEstimate(BaseModel):
     machine_type: str = ""
     material_code: str = ""
     model_count: int = 0
+    validation: Optional[Dict[str, Any]] = None  # 유효성 검사 결과
 
 
 class ScenePrepareRequest(BaseModel):
@@ -185,3 +186,10 @@ class ScenePrepareRequest(BaseModel):
     layer_thickness_mm: float = 0.05
     support_density: str = "normal"
     touchpoint_size: float = 0.5
+    hollow: bool = Field(False, description="내부 비우기 (레진 절약)")
+    hollow_wall_thickness_mm: float = Field(2.0, description="내부 비우기 벽 두께 (mm)")
+
+
+class DuplicateModelRequest(BaseModel):
+    """모델 복제 요청"""
+    count: int = Field(1, ge=1, le=50, description="복제할 수 (원본 제외)")

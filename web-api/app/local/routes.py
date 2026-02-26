@@ -21,7 +21,7 @@ from app.local.schemas import (
     PresetCreate, PresetUpdate, PresetResponse, PresetListResponse,
     PrintJobCreate, PrintJobResponse, PrintJobStatus,
     DiscoveredPrinter, PrintSettings,
-    SceneEstimate, ScenePrepareRequest
+    SceneEstimate, ScenePrepareRequest, DuplicateModelRequest
 )
 
 logger = logging.getLogger(__name__)
@@ -433,6 +433,8 @@ async def prepare_scene(data: ScenePrepareRequest):
         layer_thickness_mm=data.layer_thickness_mm,
         support_density=data.support_density,
         touchpoint_size=data.touchpoint_size,
+        hollow=data.hollow,
+        hollow_wall_thickness_mm=data.hollow_wall_thickness_mm,
     )
 
     if not result["success"]:
@@ -504,6 +506,94 @@ async def delete_scene(scene_id: str):
         raise HTTPException(status_code=500, detail="Scene 삭제 실패")
 
     return {"success": True, "message": "Scene이 삭제되었습니다"}
+
+
+# ===========================================
+# Scene 유효성 검사 / 모델 복제 / 재료 목록
+# ===========================================
+
+@router.get(
+    "/scene/{scene_id}/validate",
+    tags=["Scene"],
+    summary="프린트 전 유효성 검사"
+)
+async def validate_scene(scene_id: str):
+    """Scene의 프린트 유효성 검사 (서포트, 빌드 영역 등)"""
+    client = await get_preform_client()
+
+    if not await client.health_check():
+        raise HTTPException(status_code=503, detail="PreFormServer에 연결할 수 없습니다")
+
+    result = await client.validate_scene(scene_id)
+    return result
+
+
+@router.get(
+    "/scene/{scene_id}/models",
+    tags=["Scene"],
+    summary="Scene 모델 목록 조회"
+)
+async def get_scene_models(scene_id: str):
+    """Scene에 포함된 모델 목록 (모델 ID 포함)"""
+    client = await get_preform_client()
+    models = await client.get_scene_models(scene_id)
+    return {"models": models}
+
+
+@router.post(
+    "/scene/{scene_id}/models/{model_id}/duplicate",
+    tags=["Scene"],
+    summary="모델 복제 (대량 배치)"
+)
+async def duplicate_model(scene_id: str, model_id: str, data: DuplicateModelRequest):
+    """
+    모델을 N개 복제하고 자동 재배치
+
+    - 키링 같은 소형 부품을 빌드 플레이트에 최대한 채우기 위해 사용
+    - 복제 후 자동으로 auto-layout, 유효성 검사 수행
+    """
+    client = await get_preform_client()
+
+    if not await client.health_check():
+        raise HTTPException(status_code=503, detail="PreFormServer에 연결할 수 없습니다")
+
+    if not await client.duplicate_model(scene_id, model_id, data.count):
+        raise HTTPException(status_code=500, detail="모델 복제 실패")
+
+    # 복제 후 자동 재배치
+    await client.auto_layout(scene_id)
+
+    # 업데이트된 Scene 정보 반환
+    scene_info = await client.get_scene_info(scene_id)
+    validation = await client.validate_scene(scene_id)
+
+    est_time_ms = scene_info.estimated_print_time_ms if scene_info else None
+    est_time_min = round(est_time_ms / 60000, 1) if est_time_ms else None
+
+    return {
+        "success": True,
+        "model_count": scene_info.model_count if scene_info else 0,
+        "estimated_print_time_ms": est_time_ms,
+        "estimated_print_time_min": est_time_min,
+        "estimated_material_ml": scene_info.estimated_material_ml if scene_info else None,
+        "validation": validation,
+    }
+
+
+@router.get(
+    "/materials",
+    tags=["Local API"],
+    summary="사용 가능한 재료(레진) 목록"
+)
+async def list_materials():
+    """PreFormServer에서 사용 가능한 재료 목록 조회"""
+    client = await get_preform_client()
+
+    if not await client.health_check():
+        raise HTTPException(status_code=503, detail="PreFormServer에 연결할 수 없습니다")
+
+    materials = await client.list_materials()
+    return {"materials": materials}
 
 
 # ===========================================

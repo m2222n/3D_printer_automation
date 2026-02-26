@@ -326,6 +326,124 @@ class PreFormServerClient:
             return False
 
     # ===========================================
+    # 모델 복제 / 내부 비우기
+    # ===========================================
+
+    async def get_scene_models(self, scene_id: str) -> List[Dict[str, Any]]:
+        """Scene의 모델 목록 조회 (모델 ID 포함)"""
+        try:
+            client = await self._get_client()
+            response = await client.get(f"/scene/{scene_id}/")
+
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("models", [])
+            return []
+
+        except Exception as e:
+            logger.error(f"Scene 모델 목록 조회 오류: {e}")
+            return []
+
+    async def duplicate_model(self, scene_id: str, model_id: str, count: int = 1) -> bool:
+        """
+        모델 복제 (대량 배치용)
+
+        Args:
+            scene_id: Scene ID
+            model_id: 복제할 모델 ID
+            count: 복제 수 (원본 제외)
+        """
+        try:
+            client = await self._get_client()
+            response = await client.post(
+                f"/scene/{scene_id}/models/{model_id}/duplicate/",
+                json={"count": count}
+            )
+
+            if response.status_code == 200:
+                logger.info(f"✅ 모델 {count}개 복제 완료")
+                return True
+            else:
+                logger.error(f"모델 복제 실패: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"모델 복제 오류: {e}")
+            return False
+
+    async def hollow_model(self, scene_id: str, wall_thickness_mm: float = 2.0) -> bool:
+        """
+        모델 내부 비우기 (레진 절약)
+
+        Args:
+            scene_id: Scene ID
+            wall_thickness_mm: 벽 두께 (mm), 기본 2.0mm
+        """
+        try:
+            client = await self._get_client()
+            response = await client.post(
+                f"/scene/{scene_id}/hollow-model/",
+                json={"wall_thickness_mm": wall_thickness_mm}
+            )
+
+            if response.status_code == 200:
+                logger.info(f"✅ 모델 내부 비우기 완료 (벽 두께: {wall_thickness_mm}mm)")
+                return True
+            else:
+                logger.error(f"모델 내부 비우기 실패: {response.status_code} - {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"모델 내부 비우기 오류: {e}")
+            return False
+
+    # ===========================================
+    # 유효성 검사 / 재료 목록
+    # ===========================================
+
+    async def validate_scene(self, scene_id: str) -> Dict[str, Any]:
+        """
+        프린트 전 유효성 검사
+        서포트 부족, 빌드 영역 초과 등 사전 검증
+
+        Returns:
+            Dict: PreFormServer 응답 (검증 결과)
+        """
+        try:
+            client = await self._get_client()
+            response = await client.get(f"/scene/{scene_id}/print-validation/")
+
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"✅ Scene 유효성 검사 완료: {scene_id}")
+                return data
+            else:
+                logger.error(f"유효성 검사 실패: {response.status_code} - {response.text}")
+                return {"error": f"검증 요청 실패: {response.status_code}"}
+
+        except Exception as e:
+            logger.error(f"유효성 검사 오류: {e}")
+            return {"error": str(e)}
+
+    async def list_materials(self) -> List[Dict[str, Any]]:
+        """사용 가능한 재료(레진) 목록 조회"""
+        try:
+            client = await self._get_client()
+            response = await client.get("/list-materials/")
+
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"✅ 재료 {len(data) if isinstance(data, list) else '?'}종 조회")
+                return data if isinstance(data, list) else data.get("materials", [])
+            else:
+                logger.error(f"재료 목록 조회 실패: {response.status_code}")
+                return []
+
+        except Exception as e:
+            logger.error(f"재료 목록 조회 오류: {e}")
+            return []
+
+    # ===========================================
     # 프린트 작업
     # ===========================================
 
@@ -358,7 +476,9 @@ class PreFormServerClient:
         material_code: str = "FLGPGR05",
         layer_thickness_mm: float = 0.05,
         support_density: str = "normal",
-        touchpoint_size: float = 0.5
+        touchpoint_size: float = 0.5,
+        hollow: bool = False,
+        hollow_wall_thickness_mm: float = 2.0,
     ) -> Dict[str, Any]:
         """
         STL 파일을 슬라이스 준비하고 예측 결과 반환 (프린터 전송 안 함)
@@ -366,8 +486,10 @@ class PreFormServerClient:
         워크플로우:
         1. Scene 생성
         2. 모델 임포트
+        2.5 내부 비우기 (선택)
         3. 자동 방향/서포트/배치
         4. Scene 정보 조회 (예측 시간/재료)
+        4.5 유효성 검사
 
         Returns:
             Dict: {success, scene_id, estimate, error}
@@ -397,6 +519,11 @@ class PreFormServerClient:
                 await self.delete_scene(scene_id)
                 return result
 
+            # 2.5 내부 비우기 (선택)
+            if hollow:
+                if not await self.hollow_model(scene_id, wall_thickness_mm=hollow_wall_thickness_mm):
+                    logger.warning("모델 내부 비우기 실패, 계속 진행")
+
             # 3. 자동 준비
             if not await self.auto_orient(scene_id):
                 logger.warning("자동 방향 설정 실패, 계속 진행")
@@ -417,6 +544,9 @@ class PreFormServerClient:
                 est_time_ms = scene_info.estimated_print_time_ms
                 est_time_min = round(est_time_ms / 60000, 1) if est_time_ms else None
 
+                # 4.5 유효성 검사
+                validation = await self.validate_scene(scene_id)
+
                 result["estimate"] = SceneEstimate(
                     scene_id=scene_id,
                     estimated_print_time_ms=est_time_ms,
@@ -426,6 +556,7 @@ class PreFormServerClient:
                     machine_type=scene_info.machine_type,
                     material_code=scene_info.material_code,
                     model_count=scene_info.model_count,
+                    validation=validation,
                 )
                 result["success"] = True
             else:

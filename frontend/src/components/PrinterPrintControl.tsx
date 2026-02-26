@@ -6,7 +6,7 @@
 import { useState, useCallback } from 'react';
 import { FileUpload } from './FileUpload';
 import { PresetManager } from './PresetManager';
-import { startPrintJob, prepareScene, printPreparedScene, deleteScene } from '../services/localApi';
+import { startPrintJob, prepareScene, printPreparedScene, deleteScene, getSceneModels, duplicateModel } from '../services/localApi';
 import type { Preset, SceneEstimate } from '../types/local';
 import type { PrinterSummary } from '../types/printer';
 import { getStatusLabel, formatDuration } from '../types/printer';
@@ -39,6 +39,14 @@ export function PrinterPrintControl({
   // 슬라이스 예측 결과
   const [estimate, setEstimate] = useState<SceneEstimate | null>(null);
 
+  // 내부 비우기 옵션
+  const [hollow, setHollow] = useState(false);
+  const [hollowWallThickness, setHollowWallThickness] = useState(2.0);
+
+  // 모델 복제
+  const [duplicateCount, setDuplicateCount] = useState(1);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
   const isIdle = printer.status === 'IDLE';
   const isPrinting = printer.status === 'PRINTING';
   const isPreheat = printer.status === 'PREHEAT';
@@ -46,7 +54,11 @@ export function PrinterPrintControl({
   const isAborting = printer.status === 'ABORTING';
   const hasActiveJob = ['PRINTING', 'PREHEAT', 'PAUSING', 'PAUSED', 'ABORTING'].includes(printer.status);
   const canPrepare = isPreformConnected && (!!selectedPreset || !!selectedFile) && !estimate;
-  const canPrint = isIdle && isPreformConnected && !!estimate;
+  const validationErrors = estimate?.validation && Array.isArray((estimate.validation as { errors?: unknown[] }).errors)
+    ? (estimate.validation as { errors: string[] }).errors
+    : [];
+  const hasValidationErrors = validationErrors.length > 0;
+  const canPrint = isIdle && isPreformConnected && !!estimate && !hasValidationErrors;
 
   const handleFileSelect = (filename: string) => {
     setSelectedFile(filename);
@@ -87,6 +99,8 @@ export function PrinterPrintControl({
         layer_thickness_mm: settings?.layer_thickness_mm || 0.05,
         support_density: settings?.support.density || 'normal',
         touchpoint_size: settings?.support.touchpoint_size || 0.5,
+        hollow,
+        hollow_wall_thickness_mm: hollowWallThickness,
       });
       setEstimate(result);
     } catch (err) {
@@ -130,6 +144,42 @@ export function PrinterPrintControl({
       setIsLoading(false);
     }
   }, [estimate, printer.serial, selectedPreset, selectedFile]);
+
+  // 모델 복제 + 재배치
+  const handleDuplicate = useCallback(async () => {
+    if (!estimate?.scene_id || duplicateCount < 1) return;
+
+    setIsDuplicating(true);
+    setError(null);
+
+    try {
+      // 모델 목록에서 첫 번째 모델 ID 가져오기
+      const { models } = await getSceneModels(estimate.scene_id);
+      if (!models || models.length === 0) {
+        setError('Scene에 모델이 없습니다.');
+        return;
+      }
+      const modelId = models[0].id;
+
+      // 복제 + 재배치 + 재검증
+      const result = await duplicateModel(estimate.scene_id, modelId, duplicateCount);
+
+      // estimate 갱신
+      setEstimate(prev => prev ? {
+        ...prev,
+        model_count: result.model_count,
+        estimated_print_time_ms: result.estimated_print_time_ms,
+        estimated_print_time_min: result.estimated_print_time_min,
+        estimated_material_ml: result.estimated_material_ml,
+        validation: result.validation,
+      } : prev);
+      setDuplicateCount(1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '모델 복제 실패');
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [estimate, duplicateCount]);
 
   // 기존 방식 (프리셋 기반 바로 프린트 - 예측 건너뛰기)
   const handleQuickPrint = useCallback(async () => {
@@ -343,6 +393,36 @@ export function PrinterPrintControl({
             )}
           </div>
 
+          {/* 내부 비우기 옵션 (슬라이스 전에만 표시) */}
+          {!estimate && (selectedPreset || selectedFile) && (
+            <div className="mb-4 flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hollow}
+                  onChange={(e) => setHollow(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                내부 비우기 (레진 절약)
+              </label>
+              {hollow && (
+                <div className="flex items-center gap-1 text-sm text-gray-600">
+                  <span>벽 두께:</span>
+                  <input
+                    type="number"
+                    min={0.5}
+                    max={5.0}
+                    step={0.5}
+                    value={hollowWallThickness}
+                    onChange={(e) => setHollowWallThickness(Number(e.target.value))}
+                    className="w-16 px-2 py-0.5 border border-gray-300 rounded text-sm text-center"
+                  />
+                  <span>mm</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 슬라이스 예측 결과 카드 */}
           {estimate && (
             <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
@@ -386,10 +466,86 @@ export function PrinterPrintControl({
                 </div>
               </div>
 
+              {/* 모델 복제 (대량 배치) */}
+              <div className="col-span-2 mt-1">
+                <div className="bg-white rounded-lg px-3 py-2">
+                  <div className="text-xs text-gray-500 mb-1.5">모델 복제 (대량 배치)</div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setDuplicateCount(c => Math.max(1, c - 1))}
+                      className="w-7 h-7 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm font-medium"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={duplicateCount}
+                      onChange={(e) => setDuplicateCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+                      className="w-14 px-2 py-1 border border-gray-300 rounded text-sm text-center"
+                    />
+                    <button
+                      onClick={() => setDuplicateCount(c => Math.min(50, c + 1))}
+                      className="w-7 h-7 rounded border border-gray-300 text-gray-600 hover:bg-gray-100 text-sm font-medium"
+                    >
+                      +
+                    </button>
+                    <span className="text-xs text-gray-500">개 추가</span>
+                    <button
+                      onClick={handleDuplicate}
+                      disabled={isDuplicating || duplicateCount < 1}
+                      className={`ml-auto px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        isDuplicating ? 'bg-gray-200 text-gray-400' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                      }`}
+                    >
+                      {isDuplicating ? (
+                        <span className="flex items-center gap-1">
+                          <span className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                          복제 중...
+                        </span>
+                      ) : '복제 + 재배치'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 유효성 검사 결과 */}
+              {estimate.validation && (
+                <div className="col-span-2 mt-1">
+                  {!hasValidationErrors ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 flex items-center gap-2 text-xs text-green-700">
+                      <span className="text-green-500 font-bold">✓</span>
+                      유효성 검사 통과
+                    </div>
+                  ) : (
+                    <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      <div className="text-xs font-medium text-red-700 mb-1">유효성 검사 오류</div>
+                      <ul className="text-xs text-red-600 list-disc list-inside">
+                        {validationErrors.map((err: string, i: number) => (
+                          <li key={i}>{err}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {Array.isArray((estimate.validation as { warnings?: unknown[] }).warnings) &&
+                    ((estimate.validation as { warnings: string[] }).warnings).length > 0 && (
+                    <div className="mt-1 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                      <div className="text-xs font-medium text-yellow-700 mb-1">경고</div>
+                      <ul className="text-xs text-yellow-600 list-disc list-inside">
+                        {((estimate.validation as { warnings: string[] }).warnings).map((w: string, i: number) => (
+                          <li key={i}>{w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 레진 잔량 대비 경고 */}
               {estimate.estimated_material_ml !== null && printer.resin_remaining_ml !== null &&
                 estimate.estimated_material_ml > printer.resin_remaining_ml && (
-                <div className="mt-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <div className="col-span-2 mt-1 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                   예상 재료 사용량({estimate.estimated_material_ml.toFixed(1)}ml)이 현재 레진 잔량({printer.resin_remaining_ml.toFixed(0)}ml)보다 많습니다. 레진 교체가 필요할 수 있습니다.
                 </div>
               )}
