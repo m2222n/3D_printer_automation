@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: list[str] = [".stl", ".obj", ".form"]
 
     # 공장 PC 파일 수신 서버 (file_receiver.py)
-    FILE_RECEIVER_HOST: str = "10.145.113.3"
+    FILE_RECEIVER_HOST: str = "localhost"
     FILE_RECEIVER_PORT: int = 8089
 
     # 프리셋 DB 설정 (SQLite)

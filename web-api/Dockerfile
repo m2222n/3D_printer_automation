@@ -5,7 +5,7 @@
 FROM python:3.11-slim
 
 # 메타데이터
-LABEL maintainer="정태민 <taemin@orinu.co.kr>"
+LABEL maintainer="Orinu <dev@orinu.co.kr>"
 LABEL description="Formlabs 3D프린터 원격제어 시스템"
 
 # 환경 변수
