@@ -5,7 +5,7 @@
  * - 로컬 작업: 이 시스템으로 시작한 작업 이력
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getPrintJobs, startPrintJob, getFiles, getNotesBulk, createNote, updateNote, deleteNote } from '../services/localApi';
 import type { PrintNoteItem } from '../services/localApi';
 import { getPrintHistory, getDashboard } from '../services/api';
@@ -61,6 +61,13 @@ export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
   } | null>(null);
   // 업로드된 파일 목록 (STL 변경용)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  // CSV Export 모달
+  const [csvModal, setCsvModal] = useState<{
+    dateFrom: string;
+    dateTo: string;
+    outcomeFilter: OutcomeFilter;
+    filename: string;
+  } | null>(null);
 
   // 데이터 로드
   const loadData = useCallback(async () => {
@@ -124,14 +131,65 @@ export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
     return true;
   });
 
-  // CSV Export
-  const handleExportCSV = useCallback(() => {
-    const items = source === 'cloud' ? filteredCloudHistory : completedLocalJobs;
-    if (items.length === 0) return;
+  // CSV Export 모달 열기
+  const openCsvModal = useCallback(() => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    setCsvModal({
+      dateFrom,
+      dateTo,
+      outcomeFilter,
+      filename: `print_history_${dateStr}`,
+    });
+  }, [dateFrom, dateTo, outcomeFilter]);
+
+  // CSV Export 모달 내 필터링된 데이터
+  const csvFilteredItems = useMemo(() => {
+    if (!csvModal) return [];
+    const { dateFrom: df, dateTo: dt, outcomeFilter: of } = csvModal;
+
+    if (source === 'cloud') {
+      return cloudHistory.filter((item) => {
+        if (of === 'success' && item.status !== 'FINISHED') return false;
+        if (of === 'failed' && item.status !== 'ERROR') return false;
+        if (of === 'aborted' && item.status !== 'ABORTED') return false;
+        if (df && item.started_at) {
+          const itemDate = item.started_at.slice(0, 10);
+          if (itemDate < df) return false;
+        }
+        if (dt && item.started_at) {
+          const itemDate = item.started_at.slice(0, 10);
+          if (itemDate > dt) return false;
+        }
+        return true;
+      });
+    } else {
+      return localJobs.filter((job) => {
+        const isDone = ['sent', 'failed'].includes(job.status);
+        if (!isDone) return false;
+        if (filter !== 'all' && job.printer_serial !== filter) return false;
+        if (of === 'success' && job.status !== 'sent') return false;
+        if (of === 'failed' && job.status !== 'failed') return false;
+        if (of === 'aborted') return false;
+        if (df) {
+          const jobDate = job.created_at.slice(0, 10);
+          if (jobDate < df) return false;
+        }
+        if (dt) {
+          const jobDate = job.created_at.slice(0, 10);
+          if (jobDate > dt) return false;
+        }
+        return true;
+      });
+    }
+  }, [csvModal, source, cloudHistory, localJobs, filter]);
+
+  // CSV Export 실행
+  const handleExportCSV = useCallback(async () => {
+    if (!csvModal || csvFilteredItems.length === 0) return;
 
     const headers = ['작업명', '프린터', '상태', '시작 시간', '소요 시간(분)', '재료', '사용량(ml)', '레이어'];
     const rows = source === 'cloud'
-      ? (items as PrintHistoryItem[]).map((item) => [
+      ? (csvFilteredItems as PrintHistoryItem[]).map((item) => [
           item.name,
           getPrinterName(item.printer_serial),
           getCloudStatusLabel(item.status),
@@ -141,7 +199,7 @@ export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
           item.volume_ml?.toFixed(1) || '',
           item.layer_count.toString(),
         ])
-      : (items as PrintJob[]).map((job) => [
+      : (csvFilteredItems as PrintJob[]).map((job) => [
           job.stl_filename,
           getPrinterName(job.printer_serial),
           getJobStatusLabel(job.status),
@@ -155,14 +213,37 @@ export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
     const bom = '\uFEFF';
     const csv = bom + [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const dateStr = new Date().toISOString().slice(0, 10);
-    a.download = `print_history_${dateStr}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [source, filteredCloudHistory, completedLocalJobs, printers]);
+    const filename = csvModal.filename.endsWith('.csv') ? csvModal.filename : `${csvModal.filename}.csv`;
+
+    try {
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: 'CSV Files', accept: { 'text/csv': ['.csv'] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return; // 사용자가 취소
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    setCsvModal(null);
+  }, [csvModal, csvFilteredItems, source, printers]);
 
   // 날짜 퀵 필터
   const setQuickDateRange = useCallback((days: number) => {
@@ -508,11 +589,8 @@ export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
 
             {/* CSV Export */}
             <button
-              onClick={handleExportCSV}
-              disabled={
-                (source === 'cloud' ? filteredCloudHistory.length : completedLocalJobs.length) === 0
-              }
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={openCsvModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -675,6 +753,160 @@ export function HistoryPage({ onOpenPrinterModal }: HistoryPageProps) {
           onConfirm={handleLocalReprintConfirm}
           onCancel={() => setLocalReprintModal(null)}
         />
+      )}
+
+      {/* CSV Export 모달 */}
+      {csvModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setCsvModal(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">CSV 내보내기</h3>
+              <button onClick={() => setCsvModal(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* 데이터 소스 표시 */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">데이터:</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {source === 'cloud' ? '클라우드 이력' : '로컬 작업'}
+                </span>
+              </div>
+
+              {/* 날짜 범위 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">날짜 범위</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={csvModal.dateFrom}
+                    onChange={(e) => setCsvModal({ ...csvModal, dateFrom: e.target.value })}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                  <span className="text-gray-400 text-sm">~</span>
+                  <input
+                    type="date"
+                    value={csvModal.dateTo}
+                    onChange={(e) => setCsvModal({ ...csvModal, dateTo: e.target.value })}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 mt-2">
+                  {[
+                    { label: '7일', days: 7 },
+                    { label: '30일', days: 30 },
+                    { label: '90일', days: 90 },
+                  ].map((opt) => (
+                    <button
+                      key={opt.days}
+                      onClick={() => {
+                        const to = new Date();
+                        const from = new Date();
+                        from.setDate(from.getDate() - opt.days);
+                        setCsvModal({
+                          ...csvModal,
+                          dateFrom: from.toISOString().slice(0, 10),
+                          dateTo: to.toISOString().slice(0, 10),
+                        });
+                      }}
+                      className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+                    >
+                      Last {opt.label}
+                    </button>
+                  ))}
+                  {(csvModal.dateFrom || csvModal.dateTo) && (
+                    <button
+                      onClick={() => setCsvModal({ ...csvModal, dateFrom: '', dateTo: '' })}
+                      className="px-2.5 py-1 text-xs font-medium rounded-md text-red-500 hover:bg-red-50 transition-colors"
+                    >
+                      전체
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 결과 필터 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">결과 필터</label>
+                <div className="flex items-center gap-1.5">
+                  {([
+                    { key: 'all' as const, label: '전체' },
+                    { key: 'success' as const, label: '성공' },
+                    { key: 'failed' as const, label: '실패' },
+                    { key: 'aborted' as const, label: '중단' },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setCsvModal({ ...csvModal, outcomeFilter: opt.key })}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                        csvModal.outcomeFilter === opt.key
+                          ? opt.key === 'success' ? 'border-green-500 bg-green-50 text-green-700'
+                            : opt.key === 'failed' ? 'border-red-500 bg-red-50 text-red-700'
+                            : opt.key === 'aborted' ? 'border-orange-500 bg-orange-50 text-orange-700'
+                            : 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 파일명 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">파일명</label>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={csvModal.filename}
+                    onChange={(e) => setCsvModal({ ...csvModal, filename: e.target.value })}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="print_history"
+                  />
+                  <span className="text-sm text-gray-400">.csv</span>
+                </div>
+              </div>
+
+              {/* 내보내기 건수 미리보기 */}
+              <div className="bg-gray-50 rounded-lg px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">내보내기 대상</span>
+                  <span className={`text-sm font-semibold ${csvFilteredItems.length > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                    {csvFilteredItems.length}건
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 하단 버튼 */}
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+              <button
+                onClick={() => setCsvModal(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleExportCSV}
+                disabled={csvFilteredItems.length === 0 || !csvModal.filename.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  내보내기 ({csvFilteredItems.length}건)
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
