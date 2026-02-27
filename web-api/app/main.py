@@ -57,6 +57,7 @@ async def lifespan(app: FastAPI):
             try:
                 from app.local.database import get_local_db_session
                 from app.local.models import NotificationEvent
+                from app.schemas.printer import now_kst
                 with get_local_db_session() as db:
                     event = NotificationEvent(
                         event_type=notification.type.value if hasattr(notification.type, 'value') else str(notification.type),
@@ -64,6 +65,7 @@ async def lifespan(app: FastAPI):
                         printer_name=notification.printer_name,
                         job_name=notification.job_name,
                         message=notification.message,
+                        created_at=now_kst(),
                     )
                     db.add(event)
             except Exception as e:

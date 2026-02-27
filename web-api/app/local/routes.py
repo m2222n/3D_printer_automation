@@ -13,6 +13,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 
+from datetime import datetime, timezone, timedelta
+
 from app.core.config import get_settings
 from app.local.database import get_local_db
 from app.local.services import PresetService, PrintJobService
@@ -25,6 +27,17 @@ from app.local.schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+# 한국 표준시 (KST = UTC+9)
+KST = timezone(timedelta(hours=9))
+
+def to_kst_iso(dt: Optional[datetime]) -> Optional[str]:
+    """datetime을 KST ISO 문자열로 변환. timezone-naive이면 UTC로 간주."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(KST).isoformat()
 router = APIRouter()
 settings = get_settings()
 
@@ -810,8 +823,8 @@ async def get_notes(print_guid: str, db: Session = Depends(get_local_db)):
             "id": n.id,
             "print_guid": n.print_guid,
             "content": n.content,
-            "created_at": n.created_at.isoformat() if n.created_at else None,
-            "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+            "created_at": to_kst_iso(n.created_at),
+            "updated_at": to_kst_iso(n.updated_at),
         }
         for n in notes
     ]
@@ -839,8 +852,8 @@ async def get_notes_bulk(
         result[n.print_guid].append({
             "id": n.id,
             "content": n.content,
-            "created_at": n.created_at.isoformat() if n.created_at else None,
-            "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+            "created_at": to_kst_iso(n.created_at),
+            "updated_at": to_kst_iso(n.updated_at),
         })
     return result
 
@@ -870,7 +883,7 @@ async def create_note(
         "id": note.id,
         "print_guid": note.print_guid,
         "content": note.content,
-        "created_at": note.created_at.isoformat() if note.created_at else None,
+        "created_at": to_kst_iso(note.created_at),
     }
 
 
@@ -902,7 +915,7 @@ async def update_note(
         "id": note.id,
         "print_guid": note.print_guid,
         "content": note.content,
-        "updated_at": note.updated_at.isoformat() if note.updated_at else None,
+        "updated_at": to_kst_iso(note.updated_at),
     }
 
 
@@ -955,7 +968,7 @@ async def get_notifications(
                 "job_name": e.job_name,
                 "message": e.message,
                 "is_read": bool(e.is_read),
-                "created_at": e.created_at.isoformat() if e.created_at else None,
+                "created_at": to_kst_iso(e.created_at),
             }
             for e in events
         ],

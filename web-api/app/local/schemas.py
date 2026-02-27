@@ -6,9 +6,18 @@
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from enum import Enum
 import uuid
+
+# 한국 표준시 (KST = UTC+9)
+_KST = timezone(timedelta(hours=9))
+
+def _dt_to_kst_str(dt: datetime) -> str:
+    """datetime을 KST ISO 문자열로 변환"""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(_KST).isoformat()
 
 
 class MaterialCode(str, Enum):
@@ -91,6 +100,7 @@ class PresetResponse(PresetBase):
 
     class Config:
         from_attributes = True
+        json_encoders = {datetime: _dt_to_kst_str}
 
 
 class PresetListResponse(BaseModel):
@@ -140,6 +150,9 @@ class PrintJobResponse(BaseModel):
     scheduled_at: Optional[datetime] = None  # 예약 출력 시간
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        json_encoders = {datetime: _dt_to_kst_str}
 
 
 # ===========================================

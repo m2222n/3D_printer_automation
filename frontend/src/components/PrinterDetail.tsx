@@ -13,7 +13,11 @@ interface PrinterDetailProps {
 }
 
 export function PrinterDetail({ printer, onBack, onNameClick }: PrinterDetailProps) {
+  const hasActiveJob = ['PRINTING', 'PREHEAT', 'PAUSING', 'PAUSED', 'ABORTING'].includes(printer.status);
   const isPrinting = printer.status === 'PRINTING';
+  const isPreheat = printer.status === 'PREHEAT';
+  const isPaused = printer.status === 'PAUSED' || printer.status === 'PAUSING';
+  const isAborting = printer.status === 'ABORTING';
   const isOffline = printer.status === 'OFFLINE';
 
   return (
@@ -51,7 +55,7 @@ export function PrinterDetail({ printer, onBack, onNameClick }: PrinterDetailPro
             <div className="space-y-3">
               <InfoRow label="시리얼 번호" value={printer.serial} />
               <InfoRow label="온라인" value={printer.is_online ? '연결됨' : '연결 안 됨'} />
-              <InfoRow label="프린트 준비" value={printer.is_ready ? '준비 완료' : '준비 안 됨'} />
+              <InfoRow label="프린트 준비" value={hasActiveJob ? '출력 중' : printer.is_ready ? '준비 완료' : '준비 안 됨'} />
               <InfoRow
                 label="마지막 업데이트"
                 value={new Date(printer.last_update).toLocaleString('ko-KR')}
@@ -59,13 +63,22 @@ export function PrinterDetail({ printer, onBack, onNameClick }: PrinterDetailPro
             </div>
           </div>
 
-          {/* 레진 정보 */}
+          {/* 재료 정보 */}
           <div className="bg-white rounded-xl border shadow-sm p-6">
-            <h4 className="font-semibold text-gray-800 mb-4">레진 정보</h4>
+            <h4 className="font-semibold text-gray-800 mb-4">재료 정보</h4>
             <div className="space-y-3">
-              <div>
+              {/* 레진 종류 */}
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-sm text-gray-500">레진</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {printer.cartridge_material_name || printer.cartridge_material_code || '미장착'}
+                </span>
+              </div>
+
+              {/* 레진 잔량 */}
+              <div className="pt-1">
                 <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-gray-600">잔량</span>
+                  <span className="text-gray-500">레진 잔량</span>
                   <span className={`font-medium ${printer.is_resin_low ? 'text-red-600' : 'text-gray-900'}`}>
                     {formatResinAmount(printer.resin_remaining_ml)}
                     {printer.resin_remaining_percent !== null && (
@@ -101,42 +114,104 @@ export function PrinterDetail({ printer, onBack, onNameClick }: PrinterDetailPro
           {/* 현재 작업 */}
           <div className="bg-white rounded-xl border shadow-sm p-6">
             <h4 className="font-semibold text-gray-800 mb-4">현재 작업</h4>
-            {isPrinting && printer.current_job_name ? (
+            {hasActiveJob && printer.current_job_name ? (
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">작업명</p>
                   <p className="font-medium text-gray-900">{printer.current_job_name}</p>
                 </div>
 
+                {/* 프린트 단계 표시 */}
+                {printer.print_phase && (
+                  <div className={`text-sm font-medium flex items-center gap-1.5 ${
+                    isPreheat ? 'text-orange-600' : isPaused ? 'text-yellow-600' : isAborting ? 'text-red-600' : 'text-blue-600'
+                  }`}>
+                    {(isPrinting || isPreheat) && <span className={`w-2 h-2 rounded-full animate-pulse ${
+                      isPreheat ? 'bg-orange-500' : 'bg-blue-500'
+                    }`} />}
+                    {printer.print_phase}
+                    {printer.temperature !== null && printer.temperature !== undefined && (
+                      <span className="text-gray-400 ml-1">({printer.temperature.toFixed(1)}°C)</span>
+                    )}
+                  </div>
+                )}
+
+                {/* 일시정지/중단 안내 */}
+                {isPaused && (
+                  <div className="text-sm text-yellow-700 bg-yellow-50 rounded-lg px-3 py-2">
+                    일시정지됨 — 프린터 터치스크린에서 재개해주세요
+                  </div>
+                )}
+                {isAborting && (
+                  <div className="text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2">
+                    프린트 중단 중...
+                  </div>
+                )}
+
                 {/* 진행률 */}
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-600">진행률</span>
-                    <span className="font-bold text-blue-600 text-lg">
+                    <span className={`font-bold text-lg ${
+                      isPreheat ? 'text-orange-600' : isPaused ? 'text-yellow-600' : isAborting ? 'text-red-600' : 'text-blue-600'
+                    }`}>
                       {printer.progress_percent?.toFixed(1)}%
                     </span>
                   </div>
                   <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                      style={{ width: `${printer.progress_percent || 0}%` }}
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isPreheat ? 'bg-orange-500 animate-pulse' : isPaused ? 'bg-yellow-500' : isAborting ? 'bg-red-500' : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${Math.max(0, printer.progress_percent || 0)}%` }}
                     />
                   </div>
                 </div>
 
-                {/* 레이어 정보 */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">현재 레이어</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {printer.current_layer} / {printer.total_layers}
-                    </p>
+                {/* 재료 & 레이어 정보 */}
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Material</span>
+                    <span className="font-medium text-gray-900">{printer.cartridge_material_name || '-'}</span>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500">남은 시간</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Layer</span>
+                    <span className="font-medium text-gray-900">
+                      {printer.current_layer !== null ? `${printer.current_layer} / ${printer.total_layers}` : '-'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 시간 정보 */}
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  {printer.print_started_at && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">시작 시각</span>
+                      <span className="font-medium text-gray-900">
+                        {new Date(printer.print_started_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">경과 시간</span>
+                    <span className="font-medium text-gray-900">
+                      {printer.elapsed_minutes !== null && printer.elapsed_minutes !== undefined
+                        ? formatDuration(printer.elapsed_minutes) : '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">남은 시간</span>
+                    <span className={`font-medium ${
+                      isPreheat ? 'text-orange-600' : isPaused ? 'text-yellow-600' : 'text-blue-600'
+                    }`}>
                       {printer.remaining_minutes ? formatDuration(printer.remaining_minutes) : '-'}
-                    </p>
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">전체 예상</span>
+                    <span className="font-medium text-gray-900">
+                      {printer.estimated_total_minutes ? formatDuration(printer.estimated_total_minutes) : '-'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -174,8 +249,8 @@ export function PrinterDetail({ printer, onBack, onNameClick }: PrinterDetailPro
               />
               <StatusItem
                 label="프린트 준비"
-                value={printer.is_ready ? '준비' : '미준비'}
-                isOk={printer.is_ready}
+                value={hasActiveJob ? '출력 중' : printer.is_ready ? '준비' : '미준비'}
+                isOk={hasActiveJob || printer.is_ready}
               />
               <StatusItem
                 label="레진"

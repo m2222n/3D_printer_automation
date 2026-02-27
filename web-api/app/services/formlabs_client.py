@@ -31,6 +31,8 @@ MATERIAL_CODE_NAMES = {
     "FLGPBK04": "Black V4",
     "FLRGWH01": "Rigid White",
     "FLFLGR02": "Flexible Grey",
+    "FLFL8011": "Flexible 80A V1.1",
+    "FLFL8001": "Flexible 80A",
     "FLTOTL05": "Tough 2000",
     "FLDUCL02": "Durable Clear",
     "FLHTAM02": "High Temp Amber",

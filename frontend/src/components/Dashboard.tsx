@@ -14,6 +14,7 @@ import { getPrintHistory } from '../services/api';
 import type { PrintHistoryItem } from '../types/printer';
 
 type MonitoringTab = 'all' | string; // 'all' or printer serial
+type StatusFilter = 'all' | 'printing' | 'idle' | 'error_offline';
 
 interface DashboardProps {
   onOpenPrinterModal?: (serial: string) => void;
@@ -22,6 +23,7 @@ interface DashboardProps {
 export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
   const { dashboard, isLoading, error, isConnected, refresh } = useDashboard();
   const [activeMonitorTab, setActiveMonitorTab] = useState<MonitoringTab>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [historyItems, setHistoryItems] = useState<PrintHistoryItem[]>([]);
 
   // 최근 48시간 프린트 이력 로드
@@ -29,7 +31,7 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
     try {
       const dateFrom = new Date();
       dateFrom.setHours(dateFrom.getHours() - 48);
-      const res = await getPrintHistory(1, 200, {
+      const res = await getPrintHistory(1, 100, {
         date_from: dateFrom.toISOString(),
       });
       setHistoryItems(res.items);
@@ -79,6 +81,33 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
   const selectedPrinter = dashboard?.printers.find(
     (p) => p.serial === activeMonitorTab
   );
+
+  // 상태 필터에 따른 프린터 필터링
+  const PRINTING_STATUSES = ['PRINTING', 'PREHEAT', 'PAUSING', 'PAUSED', 'ABORTING'];
+  const IDLE_STATUSES = ['IDLE', 'FINISHED'];
+  const ERROR_OFFLINE_STATUSES = ['ERROR', 'OFFLINE'];
+
+  const filteredPrinters = dashboard?.printers.filter((p) => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'printing') return PRINTING_STATUSES.includes(p.status);
+    if (statusFilter === 'idle') return IDLE_STATUSES.includes(p.status);
+    if (statusFilter === 'error_offline') return ERROR_OFFLINE_STATUSES.includes(p.status);
+    return true;
+  }) || [];
+
+  const handleStatCardClick = (filter: StatusFilter) => {
+    setActiveMonitorTab('all');
+    setStatusFilter((prev) => prev === filter ? 'all' : filter);
+  };
+
+  const getFilterLabel = (filter: StatusFilter): string => {
+    switch (filter) {
+      case 'printing': return '출력 중';
+      case 'idle': return '대기 중';
+      case 'error_offline': return '오류/오프라인';
+      default: return '';
+    }
+  };
 
   return (
     <div className="bg-gray-100">
@@ -180,17 +209,40 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
             {/* 요약 통계 */}
             {dashboard && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-                <StatCard label="전체" value={dashboard.total_printers} color="gray" />
-                <StatCard label="출력 중" value={dashboard.printers_printing} color="blue" />
-                <StatCard label="대기 중" value={dashboard.printers_idle} color="gray" />
-                <StatCard label="오류/오프라인" value={dashboard.printers_error + dashboard.printers_offline} color="red" />
+                <StatCard label="전체" value={dashboard.total_printers} color="gray" active={statusFilter === 'all'} onClick={() => handleStatCardClick('all')} />
+                <StatCard label="출력 중" value={dashboard.printers_printing} color="blue" active={statusFilter === 'printing'} onClick={() => handleStatCardClick('printing')} />
+                <StatCard label="대기 중" value={dashboard.printers_idle} color="gray" active={statusFilter === 'idle'} onClick={() => handleStatCardClick('idle')} />
+                <StatCard label="오류/오프라인" value={dashboard.printers_error + dashboard.printers_offline} color="red" active={statusFilter === 'error_offline'} onClick={() => handleStatCardClick('error_offline')} />
+              </div>
+            )}
+
+            {/* 필터 활성 표시 */}
+            {statusFilter !== 'all' && (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm text-gray-500">필터:</span>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium ${
+                  statusFilter === 'printing' ? 'bg-blue-100 text-blue-700' :
+                  statusFilter === 'idle' ? 'bg-gray-100 text-gray-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {getFilterLabel(statusFilter)}
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className="ml-1 hover:opacity-70"
+                  >
+                    ✕
+                  </button>
+                </span>
+                <span className="text-sm text-gray-400">
+                  {filteredPrinters.length}대
+                </span>
               </div>
             )}
 
             {/* 프린터 카드 그리드 */}
-            {dashboard && dashboard.printers.length > 0 ? (
+            {filteredPrinters.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {dashboard.printers.map((printer) => (
+                {filteredPrinters.map((printer) => (
                   <div
                     key={printer.serial}
                     className="cursor-pointer"
@@ -199,6 +251,16 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
                     <PrinterCard printer={printer} onNameClick={onOpenPrinterModal} />
                   </div>
                 ))}
+              </div>
+            ) : statusFilter !== 'all' ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">해당 상태의 프린터가 없습니다.</p>
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  전체 보기
+                </button>
               </div>
             ) : (
               <div className="text-center py-12">
@@ -272,20 +334,25 @@ interface StatCardProps {
   label: string;
   value: number;
   color: 'gray' | 'blue' | 'green' | 'red';
+  active?: boolean;
+  onClick?: () => void;
 }
 
-function StatCard({ label, value, color }: StatCardProps) {
+function StatCard({ label, value, color, active, onClick }: StatCardProps) {
   const colorStyles = {
-    gray: 'bg-gray-50 border-gray-200 text-gray-900',
-    blue: 'bg-blue-50 border-blue-200 text-blue-600',
-    green: 'bg-green-50 border-green-200 text-green-600',
-    red: 'bg-red-50 border-red-200 text-red-600',
+    gray: active ? 'bg-gray-100 border-gray-400 text-gray-900 ring-2 ring-gray-400' : 'bg-gray-50 border-gray-200 text-gray-900',
+    blue: active ? 'bg-blue-100 border-blue-400 text-blue-700 ring-2 ring-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600',
+    green: active ? 'bg-green-100 border-green-400 text-green-700 ring-2 ring-green-400' : 'bg-green-50 border-green-200 text-green-600',
+    red: active ? 'bg-red-100 border-red-400 text-red-700 ring-2 ring-red-400' : 'bg-red-50 border-red-200 text-red-600',
   };
 
   return (
-    <div className={`rounded-lg border p-3 sm:p-4 ${colorStyles[color]}`}>
+    <button
+      onClick={onClick}
+      className={`rounded-lg border p-3 sm:p-4 text-left w-full transition-all cursor-pointer hover:shadow-md ${colorStyles[color]}`}
+    >
       <p className="text-xs sm:text-sm text-gray-500">{label}</p>
       <p className="text-2xl sm:text-3xl font-bold mt-1">{value}</p>
-    </div>
+    </button>
   );
 }
