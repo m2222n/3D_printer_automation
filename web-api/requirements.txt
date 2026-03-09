@@ -18,6 +18,9 @@ sqlalchemy>=2.0.25
 # asyncpg>=0.29.0  # PostgreSQL용 (나중에 사용)
 # alembic>=1.13.0  # 마이그레이션 (나중에 사용)
 
+# MQTT (Phase 4: Vision)
+aiomqtt>=2.0.0
+
 # 파일 업로드
 python-multipart>=0.0.6
 

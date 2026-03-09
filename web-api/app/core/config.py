@@ -102,6 +102,19 @@ class Settings(BaseSettings):
     DEFAULT_MACHINE_TYPE: str = "FORM-4-0"
     DEFAULT_LAYER_THICKNESS_MM: float = 0.05
 
+    # ===========================================
+    # Phase 4: Vision (MQTT) 설정
+    # ===========================================
+    MQTT_BROKER_HOST: str = "localhost"
+    MQTT_BROKER_PORT: int = 1883
+    MQTT_TOPIC_PREFIX: str = "factory"
+
+    # 카메라 오프라인 판정 (초) - 하트비트 타임아웃
+    CAMERA_HEARTBEAT_TIMEOUT: int = 60
+
+    # 시뮬레이터 활성화 (개발용)
+    VISION_SIMULATOR_ENABLED: bool = True
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -18,6 +18,9 @@ from app.services.notification_service import notification_handler
 from app.api.routes import router as api_router
 from app.local.routes import router as local_router
 from app.local.database import init_local_db
+from app.vision.routes import router as vision_router
+from app.vision.camera_manager import get_camera_manager
+from app.vision.mqtt_client import get_mqtt_client
 
 # 로깅 설정
 logging.basicConfig(
@@ -73,6 +76,9 @@ async def lifespan(app: FastAPI):
 
         polling_service.on_notification(save_notification_to_db)
 
+        # Vision 모델 등록 (init_local_db 전에 import해야 테이블 생성됨)
+        from app.vision.models import VisionCamera, VisionEvent  # noqa: F401
+
         # Local API DB 초기화
         init_local_db()
 
@@ -84,6 +90,17 @@ async def lifespan(app: FastAPI):
         printer_count = len(current_data.printers) if current_data else 0
         logger.info(f"✅ 모니터링 대상 프린터: {printer_count}대")
         logger.info(f"✅ 폴링 주기: {settings.POLLING_INTERVAL_SECONDS}초")
+
+        # Vision 모듈 시작 (MQTT 브로커 미실행 시 graceful 실패)
+        try:
+            camera_manager = get_camera_manager()
+            await camera_manager.initialize()
+            await camera_manager.start_heartbeat_checker()
+            mqtt_client = get_mqtt_client()
+            await mqtt_client.start()
+            logger.info("✅ Vision 모듈 시작 완료 (MQTT 연결)")
+        except Exception as e:
+            logger.warning(f"⚠️ Vision 모듈 시작 실패 (MQTT 브로커 미실행?): {e}")
         
     except Exception as e:
         logger.error(f"❌ 서비스 시작 실패: {e}")
@@ -95,6 +112,13 @@ async def lifespan(app: FastAPI):
     # 종료 시
     # =====================
     logger.info("🛑 애플리케이션 종료 중...")
+    try:
+        mqtt_client = get_mqtt_client()
+        await mqtt_client.stop()
+        camera_manager = get_camera_manager()
+        await camera_manager.stop_heartbeat_checker()
+    except Exception:
+        pass
     await stop_polling_service()
     logger.info("👋 정상 종료 완료")
 
@@ -142,6 +166,7 @@ Web API 기반 모니터링 시스템
     # API 라우터 등록
     app.include_router(api_router, prefix="/api/v1")
     app.include_router(local_router, prefix="/api/v1/local")
+    app.include_router(vision_router, prefix="/api/v1")
 
     # 프론트엔드 정적 파일 서빙
     frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"

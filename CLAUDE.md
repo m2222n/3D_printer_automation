@@ -57,7 +57,7 @@
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | 2주 | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ⬜ 대기 (한솔코에버 협업 확정) |
-| **Phase 4** | OpenMV + YOLO 비전 검사 | 🟢 HIGH | 6주 | ⬜ 대기 (다음 전환 대상) |
+| **Phase 4** | OpenMV + YOLO 비전 검사 | 🔴 URGENT | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 진행 중) |
 
 ---
 
@@ -127,7 +127,7 @@
 ├── factory-pc/                  # 공장 PC 스크립트
 │   └── file_receiver.py         # STL 파일 수신 + 스크린샷 서빙 (포트 8089)
 │
-├── OpenMV/                      # Phase 4: OpenMV 참고 자료 (대표님 제공)
+├── OpenMV/                      # Phase 4: OpenMV 카메라 (참고자료 + 스크립트)
 ├── robot-control/               # Phase 3: 로봇 제어 (미구현)
 ├── vision/                      # Phase 4: 비전 검사 (미구현)
 └── shared/                      # 공유 유틸리티 (미구현)
@@ -511,14 +511,19 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-03-06
-- **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **3/9(월)부터 OpenMV 개발 착수 예정.**
+- **날짜**: 2026-03-09
+- **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **Phase 4 (OpenMV) 개발 착수.**
 - **최근 완료**:
   - ✅ **한솔코에버 인수인계 완료** (3/6)
   - ✅ **CSUN 기념품 점자 교구 키링 ~493개 출력 완료** (3/3~3/4)
   - ✅ Mac 개발 환경 세팅 완료 (SSH 키 + GitHub + 서버 rsync)
   - ✅ AICA A100 세팅 완료 (GPU #7, PyTorch 2.4.1+cu121)
-- **다음 단계**:
-  - ⬜ **OpenMV 개발 착수** (3/9 월요일~, Phase 4)
+  - ✅ GitHub README 다이어그램 정렬 수정 (3/9)
+- **현재 진행**:
+  - 🔄 **Phase 4 서버 인프라 완료** (3/9): Mosquitto MQTT, vision 모듈 7파일, 10 API, 시뮬레이터
+  - 🔄 **OpenMV 카메라 스크립트 작성** (3/9): wash_detector.py, cure_detector.py (샘플 기반)
+  - 다음: OpenMV IDE + AE3 카메라 연결 테스트 -> Edge Impulse 모델 학습
+- **대기 중**:
   - ⬜ Faridh님 + 한솔코에버 서버 세팅
   - ⬜ 아키텍처 + 스크린샷 대표님 전달 (후순위)
+  - ⬜ Grey 프린터 LCD 스크래치 테스트 (대표님 지시)
