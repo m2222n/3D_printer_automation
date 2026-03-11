@@ -158,8 +158,13 @@
 - **해결**: OpenMV 카메라로 완료 감지 (대표님 확정, 02-06)
 
 ### OpenMV 카메라 (세척기/경화기 완료 감지용)
-- **추천 모델**: OpenMV AE3 ($85) - WiFi/BT 내장, NPU, 초저전력
+- **모델**: OpenMV AE3 ($85) - WiFi/BT 내장, NPU, 초저전력
+- **센서**: PAG7936
+- **펌웨어**: 4.8.1 (최신, 2026-03-09 업그레이드)
+- **IDE**: OpenMV IDE v4.7.0 (Intel Mac용, v4.8.x는 ARM 전용)
+- **연결 확인**: USB C-to-C → Mac, helloworld 정상 동작 (FPS 15.6)
 - **통신**: WiFi → MQTT/HTTP → FastAPI 서버
+- **자동 실행**: 카메라 내부 플래시에 `main.py` 저장 시 전원 ON 자동 실행
 - **참고**: https://openmv.io/
 
 ---
@@ -309,7 +314,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | 구분 | 서버 | 외부 포트 | 용도 |
 |------|------|----------|------|
 | 6000 서버 | 192.168.100.50:8085 | 8085 | **개발용** (현재 동작 중 ✅) |
-| 카카오 클라우드 | 미정 | 미정 | **운영용** (추후 이전 예정) |
+| 카카오 클라우드 | 61.109.239.142:22 | 미정 | **운영용** (VM 생성 완료, 세팅 대기) |
 
 ### VPN 네트워크 구조
 ```
@@ -511,7 +516,7 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-03-09
+- **날짜**: 2026-03-10
 - **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **Phase 4 (OpenMV) 개발 착수.**
 - **최근 완료**:
   - ✅ **한솔코에버 인수인계 완료** (3/6)
@@ -520,10 +525,14 @@ POLLING_INTERVAL_SECONDS=15
   - ✅ AICA A100 세팅 완료 (GPU #7, PyTorch 2.4.1+cu121)
   - ✅ GitHub README 다이어그램 정렬 수정 (3/9)
 - **현재 진행**:
-  - 🔄 **Phase 4 서버 인프라 완료** (3/9): Mosquitto MQTT, vision 모듈 7파일, 10 API, 시뮬레이터
-  - 🔄 **OpenMV 카메라 스크립트 작성** (3/9): wash_detector.py, cure_detector.py (샘플 기반)
-  - 다음: OpenMV IDE + AE3 카메라 연결 테스트 -> Edge Impulse 모델 학습
+  - ✅ **Phase 4 서버 인프라 완료** (3/9): Mosquitto MQTT, vision 모듈 7파일, 10 API, 시뮬레이터
+  - ✅ **OpenMV 카메라 스크립트 작성** (3/9): wash_detector.py, cure_detector.py (샘플 기반)
+  - ✅ **OpenMV IDE + AE3 카메라 연결 성공** (3/9): 펌웨어 4.8.1 업그레이드, helloworld 동작 확인
+  - ✅ **AE3 모듈 호환성 전체 통과** (3/9): CSI, WiFi, ml.Model, umqtt.robust 모두 동작
+  - 🔄 WiFi + MQTT End-to-End 테스트 → Edge Impulse 모델 학습
 - **대기 중**:
-  - ⬜ Faridh님 + 한솔코에버 서버 세팅
+  - ✅ **카카오 클라우드 VM 생성 완료** (3/10): Faridh님 세팅, 공장 모니터링용
+  - ✅ **화성시 디지털 가속성장 발표자료 제출** (3/10): v6, 16페이지
+  - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전)
   - ⬜ 아키텍처 + 스크린샷 대표님 전달 (후순위)
   - ⬜ Grey 프린터 LCD 스크래치 테스트 (대표님 지시)
