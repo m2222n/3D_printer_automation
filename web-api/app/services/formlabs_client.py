@@ -307,6 +307,40 @@ class FormlabsAPIClient:
     # 프린트 이력 API
     # ===========================================
     
+    async def _request_full_url(
+        self,
+        method: str,
+        url: str,
+        params: Optional[Dict] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """절대 URL로 API 요청 (페이지네이션 next URL용)"""
+        try:
+            token = await self.auth.get_valid_token()
+            headers = {
+                "Authorization": f"bearer {token}",
+                "Content-Type": "application/json"
+            }
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.request(
+                    method=method, url=url, headers=headers, params=params
+                )
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 401:
+                    await self.auth._refresh_token()
+                    token = await self.auth.get_valid_token()
+                    headers["Authorization"] = f"bearer {token}"
+                    response = await client.request(
+                        method=method, url=url, headers=headers, params=params
+                    )
+                    if response.status_code == 200:
+                        return response.json()
+                logger.error(f"❌ API 오류 [{response.status_code}]: {url}")
+                return None
+        except Exception as e:
+            logger.error(f"❌ 요청 오류: {e}")
+            return None
+
     async def get_print_history(
         self,
         printer_serial: Optional[str] = None,
@@ -316,34 +350,66 @@ class FormlabsAPIClient:
         limit: int = 50
     ) -> List[PrintHistoryItem]:
         """
-        프린트 이력 조회
-        
+        프린트 이력 조회 (페이지네이션 순회)
+
         GET /developer/v1/prints/
         또는
         GET /developer/v1/printers/{serial}/prints/
+
+        Formlabs API는 paginated response를 반환:
+        {"results": [...], "next": "https://...?cursor=..."}
+        next URL을 순회하여 limit까지 모든 이력을 가져옴
         """
         params = {}
-        
+
         if status:
             params["status"] = status.value
         if date_from:
             params["date__gt"] = date_from.isoformat()
         if date_to:
             params["date__lt"] = date_to.isoformat()
-        if limit:
-            params["limit"] = limit
-        
+        # Formlabs API 페이지 크기 (최대값으로 요청하여 왕복 횟수 최소화)
+        params["limit"] = min(limit, 100)
+
         # 특정 프린터 또는 전체
         path = f"/printers/{printer_serial}/prints/" if printer_serial else "/prints/"
-        
+
+        all_raw_items = []
+        max_pages = 20  # 안전장치: 최대 20페이지 (2000건)
+
+        # 첫 페이지
         data = await self._request("GET", path, params=params)
         if not data:
             return []
-        
-        items = data if isinstance(data, list) else data.get("results", [])
-        
+
+        if isinstance(data, list):
+            all_raw_items = data
+        else:
+            all_raw_items.extend(data.get("results", []))
+
+            # next URL 순회
+            next_url = data.get("next")
+            page_count = 1
+            while next_url and len(all_raw_items) < limit and page_count < max_pages:
+                page_count += 1
+                next_data = await self._request_full_url("GET", next_url)
+                if not next_data:
+                    break
+                if isinstance(next_data, list):
+                    all_raw_items.extend(next_data)
+                    break
+                else:
+                    all_raw_items.extend(next_data.get("results", []))
+                    next_url = next_data.get("next")
+
+            if page_count > 1:
+                logger.info(f"📄 페이지네이션: {page_count}페이지 순회, 총 {len(all_raw_items)}건")
+
+        # limit 적용
+        all_raw_items = all_raw_items[:limit]
+
         history = []
-        for item in items:
+        for item in all_raw_items:
             try:
                 # duration 계산
                 started = self._parse_datetime(item.get("print_started_at"))
@@ -390,7 +456,7 @@ class FormlabsAPIClient:
             except Exception as e:
                 logger.error(f"이력 파싱 오류: {e}")
                 continue
-        
+
         return history
     
     # ===========================================

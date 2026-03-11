@@ -5,7 +5,8 @@
  * - 현재 진행 중인 작업은 Now 선까지 연장
  */
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { getPrintHistory } from '../services/api';
 import type { PrinterSummary, PrintHistoryItem } from '../types/printer';
 
 interface PrinterTimelineProps {
@@ -64,6 +65,41 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
   const [chartWidth, setChartWidth] = useState(600);
   const [dayOffset, setDayOffset] = useState(0); // 0 = 오늘, -1 = 어제, ...
   const [showCalendar, setShowCalendar] = useState(false);
+  const [localHistoryItems, setLocalHistoryItems] = useState<PrintHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // 과거 날짜일 때 해당 날짜의 이력을 직접 fetch
+  const loadHistoryForDate = useCallback(async (offset: number) => {
+    if (offset === 0) {
+      // 오늘이면 props로 받은 데이터 사용
+      setLocalHistoryItems([]);
+      return;
+    }
+    setIsLoadingHistory(true);
+    try {
+      const dateFrom = new Date();
+      dateFrom.setDate(dateFrom.getDate() + offset);
+      dateFrom.setHours(0, 0, 0, 0);
+      const dateTo = new Date(dateFrom);
+      dateTo.setDate(dateTo.getDate() + 1);
+      const res = await getPrintHistory(1, 200, {
+        date_from: dateFrom.toISOString(),
+        date_to: dateTo.toISOString(),
+      });
+      setLocalHistoryItems(res.items);
+    } catch {
+      setLocalHistoryItems([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistoryForDate(dayOffset);
+  }, [dayOffset, loadHistoryForDate]);
+
+  // 실제 사용할 이력: 오늘이면 props, 과거면 직접 fetch한 데이터
+  const effectiveHistoryItems = dayOffset === 0 ? historyItems : localHistoryItems;
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
@@ -94,10 +130,38 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
     return d;
   }, [dayOffset]);
 
+  // 출력 기록이 있는 날짜 세트 (달력 마킹용)
+  const [printDates, setPrintDates] = useState<Set<string>>(new Set());
+
+  // 달력이 열리거나 월이 바뀔 때 해당 월의 출력 기록 fetch
+  const loadPrintDatesForMonth = useCallback(async (year: number, month: number) => {
+    try {
+      const dateFrom = new Date(year, month, 1);
+      const dateTo = new Date(year, month + 1, 1);
+      const res = await getPrintHistory(1, 500, {
+        date_from: dateFrom.toISOString(),
+        date_to: dateTo.toISOString(),
+      });
+      const dates = new Set<string>();
+      for (const item of res.items) {
+        if (item.started_at) {
+          const d = new Date(item.started_at);
+          dates.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+        }
+      }
+      setPrintDates(dates);
+    } catch {
+      setPrintDates(new Set());
+    }
+  }, []);
+
   // 달력 열 때 해당 월로 이동
   const openCalendar = () => {
     setCalendarMonth({ year: selectedDate.getFullYear(), month: selectedDate.getMonth() });
-    setShowCalendar((v) => !v);
+    setShowCalendar((v) => {
+      if (!v) loadPrintDatesForMonth(selectedDate.getFullYear(), selectedDate.getMonth());
+      return !v;
+    });
   };
 
   // 달력에서 날짜 선택
@@ -163,7 +227,7 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
     }
 
     // 이력 데이터에서 바 생성
-    for (const item of historyItems) {
+    for (const item of effectiveHistoryItems) {
       if (!item.started_at) continue;
 
       const start = new Date(item.started_at);
@@ -227,7 +291,7 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
     }
 
     return result;
-  }, [printers, historyItems, rangeStart, rangeEnd, chartWidth, now]);
+  }, [printers, effectiveHistoryItems, rangeStart, rangeEnd, chartWidth, now]);
 
   // Now 수직선 위치
   const nowX = isToday ? timeToX(now) : null;
@@ -279,7 +343,11 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
                 month={calendarMonth.month}
                 selectedDate={selectedDate}
                 onSelect={selectDate}
-                onMonthChange={(year, month) => setCalendarMonth({ year, month })}
+                onMonthChange={(year, month) => {
+                  setCalendarMonth({ year, month });
+                  loadPrintDatesForMonth(year, month);
+                }}
+                printDates={printDates}
               />
             )}
           </div>
@@ -306,7 +374,12 @@ export function PrinterTimeline({ printers, historyItems, onPrinterClick }: Prin
       </div>
 
       {/* 차트 영역 */}
-      <div className="px-4 pb-4 pt-2 overflow-x-auto">
+      <div className="px-4 pb-4 pt-2 overflow-x-auto relative">
+        {isLoadingHistory && (
+          <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          </div>
+        )}
         <div className="flex" style={{ minWidth: LABEL_WIDTH + chartWidth }}>
           {/* 프린터 이름 열 */}
           <div className="flex-shrink-0" style={{ width: LABEL_WIDTH }}>
@@ -527,9 +600,10 @@ interface MiniCalendarProps {
   selectedDate: Date;
   onSelect: (date: Date) => void;
   onMonthChange: (year: number, month: number) => void;
+  printDates?: Set<string>;
 }
 
-function MiniCalendar({ year, month, selectedDate, onSelect, onMonthChange }: MiniCalendarProps) {
+function MiniCalendar({ year, month, selectedDate, onSelect, onMonthChange, printDates }: MiniCalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -610,13 +684,14 @@ function MiniCalendar({ year, month, selectedDate, onSelect, onMonthChange }: Mi
           const isFuture = date > today;
           const isToday = date.getTime() === today.getTime();
           const isSelected = date.getTime() === selected.getTime();
+          const hasPrints = printDates?.has(`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`);
 
           return (
             <button
               key={date.getDate()}
               onClick={() => !isFuture && onSelect(date)}
               disabled={isFuture}
-              className={`w-8 h-8 mx-auto rounded-full text-xs font-medium transition-colors ${
+              className={`relative w-8 h-8 mx-auto rounded-full text-xs font-medium transition-colors ${
                 isSelected
                   ? 'bg-blue-500 text-white'
                   : isToday
@@ -627,6 +702,11 @@ function MiniCalendar({ year, month, selectedDate, onSelect, onMonthChange }: Mi
               }`}
             >
               {date.getDate()}
+              {hasPrints && (
+                <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${
+                  isSelected ? 'bg-white' : 'bg-blue-500'
+                }`} />
+              )}
             </button>
           );
         })}

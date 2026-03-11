@@ -160,28 +160,30 @@ async def get_print_history(
     date_from: Optional[datetime] = Query(None, description="시작 날짜 (ISO 8601)"),
     date_to: Optional[datetime] = Query(None, description="종료 날짜 (ISO 8601)"),
     page: int = Query(1, ge=1, description="페이지 번호"),
-    page_size: int = Query(20, ge=1, le=100, description="페이지당 항목 수")
+    page_size: int = Query(20, ge=1, le=500, description="페이지당 항목 수")
 ):
     """프린트 이력 조회"""
     try:
         client = await get_formlabs_client()
         
-        # 전체 또는 특정 프린터 이력 조회
+        # Formlabs API에서 전체 이력 조회 (페이지네이션 순회)
         items = await client.get_print_history(
             printer_serial=printer_serial,
             status=status,
             date_from=date_from,
             date_to=date_to,
-            limit=page_size * page  # 간단한 페이지네이션
+            limit=page_size * page
         )
-        
-        # 페이지네이션 적용
+
+        total_count = len(items)
+
+        # 서버 측 페이지네이션 적용
         start_idx = (page - 1) * page_size
         paginated_items = items[start_idx:start_idx + page_size]
-        
+
         return PrintHistoryResponse(
             items=paginated_items,
-            total_count=len(items),
+            total_count=total_count,
             page=page,
             page_size=page_size
         )

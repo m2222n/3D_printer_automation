@@ -224,3 +224,5 @@ OpenMV/.DS_Store
 OpenMV/*.zip
 OpenMV/*.exe
 OpenMV/firmware_*/
+
+PROJECT_STATUS_*.md
