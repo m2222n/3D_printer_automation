@@ -57,7 +57,7 @@
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | 2주 | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ⬜ 대기 (한솔코에버 협업 확정) |
-| **Phase 4** | OpenMV + YOLO 비전 검사 | 🔴 URGENT | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 진행 중) |
+| **Phase 4** | OpenMV + YOLO 비전 검사 | 🔴 URGENT | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공) |
 
 ---
 
@@ -163,7 +163,8 @@
 - **펌웨어**: 4.8.1 (최신, 2026-03-09 업그레이드)
 - **IDE**: OpenMV IDE v4.7.0 (Intel Mac용, v4.8.x는 ARM 전용)
 - **연결 확인**: USB C-to-C → Mac, helloworld 정상 동작 (FPS 15.6)
-- **통신**: WiFi → MQTT/HTTP → FastAPI 서버
+- **WiFi**: `OrinuAI_2.4GHz` (5GHz 미지원) → 192.168.100.x 대역 (서버와 동일)
+- **통신**: WiFi → MQTT (`192.168.100.29:1883`) → FastAPI 서버 ✅ E2E 통신 확인 (3/12)
 - **자동 실행**: 카메라 내부 플래시에 `main.py` 저장 시 전원 ON 자동 실행
 - **참고**: https://openmv.io/
 
@@ -516,27 +517,30 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-03-11
-- **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **Phase 4 (OpenMV) 개발 착수.**
-- **최근 완료**:
+- **날짜**: 2026-03-12
+- **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **Phase 4 (OpenMV) 개발 진행 중 — WiFi+MQTT E2E 통신 성공.**
+- **최근 완료 (3/12)**:
+  - ✅ **WiFi + MQTT E2E 통신 성공**: OpenMV AE3 → `OrinuAI_2.4GHz` WiFi (192.168.100.63) → Mosquitto (192.168.100.29:1883) 메시지 발행 확인
+  - ✅ **네트워크 경로 해결**: 포트포워딩 불필요, `OrinuAI_2.4GHz` WiFi가 서버와 같은 대역 (5GHz는 AE3 미지원)
+- **최근 완료 (3/11)**:
+  - ✅ **Formlabs API 페이지네이션 구현**: `formlabs_client.py`에서 `next` URL 순회 (최대 20페이지/2000건)
+  - ✅ **타임라인 날짜별 이력 동적 fetch + 달력 출력 기록 마킹**
+  - ✅ **OpenMV 네트워크 조사 + config.py 설정 + 테스트 스크립트 작성**
+  - ✅ **Edge Impulse 학습 이미지 캡처 스크립트 작성** (`capture_training_images.py`)
+- **최근 완료 (이전)**:
   - ✅ **화성시 디지털 가속성장 발표자료 제출** (3/10): v6, 16페이지, 대본+Q&A 8문항
   - ✅ **카카오 클라우드 VM 생성 완료** (3/10): Faridh님 세팅, 공장 모니터링용
   - ✅ **Phase 4 서버 인프라 완료** (3/9): Mosquitto MQTT, vision 모듈 7파일, 10 API
   - ✅ **OpenMV AE3 카메라 연결 + 모듈 호환성 전체 통과** (3/9)
   - ✅ **한솔코에버 인수인계 완료** (3/6)
-  - ✅ **CSUN 기념품 점자 교구 키링 ~493개 출력 완료** (3/3~3/4)
 - **현재 진행**:
-  - 🔄 **화성시 디지털 가속성장 발표평가 준비** (3/12 14:20, 동탄분원, 위임발표)
-  - 🔄 WiFi + MQTT End-to-End 테스트 → Edge Impulse 모델 학습
+  - 🔄 **화성시 디지털 가속성장 발표평가** (3/12 14:20, 동탄분원, 위임발표)
+  - 🔄 Edge Impulse 학습 이미지 촬영 — 월요일 공장 방문 시
 - **한솔코에버 설계서 수령** (3/11):
   - `플릭던 자동화 셀 제어 프로그램 설계서` (Ver1.0, 2026-03-06)
   - SequenceThread 기반 Queue 아키텍처, Automation/Automation_Manual 탭 추가
   - 로봇 1대로 표기 (우리 계획은 2대) → 확인 필요
   - 우리 API와의 연동 방식 미명시 → 한솔 측 확인 필요
-- **최근 완료 (3/11)**:
-  - ✅ **Formlabs API 페이지네이션 구현**: `formlabs_client.py`에서 `next` URL 순회 (최대 20페이지/2000건), 과거 이력 전체 조회 가능
-  - ✅ **타임라인 날짜별 이력 동적 fetch**: 과거 날짜 선택 시 해당 24시간 이력을 서버에서 fetch
-  - ✅ **타임라인 달력 출력 기록 마킹**: 출력 기록 있는 날짜에 파란색 도트 표시
 - **대기 중**:
   - ⬜ WireGuard VPN 재연결 (한솔 로봇 작업으로 VPN 끔 상태)
   - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전)

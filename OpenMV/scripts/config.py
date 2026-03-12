@@ -5,14 +5,14 @@
 # ===========================================
 # WiFi 설정
 # ===========================================
-WIFI_SSID = "FACTORY_WIFI"
-WIFI_PASSWORD = "factory_password"
-WIFI_TIMEOUT_MS = 10000
+WIFI_SSID = "OrinuAI_2.4GHz"    # 5GHz는 AE3 미지원, 2.4GHz만 사용
+WIFI_PASSWORD = "OrinuAI2026!"
+WIFI_TIMEOUT_MS = 15000
 
 # ===========================================
 # MQTT 설정
 # ===========================================
-MQTT_BROKER = "192.168.219.xxx"  # 서버 IP (6000 서버)
+MQTT_BROKER = "192.168.100.29"   # 서버 내부 IP (OrinuAI WiFi → 같은 네트워크)
 MQTT_PORT = 1883
 MQTT_KEEPALIVE = 60
 

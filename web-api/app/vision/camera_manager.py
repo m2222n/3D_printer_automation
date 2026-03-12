@@ -82,7 +82,10 @@ class CameraManager:
                 with get_local_db_session() as db:
                     online_cameras = db.query(VisionCamera).filter_by(is_online=1).all()
                     for cam in online_cameras:
-                        if cam.last_seen and (now - cam.last_seen).total_seconds() > timeout:
+                        last_seen = cam.last_seen
+                        if last_seen and last_seen.tzinfo is None:
+                            last_seen = last_seen.replace(tzinfo=KST)
+                        if last_seen and (now - last_seen).total_seconds() > timeout:
                             logger.warning(f"카메라 {cam.camera_id} 하트비트 타임아웃 -> offline")
                             old_status = cam.status
                             cam.status = "offline"
