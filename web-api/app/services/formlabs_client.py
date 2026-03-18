@@ -563,6 +563,8 @@ class FormlabsAPIClient:
         resin_ml = None
         resin_percent = None
         is_resin_low = False
+        is_cartridge_missing = printer.cartridge_status is None
+        is_tank_missing = printer.tank_status is None
         cartridge_material_code = None
         cartridge_material_name = None
         if printer.cartridge_status:
@@ -594,6 +596,8 @@ class FormlabsAPIClient:
             resin_remaining_ml=resin_ml,
             resin_remaining_percent=resin_percent,
             is_resin_low=is_resin_low,
+            is_cartridge_missing=is_cartridge_missing,
+            is_tank_missing=is_tank_missing,
             cartridge_material_code=cartridge_material_code,
             cartridge_material_name=cartridge_material_name,
             machine_type=printer.machine_type,

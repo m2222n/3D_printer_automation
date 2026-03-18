@@ -133,6 +133,8 @@ export interface PrinterSummary {
   resin_remaining_ml: number | null;
   resin_remaining_percent: number | null;
   is_resin_low: boolean;
+  is_cartridge_missing: boolean;
+  is_tank_missing: boolean;
   cartridge_material_code: string | null;
   cartridge_material_name: string | null;
   machine_type: string | null;

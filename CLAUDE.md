@@ -529,8 +529,11 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-03-17
+- **날짜**: 2026-03-18
 - **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **Phase 4 (OpenMV) 개발 진행 중 — 학습 이미지 촬영 중 (Mac 직접 저장 방식으로 전환).**
+- **최근 진행 (3/18)**:
+  - ✅ **대시보드 소모품 표시 개선 (PreForm 스타일)**: PrinterCard에 레진 이름(White V5 등) + 파란색 잔량 바 + 카트리지 Missing 빨간 표시 추가
+  - 백엔드 `is_cartridge_missing`, `is_tank_missing` 필드 추가, PrinterInfoModal Missing 빨간색 강조
 - **최근 진행 (3/17)**:
   - ✅ **프린터 4대 정상 복구**: 공장 방문하여 프린터 재부팅 → WiFi + Cloud 자동 재연결, 4대 모두 IDLE 상태 확인
   - 🔄 **카카오 클라우드 도메인 결정 중**: 대표님께 서브도메인 제안 (예: `factory.orinuai.com`), 보유 도메인 목록 확인 대기

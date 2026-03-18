@@ -170,32 +170,49 @@ export default function PrinterCard({ printer, onNameClick }: PrinterCardProps) 
           </div>
         )}
 
-        {/* 레진 잔량 */}
-        <div className="pt-2 border-t border-gray-200/50">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">레진 잔량</span>
-            <span className={`font-medium ${printer.is_resin_low ? 'text-red-600' : 'text-gray-900'}`}>
-              {formatResinAmount(printer.resin_remaining_ml)}
-              {printer.resin_remaining_percent !== null && (
-                <span className="text-gray-400 ml-1">
-                  ({printer.resin_remaining_percent.toFixed(0)}%)
+        {/* 소모품 정보 (PreForm 스타일) */}
+        <div className="pt-2 border-t border-gray-200/50 space-y-2">
+          {/* 레진 탱크 */}
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 flex-shrink-0 text-blue-500" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="4" y="2" width="8" height="12" rx="1.5" opacity="0.2" />
+              <rect x="4" y={2 + 12 * (1 - (printer.resin_remaining_percent ?? 0) / 100)} width="8" height={12 * ((printer.resin_remaining_percent ?? 0) / 100)} rx="0" />
+              <rect x="4" y="2" width="8" height="12" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className={`text-sm font-medium truncate ${printer.is_tank_missing ? 'text-gray-400' : 'text-gray-800'}`}>
+                  {printer.is_tank_missing
+                    ? '탱크 없음'
+                    : printer.cartridge_material_name || printer.cartridge_material_code || '레진 정보 없음'}
                 </span>
+                {printer.resin_remaining_ml !== null && !printer.is_cartridge_missing && (
+                  <span className={`text-xs ml-2 flex-shrink-0 ${printer.is_resin_low ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                    {formatResinAmount(printer.resin_remaining_ml)}
+                  </span>
+                )}
+              </div>
+              {/* 잔량 바 (PreForm 스타일 — 파란색) */}
+              {printer.resin_remaining_percent !== null && !printer.is_cartridge_missing && (
+                <div className="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      printer.is_resin_low ? 'bg-red-500' : 'bg-blue-500'
+                    }`}
+                    style={{ width: `${printer.resin_remaining_percent}%` }}
+                  />
+                </div>
               )}
-              {printer.is_resin_low && (
-                <span className="ml-1 text-red-500">⚠</span>
-              )}
-            </span>
+            </div>
           </div>
 
-          {/* 레진 잔량 바 */}
-          {printer.resin_remaining_percent !== null && (
-            <div className="mt-1.5 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  printer.is_resin_low ? 'bg-red-500' : 'bg-emerald-500'
-                }`}
-                style={{ width: `${printer.resin_remaining_percent}%` }}
-              />
+          {/* 카트리지 상태 */}
+          {printer.is_cartridge_missing && (
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 flex-shrink-0 text-red-500" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M5 1.5A1.5 1.5 0 016.5 0h3A1.5 1.5 0 0111 1.5v1a.5.5 0 01-.5.5h-5a.5.5 0 01-.5-.5v-1zM4 4h8v9.5a2.5 2.5 0 01-2.5 2.5h-3A2.5 2.5 0 014 13.5V4z" />
+              </svg>
+              <span className="text-sm font-medium text-red-600">Missing</span>
             </div>
           )}
         </div>

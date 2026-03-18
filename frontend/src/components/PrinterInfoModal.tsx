@@ -253,7 +253,7 @@ function DetailsTab({ printer }: { printer: PrinterSummary }) {
           icon={<IconTank />}
           label="Tank"
           value={printer.tank_serial ? printer.tank_serial : 'Missing'}
-          valueClass={!printer.tank_serial ? 'text-gray-400 italic' : undefined}
+          valueClass={!printer.tank_serial ? 'text-red-500 font-medium' : undefined}
         />
 
         {/* Cartridge (특별 레이아웃: 레진 이름 + 잔량 바) */}
@@ -282,7 +282,7 @@ function DetailsTab({ printer }: { printer: PrinterSummary }) {
                 )}
               </>
             ) : (
-              <span className="text-sm text-gray-400 italic">Missing</span>
+              <span className="text-sm text-red-500 font-medium">Missing</span>
             )}
           </div>
         </div>

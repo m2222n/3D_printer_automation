@@ -223,6 +223,8 @@ class PrinterSummary(BaseModel):
     resin_remaining_ml: Optional[float] = None
     resin_remaining_percent: Optional[float] = None
     is_resin_low: bool = False
+    is_cartridge_missing: bool = False  # 카트리지 미장착
+    is_tank_missing: bool = False  # 레진 탱크 미장착
     cartridge_material_code: Optional[str] = None
     cartridge_material_name: Optional[str] = None
 
