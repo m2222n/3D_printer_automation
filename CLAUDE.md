@@ -57,7 +57,7 @@
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | 2주 | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ⬜ 대기 (한솔코에버 협업 확정) |
-| **Phase 4** | OpenMV + YOLO 비전 검사 | 🔴 URGENT | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공) |
+| **Phase 4** | OpenMV + YOLO 비전 검사 | 🔴 URGENT | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) |
 
 ---
 
@@ -322,7 +322,8 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 ```
 브라우저 → http://106.244.6.242:8085 → 6000 서버 (개발) → VPN → 공장 PC → 프린터 4대
 ```
-> ⚠️ VPN(WireGuard)이 로봇 네트워크(192.168.100.x)와 충돌 → 카카오 클라우드 + Cloudflare Tunnel로 전환 예정
+> ✅ VPN-로봇 충돌 해결 (3/18): WireGuard `AllowedIPs`에서 `192.168.100.0/24` 제거 → VPN + 로봇 동시 운용 가능
+> 🔄 중기: 카카오 클라우드 + Cloudflare Tunnel로 전환 예정 (대표님 도메인 답변 대기)
 
 ### 카카오 클라우드 전환 계획 (파리드님 제안, 3/16)
 ```
@@ -330,8 +331,9 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 ```
 - **배경**: 대표님 2/26 지시 (5090 VM 폐기 → 카카오 클라우드 이전) + VPN-로봇 충돌 문제
 - **장점**: VPN 제거 → 로봇 네트워크 충돌 해결, outbound 터널이라 방화벽/포트포워딩 불필요, 도메인+HTTPS 자동
-- **필요 사항**: 도메인 구매 (대표님 승인), Cloudflare 설정, 공장 PC에 Tunnel 설치, 백엔드 마이그레이션
-- **미해결**: 공장 PC가 프린터(219.x)와 로봇(100.x) 양쪽 네트워크 동시 접근 방법 (NIC 추가 또는 라우팅 설정 필요)
+- **도메인 확정 (3/18)**: `lab.flickdone.com` (flickdone.com 서브도메인, 대표님 지시). 향후 flickdone.com을 제조공정 자동화 브랜드로 사용 예정
+- **필요 사항**: Cloudflare 설정 (파리드님), 공장 PC에 Tunnel 설치, 백엔드 마이그레이션
+- ~~**미해결**: 공장 PC가 프린터(219.x)와 로봇(100.x) 양쪽 네트워크 동시 접근~~ → ✅ WireGuard AllowedIPs 수정으로 해결 (3/18)
 - **주의**: 데모 시연 3/27~31 — 인프라 전환 일정 신중히 결정 필요
 
 ### 공장 PC 정보
@@ -534,6 +536,10 @@ POLLING_INTERVAL_SECONDS=15
 - **최근 진행 (3/18)**:
   - ✅ **대시보드 소모품 표시 개선 (PreForm 스타일)**: PrinterCard에 레진 이름(White V5 등) + 파란색 잔량 바 + 카트리지 Missing 빨간 표시 추가
   - 백엔드 `is_cartridge_missing`, `is_tank_missing` 필드 추가, PrinterInfoModal Missing 빨간색 강조
+  - ✅ **WireGuard VPN ↔ 로봇 네트워크 충돌 해결**: `AllowedIPs`에서 `192.168.100.0/24` 제거 → VPN + 로봇 동시 운용 가능 (AnyDesk 원격)
+  - ✅ **학습 이미지 프레임 추출**: 핸드폰 동영상 6개 → 350장 추출 (240x240, 라벨 6종)
+  - 한솔(기원님)에게 VPN 해결 전달 → 금요일(3/20) 현장 테스트 예정
+  - ✅ **도메인 확정**: `lab.flickdone.com` (대표님 지시, flickdone.com 서브도메인)
 - **최근 진행 (3/17)**:
   - ✅ **프린터 4대 정상 복구**: 공장 방문하여 프린터 재부팅 → WiFi + Cloud 자동 재연결, 4대 모두 IDLE 상태 확인
   - 🔄 **카카오 클라우드 도메인 결정 중**: 대표님께 서브도메인 제안 (예: `factory.orinuai.com`), 보유 도메인 목록 확인 대기
@@ -557,16 +563,17 @@ POLLING_INTERVAL_SECONDS=15
   - ✅ **OpenMV AE3 카메라 연결 + 모듈 호환성 전체 통과** (3/9)
   - ✅ **한솔코에버 인수인계 완료** (3/6)
 - **현재 진행**:
-  - 🔄 Edge Impulse 학습 이미지 촬영 — OpenMV IDE 데이터세트 편집기로 Mac 직접 저장 진행 중
-  - 🔄 카카오 클라우드 + Cloudflare Tunnel 도메인 결정 — 대표님 보유 도메인 목록 확인 대기
-  - 🔄 공장 네트워크 구성 정리 — 로봇(100.x) + 프린터(219.x) + VPN 동시 운용 방안 → 파리드님 협업 필요
+  - 🔴 **[신규] 3D 비전 빈피킹** (대표님 3/18 지시): 공장 로봇에 3D비전 달아서 빈피킹. OpenMV보다 우선. 문서 손상 → 재전송 대기 중
+  - 🔄 추출 이미지 수동 정리 (라벨 오분류·노이즈 제거) → Edge Impulse 모델 학습
+  - 🔄 OpenMV 카메라 캡처 → 저장 테스트 (사무실)
+  - 🔄 카카오 클라우드 + Cloudflare Tunnel 세팅 — 도메인 `lab.flickdone.com` 확정, 파리드님에게 요청 예정
 - **한솔코에버 설계서 수령** (3/11):
   - `플릭던 자동화 셀 제어 프로그램 설계서` (Ver1.0, 2026-03-06)
   - SequenceThread 기반 Queue 아키텍처, Automation/Automation_Manual 탭 추가
   - 로봇 1대로 표기 (우리 계획은 2대) → 확인 필요
   - 우리 API와의 연동 방식 미명시 → 한솔 측 확인 필요
 - **대기 중**:
-  - ⬜ WireGuard VPN + 로봇 네트워크 동시 운용 방안 (파리드님 협업 → VPN 라우팅 분리 또는 NIC 추가)
-  - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전)
+  - ~~⬜ WireGuard VPN + 로봇 네트워크 동시 운용 방안~~ → ✅ AllowedIPs 수정으로 해결 (3/18)
+  - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 확정 완료, 파리드님 세팅 요청 후 진행
   - ⬜ 아키텍처 + 스크린샷 대표님 전달 (후순위)
   - ⬜ Grey 프린터 LCD 스크래치 테스트 (대표님 지시)
