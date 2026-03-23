@@ -145,9 +145,58 @@ print("""
 
   ■ Blaze-112 출력 해상도
     - 640 × 480 @ 30fps (최대)
-    - Depth: uint16, 밀리미터 단위 (0~65535mm)
+    - Depth: uint16, 밀리미터 단위 (0=무효)
     - 유효 범위: 300mm ~ 10,000mm (빈피킹: ~500mm에서 사용)
-    - 정확도: ±4mm @ 1m (가까울수록 좋음)
+
+  ■ ComponentSelector로 출력 데이터 선택 (⭐ Blaze 전용)
+    ```python
+    camera.Open()
+    # Range (depth) 활성화 — Coord3D_C16 (uint16 mm) 또는 Coord3D_ABC32f (XYZ float)
+    camera.ComponentSelector.Value = "Range"
+    camera.ComponentEnable.Value = True
+    camera.PixelFormat.Value = "Coord3D_C16"  # depth map (기본)
+    # camera.PixelFormat.Value = "Coord3D_ABC32f"  # 직접 XYZ (카메라 내부 캘리브 사용)
+
+    camera.ComponentSelector.Value = "Intensity"
+    camera.ComponentEnable.Value = True
+
+    camera.ComponentSelector.Value = "Confidence"
+    camera.ComponentEnable.Value = True
+    ```
+
+  ■ Coord3D_ABC32f: 카메라가 직접 XYZ 포인트 클라우드 출력
+    ```python
+    # Coord3D_ABC32f 사용 시 → (480, 640, 3) float32, mm 단위
+    xyz = comp.Array  # shape (480, 640, 3)
+    points = xyz.reshape(-1, 3)  # (307200, 3)
+    valid = np.any(points != 0, axis=1)
+    points = points[valid] / 1000.0  # mm → m
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    # → Intrinsic 변환 불필요! 카메라가 이미 계산해줌
+    ```
+
+  ■ 거리별 depth 정밀도 (빈피킹 핵심!)
+    ┌──────────┬─────────────┬───────────────────┐
+    │ 거리     │ 정밀도(1σ)  │ 비고              │
+    ├──────────┼─────────────┼───────────────────┤
+    │ 0.5m     │ ~1.5mm      │ ← 빈피킹 권장     │
+    │ 1.0m     │ ~3mm        │ 일반적            │
+    │ 2.0m     │ ~10mm       │ ShortRange 한계   │
+    │ 5.0m     │ ~50mm       │ LongRange         │
+    └──────────┴─────────────┴───────────────────┘
+
+  ■ HDR 모드 (광택 SLA 레진 부품에 유용)
+    ```python
+    camera.HDRMode.Value = "SpatialHDR"  # 다중 노출 합성
+    # → 반사율 차이 큰 부품 (Grey=무광, Clear=광택)에서 depth 품질 향상
+    ```
+
+  ■ ⚠️ Clear V5 레진 경고
+    - ToF는 투명/반투명 재료에서 실패 (빛이 통과)
+    - Clear 레진: depth 리턴 없거나 노이즈 매우 높음
+    - 대안: 스프레이 코팅, 또는 ace2 RGB로 2D 폴백
+    - Grey/White/Flexible(불투명)은 정상 동작
 """)
 
 
