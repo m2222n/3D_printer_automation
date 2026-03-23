@@ -57,7 +57,8 @@
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | 2주 | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ⬜ 대기 (한솔코에버 협업 확정) |
-| **Phase 4** | OpenMV + YOLO 비전 검사 | 🔴 URGENT | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) |
+| **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W0 거의 완료 — 튜토리얼 11개 + 실전 코드 3개 전체 PASS (부품당 0.33초/인식률 100%), **STL 수령만 대기** |
 
 ---
 
@@ -334,7 +335,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 - **도메인 확정 (3/18)**: `lab.flickdone.com` (flickdone.com 서브도메인, 대표님 지시). 향후 flickdone.com을 제조공정 자동화 브랜드로 사용 예정
 - **필요 사항**: Cloudflare 설정 (파리드님), 공장 PC에 Tunnel 설치, 백엔드 마이그레이션
 - ~~**미해결**: 공장 PC가 프린터(219.x)와 로봇(100.x) 양쪽 네트워크 동시 접근~~ → ✅ WireGuard AllowedIPs 수정으로 해결 (3/18)
-- **주의**: 데모 시연 3/27~31 — 인프라 전환 일정 신중히 결정 필요
+- ~~**주의**: 데모 시연 3/27~31~~ → **데모 시연 3/20 완료**
 
 ### 공장 PC 정보
 | 항목 | 값 |
@@ -347,11 +348,16 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ---
 
-## Phase 3: HCR 로봇 연동 ⬜ 대기
+## Phase 3: HCR 로봇 연동 🔄 한솔코에버 진행 중
 
-- **프로토콜**: Modbus TCP (포트 502), pymodbus
+- **프로토콜**: ~~TCP/IP Socket~~ → **Modbus TCP** 전환 완료 (포트 502), pymodbus
 - **로봇**: HCR-12 (빌드플레이트 교체, 세척기 투입) + HCR-10L (후가공, 제품 이송)
 - **한솔코에버 협업**: `hansol-dev` 브랜치에서 작업
+- **현재 상태 (3/23 한솔 김기원 주임)**:
+  - 프린터 1대 시나리오까지 원활하게 동작
+  - 자동화 부분 = Python 단일 thread로 구현
+  - 수주 단위 장기 운영 테스트는 아직 (자동화 라인 특성상 수주 돌려봐야 이슈 파악)
+  - 3/27 최종 시연 예정
 
 ---
 
@@ -378,6 +384,72 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 - **OpenMV**: AE3 ($85), Edge Impulse (Classification)
 - **학습**: 최소 400장+ (상태별 100장)
 - **설계 문서**: `리서치문서6_OpenMV카메라_리서치.pdf`, `OpenMV_개발설계서.pdf`
+
+---
+
+## Phase 5: 3D 빈피킹 비전 시스템 🔄 W0 진행 중
+
+> **문서**: ORINU-DEV-2026-002 (구본경 대표, 2026-03-18)
+> **개발**: Mac (Intel) + venv binpick (Python 3.12 + Open3D 0.19.0) — 6000 서버 Open3D 불가 (AVX2 미지원)
+> **파이프라인**: L1 영상취득 → L2 전처리 → L3 DBSCAN분할 → L4 FPFH+RANSAC+ICP → L5 그래스프 → L6 Modbus
+
+### W0 학습 현황 (2026-03-23 완료)
+
+| 구분 | 파일 수 | 줄 수 | 상태 |
+|------|--------|-------|------|
+| 논문 리뷰 | 3편 (FPFH, ICP, Open3D) | — | ✅ 완료 |
+| 튜토리얼 (`tutorials/01~11`) | 11개 | 4,247줄 | ✅ 전체 PASS |
+| 실전 코드 (`src/`) | 3개 | 1,902줄 | ✅ 전체 PASS |
+| **합계** | **14개** | **6,149줄** | **✅** |
+
+### 핵심 성과 수치
+
+| 지표 | 결과 | 목표 | 판정 |
+|------|------|------|------|
+| 부품당 매칭 시간 | **0.33초** | 2.0초 | ✅ 6배 여유 |
+| 인식률 | **100%** (시뮬, 합성 3종) | 85% | ✅ |
+| SizeFilter 효과 | 30종→2.2종 (93% 절감) | — | ✅ |
+| Blaze-112 스펙 노이즈 (0.3mm) | fitness 1.0 | — | ✅ 안전 |
+| Clear V5 최악 (40% 누락+2mm) | fitness 0.70 | — | ✅ OK |
+| 핸드-아이 캘리브레이션 | 회전 0.05°, 이동 1mm | — | ✅ |
+
+### 레진별 파라미터 추천
+
+| 레진 | voxel | Robust kernel | 비고 |
+|------|-------|--------------|------|
+| Grey/White | 2mm | Tukey 1mm | 표준 파라미터 |
+| Clear | 3~4mm | SOR + 멀티스케일 | 반투명 → ToF 노이즈 큼 |
+| Flexible | 2mm | Huber 1.5mm | 변형 허용 |
+
+### 구현 코드 목록
+
+| 파일 | 줄 | 역할 |
+|------|-----|------|
+| `tutorials/01_registration_pipeline.py` | 321 | FPFH+RANSAC+ICP 기본 |
+| `tutorials/02_stl_to_reference.py` | 223 | STL→레퍼런스+FPFH 캐싱 |
+| `tutorials/03_dbscan_segmentation.py` | 273 | DBSCAN 분할 |
+| `tutorials/04_fgr_fast_global_registration.py` | 385 | FGR vs RANSAC |
+| `tutorials/05_multiscale_icp.py` | 438 | 다중 스케일 ICP |
+| `tutorials/06_registration_confidence.py` | 476 | 신뢰도 평가 |
+| `tutorials/07_full_binpicking_simulation.py` | 599 | 전체 파이프라인 시뮬 |
+| `tutorials/08_colored_icp.py` | 337 | Colored ICP |
+| `tutorials/09_noise_robustness.py` | 481 | 노이즈 강건성 |
+| `tutorials/10_pypylon_api_study.py` | 714 | pypylon API + Blaze-112 스펙 |
+| `tutorials/11_noise_robustness_advanced.py` | 590 | 노이즈 심화 (Clear 대응) |
+| `src/size_filter.py` | 441 | 크기 사전 필터 (30→2.2종) |
+| `src/pose_estimator.py` | 619 | 1:N 매칭 루프 |
+| `src/hand_eye_calibration.py` | 842 | 핸드-아이 캘리브레이션 |
+
+### 남은 작업
+
+| 작업 | 블로커 | 예상 시점 |
+|------|--------|----------|
+| **30종 STL 수령** | 대표님 전달 대기 | ASAP |
+| STL→레퍼런스 일괄 생성 + FPFH 캐싱 | STL 필요 | STL 수령 즉시 |
+| W3-4: 전처리 + DBSCAN (시뮬) | — | 4/7~4/18 |
+| W5-6: 인식 + 자세 추정 (실전) | — | 4/21~5/2 |
+| W7: 카메라 입고 + 실제 연동 | 카메라 5월 초 | 5/5~5/9 |
+| pylon SDK 설치 + Application Note 실습 | 비전 PC 필요 | 5월 |
 
 ---
 
@@ -510,9 +582,11 @@ POLLING_INTERVAL_SECONDS=15
 |----|------|------|------|------|
 | 4.1 | 안전인증 보완심사 (라이더 위치 재설정 후 사진 제출) | 03-20~03-25 | 원영규 | |
 | 4.2 | 최종 완료보고서 제출 | 03-20 | 원영규, 김주엽 | |
-| 4.3 | **데모 시연** (경기ITP-코에버 3자 간 최종 확인) | 03-27~03-31 | 원영규, 김주엽 | 플릭던(오리누) + 코에버 |
+| 4.3 | **데모 시연** (경기ITP-코에버 3자 간 최종 확인) | ~~03-27~03-31~~ → **03-20 완료** | 원영규, 김주엽 | 플릭던(오리누) + 코에버 |
+| 4.4 | **한솔코에버 최종 시연** | **03-27** | 한솔코에버 | 정태민 불참 (외부 교육), 한솔 자체 진행 |
 
-> **오리누 관련 핵심 일정**: 2.1(API 분석, ~3/6) → 2.9(비전 로봇 통신, 1차 방문 3/6) → 2.11(WEB UI, 3/16~) → 4.3(데모 시연, 3/27~)
+> **오리누 관련 핵심 일정**: 2.1(API 분석, ~3/6) → 2.9(비전 로봇 통신, 1차 방문 3/6) → 2.11(WEB UI, 3/16~) → 4.3(데모 시연, ~~3/27~~ 3/20 완료) → 4.4(한솔 최종 시연, 3/27)
+> **3/26 화성시 디지털 가속성장 실사**: 대표님이 직접 진행 (정태민 외부 교육)
 
 ---
 
@@ -531,8 +605,14 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-03-18
-- **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **Phase 4 (OpenMV) 개발 진행 중 — 학습 이미지 촬영 중 (Mac 직접 저장 방식으로 전환).**
+- **날짜**: 2026-03-19
+- **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **3D 빈피킹 비전 시스템 개발 착수 (W0, 대표님 지시 — OpenMV보다 우선)**
+- **최근 진행 (3/19)**:
+  - ✅ **빈피킹 업무지시서 수신 + 분석 완료**: `binpicking_dev_instruction_정태민.pdf` (ORINU-DEV-2026-002, 13페이지)
+  - Basler Blaze-112 ToF + ace2 5MP RGB-D → Open3D FPFH+RANSAC+ICP → Modbus TCP → HCR-10L 로봇
+  - 카메라 납기 6~7주 (5월 초), 그 전까지 시뮬레이션 데이터로 SW 파이프라인 완성 목표
+  - ⬜ **W0 학습 과제**: Open3D 튜토리얼 (Registration), pypylon API 숙지, FPFH/ICP 논문
+  - ⬜ **대표님께 요청 필요**: 30종 STL 파일 + `binpicking_dev_plan.docx` (코드 스니펫 포함 기술 배경)
 - **최근 진행 (3/18)**:
   - ✅ **대시보드 소모품 표시 개선 (PreForm 스타일)**: PrinterCard에 레진 이름(White V5 등) + 파란색 잔량 바 + 카트리지 Missing 빨간 표시 추가
   - 백엔드 `is_cartridge_missing`, `is_tank_missing` 필드 추가, PrinterInfoModal Missing 빨간색 강조
@@ -563,9 +643,8 @@ POLLING_INTERVAL_SECONDS=15
   - ✅ **OpenMV AE3 카메라 연결 + 모듈 호환성 전체 통과** (3/9)
   - ✅ **한솔코에버 인수인계 완료** (3/6)
 - **현재 진행**:
-  - 🔴 **[신규] 3D 비전 빈피킹** (대표님 3/18 지시): 공장 로봇에 3D비전 달아서 빈피킹. OpenMV보다 우선. 문서 손상 → 재전송 대기 중
-  - 🔄 추출 이미지 수동 정리 (라벨 오분류·노이즈 제거) → Edge Impulse 모델 학습
-  - 🔄 OpenMV 카메라 캡처 → 저장 테스트 (사무실)
+  - 🔴 **3D 빈피킹 비전 시스템** (대표님 지시, OpenMV보다 우선): 업무지시서 수신 완료(3/19), W0 학습 중. STL 파일 + dev_plan.docx 대표님 요청 필요
+  - 🔄 추출 이미지 수동 정리 (라벨 오분류·노이즈 제거) → Edge Impulse 모델 학습 (후순위)
   - 🔄 카카오 클라우드 + Cloudflare Tunnel 세팅 — 도메인 `lab.flickdone.com` 확정, 파리드님에게 요청 예정
 - **한솔코에버 설계서 수령** (3/11):
   - `플릭던 자동화 셀 제어 프로그램 설계서` (Ver1.0, 2026-03-06)
