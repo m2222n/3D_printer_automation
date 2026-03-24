@@ -1,15 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+﻿import { useState, useEffect, useCallback, useRef } from 'react';
 import { Dashboard } from './components';
 import { PrintPage } from './components/PrintPage';
 import { QueuePage } from './components/QueuePage';
 import { HistoryPage } from './components/HistoryPage';
 import { StatisticsPage } from './components/StatisticsPage';
+import { AutomationPage } from './components/AutomationPage';
+import { AutomationManualPage } from './components/AutomationManualPage';
 import { PrinterInfoModal } from './components/PrinterInfoModal';
 import { getNotifications, markNotificationsRead } from './services/localApi';
 import type { NotificationEventItem } from './services/localApi';
 import './App.css';
 
-type TabType = 'monitoring' | 'print' | 'queue' | 'history' | 'statistics';
+type TabType = 'monitoring' | 'print' | 'queue' | 'history' | 'statistics' | 'automation' | 'automation_manual';
 
 interface TabConfig {
   key: TabType;
@@ -17,11 +19,13 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { key: 'monitoring', label: '모니터링' },
-  { key: 'print', label: '프린트 제어' },
-  { key: 'queue', label: '대기 중인 작업' },
-  { key: 'history', label: '이전 작업 내용' },
-  { key: 'statistics', label: '통계' },
+  { key: 'monitoring', label: 'Monitoring' },
+  { key: 'print', label: 'Print Control' },
+  { key: 'queue', label: 'Queue' },
+  { key: 'history', label: 'History' },
+  { key: 'statistics', label: 'Statistics' },
+  { key: 'automation', label: 'Automation' },
+  { key: 'automation_manual', label: 'Automation_Manual' },
 ];
 
 function App() {
@@ -35,7 +39,7 @@ function App() {
   const [notifError, setNotifError] = useState(false);
   const [modalPrinterSerial, setModalPrinterSerial] = useState<string | null>(null);
 
-  // 알림 로드
+  // ?뚮┝ 濡쒕뱶
   const loadNotifications = useCallback(async () => {
     try {
       const data = await getNotifications(50);
@@ -47,14 +51,14 @@ function App() {
     }
   }, []);
 
-  // 30초마다 알림 폴링
+  // 30珥덈쭏???뚮┝ ?대쭅
   useEffect(() => {
     loadNotifications();
     const interval = setInterval(loadNotifications, 30000);
     return () => clearInterval(interval);
   }, [loadNotifications]);
 
-  // 패널 외부 클릭 시 닫기
+  // ?⑤꼸 ?몃? ?대┃ ???リ린
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
@@ -65,7 +69,7 @@ function App() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showNotifications]);
 
-  // 전체 읽음 처리
+  // ?꾩껜 ?쎌쓬 泥섎━
   const handleMarkAllRead = async () => {
     try {
       const result = await markNotificationsRead();
@@ -90,12 +94,16 @@ function App() {
         return <HistoryPage key={tabResetKey} onOpenPrinterModal={openPrinterModal} />;
       case 'statistics':
         return <StatisticsPage key={tabResetKey} />;
+      case 'automation':
+        return <AutomationPage key={tabResetKey} />;
+      case 'automation_manual':
+        return <AutomationManualPage key={tabResetKey} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 헤더 */}
+      {/* ?ㅻ뜑 */}
       <header className="bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
@@ -106,14 +114,14 @@ function App() {
               }}
               className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors"
             >
-              3D 프린터 자동화 시스템
+              3D Printer Automation System
             </button>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 hidden sm:block">
                 Formlabs Form 4
               </span>
 
-              {/* 알림 벨 아이콘 */}
+              {/* ?뚮┝ 踰??꾩씠肄?*/}
               <div className="relative" ref={panelRef}>
                 <button
                   onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) loadNotifications(); }}
@@ -123,7 +131,7 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                   {notifError ? (
-                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-orange-400 text-white text-[10px] font-bold rounded-full flex items-center justify-center" title="알림 서버 연결 실패">
+                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-orange-400 text-white text-[10px] font-bold rounded-full flex items-center justify-center" title="?뚮┝ ?쒕쾭 ?곌껐 ?ㅽ뙣">
                       !
                     </span>
                   ) : unreadCount > 0 ? (
@@ -133,17 +141,17 @@ function App() {
                   ) : null}
                 </button>
 
-                {/* 알림 패널 */}
+                {/* ?뚮┝ ?⑤꼸 */}
                 {showNotifications && (
                   <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-xl border z-50 max-h-[70vh] flex flex-col">
                     <div className="px-4 py-3 border-b flex items-center justify-between flex-shrink-0">
-                      <h3 className="font-semibold text-gray-900 text-sm">알림</h3>
+                      <h3 className="font-semibold text-gray-900 text-sm">?뚮┝</h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
                           className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                         >
-                          모두 읽음
+                          紐⑤몢 ?쎌쓬
                         </button>
                       )}
                     </div>
@@ -151,7 +159,7 @@ function App() {
                     <div className="overflow-y-auto flex-1">
                       {notifications.length === 0 ? (
                         <div className="py-12 text-center text-gray-400 text-sm">
-                          알림이 없습니다
+                          ?뚮┝???놁뒿?덈떎
                         </div>
                       ) : (
                         <div className="divide-y divide-gray-50">
@@ -169,16 +177,16 @@ function App() {
         </div>
       </header>
 
-      {/* 탭 네비게이션 */}
+      {/* ???ㅻ퉬寃뚯씠??*/}
       <nav className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-[10%]">
           <div className="flex space-x-1 sm:space-x-6 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => {
                   if (activeTab === tab.key) {
-                    // 같은 탭 재클릭 → 컴포넌트 리셋 (전체 뷰로 돌아가기)
+                    // 媛숈? ???ы겢由???而댄룷?뚰듃 由ъ뀑 (?꾩껜 酉곕줈 ?뚯븘媛湲?
                     setTabResetKey((k) => k + 1);
                   } else {
                     setActiveTab(tab.key);
@@ -197,10 +205,10 @@ function App() {
         </div>
       </nav>
 
-      {/* 탭 컨텐츠 */}
+      {/* ??而⑦뀗痢?*/}
       {renderContent()}
 
-      {/* 프린터 상세 모달 (글로벌) */}
+      {/* ?꾨┛???곸꽭 紐⑤떖 (湲濡쒕쾶) */}
       {modalPrinterSerial && (
         <PrinterInfoModal
           serial={modalPrinterSerial}
@@ -211,15 +219,15 @@ function App() {
   );
 }
 
-// 알림 아이템
+// ?뚮┝ ?꾩씠??
 function NotificationItem({ item }: { item: NotificationEventItem }) {
   const getIcon = (type: string) => {
     switch (type) {
-      case 'PRINT_COMPLETE': return { icon: '✓', color: 'text-green-500 bg-green-50' };
+      case 'PRINT_COMPLETE': return { icon: 'C', color: 'text-green-500 bg-green-50' };
       case 'PRINT_ERROR': return { icon: '!', color: 'text-red-500 bg-red-50' };
-      case 'LOW_RESIN': return { icon: '▼', color: 'text-yellow-500 bg-yellow-50' };
-      case 'PRINTER_OFFLINE': return { icon: '○', color: 'text-gray-500 bg-gray-50' };
-      default: return { icon: '•', color: 'text-blue-500 bg-blue-50' };
+      case 'LOW_RESIN': return { icon: 'R', color: 'text-yellow-500 bg-yellow-50' };
+      case 'PRINTER_OFFLINE': return { icon: 'O', color: 'text-gray-500 bg-gray-50' };
+      default: return { icon: 'N', color: 'text-blue-500 bg-blue-50' };
     }
   };
 
@@ -279,3 +287,5 @@ function NotificationItem({ item }: { item: NotificationEventItem }) {
 }
 
 export default App;
+
+

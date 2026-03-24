@@ -119,6 +119,7 @@ class PrintJobCreate(BaseModel):
     stl_file: Optional[str] = None  # 직접 업로드 시
     printer_serial: str = Field(..., description="대상 프린터 시리얼")
     copies: int = Field(default=1, ge=1, le=10, description="복사본 수")
+    simul_mode: bool = Field(default=False, description="True면 프린트 장비 없이 시뮬레이션으로 처리")
 
     # 프리셋 없이 직접 설정 시
     settings: Optional[PrintSettings] = None

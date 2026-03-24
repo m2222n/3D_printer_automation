@@ -344,3 +344,256 @@ export async function markNotificationsRead(ids?: string[]): Promise<{ unread_co
     body: JSON.stringify(ids ? { ids } : {}),
   });
 }
+
+// ===========================================
+// Automation API
+// ===========================================
+
+export interface AutomationCommandCreate {
+  file_path?: string;
+  file_name?: string;
+  preset_id?: string;
+  washing_time: number;
+  curing_time: number;
+}
+
+export interface AutomationCommandItem {
+  cmd_id: string;
+  file_path: string;
+  file_name: string;
+  cmd_status: number;
+  post_proc_stage: number;
+  wash_minutes?: number;
+  washing_time?: number;
+  curing_time?: number;
+  use_yn?: string;
+  target_printer: number | null;
+  allocated_data?: Record<string, unknown> | string | null;
+  progress: number;
+  message: string | null;
+  claimed_by?: string | null;
+  locked_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutomationState {
+  running: boolean;
+  paused: boolean;
+}
+
+export interface AutomationQueues {
+  running?: boolean;
+  paused?: boolean;
+  runtime_ctx?: {
+    active_job_count?: number;
+    robot_ack_count?: number;
+  };
+  printer_queues?: Record<string, string[]>;
+  printer_active_cmd?: Record<string, string | null>;
+  printer_has_plate?: Record<string, boolean>;
+  printer_use?: Record<string, string>;
+  wash_waiting?: string[];
+  wash_active_cmd?: Record<string, string | null>;
+  cure_waiting?: string[];
+  cure_active_cmd?: Record<string, string | null>;
+  robot_active_cmd?: string | null;
+  robot_queue?: Array<{
+    cmd_id: string;
+    task_type: string;
+    from_unit: string;
+    to_unit: string;
+    requested_by: string;
+    status: string;
+  }>;
+  active_jobs?: Record<string, {
+    cmd_id?: string;
+    file_path?: string;
+    file_name?: string;
+    cmd_status: number;
+    post_proc_stage: number;
+    washing_time?: number;
+    curing_time?: number;
+    target_printer?: number | null;
+    allocated_data?: Record<string, unknown>;
+    progress?: number;
+    message?: string;
+  }>;
+}
+
+export interface AutomationLogItem {
+  id: number;
+  log_type: number;
+  source: string;
+  cmd_id?: string | null;
+  message: string;
+  created_at: string;
+}
+
+export async function createAutomationCommand(body: AutomationCommandCreate): Promise<{ ok: boolean; cmd_id: string }> {
+  return fetchLocalApi<{ ok: boolean; cmd_id: string }>('/automation/commands', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getAutomationCommands(limit: number = 100): Promise<{ items: AutomationCommandItem[] }> {
+  return fetchLocalApi<{ items: AutomationCommandItem[] }>(`/automation/commands?limit=${limit}`);
+}
+
+export async function updateAutomationCommandsUseYn(
+  cmdIds: string[],
+  useYn: 'Y' | 'N'
+): Promise<{ ok: boolean; updated: number }> {
+  return fetchLocalApi<{ ok: boolean; updated: number }>('/automation/commands/use', {
+    method: 'POST',
+    body: JSON.stringify({ cmd_ids: cmdIds, use_yn: useYn }),
+  });
+}
+
+export async function getAutomationState(): Promise<AutomationState> {
+  return fetchLocalApi<AutomationState>('/automation/state');
+}
+
+export async function controlAutomation(action: 'start' | 'stop' | 'pause' | 'resume'): Promise<{ ok: boolean; state: AutomationState }> {
+  return fetchLocalApi<{ ok: boolean; state: AutomationState }>(`/automation/control/${action}`, {
+    method: 'POST',
+  });
+}
+
+export async function getAutomationQueues(): Promise<{ items: AutomationQueues }> {
+  return fetchLocalApi<{ items: AutomationQueues }>('/automation/queues');
+}
+
+export async function getAutomationLogs(limit: number = 200): Promise<{ items: AutomationLogItem[] }> {
+  return fetchLocalApi<{ items: AutomationLogItem[] }>(`/automation/logs?limit=${limit}`);
+}
+
+export async function manualRobotSend(payload: string): Promise<{ ok: boolean; sent: string; response?: string }> {
+  return fetchLocalApi<{ ok: boolean; sent: string; response?: string }>('/automation/manual/robot-send', {
+    method: 'POST',
+    body: JSON.stringify({ payload }),
+  });
+}
+
+export async function manualVisionSend(payload: string): Promise<{ ok: boolean; sent: string; response?: string }> {
+  return fetchLocalApi<{ ok: boolean; sent: string; response?: string }>('/automation/manual/vision-send', {
+    method: 'POST',
+    body: JSON.stringify({ payload }),
+  });
+}
+
+export interface ManualCommStatus {
+  ok: boolean;
+  connected: boolean;
+  host: string;
+  port: number;
+  error?: string;
+  timestamp?: string;
+}
+
+export interface ManualCommConfig {
+  ok: boolean;
+  robot_host: string;
+  robot_port: number;
+  vision_host: string;
+  vision_port: number;
+  updated_at?: string;
+}
+
+export interface ModbusRegisterItem {
+  address: number;
+  value: number;
+}
+
+export interface ModbusRegistersResponse {
+  ok: boolean;
+  host: string;
+  port: number;
+  start_addr: number;
+  end_addr: number;
+  count: number;
+  items: ModbusRegisterItem[];
+  timestamp?: string;
+}
+
+export interface ModbusWriteResponse {
+  ok: boolean;
+  host: string;
+  port: number;
+  address: number;
+  value: number;
+  read_back?: number | null;
+  timestamp?: string;
+}
+
+export async function getManualRobotStatus(): Promise<ManualCommStatus> {
+  return fetchLocalApi<ManualCommStatus>('/automation/manual/robot-status');
+}
+
+export async function getManualVisionStatus(): Promise<ManualCommStatus> {
+  return fetchLocalApi<ManualCommStatus>('/automation/manual/vision-status');
+}
+
+export async function getManualCommConfig(): Promise<ManualCommConfig> {
+  return fetchLocalApi<ManualCommConfig>('/automation/manual/comm-config');
+}
+
+export async function updateManualCommConfig(
+  robotHost: string,
+  robotPort: number,
+  visionHost: string,
+  visionPort: number
+): Promise<ManualCommConfig> {
+  return fetchLocalApi<ManualCommConfig>('/automation/manual/comm-config', {
+    method: 'POST',
+    body: JSON.stringify({
+      robot_host: robotHost,
+      robot_port: robotPort,
+      vision_host: visionHost,
+      vision_port: visionPort,
+    }),
+  });
+}
+
+export async function getManualModbusRegisters(startAddr: number, endAddr: number): Promise<ModbusRegistersResponse> {
+  return fetchLocalApi<ModbusRegistersResponse>(
+    `/automation/manual/modbus/registers?start_addr=${startAddr}&end_addr=${endAddr}`
+  );
+}
+
+export async function writeManualModbusRegister(address: number, value: number): Promise<ModbusWriteResponse> {
+  return fetchLocalApi<ModbusWriteResponse>('/automation/manual/modbus/write', {
+    method: 'POST',
+    body: JSON.stringify({ address, value }),
+  });
+}
+
+export interface AutomationIoState {
+  ok: boolean;
+  board_no: number;
+  available_boards?: number[];
+  available_input_boards?: number[];
+  available_output_boards?: number[];
+  io_type?: string;
+  count: number;
+  simulation: boolean;
+  inputs: boolean[];
+  outputs: boolean[];
+  input_labels?: string[];
+  output_labels?: string[];
+  timestamp?: string;
+}
+
+export async function getAutomationIoState(boardNo: number = 0, count: number = 32, ioType: 'all' | 'input' | 'output' = 'all'): Promise<AutomationIoState> {
+  return fetchLocalApi<AutomationIoState>(
+    `/automation/manual/io/state?board_no=${boardNo}&count=${count}&io_type=${ioType}`
+  );
+}
+
+export async function writeAutomationIoOutput(boardNo: number, offset: number, value: boolean): Promise<{ ok: boolean; value?: boolean; timestamp?: string }> {
+  return fetchLocalApi<{ ok: boolean; value?: boolean; timestamp?: string }>('/automation/manual/io/output', {
+    method: 'POST',
+    body: JSON.stringify({ board_no: boardNo, offset, value }),
+  });
+}

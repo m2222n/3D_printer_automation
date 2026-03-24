@@ -7,10 +7,14 @@ Local API 라우터
 import os
 import logging
 import shutil
+import csv
+import importlib.util
 from typing import Optional, List
 from pathlib import Path
+from functools import lru_cache
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query, BackgroundTasks
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from datetime import datetime, timezone, timedelta
@@ -25,6 +29,20 @@ from app.local.schemas import (
     DiscoveredPrinter, PrintSettings,
     SceneEstimate, ScenePrepareRequest, DuplicateModelRequest
 )
+from app.local.automation_db import (
+    create_command as create_sequence_command,
+    list_commands as list_sequence_commands,
+    list_logs as list_sequence_logs,
+    set_commands_use_yn as set_sequence_commands_use_yn,
+    set_cell_state as set_sequence_cell_state,
+    get_cell_state as get_sequence_cell_state,
+    get_queue_state as get_sequence_queue_state,
+    probe_tcp,
+    send_st_framed,
+    get_comm_targets,
+    set_comm_targets,
+)
+from app.local.ajin_io import get_ajin_gateway
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +58,69 @@ def to_kst_iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.astimezone(KST).isoformat()
 router = APIRouter()
 settings = get_settings()
+
+
+@lru_cache(maxsize=1)
+def _get_sequence_modbus_client_class():
+    """
+    Reuse sequence_service Modbus wrapper without duplicating protocol logic.
+    """
+    mod_file = (Path(__file__).resolve().parents[3] / "sequence_service" / "app" / "cell" / "modbus_protocol.py").resolve()
+    if not mod_file.exists():
+        raise RuntimeError(f"sequence modbus_protocol.py not found: {mod_file}")
+
+    spec = importlib.util.spec_from_file_location("sequence_modbus_protocol", str(mod_file))
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"failed to load spec for: {mod_file}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    cls = getattr(module, "ModbusHandshakeClient", None)
+    if cls is None:
+        raise RuntimeError("ModbusHandshakeClient not found in sequence modbus_protocol.py")
+    return cls
+
+
+@lru_cache(maxsize=1)
+def _load_io_csv_map() -> dict:
+    """
+    Load IO.csv and build board-wise input/output label maps.
+    """
+    csv_path = Path(settings.AJIN_IO_CSV_PATH)
+    if not csv_path.is_absolute():
+        csv_path = (Path(__file__).resolve().parents[2] / csv_path).resolve()
+
+    result: dict[int, dict[str, dict[int, str]]] = {}
+    if not csv_path.exists():
+        return result
+
+    # IO.csv can be utf-8-sig or cp949 depending on source tooling.
+    rows = None
+    for enc in ("utf-8-sig", "cp949", "utf-8"):
+        try:
+            with open(csv_path, "r", encoding=enc, newline="") as f:
+                rows = list(csv.DictReader(f))
+            break
+        except Exception:
+            rows = None
+    if rows is None:
+        return result
+
+    for r in rows:
+        try:
+            in_out = int((r.get("IN_OUT") or "").strip())
+            board_no = int((r.get("Board_No") or "").strip())
+            address = int((r.get("Address") or "").strip())
+        except Exception:
+            continue
+        wire_num = (r.get("WIRE_NUM") or "").strip()
+        name = (r.get("NAME") or "").strip()
+        label = name or wire_num or f'{"IN" if in_out == 0 else "OUT"}{address}'
+        b = result.setdefault(board_no, {"inputs": {}, "outputs": {}})
+        if in_out == 0:
+            b["inputs"][address] = label
+        else:
+            b["outputs"][address] = label
+    return result
 
 
 # ===========================================
@@ -227,7 +308,7 @@ async def upload_file(file: UploadFile = File(...)):
     return {
         "filename": file.filename,
         "size_bytes": size,
-        "path": str(file_path)
+        "path": str(file_path.resolve())
     }
 
 
@@ -332,6 +413,19 @@ async def start_print_job(
     """
     preset_service = PresetService(db)
     job_service = PrintJobService(db)
+
+    if data.simul_mode:
+        stl_filename = data.stl_file
+        if not stl_filename:
+            raise HTTPException(status_code=400, detail="simul_mode requires stl_file")
+        stl_path = Path(settings.UPLOAD_DIR) / stl_filename
+        if not stl_path.exists():
+            raise HTTPException(status_code=404, detail=f"STL file not found: {stl_filename}")
+
+        print_settings = data.settings or PrintSettings()
+        job = job_service.create(data, stl_filename, print_settings)
+        job = job_service.update_status(job.id, PrintJobStatus.SENT) or job
+        return job
 
     # 설정 결정 (프리셋 또는 직접 입력)
     if data.preset_id:
@@ -1003,3 +1097,505 @@ async def mark_notifications_read(
     db.commit()
     unread_count = db.query(NotificationEvent).filter(NotificationEvent.is_read == 0).count()
     return {"detail": "읽음 처리 완료", "unread_count": unread_count}
+
+# ===========================================
+# Automation API (sequence_service integration)
+# ===========================================
+
+class AutomationCommandCreate(BaseModel):
+    file_path: str | None = Field(default=None, max_length=1024)
+    file_name: str | None = Field(default=None, max_length=255)
+    preset_id: str | None = Field(default=None, max_length=36)
+    washing_time: int = Field(..., ge=1, le=86400)
+    curing_time: int = Field(..., ge=1, le=7200)
+
+
+class AutomationManualSend(BaseModel):
+    payload: str = Field(..., min_length=1, max_length=2048)
+
+
+class AutomationCommandUseUpdate(BaseModel):
+    cmd_ids: list[str] = Field(..., min_length=1)
+    use_yn: str = Field(..., pattern="^[YyNn]$")
+
+
+class AutomationIoWrite(BaseModel):
+    board_no: int = Field(default=0, ge=0, le=255)
+    offset: int = Field(..., ge=0, le=255)
+    value: bool = Field(...)
+
+
+class AutomationCommConfigUpdate(BaseModel):
+    robot_host: str = Field(..., min_length=1, max_length=255)
+    robot_port: int = Field(..., ge=1, le=65535)
+    vision_host: str = Field(..., min_length=1, max_length=255)
+    vision_port: int = Field(..., ge=1, le=65535)
+
+
+class AutomationModbusWrite(BaseModel):
+    address: int = Field(..., ge=0, le=65535)
+    value: int = Field(..., ge=0, le=65535)
+
+
+@router.post(
+    "/automation/commands",
+    tags=["Automation"],
+    summary="Sequence CMD 생성"
+)
+async def create_automation_command(body: AutomationCommandCreate, db: Session = Depends(get_local_db)):
+    try:
+        if not body.preset_id:
+            raise HTTPException(status_code=400, detail='preset_id is required')
+
+        resolved_file_path = (body.file_path or '').strip()
+        resolved_file_name = body.file_name
+        allocated_data: dict[str, object] = {}
+
+        preset = PresetService(db).get(body.preset_id)
+        if not preset:
+            raise HTTPException(status_code=404, detail='Preset not found')
+        if not preset.stl_filename:
+            raise HTTPException(status_code=400, detail='Selected preset has no STL file')
+
+        resolved_file_name = preset.stl_filename
+        resolved_file_path = str((Path(settings.UPLOAD_DIR) / preset.stl_filename).resolve())
+        allocated_data = {
+            'preset_id': preset.id,
+            'preset_name': preset.name,
+            'preset_part_type': preset.part_type,
+            'print_settings': preset.settings.model_dump(),
+            'stl_filename': preset.stl_filename,
+        }
+
+        cmd_id = create_sequence_command(
+            file_path=resolved_file_path,
+            file_name=resolved_file_name,
+            washing_time=body.washing_time,
+            curing_time=body.curing_time,
+            allocated_data=allocated_data,
+        )
+        return {"ok": True, "cmd_id": cmd_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"automation cmd create failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/commands",
+    tags=["Automation"],
+    summary="Sequence CMD 목록"
+)
+async def get_automation_commands(limit: int = Query(100, ge=1, le=500)):
+    try:
+        return {"items": list_sequence_commands(limit=limit)}
+    except Exception as e:
+        logger.error(f"automation cmd list failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/automation/commands/use",
+    tags=["Automation"],
+    summary="Sequence CMD use_yn bulk update"
+)
+async def update_automation_commands_use(body: AutomationCommandUseUpdate):
+    try:
+        updated = set_sequence_commands_use_yn(body.cmd_ids, body.use_yn)
+        return {"ok": True, "updated": updated}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"automation cmd use_yn update failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/automation/control/{action}",
+    tags=["Automation"],
+    summary="Sequence START/STOP/PAUSE/RESUME"
+)
+async def control_automation(action: str):
+    if action.lower() not in {"start", "stop", "pause", "resume"}:
+        raise HTTPException(status_code=400, detail="action must be start|stop|pause|resume")
+    try:
+        state = set_sequence_cell_state(action)
+        return {"ok": True, "state": state}
+    except Exception as e:
+        logger.error(f"automation control failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/state",
+    tags=["Automation"],
+    summary="Sequence 동작 상태"
+)
+async def get_automation_state():
+    try:
+        return get_sequence_cell_state()
+    except Exception as e:
+        logger.error(f"automation state read failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/queues",
+    tags=["Automation"],
+    summary="Sequence runtime queue snapshot"
+)
+async def get_automation_queues():
+    try:
+        return {"items": get_sequence_queue_state()}
+    except Exception as e:
+        logger.error(f"automation queue read failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/logs",
+    tags=["Automation"],
+    summary="Sequence/Program logs"
+)
+async def get_automation_logs(limit: int = Query(200, ge=1, le=1000)):
+    try:
+        return {"items": list_sequence_logs(limit=limit)}
+    except Exception as e:
+        logger.error(f"automation log read failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/manual/io/state",
+    tags=["Automation"],
+    summary="Read Ajin IO state (input/output bit list)"
+)
+async def automation_manual_io_state(
+    board_no: int = Query(0, ge=0, le=255),
+    count: int = Query(32, ge=1, le=64),
+    io_type: str = Query("all"),
+):
+    try:
+        gateway = get_ajin_gateway(
+            simulation=settings.AJIN_SIMULATION,
+            irq_no=settings.AJIN_IRQ_NO,
+            dll_path=settings.AJIN_DLL_PATH,
+        )
+        io_map = _load_io_csv_map()
+        input_boards = sorted([b for b, v in io_map.items() if v.get("inputs")]) if io_map else [0]
+        output_boards = sorted([b for b, v in io_map.items() if v.get("outputs")]) if io_map else [0]
+        boards = sorted(io_map.keys()) if io_map else [0]
+        io_type_norm = (io_type or "all").strip().lower()
+        if io_type_norm == "input":
+            boards = input_boards or [0]
+        elif io_type_norm == "output":
+            boards = output_boards or [0]
+        if board_no not in boards:
+            board_no = boards[0]
+        inputs = gateway.read_inputs(board_no=board_no, count=count)
+        outputs = gateway.read_outputs(board_no=board_no, count=count)
+        in_labels = [io_map.get(board_no, {}).get("inputs", {}).get(i, f"IN{i}") for i in range(count)]
+        out_labels = [io_map.get(board_no, {}).get("outputs", {}).get(i, f"OUT{i}") for i in range(count)]
+        return {
+            "ok": True,
+            "board_no": board_no,
+            "available_boards": boards,
+            "available_input_boards": input_boards or [0],
+            "available_output_boards": output_boards or [0],
+            "io_type": io_type_norm,
+            "count": count,
+            "simulation": settings.AJIN_SIMULATION,
+            "inputs": inputs,
+            "outputs": outputs,
+            "input_labels": in_labels,
+            "output_labels": out_labels,
+            "timestamp": to_kst_iso(datetime.now(timezone.utc)),
+        }
+    except Exception as e:
+        logger.error(f"automation io state failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/automation/manual/io/output",
+    tags=["Automation"],
+    summary="Write Ajin output bit"
+)
+async def automation_manual_io_output(body: AutomationIoWrite):
+    try:
+        gateway = get_ajin_gateway(
+            simulation=settings.AJIN_SIMULATION,
+            irq_no=settings.AJIN_IRQ_NO,
+            dll_path=settings.AJIN_DLL_PATH,
+        )
+        ok = gateway.write_output(board_no=body.board_no, offset=body.offset, value=body.value)
+        if not ok:
+            raise HTTPException(status_code=502, detail="Ajin output write failed")
+        # Read-back result from output port bit (do not trust requested value blindly).
+        read_back_list = gateway.read_outputs(board_no=body.board_no, count=max(1, body.offset + 1))
+        read_back = bool(read_back_list[body.offset]) if body.offset < len(read_back_list) else False
+        return {
+            "ok": True,
+            "board_no": body.board_no,
+            "offset": body.offset,
+            "value": read_back,
+            "timestamp": to_kst_iso(datetime.now(timezone.utc)),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"automation io output failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/automation/manual/robot-send",
+    tags=["Automation"],
+    summary="Manual TCP send to robot (ST/<payload>\\n)"
+)
+async def manual_robot_send(body: AutomationManualSend):
+    try:
+        targets = get_comm_targets()
+        result = send_st_framed(
+            host=str(targets.get("robot_host") or settings.ROBOT_TCP_HOST),
+            port=int(targets.get("robot_port") or settings.ROBOT_TCP_PORT),
+            payload=body.payload,
+            timeout_seconds=settings.MANUAL_TCP_TIMEOUT_SECONDS,
+        )
+        if not result.get("ok"):
+            raise HTTPException(status_code=502, detail=result.get("error", "robot send failed"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"manual robot send failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/automation/manual/vision-send",
+    tags=["Automation"],
+    summary="Manual TCP send to vision (ST/<payload>\\n)"
+)
+async def manual_vision_send(body: AutomationManualSend):
+    try:
+        targets = get_comm_targets()
+        result = send_st_framed(
+            host=str(targets.get("vision_host") or settings.VISION_TCP_HOST),
+            port=int(targets.get("vision_port") or settings.VISION_TCP_PORT),
+            payload=body.payload,
+            timeout_seconds=settings.MANUAL_TCP_TIMEOUT_SECONDS,
+        )
+        if not result.get("ok"):
+            raise HTTPException(status_code=502, detail=result.get("error", "vision send failed"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"manual vision send failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/manual/robot-status",
+    tags=["Automation"],
+    summary="Robot TCP connection status"
+)
+async def manual_robot_status():
+    try:
+        targets = get_comm_targets()
+        host = str(targets.get("robot_host") or settings.ROBOT_TCP_HOST)
+        port = int(targets.get("robot_port") or settings.ROBOT_TCP_PORT)
+        r = probe_tcp(
+            host=host,
+            port=port,
+            timeout_seconds=settings.MANUAL_TCP_TIMEOUT_SECONDS,
+        )
+        return {
+            "ok": bool(r.get("ok")),
+            "connected": bool(r.get("connected")),
+            "host": host,
+            "port": port,
+            "error": r.get("error"),
+            "timestamp": to_kst_iso(datetime.now(timezone.utc)),
+        }
+    except Exception as e:
+        logger.error(f"manual robot status failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/manual/vision-status",
+    tags=["Automation"],
+    summary="Vision TCP connection status"
+)
+async def manual_vision_status():
+    try:
+        targets = get_comm_targets()
+        host = str(targets.get("vision_host") or settings.VISION_TCP_HOST)
+        port = int(targets.get("vision_port") or settings.VISION_TCP_PORT)
+        r = probe_tcp(
+            host=host,
+            port=port,
+            timeout_seconds=settings.MANUAL_TCP_TIMEOUT_SECONDS,
+        )
+        return {
+            "ok": bool(r.get("ok")),
+            "connected": bool(r.get("connected")),
+            "host": host,
+            "port": port,
+            "error": r.get("error"),
+            "timestamp": to_kst_iso(datetime.now(timezone.utc)),
+        }
+    except Exception as e:
+        logger.error(f"manual vision status failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/manual/comm-config",
+    tags=["Automation"],
+    summary="Get manual communication target config"
+)
+async def get_automation_manual_comm_config():
+    try:
+        item = get_comm_targets()
+        return {
+            "ok": True,
+            "robot_host": str(item.get("robot_host") or settings.ROBOT_TCP_HOST),
+            "robot_port": int(item.get("robot_port") or settings.ROBOT_TCP_PORT),
+            "vision_host": str(item.get("vision_host") or settings.VISION_TCP_HOST),
+            "vision_port": int(item.get("vision_port") or settings.VISION_TCP_PORT),
+            "updated_at": to_kst_iso(item.get("updated_at")),
+        }
+    except Exception as e:
+        logger.error(f"manual comm-config read failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/automation/manual/comm-config",
+    tags=["Automation"],
+    summary="Update manual communication target config"
+)
+async def update_automation_manual_comm_config(body: AutomationCommConfigUpdate):
+    try:
+        item = set_comm_targets(
+            robot_host=body.robot_host,
+            robot_port=body.robot_port,
+            vision_host=body.vision_host,
+            vision_port=body.vision_port,
+        )
+        return {
+            "ok": True,
+            "robot_host": str(item.get("robot_host") or settings.ROBOT_TCP_HOST),
+            "robot_port": int(item.get("robot_port") or settings.ROBOT_TCP_PORT),
+            "vision_host": str(item.get("vision_host") or settings.VISION_TCP_HOST),
+            "vision_port": int(item.get("vision_port") or settings.VISION_TCP_PORT),
+            "updated_at": to_kst_iso(item.get("updated_at")),
+        }
+    except Exception as e:
+        logger.error(f"manual comm-config update failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/manual/modbus/registers",
+    tags=["Automation"],
+    summary="Read robot Modbus holding registers"
+)
+async def automation_manual_modbus_registers(
+    start_addr: int = Query(130, ge=130, le=65535),
+    end_addr: int = Query(255, ge=130, le=65535),
+):
+    if end_addr < start_addr:
+        raise HTTPException(status_code=400, detail="end_addr must be >= start_addr")
+    if (end_addr - start_addr + 1) > 1000:
+        raise HTTPException(status_code=400, detail="max readable range is 1000 registers")
+    targets = get_comm_targets()
+    host = str(targets.get("robot_host") or settings.ROBOT_TCP_HOST)
+    port = int(targets.get("robot_port") or settings.ROBOT_TCP_PORT)
+    timeout_seconds = float(getattr(settings, "MANUAL_TCP_TIMEOUT_SECONDS", 5.0))
+    slave_id = int(getattr(settings, "ROBOT_MODBUS_SLAVE_ID", 1))
+    try:
+        modbus_cls = _get_sequence_modbus_client_class()
+        client = modbus_cls(
+            host=host,
+            port=port,
+            timeout_seconds=timeout_seconds,
+            slave_id=slave_id,
+        )
+        ok, data = client.read_range(start_addr, end_addr, block_size=100)
+        if not ok:
+            raise HTTPException(status_code=502, detail=f"modbus read failed: {data}")
+        values = data
+
+        return {
+            "ok": True,
+            "host": host,
+            "port": port,
+            "start_addr": start_addr,
+            "end_addr": end_addr,
+            "count": len(values),
+            "items": values,
+            "timestamp": to_kst_iso(datetime.now(timezone.utc)),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"manual modbus read failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.api_route(
+    "/automation/manual/modbus/write",
+    methods=["POST", "PUT", "PATCH"],
+    tags=["Automation"],
+    summary="Write single robot Modbus holding register"
+)
+async def automation_manual_modbus_write(body: AutomationModbusWrite):
+    targets = get_comm_targets()
+    host = str(targets.get("robot_host") or settings.ROBOT_TCP_HOST)
+    port = int(targets.get("robot_port") or settings.ROBOT_TCP_PORT)
+    timeout_seconds = float(getattr(settings, "MANUAL_TCP_TIMEOUT_SECONDS", 5.0))
+    slave_id = int(getattr(settings, "ROBOT_MODBUS_SLAVE_ID", 1))
+    try:
+        modbus_cls = _get_sequence_modbus_client_class()
+        client = modbus_cls(
+            host=host,
+            port=port,
+            timeout_seconds=timeout_seconds,
+            slave_id=slave_id,
+        )
+        ok, result = client.write_single(body.address, body.value)
+        if not ok:
+            raise HTTPException(status_code=502, detail=f"modbus write failed: {result}")
+        read_back = int(result) if isinstance(result, int) else body.value
+
+        return {
+            "ok": True,
+            "host": host,
+            "port": port,
+            "address": body.address,
+            "value": int(body.value),
+            "read_back": read_back,
+            "timestamp": to_kst_iso(datetime.now(timezone.utc)),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"manual modbus write failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/automation/manual/modbus/write",
+    tags=["Automation"],
+    summary="Write single robot Modbus holding register (query fallback)"
+)
+async def automation_manual_modbus_write_get(
+    address: int = Query(..., ge=0, le=65535),
+    value: int = Query(..., ge=0, le=65535),
+):
+    return await automation_manual_modbus_write(AutomationModbusWrite(address=address, value=value))

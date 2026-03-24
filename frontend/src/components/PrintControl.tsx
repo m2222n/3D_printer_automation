@@ -110,6 +110,14 @@ export function PrintControl({ selectedPreset, selectedFile }: PrintControlProps
     loadJobs();
   }, [loadPrinters, checkApiHealth, loadJobs]);
 
+  // Keep PreFormServer status fresh for long-lived page sessions.
+  useEffect(() => {
+    const id = setInterval(() => {
+      checkApiHealth().catch(() => undefined);
+    }, 3000);
+    return () => clearInterval(id);
+  }, [checkApiHealth]);
+
   // PreFormServer 연결 상태
   const isPreformConnected = apiHealth?.preform_server === 'connected';
 

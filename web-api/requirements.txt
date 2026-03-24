@@ -1,5 +1,5 @@
-# ===========================================
-# Formlabs 원격제어 시스템 - 의존성 목록
+﻿# ===========================================
+# Formlabs ?먭꺽?쒖뼱 ?쒖뒪??- ?섏〈??紐⑸줉
 # ===========================================
 
 # Web Framework
@@ -15,30 +15,32 @@ pydantic-settings>=2.1.0
 
 # Database (Phase 2: Local API)
 sqlalchemy>=2.0.25
-# asyncpg>=0.29.0  # PostgreSQL용 (나중에 사용)
-# alembic>=1.13.0  # 마이그레이션 (나중에 사용)
+pymysql>=1.1.0
+pymodbus>=3.6.0
+# asyncpg>=0.29.0  # PostgreSQL??(?섏쨷???ъ슜)
+# alembic>=1.13.0  # 留덉씠洹몃젅?댁뀡 (?섏쨷???ъ슜)
 
-# 파일 업로드
+# ?뚯씪 ?낅줈??
 python-multipart>=0.0.6
 
 # WebSocket
 websockets>=12.0
 
-# 환경변수
+# ?섍꼍蹂??
 python-dotenv>=1.0.0
 
-# 로깅
+# 濡쒓퉭
 python-json-logger>=2.0.7
 
-# 테스트
+# ?뚯뒪??
 pytest>=7.4.0
 pytest-asyncio>=0.23.0
 pytest-cov>=4.1.0
 
-# 개발 도구
+# 媛쒕컻 ?꾧뎄
 black>=24.1.0
 isort>=5.13.0
 mypy>=1.8.0
 
-# 타입 힌트
+# ????뚰듃
 types-python-dateutil>=2.8.19

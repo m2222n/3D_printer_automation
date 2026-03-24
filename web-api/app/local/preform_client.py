@@ -7,6 +7,7 @@ Local API를 통한 프린터 제어
 import httpx
 import logging
 import os
+import socket
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
@@ -63,11 +64,24 @@ class PreFormServerClient:
             client = await self._get_client()
             response = await client.get("/")
             return response.status_code == 200
+        except httpx.TimeoutException:
+            logger.warning(f"PreFormServer HTTP timeout, fallback to TCP probe: {self.base_url}")
+            return self._tcp_probe()
         except httpx.ConnectError:
             logger.warning(f"PreFormServer 연결 실패: {self.base_url}")
             return False
         except Exception as e:
             logger.error(f"PreFormServer 헬스체크 오류: {e}")
+            return self._tcp_probe()
+
+    def _tcp_probe(self) -> bool:
+        try:
+            with socket.create_connection(
+                (self.settings.PREFORM_SERVER_HOST, int(self.settings.PREFORM_SERVER_PORT)),
+                timeout=3.0,
+            ):
+                return True
+        except Exception:
             return False
 
     # ===========================================

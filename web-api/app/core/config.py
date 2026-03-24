@@ -6,6 +6,7 @@ Formlabs Web API 시스템 설정
 - 알림 설정
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
@@ -20,6 +21,19 @@ class Settings(BaseSettings):
     APP_NAME: str = "Formlabs 원격제어 시스템"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def _parse_debug(cls, v):
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in {"1", "true", "yes", "y", "on", "debug", "development"}:
+                return True
+            if s in {"0", "false", "no", "n", "off", "release", "prod", "production"}:
+                return False
+        return bool(v)
     
     # ===========================================
     # Formlabs API 설정
@@ -44,10 +58,10 @@ class Settings(BaseSettings):
     # ===========================================
     # Form 4 프린터 4대 시리얼 번호 (실제 값으로 교체 필요)
     PRINTER_SERIALS: list[str] = [
-        "PRINTER_SERIAL_1",
-        "PRINTER_SERIAL_2", 
-        "PRINTER_SERIAL_3",
-        "PRINTER_SERIAL_4"
+        "Form4-CapableGecko",
+        "Form4-HeavenlyTuna",
+        "Form4-CorrectPelican",
+        "Form4-ShrewdStork"
     ]
     
     # ===========================================
@@ -101,6 +115,22 @@ class Settings(BaseSettings):
     # Form 4 기본 설정
     DEFAULT_MACHINE_TYPE: str = "FORM-4-0"
     DEFAULT_LAYER_THICKNESS_MM: float = 0.05
+
+    # Sequence service DB (MySQL) for automation tab
+    SEQUENCE_MYSQL_DSN: str = "mysql+pymysql://root:root@127.0.0.1:3306/automation"
+
+    # Manual TCP send targets for automation manual tab
+    ROBOT_TCP_HOST: str = "127.0.0.1"
+    ROBOT_TCP_PORT: int = 9100
+    VISION_TCP_HOST: str = "127.0.0.1"
+    VISION_TCP_PORT: int = 9200
+    MANUAL_TCP_TIMEOUT_SECONDS: float = 5.0
+
+    # Ajin IO (AXL.dll) for automation manual IO page
+    AJIN_SIMULATION: bool = True
+    AJIN_IRQ_NO: int = 7
+    AJIN_DLL_PATH: str = "../sequence_service/app/io/bin/AXL.dll"
+    AJIN_IO_CSV_PATH: str = "../sequence_service/app/io/IO.csv"
 
     class Config:
         env_file = ".env"

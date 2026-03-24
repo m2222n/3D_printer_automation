@@ -1,8 +1,8 @@
-"""
-API 라우터
+﻿"""
+API ?쇱슦??
 ==========
-- REST API 엔드포인트
-- WebSocket 실시간 업데이트
+- REST API ?붾뱶?ъ씤??
+- WebSocket ?ㅼ떆媛??낅뜲?댄듃
 """
 
 import asyncio
@@ -17,7 +17,7 @@ from app.services.formlabs_client import get_formlabs_client
 from app.services.polling_service import get_polling_service
 from app.schemas.printer import (
     PrinterSummary, DashboardData, PrintHistoryItem,
-    PrintHistoryResponse, PrintStatus
+    PrintHistoryResponse, PrintStatus, now_kst
 )
 
 logger = logging.getLogger(__name__)
@@ -25,54 +25,61 @@ router = APIRouter()
 
 
 # ===========================================
-# 대시보드 API
+# ??쒕낫??API
 # ===========================================
 
 @router.get(
     "/dashboard",
     response_model=DashboardData,
     tags=["Dashboard"],
-    summary="대시보드 데이터 조회",
-    description="4대 프린터의 실시간 상태 요약 정보를 반환합니다."
+    summary="??쒕낫???곗씠??議고쉶",
+    description="4? ?꾨┛?곗쓽 ?ㅼ떆媛??곹깭 ?붿빟 ?뺣낫瑜?諛섑솚?⑸땲??"
 )
 async def get_dashboard():
     """
-    대시보드 데이터 조회
+    ??쒕낫???곗씠??議고쉶
     
     Returns:
-        - printers: 프린터별 요약 정보 (상태, 진행률, 레진 잔량 등)
-        - 통계: 총 프린터 수, 출력 중/대기 중/에러/오프라인 수
+        - printers: ?꾨┛?곕퀎 ?붿빟 ?뺣낫 (?곹깭, 吏꾪뻾瑜? ?덉쭊 ?붾웾 ??
+        - ?듦퀎: 珥??꾨┛???? 異쒕젰 以??湲?以??먮윭/?ㅽ봽?쇱씤 ??
     """
     try:
         polling_service = await get_polling_service()
         data = polling_service.get_current_data()
         
         if not data:
-            raise HTTPException(
-                status_code=503,
-                detail="데이터 초기화 중입니다. 잠시 후 다시 시도해주세요."
+            return DashboardData(
+                printers=[],
+                total_printers=0,
+                printers_printing=0,
+                printers_idle=0,
+                printers_error=0,
+                printers_offline=0,
+                last_update=now_kst(),
             )
         
         return data
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"대시보드 조회 오류: {e}")
+        logger.error(f"??쒕낫??議고쉶 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ===========================================
-# 프린터 API
+# ?꾨┛??API
 # ===========================================
 
 @router.get(
     "/printers",
     response_model=List[PrinterSummary],
     tags=["Printers"],
-    summary="프린터 목록 조회",
-    description="모니터링 중인 모든 프린터의 상태를 조회합니다."
+    summary="?꾨┛??紐⑸줉 議고쉶",
+    description="紐⑤땲?곕쭅 以묒씤 紐⑤뱺 ?꾨┛?곗쓽 ?곹깭瑜?議고쉶?⑸땲??"
 )
 async def get_printers():
-    """프린터 목록 조회"""
+    """?꾨┛??紐⑸줉 議고쉶"""
     try:
         polling_service = await get_polling_service()
         data = polling_service.get_current_data()
@@ -83,7 +90,7 @@ async def get_printers():
         return data.printers
         
     except Exception as e:
-        logger.error(f"프린터 목록 조회 오류: {e}")
+        logger.error(f"?꾨┛??紐⑸줉 議고쉶 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -91,11 +98,11 @@ async def get_printers():
     "/printers/{serial}",
     response_model=PrinterSummary,
     tags=["Printers"],
-    summary="특정 프린터 상태 조회",
-    description="시리얼 번호로 특정 프린터의 상세 상태를 조회합니다."
+    summary="?뱀젙 ?꾨┛???곹깭 議고쉶",
+    description="?쒕━??踰덊샇濡??뱀젙 ?꾨┛?곗쓽 ?곸꽭 ?곹깭瑜?議고쉶?⑸땲??"
 )
 async def get_printer(serial: str):
-    """특정 프린터 상태 조회"""
+    """?뱀젙 ?꾨┛???곹깭 議고쉶"""
     try:
         polling_service = await get_polling_service()
         summary = polling_service.get_printer_summary(serial)
@@ -103,7 +110,7 @@ async def get_printer(serial: str):
         if not summary:
             raise HTTPException(
                 status_code=404,
-                detail=f"프린터를 찾을 수 없습니다: {serial}"
+                detail=f"Printer not found: {serial}"
             )
         
         return summary
@@ -111,7 +118,7 @@ async def get_printer(serial: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"프린터 조회 오류: {e}")
+        logger.error(f"?꾨┛??議고쉶 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -119,11 +126,11 @@ async def get_printer(serial: str):
     "/printers/{serial}/refresh",
     response_model=PrinterSummary,
     tags=["Printers"],
-    summary="프린터 상태 새로고침",
-    description="폴링 주기와 관계없이 즉시 프린터 상태를 갱신합니다."
+    summary="?꾨┛???곹깭 ?덈줈怨좎묠",
+    description="?대쭅 二쇨린? 愿怨꾩뾾??利됱떆 ?꾨┛???곹깭瑜?媛깆떊?⑸땲??"
 )
 async def refresh_printer(serial: str):
-    """프린터 상태 즉시 새로고침"""
+    """?꾨┛???곹깭 利됱떆 ?덈줈怨좎묠"""
     try:
         client = await get_formlabs_client()
         printer = await client.get_printer(serial)
@@ -131,7 +138,7 @@ async def refresh_printer(serial: str):
         if not printer:
             raise HTTPException(
                 status_code=404,
-                detail=f"프린터를 찾을 수 없습니다: {serial}"
+                detail=f"Printer not found: {serial}"
             )
         
         return client.printer_to_summary(printer)
@@ -139,43 +146,43 @@ async def refresh_printer(serial: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"프린터 새로고침 오류: {e}")
+        logger.error(f"?꾨┛???덈줈怨좎묠 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ===========================================
-# 프린트 이력 API
+# ?꾨┛???대젰 API
 # ===========================================
 
 @router.get(
     "/prints",
     response_model=PrintHistoryResponse,
     tags=["Print History"],
-    summary="프린트 이력 조회",
-    description="전체 프린트 이력을 조회합니다. 필터링 가능."
+    summary="?꾨┛???대젰 議고쉶",
+    description="?꾩껜 ?꾨┛???대젰??議고쉶?⑸땲?? ?꾪꽣留?媛??"
 )
 async def get_print_history(
-    printer_serial: Optional[str] = Query(None, description="특정 프린터로 필터링"),
-    status: Optional[PrintStatus] = Query(None, description="상태로 필터링"),
-    date_from: Optional[datetime] = Query(None, description="시작 날짜 (ISO 8601)"),
-    date_to: Optional[datetime] = Query(None, description="종료 날짜 (ISO 8601)"),
-    page: int = Query(1, ge=1, description="페이지 번호"),
-    page_size: int = Query(20, ge=1, le=100, description="페이지당 항목 수")
+    printer_serial: Optional[str] = Query(None, description="Filter by printer serial"),
+    status: Optional[PrintStatus] = Query(None, description="Filter by print status"),
+    date_from: Optional[datetime] = Query(None, description="?쒖옉 ?좎쭨 (ISO 8601)"),
+    date_to: Optional[datetime] = Query(None, description="醫낅즺 ?좎쭨 (ISO 8601)"),
+    page: int = Query(1, ge=1, description="?섏씠吏 踰덊샇"),
+    page_size: int = Query(20, ge=1, le=100, description="Page size"),
 ):
-    """프린트 이력 조회"""
+    """?꾨┛???대젰 議고쉶"""
     try:
         client = await get_formlabs_client()
         
-        # 전체 또는 특정 프린터 이력 조회
+        # ?꾩껜 ?먮뒗 ?뱀젙 ?꾨┛???대젰 議고쉶
         items = await client.get_print_history(
             printer_serial=printer_serial,
             status=status,
             date_from=date_from,
             date_to=date_to,
-            limit=page_size * page  # 간단한 페이지네이션
+            limit=page_size * page  # 媛꾨떒???섏씠吏?ㅼ씠??
         )
         
-        # 페이지네이션 적용
+        # ?섏씠吏?ㅼ씠???곸슜
         start_idx = (page - 1) * page_size
         paginated_items = items[start_idx:start_idx + page_size]
         
@@ -187,7 +194,7 @@ async def get_print_history(
         )
         
     except Exception as e:
-        logger.error(f"프린트 이력 조회 오류: {e}")
+        logger.error(f"?꾨┛???대젰 議고쉶 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -195,14 +202,14 @@ async def get_print_history(
     "/printers/{serial}/prints",
     response_model=List[PrintHistoryItem],
     tags=["Print History"],
-    summary="특정 프린터 이력 조회",
-    description="특정 프린터의 프린트 이력을 조회합니다."
+    summary="?뱀젙 ?꾨┛???대젰 議고쉶",
+    description="?뱀젙 ?꾨┛?곗쓽 ?꾨┛???대젰??議고쉶?⑸땲??"
 )
 async def get_printer_history(
     serial: str,
-    limit: int = Query(20, ge=1, le=100, description="조회할 항목 수")
+    limit: int = Query(20, ge=1, le=100, description="Max history items"),
 ):
-    """특정 프린터 이력 조회"""
+    """?뱀젙 ?꾨┛???대젰 議고쉶"""
     try:
         client = await get_formlabs_client()
         items = await client.get_print_history(
@@ -212,31 +219,31 @@ async def get_printer_history(
         return items
         
     except Exception as e:
-        logger.error(f"프린터 이력 조회 오류: {e}")
+        logger.error(f"?꾨┛???대젰 議고쉶 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ===========================================
-# 통계 API
+# ?듦퀎 API
 # ===========================================
 
 @router.get(
     "/statistics",
     tags=["Statistics"],
-    summary="프린트 통계 조회",
-    description="기간별 프린트 통계를 조회합니다."
+    summary="?꾨┛???듦퀎 議고쉶",
+    description="湲곌컙蹂??꾨┛???듦퀎瑜?議고쉶?⑸땲??"
 )
 async def get_statistics(
-    printer_serial: Optional[str] = Query(None, description="특정 프린터로 필터링"),
-    date_from: Optional[datetime] = Query(None, description="시작 날짜 (ISO 8601)"),
-    date_to: Optional[datetime] = Query(None, description="종료 날짜 (ISO 8601)"),
+    printer_serial: Optional[str] = Query(None, description="Filter by printer serial"),
+    date_from: Optional[datetime] = Query(None, description="?쒖옉 ?좎쭨 (ISO 8601)"),
+    date_to: Optional[datetime] = Query(None, description="醫낅즺 ?좎쭨 (ISO 8601)"),
 ):
-    """프린트 통계 조회 (재료 사용량, 일별 출력 추이, 프린터별 통계)"""
+    """?꾨┛???듦퀎 議고쉶 (?щ즺 ?ъ슜?? ?쇰퀎 異쒕젰 異붿씠, ?꾨┛?곕퀎 ?듦퀎)"""
     try:
         client = await get_formlabs_client()
         polling_service = await get_polling_service()
 
-        # 전체 이력 조회
+        # ?꾩껜 ?대젰 議고쉶
         items = await client.get_print_history(
             printer_serial=printer_serial,
             date_from=date_from,
@@ -244,7 +251,7 @@ async def get_statistics(
             limit=500
         )
 
-        # 1. Material Usage 집계
+        # 1. Material Usage 吏묎퀎
         material_usage: dict = {}
         for item in items:
             code = item.material_code or 'UNKNOWN'
@@ -255,7 +262,7 @@ async def get_statistics(
             material_usage[code]["total_ml"] += ml
             material_usage[code]["count"] += 1
 
-        # 2. Prints Over Time (일별 집계)
+        # 2. Prints Over Time (?쇰퀎 吏묎퀎)
         daily_counts: dict = {}
         for item in items:
             if item.started_at:
@@ -264,10 +271,10 @@ async def get_statistics(
                     daily_counts[day] = 0
                 daily_counts[day] += 1
 
-        # 날짜순 정렬
+        # ?좎쭨???뺣젹
         sorted_daily = sorted(daily_counts.items())
 
-        # 3. 프린터별 통계
+        # 3. ?꾨┛?곕퀎 ?듦퀎
         printer_stats: dict = {}
         current_data = polling_service.get_current_data()
         printer_names = {}
@@ -302,11 +309,11 @@ async def get_statistics(
                 day_str = item.started_at.strftime('%Y-%m-%d') if isinstance(item.started_at, datetime) else str(item.started_at)[:10]
                 stats["print_days"].add(day_str)
 
-        # set을 count로 변환
+        # set??count濡?蹂??
         for stats in printer_stats.values():
             stats["days_printed"] = len(stats["print_days"])
             del stats["print_days"]
-            # 가동률 계산 (조회 기간 대비)
+            # 媛?숇쪧 怨꾩궛 (議고쉶 湲곌컙 ?鍮?
             if date_from and date_to:
                 total_days = max((date_to - date_from).days, 1)
             elif sorted_daily:
@@ -333,39 +340,39 @@ async def get_statistics(
         }
 
     except Exception as e:
-        logger.error(f"통계 조회 오류: {e}")
+        logger.error(f"?듦퀎 議고쉶 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # ===========================================
-# 시스템 API
+# ?쒖뒪??API
 # ===========================================
 
 @router.get(
     "/system/token-status",
     tags=["System"],
-    summary="API 토큰 상태",
-    description="Formlabs API 인증 토큰 상태를 확인합니다."
+    summary="API ?좏겙 ?곹깭",
+    description="Formlabs API ?몄쬆 ?좏겙 ?곹깭瑜??뺤씤?⑸땲??"
 )
 async def get_token_status():
-    """토큰 상태 확인"""
+    """?좏겙 ?곹깭 ?뺤씤"""
     try:
         auth = await get_auth_manager()
         return auth.token_status
         
     except Exception as e:
-        logger.error(f"토큰 상태 확인 오류: {e}")
+        logger.error(f"?좏겙 ?곹깭 ?뺤씤 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get(
     "/system/debug/raw-printer/{serial}",
     tags=["System"],
-    summary="프린터 원본 데이터 조회 (디버그용)",
-    description="Formlabs API에서 받은 원본 데이터를 확인합니다."
+    summary="?꾨┛???먮낯 ?곗씠??議고쉶 (?붾쾭洹몄슜)",
+    description="Formlabs API?먯꽌 諛쏆? ?먮낯 ?곗씠?곕? ?뺤씤?⑸땲??"
 )
 async def get_raw_printer_data(serial: str):
-    """Formlabs API 원본 응답 확인 (디버그용)"""
+    """Formlabs API ?먮낯 ?묐떟 ?뺤씤 (?붾쾭洹몄슜)"""
     try:
         from app.core.auth import get_auth_manager
         import httpx
@@ -391,18 +398,18 @@ async def get_raw_printer_data(serial: str):
                 return {"error": response.status_code, "detail": response.text}
 
     except Exception as e:
-        logger.error(f"원본 데이터 조회 오류: {e}")
+        logger.error(f"?먮낯 ?곗씠??議고쉶 ?ㅻ쪟: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get(
     "/system/config",
     tags=["System"],
-    summary="시스템 설정 조회",
-    description="현재 시스템 설정을 조회합니다 (민감정보 제외)."
+    summary="?쒖뒪???ㅼ젙 議고쉶",
+    description="?꾩옱 ?쒖뒪???ㅼ젙??議고쉶?⑸땲??(誘쇨컧?뺣낫 ?쒖쇅)."
 )
 async def get_system_config():
-    """시스템 설정 조회 (민감정보 제외)"""
+    """?쒖뒪???ㅼ젙 議고쉶 (誘쇨컧?뺣낫 ?쒖쇅)"""
     settings = get_settings()
     
     return {
@@ -421,11 +428,11 @@ async def get_system_config():
 
 
 # ===========================================
-# WebSocket 실시간 업데이트
+# WebSocket ?ㅼ떆媛??낅뜲?댄듃
 # ===========================================
 
 class ConnectionManager:
-    """WebSocket 연결 관리자"""
+    """WebSocket ?곌껐 愿由ъ옄"""
     
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -433,14 +440,15 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        logger.info(f"🔌 WebSocket 연결 (총 {len(self.active_connections)}개)")
+        logger.info(f"?뵆 WebSocket ?곌껐 (珥?{len(self.active_connections)}媛?")
     
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-        logger.info(f"🔌 WebSocket 연결 해제 (총 {len(self.active_connections)}개)")
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logger.info(f"?뵆 WebSocket ?곌껐 ?댁젣 (珥?{len(self.active_connections)}媛?")
     
     async def broadcast(self, data: dict):
-        """모든 연결에 데이터 전송"""
+        """紐⑤뱺 ?곌껐???곗씠???꾩넚"""
         disconnected = []
         for connection in self.active_connections:
             try:
@@ -448,9 +456,10 @@ class ConnectionManager:
             except Exception:
                 disconnected.append(connection)
         
-        # 끊어진 연결 정리
+        # ?딆뼱吏??곌껐 ?뺣━
         for conn in disconnected:
-            self.active_connections.remove(conn)
+            if conn in self.active_connections:
+                self.active_connections.remove(conn)
 
 
 manager = ConnectionManager()
@@ -459,18 +468,18 @@ manager = ConnectionManager()
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """
-    WebSocket 실시간 업데이트
+    WebSocket ?ㅼ떆媛??낅뜲?댄듃
     
-    연결 후 자동으로 대시보드 데이터를 주기적으로 전송합니다.
+    ?곌껐 ???먮룞?쇰줈 ??쒕낫???곗씠?곕? 二쇨린?곸쑝濡??꾩넚?⑸땲??
     
-    메시지 타입:
-    - dashboard_update: 대시보드 전체 데이터
-    - notification: 알림 (프린트 완료, 에러 등)
+    硫붿떆吏 ???
+    - dashboard_update: ??쒕낫???꾩껜 ?곗씠??
+    - notification: ?뚮┝ (?꾨┛???꾨즺, ?먮윭 ??
     """
     await manager.connect(websocket)
     
     try:
-        # 초기 데이터 전송
+        # 珥덇린 ?곗씠???꾩넚
         polling_service = await get_polling_service()
         initial_data = polling_service.get_current_data()
         
@@ -480,7 +489,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "data": initial_data.model_dump(mode="json")
             })
         
-        # 업데이트 핸들러 등록
+        # ?낅뜲?댄듃 ?몃뱾???깅줉
         async def send_update(data: DashboardData):
             try:
                 await websocket.send_json({
@@ -492,21 +501,21 @@ async def websocket_endpoint(websocket: WebSocket):
         
         polling_service.on_update(send_update)
         
-        # 연결 유지 (클라이언트 메시지 대기)
+        # ?곌껐 ?좎? (?대씪?댁뼵??硫붿떆吏 ?湲?
         while True:
             try:
-                # 클라이언트 메시지 수신 (ping/pong 또는 명령)
+                # ?대씪?댁뼵??硫붿떆吏 ?섏떊 (ping/pong ?먮뒗 紐낅졊)
                 data = await asyncio.wait_for(
                     websocket.receive_text(),
-                    timeout=60.0  # 60초 타임아웃
+                    timeout=60.0  # 60珥???꾩븘??
                 )
                 
-                # ping 응답
+                # ping ?묐떟
                 if data == "ping":
                     await websocket.send_text("pong")
                 
             except asyncio.TimeoutError:
-                # 타임아웃 시 ping 전송
+                # ??꾩븘????ping ?꾩넚
                 try:
                     await websocket.send_text("ping")
                 except Exception:
@@ -515,6 +524,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        logger.error(f"WebSocket 오류: {e}")
+        logger.error(f"WebSocket ?ㅻ쪟: {e}")
     finally:
         manager.disconnect(websocket)
+
