@@ -40,6 +40,14 @@ export function PrintPage({ onOpenPrinterModal }: PrintPageProps) {
     loadData();
   }, [loadData]);
 
+  // Refresh dashboard + PreForm health periodically.
+  useEffect(() => {
+    const id = setInterval(() => {
+      loadData().catch(() => undefined);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [loadData]);
+
   // 프린터 탭 클릭 시 해당 컨테이너로 스크롤
   const scrollToPrinter = (serial: string) => {
     setActivePrinterSerial(serial);

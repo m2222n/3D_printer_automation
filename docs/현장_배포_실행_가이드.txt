@@ -1,0 +1,71 @@
+3D Printer Automation 현장 배포/실행 가이드
+
+1) 사전 준비
+- OS: Windows 10/11 x64
+- Python: 3.11.x (권장)
+- Node.js LTS + npm
+- MySQL Server 8.x (로컬 설치)
+- 네트워크: 로봇/비전/프린터 통신 포트 접근 가능
+
+2) 소스 위치
+- 예시: D:\Flicdern\3D_printer_automation
+
+3) Python 가상환경 및 패키지 설치
+- 명령:
+  cd D:\Flicdern\3D_printer_automation
+  py -3.11 -m venv .venv
+  .venv\Scripts\activate
+  pip install --upgrade pip
+  pip install -r requirements.txt
+
+4) 프론트 설치
+- 명령:
+  cd D:\Flicdern\3D_printer_automation\frontend
+  npm install
+
+5) MySQL 준비
+- MySQL 서비스 실행
+- DB 생성:
+  CREATE DATABASE automation CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+- 참고: 테이블/컬럼은 sequence_service 시작 시 자동 보정(init_db)
+
+6) 운영 설정 (config.py)
+- 파일: sequence_service\app\core\config.py
+- 최소 확인 항목:
+  MYSQL_DSN
+  SIMUL_MODE
+  ENABLE_TCP_IO
+  ROBOT_TCP_HOST / ROBOT_TCP_PORT
+  ENABLE_VISION_TCP
+  VISION_TCP_HOST / VISION_TCP_PORT
+  WEB_API_BASE_URL
+  PRINTER_SERIAL_MAP
+
+7) 실행 (통합)
+- 루트에서 실행:
+  cd D:\Flicdern\3D_printer_automation
+  .venv\Scripts\activate
+  python main.py
+
+8) 접속 확인
+- Frontend: http://127.0.0.1:5173
+- Web API: http://127.0.0.1:8085
+
+9) 기본 동작 점검
+- Automation 페이지 진입
+- CMD Create 1건 등록
+- STOP/PAUSE 버튼 동작 확인
+- Queue Board 상태 갱신 확인
+- 로그(Automation Logs) 확인
+
+10) 실장비 전환 체크
+- SIMUL_MODE=False
+- PRINTER_SERIAL_MAP 실제 장비 시리얼 반영
+- 로봇/비전 IP/PORT 실제값 반영
+- Robot ACK 수신 로그 확인
+
+11) 장애 대응
+- 포트 충돌 시 기존 프로세스 종료 후 재실행
+- MySQL 연결 실패 시 MYSQL_DSN/서비스 상태 확인
+- 프린터 시작 실패 시 web-api 로그에서 인증/프리셋/설정 확인
+
