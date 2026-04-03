@@ -36,7 +36,8 @@ class PresetService:
             part_type=data.part_type,
             description=data.description,
             settings=data.settings.model_dump(),
-            stl_filename=data.stl_filename
+            stl_filename=data.stl_filename,
+            printer_serial=data.printer_serial,
         )
         self.db.add(preset)
         self.db.commit()
@@ -63,13 +64,17 @@ class PresetService:
         self,
         skip: int = 0,
         limit: int = 50,
-        part_type: Optional[str] = None
+        part_type: Optional[str] = None,
+        printer_serial: Optional[str] = None,
     ) -> tuple[List[PresetResponse], int]:
-        """프리셋 목록 조회"""
+        """프리셋 목록 조회. printer_serial 지정 시 해당 프린터 전용 프리셋만 반환."""
         query = self.db.query(Preset)
 
         if part_type:
             query = query.filter(Preset.part_type == part_type)
+
+        if printer_serial:
+            query = query.filter(Preset.printer_serial == printer_serial)
 
         total = query.count()
         presets = query.order_by(Preset.updated_at.desc()).offset(skip).limit(limit).all()
@@ -127,6 +132,7 @@ class PresetService:
             description=preset.description,
             settings=PrintSettings(**preset.settings),
             stl_filename=preset.stl_filename,
+            printer_serial=preset.printer_serial,
             created_at=preset.created_at,
             updated_at=preset.updated_at,
             print_count=preset.print_count

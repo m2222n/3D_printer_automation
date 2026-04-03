@@ -58,7 +58,20 @@ export function PrinterPrintControl({
     ? (estimate.validation as { errors: string[] }).errors
     : [];
   const hasValidationErrors = validationErrors.length > 0;
-  const canPrint = isIdle && isPreformConnected && !!estimate && !hasValidationErrors;
+
+  // 프린터 readiness 체크
+  const readinessIssues: string[] = [];
+  if (!printer.is_ready) readinessIssues.push('프린터가 준비되지 않았습니다');
+  if (printer.is_cartridge_missing) readinessIssues.push('레진 카트리지 미장착');
+  if (printer.is_tank_missing) readinessIssues.push('레진 탱크 미장착');
+  if (printer.build_platform_contents === 'BUILD_PLATFORM_CONTENTS_MISSING' || printer.build_platform_contents === 'MISSING')
+    readinessIssues.push('빌드 플레이트 미설치');
+  if (printer.build_platform_contents === 'BUILD_PLATFORM_CONTENTS_HAS_PARTS' || printer.build_platform_contents === 'HAS_PARTS')
+    readinessIssues.push('빌드 플레이트에 이전 부품 있음');
+  if (!printer.is_online) readinessIssues.push('프린터 오프라인');
+  const isReady = readinessIssues.length === 0;
+
+  const canPrint = isIdle && isPreformConnected && !!estimate && !hasValidationErrors && isReady;
 
   const handleFileSelect = (filename: string) => {
     setSelectedFile(filename);
@@ -288,6 +301,25 @@ export function PrinterPrintControl({
 
       {/* 본문 */}
       <div className="bg-white">
+        {/* Readiness 경고 */}
+        {isIdle && readinessIssues.length > 0 && (
+          <div className="px-6 py-3 border-b bg-amber-50">
+            <div className="flex items-start gap-2">
+              <svg className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div>
+                <p className="text-xs font-medium text-amber-800">프린트 전 확인 필요</p>
+                <ul className="mt-1 text-xs text-amber-700 space-y-0.5">
+                  {readinessIssues.map((issue, i) => (
+                    <li key={i}>• {issue}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 활성 작업 진행 상태 표시 (출력 중/예열/일시정지/중단) */}
         {hasActiveJob && printer.current_job_name && (
           <div className={`px-6 py-4 border-b ${
@@ -375,7 +407,7 @@ export function PrinterPrintControl({
         <div className="px-6 py-4 border-b">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <FileUpload onFileSelect={handleFileSelect} />
-            <PresetManager onPresetSelect={handlePresetSelect} selectedFile={selectedFile} />
+            <PresetManager onPresetSelect={handlePresetSelect} selectedFile={selectedFile} printerSerial={printer.serial} />
           </div>
         </div>
 

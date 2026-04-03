@@ -22,6 +22,7 @@ from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
 from app.local.database import get_local_db
 from app.local.services import PresetService, PrintJobService
+from app.services.polling_service import get_polling_service
 from app.local.preform_client import get_preform_client, PreFormServerClient
 from app.local.schemas import (
     PresetCreate, PresetUpdate, PresetResponse, PresetListResponse,
@@ -204,11 +205,12 @@ async def list_presets(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     part_type: Optional[str] = None,
+    printer_serial: Optional[str] = Query(None, description="프린터 시리얼 (지정 시 해당 프린터 전용만)"),
     db: Session = Depends(get_local_db)
 ):
-    """프리셋 목록 조회 (페이지네이션 지원)"""
+    """프리셋 목록 조회 (페이지네이션 지원, 프린터별 필터링)"""
     service = PresetService(db)
-    items, total = service.list(skip=skip, limit=limit, part_type=part_type)
+    items, total = service.list(skip=skip, limit=limit, part_type=part_type, printer_serial=printer_serial)
     return PresetListResponse(items=items, total=total)
 
 
@@ -426,6 +428,38 @@ async def start_print_job(
         job = job_service.create(data, stl_filename, print_settings)
         job = job_service.update_status(job.id, PrintJobStatus.SENT) or job
         return job
+
+    # 프린터 readiness 검증
+    try:
+        polling_svc = await get_polling_service()
+        printer_summary = polling_svc.get_printer_summary(data.printer_serial)
+        if printer_summary:
+            issues = []
+            if not printer_summary.is_ready:
+                issues.append("프린터가 준비되지 않았습니다 (NOT READY)")
+            if printer_summary.is_cartridge_missing:
+                issues.append("레진 카트리지가 장착되지 않았습니다")
+            if printer_summary.is_tank_missing:
+                issues.append("레진 탱크가 장착되지 않았습니다")
+            if printer_summary.build_platform_contents in (
+                "BUILD_PLATFORM_CONTENTS_MISSING", "MISSING"
+            ):
+                issues.append("빌드 플레이트가 설치되지 않았습니다")
+            if printer_summary.build_platform_contents in (
+                "BUILD_PLATFORM_CONTENTS_HAS_PARTS", "HAS_PARTS"
+            ):
+                issues.append("빌드 플레이트에 이전 부품이 남아있습니다")
+            if not printer_summary.is_online:
+                issues.append("프린터가 오프라인 상태입니다")
+            if issues:
+                raise HTTPException(
+                    status_code=409,
+                    detail={"message": "프린터 준비 상태 확인 필요", "issues": issues}
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"⚠️ 프린터 readiness 확인 실패 (무시): {e}")
 
     # 설정 결정 (프리셋 또는 직접 입력)
     if data.preset_id:

@@ -11,9 +11,10 @@ import { MATERIAL_NAMES } from '../types/local';
 interface PresetManagerProps {
   onPresetSelect?: (preset: Preset) => void;
   selectedFile?: string;
+  printerSerial?: string;
 }
 
-export function PresetManager({ onPresetSelect, selectedFile }: PresetManagerProps) {
+export function PresetManager({ onPresetSelect, selectedFile, printerSerial }: PresetManagerProps) {
   const [presets, setPresets] = useState<Preset[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,19 +35,19 @@ export function PresetManager({ onPresetSelect, selectedFile }: PresetManagerPro
     stl_filename: selectedFile || '',
   });
 
-  // 프리셋 목록 로드
+  // 프리셋 목록 로드 (프린터별 필터링)
   const loadPresets = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getPresets();
+      const response = await getPresets(0, 50, undefined, printerSerial);
       setPresets(response.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : '프리셋 목록 조회 실패');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [printerSerial]);
 
   // 프리셋 생성
   const handleCreate = useCallback(async () => {
@@ -61,6 +62,7 @@ export function PresetManager({ onPresetSelect, selectedFile }: PresetManagerPro
       await createPreset({
         ...newPreset,
         stl_filename: selectedFile || newPreset.stl_filename,
+        printer_serial: printerSerial,
       });
       await loadPresets();
       setShowCreateForm(false);

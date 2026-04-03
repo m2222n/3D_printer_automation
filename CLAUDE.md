@@ -86,7 +86,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W2 완료 — 파이프라인 SW 구현 (L1~L4), E2E 테스트 PASS. **STL 25종 공장 PC에서 수거 예정 + RealSense 테스트** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W2 완료 — 파이프라인 SW 구현 (L1~L4), E2E PASS. RealSense D435 캡처 모듈 완료 (`73f3d00`), 시뮬 E2E PASS. **다음: Mac에서 D435 라이브 테스트** |
 
 ---
 
@@ -350,7 +350,6 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ### TODO (미완료)
 - [ ] 실제 프린터 프린트 전송 테스트 (레진 탱크 장착 필요)
-- [ ] 아키텍처 + 스크린샷 대표님 전달
 
 ### 인프라
 | 구분 | 서버 | 외부 포트 | 용도 |
@@ -719,4 +718,3 @@ POLLING_INTERVAL_SECONDS=15
 ### 대기 중
 - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 `lab.flickdone.com` 확정
 - ⬜ 기원님 자동화 코드 요약 수신 대기
-  - ⬜ Grey 프린터 LCD 스크래치 테스트 (대표님 지시)

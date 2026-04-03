@@ -67,6 +67,7 @@ export interface Preset {
   description: string | null;
   settings: PrintSettings;
   stl_filename: string | null;
+  printer_serial: string | null;
   created_at: string;
   updated_at: string;
   print_count: number;
@@ -78,6 +79,7 @@ export interface PresetCreate {
   description?: string;
   settings?: PrintSettings;
   stl_filename?: string;
+  printer_serial?: string;
 }
 
 export interface PresetUpdate {

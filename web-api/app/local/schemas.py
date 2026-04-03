@@ -78,6 +78,7 @@ class PresetCreate(PresetBase):
     """프리셋 생성 요청"""
     settings: PrintSettings = Field(default_factory=PrintSettings)
     stl_filename: Optional[str] = None  # 연결된 STL 파일명
+    printer_serial: Optional[str] = None  # None=글로벌, 값=프린터별
 
 
 class PresetUpdate(BaseModel):
@@ -94,6 +95,7 @@ class PresetResponse(PresetBase):
     id: str
     settings: PrintSettings
     stl_filename: Optional[str] = None
+    printer_serial: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     print_count: int = 0  # 이 프리셋으로 출력한 횟수

@@ -20,6 +20,7 @@ class Preset(Base):
     name = Column(String(100), nullable=False, index=True)
     part_type = Column(String(50), nullable=False, index=True)
     description = Column(Text, nullable=True)
+    printer_serial = Column(String(100), nullable=True, index=True)  # None=글로벌, 값=프린터별
 
     # 프린트 설정 (JSON)
     settings = Column(JSON, nullable=False, default=dict)

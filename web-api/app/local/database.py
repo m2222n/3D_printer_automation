@@ -26,10 +26,26 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def _migrate_local_db():
+    """기존 테이블에 새 컬럼 추가 (SQLite ALTER TABLE)"""
+    from sqlalchemy import text, inspect
+    insp = inspect(engine)
+    # presets 테이블에 printer_serial 컬럼 추가
+    if "presets" in insp.get_table_names():
+        columns = [c["name"] for c in insp.get_columns("presets")]
+        if "printer_serial" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "ALTER TABLE presets ADD COLUMN printer_serial VARCHAR(100)"
+                ))
+            logger.info("🔄 presets 테이블에 printer_serial 컬럼 추가")
+
+
 def init_local_db():
     """데이터베이스 테이블 생성"""
     logger.info("📦 Local API 데이터베이스 초기화 중...")
     Base.metadata.create_all(bind=engine)
+    _migrate_local_db()
     logger.info("✅ Local API 데이터베이스 초기화 완료")
 
 

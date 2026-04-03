@@ -75,11 +75,15 @@ export async function discoverPrinters(timeout: number = 10): Promise<Discovered
 export async function getPresets(
   skip: number = 0,
   limit: number = 50,
-  partType?: string
+  partType?: string,
+  printerSerial?: string
 ): Promise<PresetListResponse> {
   let url = `/presets?skip=${skip}&limit=${limit}`;
   if (partType) {
     url += `&part_type=${encodeURIComponent(partType)}`;
+  }
+  if (printerSerial) {
+    url += `&printer_serial=${encodeURIComponent(printerSerial)}`;
   }
   return fetchLocalApi<PresetListResponse>(url);
 }
