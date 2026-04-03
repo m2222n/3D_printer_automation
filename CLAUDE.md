@@ -301,7 +301,7 @@
 | CapableGecko | Form4-CapableGecko | 192.168.219.46 | Grey V5 |
 | HeavenlyTuna | Form4-HeavenlyTuna | 192.168.219.48 | Clear V5 |
 | CorrectPelican | Form4-CorrectPelican | 192.168.219.43 | Flexible 80A V1.1 |
-| ShrewdStork | Form4-ShrewdStork | 192.168.219.45 | ⚠️ 헤드커버 고장 중단 |
+| ShrewdStork | Form4-ShrewdStork | 192.168.219.45 | ✅ 운용 중 (4/3 헤드커버 수리 완료) |
 
 ---
 
@@ -717,12 +717,14 @@ POLLING_INTERVAL_SECONDS=15
 - ✅ **README.md 전체 업데이트** (`8607c3c`): Phase 3/5, D435, 구조/스택 갱신
 
 ### 현재 진행 / 다음 작업
+- 🔴 **한솔 자동화 문서 수신 → 대표님께 합쳐서 보고** — 웹 대시보드 문서 작성 완료 (`docs/웹_대시보드_기능현황.md`)
+- 🔴 **회사 출근 → STL 25종 파일 옮기기** — (구)공장 PC에서 수거
 - 🔴 **D435 라이브 테스트** → USB 3.0 젠더 확보 후 Mac에서 진행
-- 🔴 **STL 25종 수거** → (구)공장 PC 출처 대표님 답변 대기
 - 🔴 **STL→레퍼런스 + FPFH 캐싱** → STL 받으면 즉시
+- 🟡 **[한솔 협업]** sequence_service 프린터별 프리셋 연동 + 프린터 선택 기능 + 작업지시 UX
 - 🟡 L5 그래스프 계획 / L6 로봇 통신 / 통합 파이프라인 (W3~4)
 - 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
 
 ### 대기 중
 - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 `lab.flickdone.com` 확정
-- ⬜ 기원님 자동화 코드 요약 수신 대기
+- ⬜ 한솔코에버 자동화 탭 문서 수신 대기 (예승님)

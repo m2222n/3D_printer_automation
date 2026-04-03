@@ -527,12 +527,12 @@ python app/main.py
 
 ## 확인된 프린터 (4대)
 
-| 이름 | 시리얼 | 카트리지 | 상태 |
-|------|--------|---------|------|
-| CapableGecko | Form4-CapableGecko | Grey V5 | 운용 중 |
-| HeavenlyTuna | Form4-HeavenlyTuna | Clear V5 | 운용 중 |
-| CorrectPelican | Form4-CorrectPelican | Flexible 80A V1.1 | 운용 중 |
-| ShrewdStork | Form4-ShrewdStork | Clear V5 | ⚠️ 헤드커버 고장 |
+| 이름 | 시리얼 | 상태 |
+|------|--------|------|
+| CapableGecko | Form4-CapableGecko | 운용 중 |
+| HeavenlyTuna | Form4-HeavenlyTuna | 운용 중 |
+| CorrectPelican | Form4-CorrectPelican | 운용 중 |
+| ShrewdStork | Form4-ShrewdStork | 운용 중 (헤드커버 수리 완료) |
 
 ---
 
