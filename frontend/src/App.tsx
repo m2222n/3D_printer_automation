@@ -4,12 +4,14 @@ import { PrintPage } from './components/PrintPage';
 import { QueuePage } from './components/QueuePage';
 import { HistoryPage } from './components/HistoryPage';
 import { StatisticsPage } from './components/StatisticsPage';
+import { AutomationPage } from './components/AutomationPage';
+import { AutomationManualPage } from './components/AutomationManualPage';
 import { PrinterInfoModal } from './components/PrinterInfoModal';
 import { getNotifications, markNotificationsRead } from './services/localApi';
 import type { NotificationEventItem } from './services/localApi';
 import './App.css';
 
-type TabType = 'monitoring' | 'print' | 'queue' | 'history' | 'statistics';
+type TabType = 'monitoring' | 'print' | 'queue' | 'history' | 'statistics' | 'automation' | 'automation_manual';
 
 interface TabConfig {
   key: TabType;
@@ -22,6 +24,8 @@ const TABS: TabConfig[] = [
   { key: 'queue', label: '대기 중인 작업' },
   { key: 'history', label: '이전 작업 내용' },
   { key: 'statistics', label: '통계' },
+  { key: 'automation', label: '자동화' },
+  { key: 'automation_manual', label: '자동화 수동제어' },
 ];
 
 function App() {
@@ -90,6 +94,10 @@ function App() {
         return <HistoryPage key={tabResetKey} onOpenPrinterModal={openPrinterModal} />;
       case 'statistics':
         return <StatisticsPage key={tabResetKey} />;
+      case 'automation':
+        return <AutomationPage key={tabResetKey} />;
+      case 'automation_manual':
+        return <AutomationManualPage key={tabResetKey} />;
     }
   };
 

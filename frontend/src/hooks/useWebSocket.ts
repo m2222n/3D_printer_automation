@@ -1,9 +1,4 @@
-/**
- * WebSocket 훅
- * 실시간 업데이트 수신
- */
-
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DashboardData, WebSocketMessage } from '../types/printer';
 
 interface UseWebSocketOptions {
@@ -35,14 +30,30 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onMessageRef = useRef<typeof onMessage>(onMessage);
+  const onDashboardUpdateRef = useRef<typeof onDashboardUpdate>(onDashboardUpdate);
+  const shouldReconnectRef = useRef(true);
+
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+    onDashboardUpdateRef.current = onDashboardUpdate;
+  }, [onMessage, onDashboardUpdate]);
+
+  const cleanupSocket = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  }, []);
 
   const connect = useCallback(() => {
-    // 기존 연결 정리
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
+    cleanupSocket();
 
-    // WebSocket URL 생성 (개발/프로덕션 환경 자동 감지)
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/api/v1/ws`;
 
@@ -51,7 +62,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[WebSocket] 연결됨');
         setIsConnected(true);
         setConnectionError(null);
         reconnectAttemptsRef.current = 0;
@@ -61,66 +71,59 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
           setLastMessage(message);
-
-          // 콜백 호출
-          onMessage?.(message);
-
-          // 대시보드 업데이트 콜백
-          if (message.type === 'dashboard_update' && onDashboardUpdate) {
-            onDashboardUpdate(message.data as DashboardData);
+          onMessageRef.current?.(message);
+          if (message.type === 'dashboard_update') {
+            onDashboardUpdateRef.current?.(message.data as DashboardData);
           }
         } catch (error) {
-          console.error('[WebSocket] 메시지 파싱 오류:', error);
+          console.error('[WebSocket] parse error:', error);
         }
       };
 
       ws.onerror = (error) => {
-        console.error('[WebSocket] 오류:', error);
-        setConnectionError('WebSocket 연결 오류');
+        console.error('[WebSocket] error:', error);
+        setConnectionError('WebSocket connection error');
       };
 
-      ws.onclose = (event) => {
-        console.log('[WebSocket] 연결 종료:', event.code, event.reason);
+      ws.onclose = () => {
         setIsConnected(false);
         wsRef.current = null;
 
-        // 재연결 시도
+        if (!shouldReconnectRef.current) {
+          return;
+        }
+
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current += 1;
-          console.log(
-            `[WebSocket] ${reconnectInterval}ms 후 재연결 시도 (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`
-          );
-          reconnectTimeoutRef.current = setTimeout(connect, reconnectInterval);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connect();
+          }, reconnectInterval);
         } else {
-          setConnectionError('WebSocket 재연결 실패. 페이지를 새로고침하세요.');
+          setConnectionError('WebSocket reconnect failed');
         }
       };
     } catch (error) {
-      console.error('[WebSocket] 연결 생성 오류:', error);
-      setConnectionError('WebSocket 연결 생성 실패');
+      console.error('[WebSocket] create failed:', error);
+      setConnectionError('WebSocket creation failed');
     }
-  }, [onMessage, onDashboardUpdate, reconnectInterval, maxReconnectAttempts]);
+  }, [cleanupSocket, maxReconnectAttempts, reconnectInterval]);
 
   const reconnect = useCallback(() => {
+    shouldReconnectRef.current = true;
     reconnectAttemptsRef.current = 0;
     setConnectionError(null);
     connect();
   }, [connect]);
 
-  // 컴포넌트 마운트 시 연결
   useEffect(() => {
+    shouldReconnectRef.current = true;
     connect();
 
     return () => {
-      // 정리
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      shouldReconnectRef.current = false;
+      cleanupSocket();
     };
-  }, [connect]);
+  }, [cleanupSocket, connect]);
 
   return {
     isConnected,

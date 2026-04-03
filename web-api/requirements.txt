@@ -21,6 +21,10 @@ sqlalchemy>=2.0.25
 # MQTT (Phase 4: Vision)
 aiomqtt>=2.0.0
 
+# Phase 3: 시퀀스 서비스 (한솔코에버 자동화)
+pymysql>=1.1.0
+pymodbus>=3.6.0
+
 # 파일 업로드
 python-multipart>=0.0.6
 

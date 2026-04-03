@@ -6,6 +6,7 @@ Formlabs Web API 시스템 설정
 - 알림 설정
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
@@ -20,7 +21,20 @@ class Settings(BaseSettings):
     APP_NAME: str = "Formlabs 원격제어 시스템"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
-    
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def _parse_debug(cls, v):
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in {"1", "true", "yes", "y", "on", "debug", "development"}:
+                return True
+            if s in {"0", "false", "no", "n", "off", "release", "prod", "production"}:
+                return False
+        return bool(v)
+
     # ===========================================
     # Formlabs API 설정
     # ===========================================
@@ -114,6 +128,25 @@ class Settings(BaseSettings):
 
     # 시뮬레이터 활성화 (개발용)
     VISION_SIMULATOR_ENABLED: bool = True
+
+    # ===========================================
+    # Phase 3: 시퀀스 서비스 (한솔코에버 자동화) 설정
+    # ===========================================
+    # MySQL DSN — .env에서 설정 (기본값은 개발용)
+    SEQUENCE_MYSQL_DSN: str = "mysql+pymysql://root:root@127.0.0.1:3306/automation"
+
+    # 수동 제어 TCP 대상
+    ROBOT_TCP_HOST: str = "127.0.0.1"
+    ROBOT_TCP_PORT: int = 9100
+    VISION_TCP_HOST: str = "127.0.0.1"
+    VISION_TCP_PORT: int = 9200
+    MANUAL_TCP_TIMEOUT_SECONDS: float = 5.0
+
+    # Ajin IO (AXL.dll) — Windows 전용
+    AJIN_SIMULATION: bool = True
+    AJIN_IRQ_NO: int = 7
+    AJIN_DLL_PATH: str = "../sequence_service/app/io/bin/AXL.dll"
+    AJIN_IO_CSV_PATH: str = "../sequence_service/app/io/IO.csv"
 
     class Config:
         env_file = ".env"
