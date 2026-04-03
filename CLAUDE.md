@@ -62,6 +62,11 @@
   - origin + personal 양쪽 push 완료
 - **3/27 한솔코에버 최종 시연** (한솔 자체 진행, 정태민은 Azure 교육 중)
 
+### 2026.04.03 (빈피킹 지시)
+- **3D+RGB 카메라 확인**: Blaze-112(ToF) 단독인지, ace2(RGB)와 조합해서 포인트 잡는지 확인
+- **공장 PC에 STL 25종 있음**: 그걸로 테스트할 것. 향후 미묘한 모델링 변경 가능성 있음
+- **RealSense 카메라 테스트**: USB로 받음, 이걸로도 빈피킹 되는지 확인
+
 ### 2026.03.27 (공장 PC 장애 복구)
 - 공장 PC 재부팅 후 `file_receiver.py`(8089) 자동 시작 안 됨 → 미리보기 "모델 임포트 실패"
 - file_receiver 위치: `C:\Users\devfl\file_receiver.py`, 수동 실행하여 복구
@@ -79,7 +84,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W0 완료, W3 준비 중 — 6000서버 pypylon 26.3.1 설치 완료, **카메라 입고 전 SW 완성 필수** (대표님 4/1 지시) |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W2 완료 — 파이프라인 SW 구현 (L1~L4), E2E 테스트 PASS. **STL 25종 공장 PC에서 수거 예정 + RealSense 테스트** |
 
 ---
 
@@ -490,9 +495,13 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | `tutorials/09_noise_robustness.py` | 481 | 노이즈 강건성 |
 | `tutorials/10_pypylon_api_study.py` | 714 | pypylon API + Blaze-112 스펙 |
 | `tutorials/11_noise_robustness_advanced.py` | 590 | 노이즈 심화 (Clear 대응) |
-| `src/size_filter.py` | 441 | 크기 사전 필터 (30→2.2종) |
-| `src/pose_estimator.py` | 619 | 1:N 매칭 루프 |
-| `src/hand_eye_calibration.py` | 842 | 핸드-아이 캘리브레이션 |
+| `src/recognition/size_filter.py` | 441 | 크기 사전 필터 (30→2.2종) |
+| `src/recognition/pose_estimator.py` | 619 | 1:N 매칭 루프 |
+| `src/acquisition/hand_eye_calibration.py` | 842 | 핸드-아이 캘리브레이션 |
+| `src/acquisition/depth_to_pointcloud.py` | 155 | depth map → Open3D PointCloud 변환 |
+| `src/preprocessing/cloud_filter.py` | 236 | L2 전처리 파이프라인 (레진별 프리셋) |
+| `src/segmentation/dbscan_segmenter.py` | 208 | L3 DBSCAN 분할 + Cluster 클래스 |
+| `tests/test_e2e_redwood.py` | 240 | Redwood RGB-D E2E 5단계 테스트 |
 
 ### 7.1 필수 학습 체크리스트
 
@@ -506,8 +515,8 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 | # | 항목 | 상태 |
 |---|------|------|
-| 1 | Redwood RGB-D 데이터셋으로 E2E 파이프라인 테스트 | ⬜ |
-| 2 | depth_to_pointcloud() 변환 함수 작성/검증 | ⬜ |
+| 1 | Redwood RGB-D 데이터셋으로 E2E 파이프라인 테스트 | ✅ Mac 실행 완료 (4/3) — 전체 PASS, 2.2s, fitness=1.0 |
+| 2 | depth_to_pointcloud() 변환 함수 작성/검증 | ✅ 완료 (4/3) — confidence map 필터링, colored PC 지원 |
 | 3 | pypylon 설치 + API 숙지 | ✅ pypylon 26.3.1 (pylon 런타임 번들 포함) |
 | 4 | pylon Camera Software Suite 8.x 시스템 설치 | ➡️ 비전 PC 입고 후 |
 | 5 | Blaze-112 Supplementary Package 설치 | ➡️ 비전 PC 입고 후 |
@@ -516,12 +525,12 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 | 작업 | 산출물 | 블로커 | 예상 시점 |
 |------|--------|--------|----------|
-| **STP→STL 변환** | models/cad/, models/stl/ | FreeCAD 트리 분석 완료 (4/3), 후보 21종+불확실 7종 식별. **대표님 30종 확정 대기** | 🔄 진행 중 (4/3) |
+| **공장 PC STL 25종 가져오기** | models/cad/ | 대표님: 공장 PC에 25종 있음 (4/3). 가져와서 테스트 | 🔄 즉시 |
 | STL→레퍼런스 + FPFH 캐싱 | cad_library.py, models/ | STL 변환 완료 후 | STL 준비 즉시 |
-| **폴더 구조 리팩토링** | 문서 섹션 6 구조로 전환 | — | 즉시 |
-| **L2 전처리** | cloud_filter.py | — | W3 (4/7~) |
-| **L3 분할** | dbscan_segmenter.py | — | W3-4 |
-| **Redwood E2E + depth_to_pointcloud** | blaze_camera.py 스켈레톤 | — | W3-4 |
+| ~~폴더 구조 리팩토링~~ | ~~문서 섹션 6 구조로 전환~~ | — | ✅ 완료 (4/3, `99b02fe`) |
+| ~~depth_to_pointcloud + Redwood E2E~~ | ~~blaze_camera.py 스켈레톤~~ | — | ✅ 완료 (4/3, `d977890`) — Mac 실행 대기 |
+| ~~L2 전처리 모듈화~~ | ~~src/preprocessing/cloud_filter.py~~ | — | ✅ 완료 (4/3, `9517987`) — 레진별 프리셋, 5단계 파이프라인 |
+| ~~L3 분할 모듈화~~ | ~~src/segmentation/dbscan_segmenter.py~~ | — | ✅ 완료 (4/3, `9517987`) — DBSCAN + Cluster 클래스 |
 | L5 그래스프 계획 | grasp_planner.py, grasp_database.yaml | — | W5-6 |
 | L6 로봇 통신 | modbus_server.py | — | W5-6 |
 | L1~L6 통합 | main_pipeline.py | 위 항목 완료 | W6 |
@@ -683,53 +692,29 @@ POLLING_INTERVAL_SECONDS=15
 ## 마지막 업데이트
 
 - **날짜**: 2026-04-03
-- **현재 상태**: Phase 1, 2 완료. Phase 3 한솔코에버 코드 머지 완료 (4/3). **Phase 5 빈피킹 집중 — STP→STL 변환 진행 중 (대표님 30종 확정 대기)**
-- **최근 진행 (3/19)**:
-  - ✅ **빈피킹 업무지시서 수신 + 분석 완료**: `binpicking_dev_instruction_정태민.pdf` (ORINU-DEV-2026-002, 13페이지)
-  - Basler Blaze-112 ToF + ace2 5MP RGB-D → Open3D FPFH+RANSAC+ICP → Modbus TCP → HCR-10L 로봇
-  - 카메라 납기 6~7주 (5월 초), 그 전까지 시뮬레이션 데이터로 SW 파이프라인 완성 목표
-  - ⬜ **W0 학습 과제**: Open3D 튜토리얼 (Registration), pypylon API 숙지, FPFH/ICP 논문
-  - ⬜ **대표님께 요청 필요**: 30종 STL 파일 + `binpicking_dev_plan.docx` (코드 스니펫 포함 기술 배경)
-- **최근 진행 (3/18)**:
-  - ✅ **대시보드 소모품 표시 개선 (PreForm 스타일)**: PrinterCard에 레진 이름(White V5 등) + 파란색 잔량 바 + 카트리지 Missing 빨간 표시 추가
-  - 백엔드 `is_cartridge_missing`, `is_tank_missing` 필드 추가, PrinterInfoModal Missing 빨간색 강조
-  - ✅ **WireGuard VPN ↔ 로봇 네트워크 충돌 해결**: `AllowedIPs`에서 `192.168.100.0/24` 제거 → VPN + 로봇 동시 운용 가능 (AnyDesk 원격)
-  - ✅ **학습 이미지 프레임 추출**: 핸드폰 동영상 6개 → 350장 추출 (240x240, 라벨 6종)
-  - 한솔(기원님)에게 VPN 해결 전달 → 금요일(3/20) 현장 테스트 예정
-  - ✅ **도메인 확정**: `lab.flickdone.com` (대표님 지시, flickdone.com 서브도메인)
-- **최근 진행 (3/17)**:
-  - ✅ **프린터 4대 정상 복구**: 공장 방문하여 프린터 재부팅 → WiFi + Cloud 자동 재연결, 4대 모두 IDLE 상태 확인
-  - 🔄 **카카오 클라우드 도메인 결정 중**: 대표님께 서브도메인 제안 (예: `factory.orinuai.com`), 보유 도메인 목록 확인 대기
-- **최근 진행 (3/16)**:
-  - 🔄 **Edge Impulse 학습 이미지 촬영 시도** (공장): 카메라 플래시 저장 3회 소실 → IDE Frame Buffer Mac 직접 저장 방식으로 전환
-  - ✅ **캡처 스크립트 분리**: `capture_cure.py` (경화기), `capture_wash.py` (세척기) 서버 저장 완료
-  - 💡 **협업업체 조언**: UV 라이트 대신 경화기 디스플레이 화면 디텍션이 더 안정적
-  - ✅ **WireGuard VPN 재연결 + PreFormServer 복구**: AnyDesk로 원격 접속하여 복구 완료
-- **최근 완료 (3/12)**:
-  - ✅ **WiFi + MQTT E2E 통신 성공**: OpenMV AE3 → `OrinuAI_2.4GHz` WiFi (192.168.100.63) → Mosquitto (192.168.100.29:1883) 메시지 발행 확인
-  - ✅ **네트워크 경로 해결**: 포트포워딩 불필요, `OrinuAI_2.4GHz` WiFi가 서버와 같은 대역 (5GHz는 AE3 미지원)
-- **최근 완료 (3/11)**:
-  - ✅ **Formlabs API 페이지네이션 구현**: `formlabs_client.py`에서 `next` URL 순회 (최대 20페이지/2000건)
-  - ✅ **타임라인 날짜별 이력 동적 fetch + 달력 출력 기록 마킹**
-  - ✅ **OpenMV 네트워크 조사 + config.py 설정 + 테스트 스크립트 작성**
-  - ✅ **Edge Impulse 학습 이미지 캡처 스크립트 작성** (`capture_training_images.py`)
-- **최근 완료 (이전)**:
-  - ✅ **화성시 디지털 가속성장 발표자료 제출** (3/10): v6, 16페이지, 대본+Q&A 8문항
-  - ✅ **카카오 클라우드 VM 생성 완료** (3/10): Faridh님 세팅, 공장 모니터링용
-  - ✅ **Phase 4 서버 인프라 완료** (3/9): Mosquitto MQTT, vision 모듈 7파일, 10 API
-  - ✅ **OpenMV AE3 카메라 연결 + 모듈 호환성 전체 통과** (3/9)
-  - ✅ **한솔코에버 인수인계 완료** (3/6)
-- **현재 진행**:
-  - 🔴 **3D 빈피킹 비전 시스템** (대표님 지시, OpenMV보다 우선): 업무지시서 수신 완료(3/19), W0 학습 중. STL 파일 + dev_plan.docx 대표님 요청 필요
-  - 🔄 추출 이미지 수동 정리 (라벨 오분류·노이즈 제거) → Edge Impulse 모델 학습 (후순위)
-  - 🔄 카카오 클라우드 + Cloudflare Tunnel 세팅 — 도메인 `lab.flickdone.com` 확정, 파리드님에게 요청 예정
-- **한솔코에버 설계서 수령** (3/11):
-  - `플릭던 자동화 셀 제어 프로그램 설계서` (Ver1.0, 2026-03-06)
-  - SequenceThread 기반 Queue 아키텍처, Automation/Automation_Manual 탭 추가
-  - 로봇 1대로 표기 (우리 계획은 2대) → 확인 필요
-  - 우리 API와의 연동 방식 미명시 → 한솔 측 확인 필요
-- **대기 중**:
-  - ~~⬜ WireGuard VPN + 로봇 네트워크 동시 운용 방안~~ → ✅ AllowedIPs 수정으로 해결 (3/18)
-  - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 확정 완료, 파리드님 세팅 요청 후 진행
-  - ⬜ 아키텍처 + 스크린샷 대표님 전달 (후순위)
+- **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 집중 — 파이프라인 SW 구현 완료, STL 25종 가져오기 + RealSense 테스트 예정**
+
+### 최근 진행 (4/3) — 오늘
+- ✅ **한솔코에버 hansol-dev 머지 완료** (`9c161dc`): 시퀀스 서비스 + 자동화 프론트엔드 통합, 인코딩 복원, 기존 코드 보존
+- ✅ **STP 어셈블리 트리 전체 분석**: FreeCAD 1.1.0으로 `00_bp_total_assy_asm.stp` 탐색, 후보 33종+불확실 8종 식별
+- ✅ **bin_picking/ 폴더 구조 리팩토링** (`99b02fe`): 파이프라인 6단계 모듈 구조
+- ✅ **depth_to_pointcloud() + Redwood E2E** (`d977890`): Mac 실행 전체 PASS (267K pts, 2.2s)
+- ✅ **L2 전처리 + L3 분할 모듈화** (`9517987`): CloudFilter (레진별 프리셋) + DBSCANSegmenter
+- 📌 **대표님 지시 (4/3)**:
+  - 공장 PC에 **STL 25종 있음** → 가져와서 테스트 (FreeCAD 분리 불필요)
+  - **RealSense 카메라** USB 수령 → 이걸로도 빈피킹 되는지 테스트
+  - 3D+RGB 카메라 조합 방식 확인 → 설계대로 (Blaze-112 depth + ace2 RGB)
+  - 향후 미묘한 모델링 변경 가능성 있음
+- 기원님에게 카톡: 머지 완료 알림 + 새 코드 요약 요청
+
+### 현재 진행 / 다음 작업
+- 🔴 **공장 PC STL 25종 가져오기** → 오늘 오후 공장 방문 시 수행
+- 🔴 **STL→레퍼런스 + FPFH 캐싱** → STL 받으면 즉시
+- 🔴 **RealSense 카메라 테스트** → pyrealsense2 연동 모듈 필요
+- 🟡 L5 그래스프 계획 / L6 로봇 통신 / 통합 파이프라인 (W3~4)
+- 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
+
+### 대기 중
+- ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 `lab.flickdone.com` 확정
+- ⬜ 기원님 자동화 코드 요약 수신 대기
   - ⬜ Grey 프린터 LCD 스크래치 테스트 (대표님 지시)
