@@ -38,7 +38,7 @@
 | 경화기 | Form Cure | 2대 | UV 경화 |
 | 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 |
 | 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 |
-| 깊이 카메라 | Intel RealSense | 1대 | RGB-D (빈피킹 보조/테스트) |
+| 깊이 카메라 | Intel RealSense D435 | 1대 | RGB-D 스테레오 (빈피킹 보조/테스트) |
 | 비전 카메라 | OpenMV AE3 | 4대 (예정) | 세척기/경화기 완료 감지 |
 
 ---
