@@ -74,7 +74,8 @@
 - file_receiver 위치: `C:\Users\devfl\file_receiver.py`, 수동 실행하여 복구
 - Windows cmd QuickEdit 모드 때문에 file_receiver 반복 멈춤 → QuickEdit 해제로 해결
 - 출력 전송 후 프린터 미동작: PreFormServer 재시작 시 빌드플랫폼 상태 MISSING 리셋 → 프린터 터치스크린 확인 필요
-- **TODO**: file_receiver 시작 프로그램 등록, 웹 UI에 프린터 readiness 체크 추가
+- **TODO**: file_receiver 시작 프로그램 등록
+- ✅ **웹 UI readiness 체크 구현 완료** (`0e3451e`): 프린트 전 6가지 검증 + 경고 배너 + 버튼 비활성화
 
 ---
 
@@ -708,10 +709,17 @@ POLLING_INTERVAL_SECONDS=15
   - 향후 미묘한 모델링 변경 가능성 있음
 - 기원님에게 카톡: 머지 완료 알림 + 새 코드 요약 요청
 
+### 최근 추가 (4/3 오후)
+- ✅ **RealSense D435 캡처 모듈** (`73f3d00`): realsense_capture.py + test_e2e_realsense.py, 시뮬 E2E PASS (1.17s)
+- ✅ **프리셋 프린터별 독립** (`0e3451e`): printer_serial 컬럼, 프린터별 분리 생성/조회
+- ✅ **프린트 전 readiness 체크** (`0e3451e`): 백엔드 6가지 검증 + 프론트 경고/버튼 비활성화
+- ✅ **한솔코에버 담당자 변경**: 김기원 주임 퇴사 → 이예승 사원 (eseung97, collaborator 초대 완료)
+- ✅ **README.md 전체 업데이트** (`8607c3c`): Phase 3/5, D435, 구조/스택 갱신
+
 ### 현재 진행 / 다음 작업
-- 🔴 **공장 PC STL 25종 가져오기** → 오늘 오후 공장 방문 시 수행
+- 🔴 **D435 라이브 테스트** → USB 3.0 젠더 확보 후 Mac에서 진행
+- 🔴 **STL 25종 수거** → (구)공장 PC 출처 대표님 답변 대기
 - 🔴 **STL→레퍼런스 + FPFH 캐싱** → STL 받으면 즉시
-- 🔴 **RealSense 카메라 테스트** → pyrealsense2 연동 모듈 필요
 - 🟡 L5 그래스프 계획 / L6 로봇 통신 / 통합 파이프라인 (W3~4)
 - 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
 
