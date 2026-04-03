@@ -1,5 +1,7 @@
 # 3D Printer Automation System
 
+> **새 세션 시작 시**: CLAUDE.md, CLAUDE.local.md 읽은 후 `~/.claude/projects/-home-jtm/memory/MEMORY.md`도 반드시 읽을 것
+
 ## 프로젝트 개요
 
 ### 기본 정보
@@ -48,6 +50,25 @@
 - 운영 서버: 5090 VM 폐기 → **카카오 클라우드로 이전 예정**
 - AICA A100: 한솔에서 3월간 1대 필요 → 근형님께 전달 완료
 
+### 2026.03.24~26 (한솔코에버 PR → 브랜치 전환)
+- 김기원 주임(`justkiwon`)이 개인 리포(`m2222n`)에 **PR #3** 제출 (3/24)
+- 내용: 자동화 프론트엔드(`AutomationPage`, `AutomationManualPage`) + 시퀀스 서비스 오케스트레이터(`main.py`) + 배포 가이드
+- **PR 취소 → `hansol-dev` 브랜치에 재업로드** (3/25, 커밋 `591b95a`)
+- ✅ **머지 완료 (4/3)** — `hansol-merge` 브랜치에서 cherry-pick + 수동 수정 후 main 머지 (`9c161dc`)
+  - 인코딩 깨짐 복원 (routes.py, auth.py, config.py, requirements.txt, App.tsx)
+  - 프린터 시리얼 하드코딩 → 환경변수 복원, MQTT 설정 유지
+  - 기존 코드 보존 (OpenMV, bin_picking, vision, docs, mosquitto)
+  - 기원님 코드: sequence_service/, AutomationPage, AutomationManualPage, automation_db.py 등 추가
+  - origin + personal 양쪽 push 완료
+- **3/27 한솔코에버 최종 시연** (한솔 자체 진행, 정태민은 Azure 교육 중)
+
+### 2026.03.27 (공장 PC 장애 복구)
+- 공장 PC 재부팅 후 `file_receiver.py`(8089) 자동 시작 안 됨 → 미리보기 "모델 임포트 실패"
+- file_receiver 위치: `C:\Users\devfl\file_receiver.py`, 수동 실행하여 복구
+- Windows cmd QuickEdit 모드 때문에 file_receiver 반복 멈춤 → QuickEdit 해제로 해결
+- 출력 전송 후 프린터 미동작: PreFormServer 재시작 시 빌드플랫폼 상태 MISSING 리셋 → 프린터 터치스크린 확인 필요
+- **TODO**: file_receiver 시작 프로그램 등록, 웹 UI에 프린터 readiness 체크 추가
+
 ---
 
 ## Phase별 개발 계획 (확정)
@@ -56,9 +77,9 @@
 |-------|------|----------|------|------|
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | 2주 | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
-| **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ⬜ 대기 (한솔코에버 협업 확정) |
+| **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W0 거의 완료 — 튜토리얼 11개 + 실전 코드 3개 전체 PASS (부품당 0.33초/인식률 100%), **STL 수령만 대기** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W0 완료, W3 준비 중 — 6000서버 pypylon 26.3.1 설치 완료, **카메라 입고 전 SW 완성 필수** (대표님 4/1 지시) |
 
 ---
 
@@ -105,7 +126,7 @@
 │
 ├── frontend/                    # 프론트엔드 (React + Vite + TS + Tailwind CSS 4) ✅ 완료
 │   ├── src/
-│   │   ├── App.tsx              # 메인 라우터 (5탭 + 알림벨)
+│   │   ├── App.tsx              # 메인 라우터 (7탭 + 알림벨)
 │   │   ├── components/
 │   │   │   ├── Dashboard.tsx           # 모니터링 탭: 프린터 4대 그리드 + 타임라인
 │   │   │   ├── PrinterCard.tsx         # 프린터 요약 카드
@@ -116,7 +137,9 @@
 │   │   │   ├── PrinterPrintControl.tsx # 프린터별 독립 제어 컨테이너
 │   │   │   ├── QueuePage.tsx           # 대기 중인 작업 탭
 │   │   │   ├── HistoryPage.tsx         # 이전 작업 이력 탭
-│   │   │   └── StatisticsPage.tsx      # 통계 탭
+│   │   │   ├── StatisticsPage.tsx      # 통계 탭
+│   │   │   ├── AutomationPage.tsx     # 자동화 탭 (한솔코에버)
+│   │   │   └── AutomationManualPage.tsx # 자동화 수동제어 탭 (한솔코에버)
 │   │   ├── types/
 │   │   │   ├── printer.ts       # Phase 1 타입
 │   │   │   └── local.ts         # Phase 2 타입
@@ -124,6 +147,15 @@
 │   │       ├── api.ts           # Phase 1 API
 │   │       └── localApi.ts      # Phase 2 API
 │   └── package.json
+│
+├── sequence_service/             # Phase 3: 시퀀스 서비스 (한솔코에버, 4/3 머지)
+│   ├── app/cell/                # 시퀀스 런타임, Modbus, 로봇/프린터 제어
+│   ├── app/core/config.py       # 시퀀스 서비스 설정
+│   ├── app/db/                  # MySQL 모델/세션
+│   ├── app/io/                  # Ajin IO (AXL.dll, Windows)
+│   └── app/main.py              # 서비스 진입점
+│
+├── main.py                      # 통합 런처 (web-api + sequence_service, Windows)
 │
 ├── factory-pc/                  # 공장 PC 스크립트
 │   └── file_receiver.py         # STL 파일 수신 + 스크린샷 서빙 (포트 8089)
@@ -316,13 +348,18 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 ### 인프라
 | 구분 | 서버 | 외부 포트 | 용도 |
 |------|------|----------|------|
-| 6000 서버 | 192.168.100.50:8085 | 8085 | **개발용** (현재 동작 중 ✅) |
+| 6000 서버 | 192.168.100.29:8085 (VPN: 10.145.113.8) | 8085 | **개발용** (현재 동작 중 ✅) |
 | 카카오 클라우드 | 61.109.239.142:22 | 미정 | **운영용** (VM 생성 완료, 세팅 대기) |
 
-### VPN 네트워크 구조 (현재 — 임시)
+### VPN 네트워크 구조 (현재)
 ```
-브라우저 → http://106.244.6.242:8085 → 6000 서버 (개발) → VPN → 공장 PC → 프린터 4대
+브라우저 → http://106.244.6.242:8085 → 6000 서버 (VPN: 10.145.113.8) → WireGuard Tunnel → 공장 PC (VPN: 10.145.113.3) → 프린터 4대
 ```
+- **6000 서버 WireGuard 클라이언트 설치 완료 (3/26)**: Method B 적용 — 파리드님 conf 파일 제공, VPN IP `10.145.113.8/24`
+- ~~Method A (공유기 라우팅)~~ 실패 → Method B (서버에 WG 직접 설치)로 해결
+- WireGuard 서버: 사무실 ipTIME 공유기 (192.168.100.1 / 10.145.113.1), Endpoint: `orinu.iptime.org:56461`
+- conf 파일: `/etc/wireguard/wg0.conf` (키 정보 포함, 커밋 금지)
+- ⚠️ `systemctl`은 inactive — 서버 재부팅 시 `sudo systemctl enable --now wg-quick@wg0` 필요
 > ✅ VPN-로봇 충돌 해결 (3/18): WireGuard `AllowedIPs`에서 `192.168.100.0/24` 제거 → VPN + 로봇 동시 운용 가능
 > 🔄 중기: 카카오 클라우드 + Cloudflare Tunnel로 전환 예정 (대표님 도메인 답변 대기)
 
@@ -337,14 +374,30 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 - ~~**미해결**: 공장 PC가 프린터(219.x)와 로봇(100.x) 양쪽 네트워크 동시 접근~~ → ✅ WireGuard AllowedIPs 수정으로 해결 (3/18)
 - ~~**주의**: 데모 시연 3/27~31~~ → **데모 시연 3/20 완료**
 
+### 6000 서버 WireGuard 정보
+| 항목 | 값 |
+|------|-----|
+| VPN IP | 10.145.113.8/24 |
+| 인터페이스 | wg0 |
+| conf 파일 | `/etc/wireguard/wg0.conf` |
+| Peer Endpoint | 106.244.6.242:56461 (= orinu.iptime.org) |
+| AllowedIPs | 10.145.113.0/24, 192.168.100.0/24 |
+| PersistentKeepalive | 25 |
+| DNS | 203.248.252.2 |
+
 ### 공장 PC 정보
 | 항목 | 값 |
 |------|-----|
+| Windows 사용자 | `devfl` |
 | VPN IP | 10.145.113.3 |
-| PreFormServer | 포트 44388 (v3.55.0.606) |
+| PreFormServer | `C:\PreFormServer\PreFormServer.exe -p 44388` (v3.55.0.606) |
 | file_receiver | 포트 8089 → `C:\STL_Files` |
 | AnyDesk ID | 1 382 237 708 |
 | 자동 시작 | WireGuard + PreFormServer + file_receiver + AnyDesk |
+| PreForm 앱 | `C:\Program Files\Formlabs\PreForm\3.57.0.622\PreForm.exe` (별도, 서버 아님) |
+
+> ⚠️ PreFormServer는 `-p 44388` 옵션 필수. 옵션 없이 실행하면 바로 종료됨.
+> 시작 프로그램 바로가기: `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PreFormServer.lnk`
 
 ---
 
@@ -387,11 +440,12 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ---
 
-## Phase 5: 3D 빈피킹 비전 시스템 🔄 W0 진행 중
+## Phase 5: 3D 빈피킹 비전 시스템 🔄 W0 완료 → W3 준비
 
-> **문서**: ORINU-DEV-2026-002 (구본경 대표, 2026-03-18)
+> **문서**: ORINU-DEV-2026-002 (구본경 대표, 2026-03-18) — PDF로 재수령 (4/1), docx는 헤더 깨짐
 > **개발**: Mac (Intel) + venv binpick (Python 3.12 + Open3D 0.19.0) — 6000 서버 Open3D 불가 (AVX2 미지원)
 > **파이프라인**: L1 영상취득 → L2 전처리 → L3 DBSCAN분할 → L4 FPFH+RANSAC+ICP → L5 그래스프 → L6 Modbus
+> **대표님 지시 (4/1)**: ① 문서 이해 ② 7.1 튜토리얼 ③ 논문 참고 ④ Basler 기반 개발 ⑤ 보고. **카메라 입고 전 SW 완성 필수**, OpenMV보다 우선순위 높음
 
 ### W0 학습 현황 (2026-03-23 완료)
 
@@ -440,16 +494,39 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | `src/pose_estimator.py` | 619 | 1:N 매칭 루프 |
 | `src/hand_eye_calibration.py` | 842 | 핸드-아이 캘리브레이션 |
 
-### 남은 작업
+### 7.1 필수 학습 체크리스트
 
-| 작업 | 블로커 | 예상 시점 |
-|------|--------|----------|
-| **30종 STL 수령** | 대표님 전달 대기 | ASAP |
-| STL→레퍼런스 일괄 생성 + FPFH 캐싱 | STL 필요 | STL 수령 즉시 |
-| W3-4: 전처리 + DBSCAN (시뮬) | — | 4/7~4/18 |
-| W5-6: 인식 + 자세 추정 (실전) | — | 4/21~5/2 |
-| W7: 카메라 입고 + 실제 연동 | 카메라 5월 초 | 5/5~5/9 |
-| pylon SDK 설치 + Application Note 실습 | 비전 PC 필요 | 5월 |
+| # | 항목 | 상태 |
+|---|------|------|
+| 1 | Open3D 공식 튜토리얼 (Registration 섹션) | ✅ tutorials 01~11 |
+| 2 | pypylon 공식 예제 | ✅ tutorials/10 + 6000서버 pypylon 26.3.1 설치 (4/1) |
+| 3 | Basler Blaze-112 Application Note | ⬜ pylon 설치 후 문서 폴더, 또는 웹 다운로드 필요 |
+
+### 카메라 입고 전 할 일 (문서 4.1절)
+
+| # | 항목 | 상태 |
+|---|------|------|
+| 1 | Redwood RGB-D 데이터셋으로 E2E 파이프라인 테스트 | ⬜ |
+| 2 | depth_to_pointcloud() 변환 함수 작성/검증 | ⬜ |
+| 3 | pypylon 설치 + API 숙지 | ✅ pypylon 26.3.1 (pylon 런타임 번들 포함) |
+| 4 | pylon Camera Software Suite 8.x 시스템 설치 | ➡️ 비전 PC 입고 후 |
+| 5 | Blaze-112 Supplementary Package 설치 | ➡️ 비전 PC 입고 후 |
+
+### 남은 개발 작업
+
+| 작업 | 산출물 | 블로커 | 예상 시점 |
+|------|--------|--------|----------|
+| **STP→STL 변환** | models/cad/, models/stl/ | FreeCAD 트리 분석 완료 (4/3), 후보 21종+불확실 7종 식별. **대표님 30종 확정 대기** | 🔄 진행 중 (4/3) |
+| STL→레퍼런스 + FPFH 캐싱 | cad_library.py, models/ | STL 변환 완료 후 | STL 준비 즉시 |
+| **폴더 구조 리팩토링** | 문서 섹션 6 구조로 전환 | — | 즉시 |
+| **L2 전처리** | cloud_filter.py | — | W3 (4/7~) |
+| **L3 분할** | dbscan_segmenter.py | — | W3-4 |
+| **Redwood E2E + depth_to_pointcloud** | blaze_camera.py 스켈레톤 | — | W3-4 |
+| L5 그래스프 계획 | grasp_planner.py, grasp_database.yaml | — | W5-6 |
+| L6 로봇 통신 | modbus_server.py | — | W5-6 |
+| L1~L6 통합 | main_pipeline.py | 위 항목 완료 | W6 |
+| W7: 카메라 입고 + 실제 연동 | calibration.py | 카메라 5월 초 | 5/5~5/9 |
+| 대표님 보고 | 진행 보고서 | — | 수시 |
 
 ---
 
@@ -459,7 +536,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 |------|------|----------|
 | Web API 읽기 전용 | 프린트 전송 불가 | Local API 병행 |
 | Web API 예열/충전 미반영 | IDLE로 표시됨 | Local API 연동 시 해결 |
-| 공장 WiFi VPN 문제 | VPN 라우팅 깨짐 | 사무실 LAN에서만. 공장에서는 PreForm 앱 |
+| ~~공장 WiFi VPN 문제~~ | ~~VPN 라우팅 깨짐~~ | ✅ 해결 (3/26): 6000 서버에 WireGuard 클라이언트 설치 (Method B) |
 | .form 파일 미지원 | STL만 지원 | `POST /load-form/` 구현 필요 |
 | Form Wash/Cure API 없음 | 장비 제어 불가 | OpenMV 카메라 |
 | Webhook 없음 | 실시간 푸시 불가 | 15초 폴링 |
@@ -605,8 +682,8 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-03-19
-- **현재 상태**: Phase 1, 2 완료. 한솔코에버 인수인계 완료. **3D 빈피킹 비전 시스템 개발 착수 (W0, 대표님 지시 — OpenMV보다 우선)**
+- **날짜**: 2026-04-03
+- **현재 상태**: Phase 1, 2 완료. Phase 3 한솔코에버 코드 머지 완료 (4/3). **Phase 5 빈피킹 집중 — STP→STL 변환 진행 중 (대표님 30종 확정 대기)**
 - **최근 진행 (3/19)**:
   - ✅ **빈피킹 업무지시서 수신 + 분석 완료**: `binpicking_dev_instruction_정태민.pdf` (ORINU-DEV-2026-002, 13페이지)
   - Basler Blaze-112 ToF + ace2 5MP RGB-D → Open3D FPFH+RANSAC+ICP → Modbus TCP → HCR-10L 로봇
