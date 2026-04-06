@@ -9,6 +9,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 [![Open3D](https://img.shields.io/badge/Open3D-0.19-4B8BBE?logo=python&logoColor=white)](http://www.open3d.org)
+[![Modbus](https://img.shields.io/badge/Modbus_TCP-pymodbus_3-FF6F00?logo=python&logoColor=white)](https://pymodbus.readthedocs.io)
+[![trimesh](https://img.shields.io/badge/trimesh-4.x-green?logo=python&logoColor=white)](https://trimesh.org)
 
 ---
 
@@ -51,13 +53,15 @@
 | **Phase 2** | Local API 원격 제어 + UI | ✅ 완료 | PreFormServer 연동, 5탭 UI, 슬라이스/통계/알림 |
 | **Phase 3** | HCR 로봇 연동 | ✅ 코드 머지 완료 | 한솔코에버 시퀀스 서비스 + 자동화 프론트엔드 통합 |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🔄 진행 중 (일시 대기) | WiFi+MQTT E2E 성공, 학습 이미지 350장 — 빈피킹 우선 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 진행 중 | Basler Blaze-112 + ace2, 30종 부품 6DoF 인식, 파이프라인 SW 구현 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | ✅ SW 완성 | L1~L6 전체 파이프라인 구현, 인식률 100%, 카메라 입고 대기 |
 
-### 현재 상태 (2026-04-03)
-- **Phase 1 + 2 완료**: 웹 모니터링 + 원격 프린트 제어 + 5탭 UI 전체 구현
-- **Phase 3 머지 완료**: 한솔코에버 시퀀스 서비스(sequence_service/) + 자동화 UI 통합, 3/27 최종 시연 완료
-- **Phase 5 W2 완료**: 빈피킹 파이프라인 L1~L4 SW 구현, Redwood RGB-D E2E 테스트 PASS
-- **다음 단계**: STL 부품 모델 수거 + RealSense 카메라 연동 테스트
+### 현재 상태 (2026-04-06)
+- **Phase 1~3 완료**: 웹 모니터링 + 원격 프린트 + 로봇 연동 (한솔코에버 머지)
+- **Phase 5 L1~L6 SW 완성**: 빈피킹 전체 파이프라인 구현 완료
+  - STL 29종 레퍼런스 캐시 빌드, **인식률 100% (easy), RMSE 1.13mm**
+  - FGR(Fast Global Registration) 적용, 매칭 2.25s
+  - L5 그래스프 DB 17종 + L6 Modbus TCP 서버
+- **다음**: 카메라 입고(5월) → 실데이터 검증 + Colored ICP + HCR-10L 실전 피킹
 
 ---
 
@@ -107,14 +111,15 @@
 ### 빈피킹 비전 파이프라인 (Phase 5)
 
 ```
-L1 Acquisition     L2 Preprocessing     L3 Segmentation    L4 Recognition     L5 Pose         L6 Robot
-+--------------+   +----------------+   +---------------+  +---------------+  +------------+  +-----------+
-| Blaze-112    |   | ROI Crop       |   | DBSCAN        |  | FPFH Feature  |  | 6DoF Pose  |  | HCR-10L   |
-| depth map    |-->| SOR Outlier    |-->| Clustering    |->| Global RANSAC |->| Estimation |->| Pick Cmd  |
-| + ace2 RGB   |   | Voxel Down     |   | Size Filter   |  | ICP Refine    |  |            |  |           |
-| → PointCloud |   | RANSAC Plane   |   | BBox Extract  |  | STL Matching  |  |            |  |           |
-+--------------+   +----------------+   +---------------+  +---------------+  +------------+  +-----------+
-       ✅                  ✅                  ✅                  ✅              예정           예정
+L1 Acquisition     L2 Preprocessing     L3 Segmentation    L4 Recognition       L5 Grasping      L6 Robot
++--------------+   +----------------+   +---------------+  +-----------------+  +-------------+  +-----------+
+| Blaze-112    |   | ROI Crop       |   | DBSCAN        |  | FPFH Feature    |  | Grasp DB    |  | HCR-10L   |
+| depth map    |-->| SOR Outlier    |-->| Clustering    |->| FGR Global Reg. |->| T_grasp =   |->| Modbus TCP|
+| + ace2 RGB   |   | Voxel Down     |   | Size Filter   |  | ICP Refine      |  | T_part @    |  | 6DoF Pose |
+| → PointCloud |   | RANSAC Plane   |   | BBox Extract  |  | 29종 STL Match  |  | T_local     |  | Gripper   |
++--------------+   +----------------+   +---------------+  +-----------------+  +-------------+  +-----------+
+       ✅                  ✅                  ✅                  ✅                 ✅               ✅
+                                                          인식률 100% | RMSE 1.13mm | 2.25s
 ```
 
 ### Network
@@ -175,11 +180,14 @@ Office                                      Factory
 - 개별 입출력 포트 읽기/쓰기
 - 로봇 미연결 시 시뮬레이션 모드
 
-### Phase 5: 3D 빈피킹 비전 시스템
-- **포인트 클라우드 취득**: Blaze-112 ToF depth + ace2 RGB → colored PointCloud
-- **전처리**: ROI 크롭 → SOR 이상치 제거 → Voxel 다운샘플링 → RANSAC 바닥면 제거 → 법선 추정
-- **분할**: DBSCAN 클러스터링, 포인트 수/크기 필터링, 바운딩 박스 추출
-- **인식**: FPFH 특징 + Global RANSAC 정합 + ICP 정밀 정합, STL 모델 매칭
+### Phase 5: 3D 빈피킹 비전 시스템 (L1~L6 SW 완성)
+- **L1 취득**: Blaze-112 ToF depth + ace2 RGB → colored PointCloud (+ RealSense D435 테스트)
+- **L2 전처리**: ROI 크롭 → SOR 이상치 제거 → Voxel 다운샘플 → RANSAC 바닥면 제거 → 법선 추정
+- **L3 분할**: DBSCAN 클러스터링, 포인트 수/크기 필터링
+- **L4 인식**: FPFH(33D) + FGR/RANSAC 초기 정합 + ICP Point-to-Plane 정밀 정합, **29종 STL 매칭 (인식률 100%, RMSE 1.13mm)**
+- **L5 그래스프**: grasp_database.yaml 17종 부품별 피킹 자세 (접근방향, 깊이, 그리퍼 폭/힘), z순 피킹 계획
+- **L6 로봇 통신**: Modbus TCP 서버 (pymodbus 3.x), 레지스터 40001~40016 (6DoF FLOAT32 + 그리퍼)
+- **통합 파이프라인**: `BinPickingPipeline` — 카메라/저장프레임/합성씬 입력 → L1~L6 자동 실행
 - **레진별 프리셋**: Grey/White/Clear/Flexible 각각 최적 파라미터
 
 ### 프린터 상태 표시
@@ -223,7 +231,7 @@ Office                                      Factory
 ⑩ 경화기에서 픽업           → HCR-10L         ✅ Phase 3
 ⑪ 서포트 제거              → 자동/수동
 ⑫ 후가공 탭 작업           → HCR-10L         ✅ Phase 3
-⑬ 3D 빈피킹 비전           → Basler+Open3D   🔄 Phase 5 (W2 완료)
+⑬ 3D 빈피킹 비전           → Basler+Open3D   ✅ Phase 5 (L1~L6 SW 완성)
 ⑭ 양품/불량 분류           → HCR-10L         ✅ Phase 3
 ⑮ 박스/트레이 적재          → HCR-10L         ✅ Phase 3
 ⑯ 완료 보고                → 서버 알림        ✅ 알림 구현 완료
@@ -380,21 +388,35 @@ Office                                      Factory
 │   │   └── core/config.py       # 환경 설정
 │   └── requirements.txt
 │
-├── bin_picking/                 # Phase 5: 3D 빈피킹 비전 시스템
+├── bin_picking/                 # Phase 5: 3D 빈피킹 비전 시스템 (L1~L6 완성)
 │   ├── src/
-│   │   ├── acquisition/         # L1: 카메라 취득
-│   │   │   ├── depth_to_pointcloud.py  # Blaze-112 depth → PointCloud
-│   │   │   └── blaze112_*.py           # pypylon 연동
-│   │   ├── preprocessing/       # L2: 전처리
-│   │   │   └── cloud_filter.py         # 5단계 필터 파이프라인
-│   │   ├── segmentation/        # L3: 분할
+│   │   ├── main_pipeline.py            # BinPickingPipeline (L1~L6 통합)
+│   │   ├── acquisition/                # L1: 카메라 취득
+│   │   │   ├── depth_to_pointcloud.py  # depth → PointCloud
+│   │   │   └── realsense_capture.py    # RealSense D435 드라이버
+│   │   ├── preprocessing/              # L2: 전처리
+│   │   │   └── cloud_filter.py         # 5단계 필터 (레진별 프리셋)
+│   │   ├── segmentation/               # L3: 분할
 │   │   │   └── dbscan_segmenter.py     # DBSCAN 클러스터링
-│   │   ├── recognition/         # L4: 인식/정합
-│   │   ├── pose/                # L5: 6DoF 포즈 (예정)
-│   │   └── robot/               # L6: 로봇 명령 (예정)
+│   │   ├── recognition/                # L4: 인식/정합
+│   │   │   ├── cad_library.py          # STL→레퍼런스+FPFH 캐시 빌드
+│   │   │   ├── pose_estimator.py       # FGR/RANSAC+ICP 1:N 매칭
+│   │   │   └── size_filter.py          # 바운딩박스 사전 필터
+│   │   ├── grasping/                   # L5: 그래스프 계획
+│   │   │   └── grasp_planner.py        # grasp_database.yaml 기반 피킹 자세
+│   │   └── communication/              # L6: 로봇 통신
+│   │       └── modbus_server.py        # Modbus TCP 서버 (pymodbus 3.x)
+│   ├── config/
+│   │   └── grasp_database.yaml         # 17종 부품별 그래스프 파라미터
 │   ├── tests/
-│   │   └── test_e2e_redwood.py  # E2E 파이프라인 검증
-│   └── models/                  # STL 부품 모델 (수거 예정)
+│   │   ├── test_e2e_redwood.py         # Redwood RGB-D E2E
+│   │   ├── test_e2e_realsense.py       # RealSense D435 E2E
+│   │   └── test_e2e_cad_matching.py    # 실제 STL 29종 E2E (easy/medium/hard)
+│   ├── tutorials/                      # Open3D 학습 (01~11)
+│   └── models/
+│       ├── cad/                        # STL 원본 (29종 활성 + 17종 _duplicates)
+│       ├── reference_clouds/           # pickle 캐시 (포인트+법선)
+│       └── fpfh_features/              # pickle 캐시 (FPFH 33D)
 │
 ├── factory-pc/                  # 공장 PC 스크립트
 │   └── file_receiver.py         # STL 파일 수신 + 스크린샷 서빙 (포트 8089)
@@ -433,12 +455,13 @@ Office                                      Factory
 
 | 기술 | 버전 | 용도 |
 |------|------|------|
-| Open3D | 0.19 | 포인트 클라우드 처리, 정합 |
+| Open3D | 0.19 | 포인트 클라우드, FPFH, FGR, RANSAC, ICP |
+| trimesh | 4.x | STL 모델 로드, 표면 샘플링 |
 | pypylon | 26.3 | Basler 카메라 SDK (Blaze-112, ace2) |
-| NumPy | - | 수치 연산 |
+| pymodbus | 3.12 | Modbus TCP 서버 (HCR-10L 로봇 통신) |
+| pyrealsense2 | - | Intel RealSense D435 (테스트용) |
+| NumPy / SciPy | - | 수치 연산, 회전 행렬, 오일러 변환 |
 | OpenCV | - | 이미지 처리 |
-| trimesh | - | STL 모델 로드/처리 |
-| SciPy | - | 공간 연산 |
 
 ### Infrastructure
 
