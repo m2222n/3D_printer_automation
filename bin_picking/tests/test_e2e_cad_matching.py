@@ -139,7 +139,7 @@ def generate_synthetic_scene(
         offset = np.array([
             col * SCENE_SPACING,
             row * SCENE_SPACING,
-            0.02 + np.random.uniform(0, 0.01)  # 빈 바닥에서 약간 위
+            0.04 + np.random.uniform(0, 0.01)  # 빈 바닥(z=0)에서 40mm 위
         ])
         points_placed = points_rotated + offset
 
@@ -205,7 +205,10 @@ def run_pipeline(
     roi_min = np.array([-0.1, -0.1, -0.01])
     roi_max = np.array([0.30, 0.25, 0.15])
     cf = CloudFilter(
-        voxel_size=VOXEL_SIZE * 2.5,  # 5mm (씬 전체 다운샘플)
+        voxel_size=VOXEL_SIZE,  # 2mm (부품 디테일 유지)
+        sor_nb_neighbors=20,
+        sor_std_ratio=2.0,
+        plane_distance=0.003,  # 3mm (합성 씬 바닥 노이즈 σ=0.5mm → 3σ)
         roi_min=roi_min,
         roi_max=roi_max,
     )
@@ -216,13 +219,13 @@ def run_pipeline(
     n_before = len(scene_pcd.points)
     n_after = len(filtered.points)
     print(f"  L2 전처리: {n_before:,} → {n_after:,} pts ({timings['L2_preprocess']:.3f}s)")
-    print(f"    바닥면 제거 + SOR + 다운샘플 완료")
+    cf.print_stats()
 
     # ============================================================
     # L3: 분할
     # ============================================================
     t0 = time.time()
-    segmenter = DBSCANSegmenter(eps=0.008, min_points=50)
+    segmenter = DBSCANSegmenter(eps=0.010, min_points=30)  # eps=10mm, 최소 30점
     clusters = segmenter.segment(filtered)
     timings["L3_segment"] = time.time() - t0
 

@@ -113,13 +113,14 @@ class BinPickingPipeline:
 
         # L2: 전처리
         self.cloud_filter = CloudFilter(
-            voxel_size=voxel_size * 2.5,
+            voxel_size=voxel_size,
+            plane_distance=0.003,
             roi_min=np.array(self.roi["min"]),
             roi_max=np.array(self.roi["max"]),
         )
 
         # L3: 분할
-        self.segmenter = DBSCANSegmenter(eps=0.008, min_points=50)
+        self.segmenter = DBSCANSegmenter(eps=0.010, min_points=30)
 
     def run(
         self,
@@ -284,8 +285,8 @@ def create_synthetic_scene(cad_library: CADLibrary, n_parts: int = 3) -> o3d.geo
         center = pts.mean(axis=0)
         pts = ((R_mat @ (pts - center).T).T)
 
-        # 배치
-        offset = np.array([(i % 3) * 0.08, (i // 3) * 0.08, 0.02])
+        # 배치 (바닥 z=0 에서 40mm 위)
+        offset = np.array([(i % 3) * 0.08, (i // 3) * 0.08, 0.04])
         pts += offset
 
         # 노이즈
