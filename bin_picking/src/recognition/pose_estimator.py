@@ -52,16 +52,21 @@ DEFAULT_VOXEL_SIZE = 0.002  # 2mm
 class PoseEstimator:
     """1:N 매칭 + 6DoF 자세 추정기.
 
-    FPFH+RANSAC 초기정합 → ICP Point-to-Plane(TukeyLoss) 정밀정합으로
+    초기정합(FGR 또는 RANSAC) → ICP Point-to-Plane(TukeyLoss) 정밀정합으로
     씬 클러스터를 레퍼런스 모델과 매칭한다.
+
+    FGR(기본): FPFH 기반 결정적 최적화 — RANSAC 대비 10~100배 빠름
+    RANSAC(폴백): FPFH 기반 확률적 매칭 — FGR 실패 시 사용
     """
 
-    def __init__(self, voxel_size: float = DEFAULT_VOXEL_SIZE):
+    def __init__(self, voxel_size: float = DEFAULT_VOXEL_SIZE, use_fgr: bool = True):
         """
         Args:
             voxel_size: 다운샘플링 복셀 크기 (미터). 기본 2mm.
+            use_fgr: True면 FGR 사용 (빠름), False면 RANSAC 사용
         """
         self.voxel_size = voxel_size
+        self.use_fgr = use_fgr
 
         # 파생 파라미터 (논문 리뷰 + 실측 튜닝)
         self.fpfh_radius = voxel_size * 5        # 10mm
@@ -73,13 +78,20 @@ class PoseEstimator:
         self.ransac_confidence = 0.999
         self.icp_distance = voxel_size * 1.0     # 2mm
 
+        # FGR 파라미터
+        self.fgr_division_factor = 1.4
+        self.fgr_decrease_mu = True
+        self.fgr_max_correspondence_distance = voxel_size * 2.0  # 4mm
+        self.fgr_iteration_number = 64
+        self.fgr_tuple_scale = 0.95
+        self.fgr_maximum_tuple_count = 1000
+
         # 판정 임계값
         self.fitness_threshold = 0.3    # 이 이상이면 매칭 수락
         self.rmse_threshold = 0.003     # 3mm 초과하면 거부
 
         # 카메라 위치 (법선 방향 정렬용)
         # 원점 기준으로 통일 — cad_library.py의 레퍼런스 법선과 동일 방향
-        # (실제 카메라 위치와 다르지만, FPFH 매칭에서는 방향 일관성이 중요)
         self.camera_location = np.array([0.0, 0.0, 0.0])
 
     # ============================================================
@@ -117,30 +129,37 @@ class PoseEstimator:
         return pcd_down, fpfh
 
     # ============================================================
-    # 등록: FPFH+RANSAC → ICP Point-to-Plane (TukeyLoss)
+    # 초기 정합: FGR (기본) 또는 RANSAC (폴백)
     # ============================================================
-    def register(
+    def _global_registration_fgr(
         self,
         source_down: o3d.geometry.PointCloud,
         source_fpfh: o3d.pipelines.registration.Feature,
         target_down: o3d.geometry.PointCloud,
         target_fpfh: o3d.pipelines.registration.Feature,
-    ) -> Tuple[o3d.pipelines.registration.RegistrationResult, float]:
-        """RANSAC 초기 정합 + ICP 정밀 정합을 실행한다.
+    ) -> o3d.pipelines.registration.RegistrationResult:
+        """FGR 초기 정합 — RANSAC 대비 10~100배 빠름."""
+        option = o3d.pipelines.registration.FastGlobalRegistrationOption(
+            division_factor=self.fgr_division_factor,
+            decrease_mu=self.fgr_decrease_mu,
+            maximum_correspondence_distance=self.fgr_max_correspondence_distance,
+            iteration_number=self.fgr_iteration_number,
+            tuple_scale=self.fgr_tuple_scale,
+            maximum_tuple_count=self.fgr_maximum_tuple_count,
+        )
+        return o3d.pipelines.registration.registration_fgr_based_on_feature_matching(
+            source_down, target_down, source_fpfh, target_fpfh, option,
+        )
 
-        Args:
-            source_down: 레퍼런스 (다운샘플링됨)
-            source_fpfh: 레퍼런스 FPFH
-            target_down: 씬 클러스터 (다운샘플링됨)
-            target_fpfh: 씬 클러스터 FPFH
-
-        Returns:
-            (RegistrationResult, elapsed_seconds): ICP 결과 + 소요 시간
-        """
-        t0 = time.time()
-
-        # RANSAC — 초기 정합
-        result_ransac = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
+    def _global_registration_ransac(
+        self,
+        source_down: o3d.geometry.PointCloud,
+        source_fpfh: o3d.pipelines.registration.Feature,
+        target_down: o3d.geometry.PointCloud,
+        target_fpfh: o3d.pipelines.registration.Feature,
+    ) -> o3d.pipelines.registration.RegistrationResult:
+        """RANSAC 초기 정합 — FGR 폴백."""
+        return o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
             source_down, target_down, source_fpfh, target_fpfh,
             mutual_filter=True,
             max_correspondence_distance=self.ransac_distance,
@@ -160,6 +179,39 @@ class PoseEstimator:
             ),
         )
 
+    # ============================================================
+    # 등록: 초기 정합 + ICP Point-to-Plane (TukeyLoss)
+    # ============================================================
+    def register(
+        self,
+        source_down: o3d.geometry.PointCloud,
+        source_fpfh: o3d.pipelines.registration.Feature,
+        target_down: o3d.geometry.PointCloud,
+        target_fpfh: o3d.pipelines.registration.Feature,
+    ) -> Tuple[o3d.pipelines.registration.RegistrationResult, float]:
+        """초기 정합(FGR/RANSAC) + ICP 정밀 정합을 실행한다.
+
+        Args:
+            source_down: 레퍼런스 (다운샘플링됨)
+            source_fpfh: 레퍼런스 FPFH
+            target_down: 씬 클러스터 (다운샘플링됨)
+            target_fpfh: 씬 클러스터 FPFH
+
+        Returns:
+            (RegistrationResult, elapsed_seconds): ICP 결과 + 소요 시간
+        """
+        t0 = time.time()
+
+        # 초기 정합
+        if self.use_fgr:
+            result_global = self._global_registration_fgr(
+                source_down, source_fpfh, target_down, target_fpfh
+            )
+        else:
+            result_global = self._global_registration_ransac(
+                source_down, source_fpfh, target_down, target_fpfh
+            )
+
         # ICP Point-to-Plane + TukeyLoss — 정밀 정합
         loss = o3d.pipelines.registration.TukeyLoss(k=self.icp_distance)
         estimation = o3d.pipelines.registration.TransformationEstimationPointToPlane(loss)
@@ -167,7 +219,7 @@ class PoseEstimator:
         result_icp = o3d.pipelines.registration.registration_icp(
             source_down, target_down,
             max_correspondence_distance=self.icp_distance * 3,
-            init=result_ransac.transformation,
+            init=result_global.transformation,
             estimation_method=estimation,
             criteria=o3d.pipelines.registration.ICPConvergenceCriteria(
                 relative_fitness=1e-6, relative_rmse=1e-6, max_iteration=50
