@@ -88,7 +88,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3 진행 중 — STL 46종 수집+캐시 빌드 완료. main_pipeline.py(L1~L4 통합) + E2E 테스트 작성. L2/L3 해결 완료. **L4 인식률 40% (easy모드) — 유사 형상 오매칭 문제. assy 중복 제거 + FPFH 개선 필요** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3 완료 — **L1~L6 전체 파이프라인 구현 완료**. STL 29종, 인식률 80% (easy), RMSE 1.12mm. L5 그래스프 DB 17종 + L6 Modbus TCP. **다음: 카메라 입고(5월) → 실데이터 검증 + Colored ICP** |
 
 ---
 
@@ -482,14 +482,22 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ### 핵심 성과 수치
 
+**W0~W2 (더미 데이터 시뮬)**:
 | 지표 | 결과 | 목표 | 판정 |
 |------|------|------|------|
 | 부품당 매칭 시간 | **0.33초** | 2.0초 | ✅ 6배 여유 |
-| 인식률 | **100%** (시뮬, 합성 3종) | 85% | ✅ |
-| SizeFilter 효과 | 30종→2.2종 (93% 절감) | — | ✅ |
-| Blaze-112 스펙 노이즈 (0.3mm) | fitness 1.0 | — | ✅ 안전 |
-| Clear V5 최악 (40% 누락+2mm) | fitness 0.70 | — | ✅ OK |
-| 핸드-아이 캘리브레이션 | 회전 0.05°, 이동 1mm | — | ✅ |
+| 인식률 | **100%** (더미 3종 자기매칭) | 85% | ✅ |
+| SizeFilter 효과 | 5종→2.2종 (56% 절감) | — | ✅ |
+
+**W3 (실제 STL 29종 기반 E2E, 4/6)**:
+| 지표 | 결과 | 목표 | 판정 |
+|------|------|------|------|
+| 인식률 (easy, 5종) | **80%** (4/5) | 85% | ⚠️ 근접 |
+| RMSE | **1.12mm** | 3mm | ✅ 우수 |
+| 매칭 시간 (29종 전체) | 4.59초 | 2.0초 | ❌ 속도 개선 필요 |
+| L1~L6 파이프라인 | **전체 구현 완료** | 카메라 전 SW 완성 | ✅ |
+| L5 그래스프 DB | 17종 정의 | 30종 | 🔄 확장 예정 |
+| L6 Modbus TCP | 서버 동작 확인 | 로봇 실전 | 🔄 입고 후 |
 
 ### 레진별 파라미터 추천
 
@@ -514,13 +522,19 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | `tutorials/09_noise_robustness.py` | 481 | 노이즈 강건성 |
 | `tutorials/10_pypylon_api_study.py` | 714 | pypylon API + Blaze-112 스펙 |
 | `tutorials/11_noise_robustness_advanced.py` | 590 | 노이즈 심화 (Clear 대응) |
+| `src/recognition/cad_library.py` | 430 | STL→레퍼런스 클라우드+FPFH 캐시 (빌드/로드/변경감지) |
 | `src/recognition/size_filter.py` | 441 | 크기 사전 필터 (30→2.2종) |
 | `src/recognition/pose_estimator.py` | 619 | 1:N 매칭 루프 |
+| `src/grasping/grasp_planner.py` | 250 | L5 그래스프 자세 계산 (grasp_database.yaml 기반) |
+| `src/communication/modbus_server.py` | 250 | L6 Modbus TCP 서버 (pymodbus 3.x, FLOAT32) |
+| `src/main_pipeline.py` | 350 | L1~L6 통합 파이프라인 (BinPickingPipeline) |
 | `src/acquisition/hand_eye_calibration.py` | 842 | 핸드-아이 캘리브레이션 |
 | `src/acquisition/depth_to_pointcloud.py` | 155 | depth map → Open3D PointCloud 변환 |
 | `src/preprocessing/cloud_filter.py` | 236 | L2 전처리 파이프라인 (레진별 프리셋) |
 | `src/segmentation/dbscan_segmenter.py` | 208 | L3 DBSCAN 분할 + Cluster 클래스 |
+| `config/grasp_database.yaml` | 170 | 17종 부품별 그래스프 파라미터 정의 |
 | `tests/test_e2e_redwood.py` | 240 | Redwood RGB-D E2E 5단계 테스트 |
+| `tests/test_e2e_cad_matching.py` | 400 | 실제 STL 29종 기반 합성 씬 E2E (easy/medium/hard) |
 
 ### 7.1 필수 학습 체크리스트
 
