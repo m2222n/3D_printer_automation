@@ -285,8 +285,8 @@ def create_synthetic_scene(cad_library: CADLibrary, n_parts: int = 3) -> o3d.geo
         center = pts.mean(axis=0)
         pts = ((R_mat @ (pts - center).T).T)
 
-        # 배치 (바닥 z=0 에서 40mm 위)
-        offset = np.array([(i % 3) * 0.08, (i // 3) * 0.08, 0.04])
+        # 배치 (바닥 z=0 에서 60mm 위, 간격 150mm)
+        offset = np.array([(i % 3) * 0.15, (i // 3) * 0.15, 0.06])
         pts += offset
 
         # 노이즈
@@ -296,11 +296,11 @@ def create_synthetic_scene(cad_library: CADLibrary, n_parts: int = 3) -> o3d.geo
         name = stl_path.stem
         print(f"  [{i+1}] {name}  pos=({offset[0]*1000:.0f}, {offset[1]*1000:.0f}, {offset[2]*1000:.0f})mm")
 
-    # 바닥면
+    # 바닥면 (RANSAC이 확실히 잡도록 충분한 포인트)
     floor = np.column_stack([
-        np.random.uniform(-0.05, 0.25, 2000),
-        np.random.uniform(-0.05, 0.15, 2000),
-        np.random.normal(0.0, 0.0005, 2000),
+        np.random.uniform(-0.10, 0.50, 10000),
+        np.random.uniform(-0.10, 0.40, 10000),
+        np.random.normal(0.0, 0.0003, 10000),
     ])
     all_points.append(floor)
 

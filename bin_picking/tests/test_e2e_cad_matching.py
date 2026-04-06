@@ -58,8 +58,9 @@ from bin_picking.src.segmentation.dbscan_segmenter import DBSCANSegmenter
 VOXEL_SIZE = 0.002       # 2mm
 NOISE_SIGMA = 0.0003     # 0.3mm (Blaze-112 ToF 수준)
 VISIBILITY_RATIO = 0.70  # 70% 가시 (부분 가림 시뮬)
-SCENE_SPACING = 0.08     # 부품 간 간격 80mm (빈 내 배치)
+SCENE_SPACING = 0.15     # 부품 간 간격 150mm (DBSCAN 분리 보장)
 SAMPLE_POINTS = 5000     # 씬 부품당 포인트 수
+FLOOR_POINTS = 10000     # 바닥면 포인트 (RANSAC이 확실히 잡도록)
 
 # 테스트에 사용할 부품 (다양한 크기/형상 선택)
 DEFAULT_TEST_PARTS = [
@@ -139,7 +140,7 @@ def generate_synthetic_scene(
         offset = np.array([
             col * SCENE_SPACING,
             row * SCENE_SPACING,
-            0.04 + np.random.uniform(0, 0.01)  # 빈 바닥(z=0)에서 40mm 위
+            0.06 + np.random.uniform(0, 0.01)  # 빈 바닥(z=0)에서 60mm 위
         ])
         points_placed = points_rotated + offset
 
@@ -169,13 +170,14 @@ def generate_synthetic_scene(
               f"pos=({offset[0]*1000:.0f}, {offset[1]*1000:.0f}, {offset[2]*1000:.0f})mm")
 
     # 빈 바닥면 추가 (RANSAC 제거 테스트용)
-    n_floor = 3000
-    floor_x = np.random.uniform(-0.05, 0.25, n_floor)
-    floor_y = np.random.uniform(-0.05, 0.15, n_floor)
-    floor_z = np.random.normal(0.0, 0.0005, n_floor)  # z≈0 평면 + 노이즈
+    # 바닥 포인트를 부품보다 많게 → RANSAC이 바닥을 확실히 잡음
+    n_floor = FLOOR_POINTS
+    floor_x = np.random.uniform(-0.10, 0.50, n_floor)
+    floor_y = np.random.uniform(-0.10, 0.40, n_floor)
+    floor_z = np.random.normal(0.0, 0.0003, n_floor)  # z≈0 평면 + 미세 노이즈
     floor_points = np.column_stack([floor_x, floor_y, floor_z])
     all_points.append(floor_points)
-    print(f"  [바닥] 평면 포인트 {n_floor}개 추가")
+    print(f"  [바닥] 평면 포인트 {n_floor}개 추가 (RANSAC 바닥 감지 보장)")
 
     # 합성 씬 생성
     scene_points = np.vstack(all_points)
@@ -202,8 +204,8 @@ def run_pipeline(
     # L2: 전처리
     # ============================================================
     t0 = time.time()
-    roi_min = np.array([-0.1, -0.1, -0.01])
-    roi_max = np.array([0.30, 0.25, 0.15])
+    roi_min = np.array([-0.15, -0.15, -0.01])
+    roi_max = np.array([0.50, 0.40, 0.20])
     cf = CloudFilter(
         voxel_size=VOXEL_SIZE,  # 2mm (부품 디테일 유지)
         sor_nb_neighbors=20,
