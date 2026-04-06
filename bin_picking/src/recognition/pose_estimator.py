@@ -63,22 +63,24 @@ class PoseEstimator:
         """
         self.voxel_size = voxel_size
 
-        # 파생 파라미터 (논문 리뷰 결정)
+        # 파생 파라미터 (논문 리뷰 + 실측 튜닝)
         self.fpfh_radius = voxel_size * 5        # 10mm
         self.fpfh_max_nn = 100
-        self.normal_radius = voxel_size * 4      # 8mm
+        self.normal_radius = voxel_size * 3      # 6mm (노이즈에 덜 민감)
         self.normal_max_nn = 30
-        self.ransac_distance = voxel_size * 1.5  # 3mm
-        self.ransac_max_iter = 100_000
-        self.ransac_confidence = 0.999
-        self.icp_distance = voxel_size * 0.5     # 1mm
+        self.ransac_distance = voxel_size * 2.0  # 4mm (부분 가시에 여유)
+        self.ransac_max_iter = 200_000           # 반복 증가 (정밀도 향상)
+        self.ransac_confidence = 0.9999
+        self.icp_distance = voxel_size * 1.0     # 2mm (넓은 수렴 범위)
 
         # 판정 임계값
         self.fitness_threshold = 0.3    # 이 이상이면 매칭 수락
         self.rmse_threshold = 0.003     # 3mm 초과하면 거부
 
-        # 카메라 위치 (법선 방향 정렬용 — 위에서 내려다보는 구도)
-        self.camera_location = np.array([0.0, 0.0, 0.5])
+        # 카메라 위치 (법선 방향 정렬용)
+        # 원점 기준으로 통일 — cad_library.py의 레퍼런스 법선과 동일 방향
+        # (실제 카메라 위치와 다르지만, FPFH 매칭에서는 방향 일관성이 중요)
+        self.camera_location = np.array([0.0, 0.0, 0.0])
 
     # ============================================================
     # 전처리: 다운샘플링 → 법선 → FPFH

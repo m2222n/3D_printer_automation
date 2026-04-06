@@ -57,10 +57,29 @@ from bin_picking.src.segmentation.dbscan_segmenter import DBSCANSegmenter
 # ============================================================
 VOXEL_SIZE = 0.002       # 2mm
 NOISE_SIGMA = 0.0003     # 0.3mm (Blaze-112 ToF 수준)
-VISIBILITY_RATIO = 0.70  # 70% 가시 (부분 가림 시뮬)
 SCENE_SPACING = 0.15     # 부품 간 간격 150mm (DBSCAN 분리 보장)
 SAMPLE_POINTS = 5000     # 씬 부품당 포인트 수
 FLOOR_POINTS = 10000     # 바닥면 포인트 (RANSAC이 확실히 잡도록)
+
+# 난이도 프리셋: 단계별 검증
+DIFFICULTY_PRESETS = {
+    "easy": {
+        "visibility": 1.0,       # 100% 가시 (가림 없음)
+        "max_rotation_deg": 15,  # ±15도 (약간의 기울임)
+        "description": "가림 없음 + 약간 회전",
+    },
+    "medium": {
+        "visibility": 0.85,      # 85% 가시
+        "max_rotation_deg": 30,  # ±30도
+        "description": "약간 가림 + 중간 회전",
+    },
+    "hard": {
+        "visibility": 0.70,      # 70% 가시
+        "max_rotation_deg": 45,  # ±45도
+        "description": "가림 + 큰 회전 (실전 시나리오)",
+    },
+}
+DEFAULT_DIFFICULTY = "easy"  # 먼저 easy에서 PASS 확인
 
 # 테스트에 사용할 부품 (다양한 크기/형상 선택)
 DEFAULT_TEST_PARTS = [
@@ -82,7 +101,8 @@ def generate_synthetic_scene(
     cad_library: CADLibrary,
     part_names: List[str],
     noise_sigma: float = NOISE_SIGMA,
-    visibility: float = VISIBILITY_RATIO,
+    visibility: float = 1.0,
+    max_rotation_deg: float = 15,
 ) -> Tuple[o3d.geometry.PointCloud, List[Dict[str, Any]]]:
     """실제 STL에서 합성 빈피킹 씬을 생성한다.
 
@@ -90,7 +110,8 @@ def generate_synthetic_scene(
         cad_library: CADLibrary 인스턴스
         part_names: 씬에 배치할 부품 이름 리스트
         noise_sigma: 가우시안 노이즈 표준편차 (미터)
-        visibility: 가시 비율 (0.0~1.0)
+        visibility: 가시 비율 (0.0~1.0, 1.0=전체 가시)
+        max_rotation_deg: 최대 회전 각도 (도)
 
     Returns:
         (scene_pcd, ground_truth): 합성 씬 포인트 클라우드, 부품별 정답 정보
@@ -119,13 +140,15 @@ def generate_synthetic_scene(
         points, _ = trimesh.sample.sample_surface(mesh, SAMPLE_POINTS)
 
         # 부분 가시성: 상위 방향에서 보이는 점만 (z축 기준 상위 visibility%)
-        z_vals = points[:, 2]
-        z_threshold = np.percentile(z_vals, (1.0 - visibility) * 100)
-        visible_mask = z_vals >= z_threshold
-        points = points[visible_mask]
+        if visibility < 1.0:
+            z_vals = points[:, 2]
+            z_threshold = np.percentile(z_vals, (1.0 - visibility) * 100)
+            visible_mask = z_vals >= z_threshold
+            points = points[visible_mask]
 
-        # 랜덤 회전 (ZYX 오일러)
-        euler = np.random.uniform(-np.pi / 4, np.pi / 4, 3)  # ±45도
+        # 랜덤 회전
+        max_rad = np.radians(max_rotation_deg)
+        euler = np.random.uniform(-max_rad, max_rad, 3)
         R = o3d.geometry.PointCloud()
         R_mat = R.get_rotation_matrix_from_xyz(euler)
 
@@ -369,7 +392,13 @@ def main():
     parser.add_argument("--no-vis", action="store_true", help="시각화 건너뛰기")
     parser.add_argument("--parts", type=int, default=5, help="테스트 부품 수 (기본 5)")
     parser.add_argument("--all-parts", action="store_true", help="전체 46종에서 랜덤 선택")
+    parser.add_argument("--difficulty", type=str, default=DEFAULT_DIFFICULTY,
+                        choices=["easy", "medium", "hard"],
+                        help="난이도 (기본: easy)")
     args = parser.parse_args()
+
+    difficulty = DIFFICULTY_PRESETS[args.difficulty]
+    print(f"  난이도: {args.difficulty} — {difficulty['description']}")
 
     # ============================================================
     # Step 1: CADLibrary 캐시 로드
@@ -435,7 +464,8 @@ def main():
     scene_pcd, ground_truth = generate_synthetic_scene(
         lib, test_parts,
         noise_sigma=NOISE_SIGMA,
-        visibility=VISIBILITY_RATIO,
+        visibility=difficulty["visibility"],
+        max_rotation_deg=difficulty["max_rotation_deg"],
     )
 
     print(f"\n  씬 총 포인트: {len(scene_pcd.points):,}")
