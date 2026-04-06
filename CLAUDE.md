@@ -88,7 +88,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3 진행 중 — STL 46개 수집+정리+trimesh 검증 완료 (고유 45종, 최종 확정 대기). cad_library.py 작성 완료 (STL→샘플링→FPFH→pickle, 변경감지). 파이프라인 SW L1~L4 구현, E2E PASS. **다음: Mac에서 --build 실행 → 레퍼런스 클라우드 + FPFH 캐싱 생성** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3 진행 중 — STL 46종 수집+캐시 빌드 완료. main_pipeline.py(L1~L4 통합) + E2E 테스트 작성. L2/L3 해결 완료. **L4 인식률 40% (easy모드) — 유사 형상 오매칭 문제. assy 중복 제거 + FPFH 개선 필요** |
 
 ---
 
