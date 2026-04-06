@@ -66,7 +66,8 @@
 
 ### 2026.04.03 (빈피킹 지시)
 - **3D+RGB 카메라 확인**: Blaze-112(ToF) 단독인지, ace2(RGB)와 조합해서 포인트 잡는지 확인
-- **STL 25종**: 예전 공장 PC에 있었을 수 있음 (현재 공장 PC 아님). **해당 PC 출처 대표님께 확인 필요**. 향후 미묘한 모델링 변경 가능성 있음
+- **STL 파일 수집 완료 (4/6)**: Google Drive에서 46개 STL 다운로드 → 중복 제거 + 파일명 정리 → `bin_picking/models/cad/`에 배치 (고유 형상 45종). **최종 확정 파일 아님** — 과거 버전 + 업그레이드 버전 혼재, assy 파일과 번호 부품 간 동일 형상 다수. 향후 모델링 미세 변경 가능성 있음. 최종 부품 목록은 대표님 확인 필요 (문서상 25~30종)
+- **cad_library.py 작성 완료 (4/6)**: STL → trimesh 로드 → 10,000점 균일 샘플링 → Open3D FPFH(33D) 사전 계산 → pickle 캐시. MD5 변경 감지 지원 (--incremental). 서버 trimesh 검증 PASS, **Mac에서 --build 실행 필요** (서버 Open3D AVX2 미지원)
 - **RealSense D435 카메라 테스트**: USB로 받음 (스테레오 depth + RGB, 640x480, 측정 0.105~3m). 이걸로도 빈피킹 되는지 확인
 
 ### 2026.03.27 (공장 PC 장애 복구)
@@ -87,7 +88,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W2 완료 — 파이프라인 SW 구현 (L1~L4), E2E PASS. RealSense D435 캡처 모듈 완료 (`73f3d00`), 시뮬 E2E PASS. **다음: Mac에서 D435 라이브 테스트** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3 진행 중 — STL 46개 수집+정리+trimesh 검증 완료 (고유 45종, 최종 확정 대기). cad_library.py 작성 완료 (STL→샘플링→FPFH→pickle, 변경감지). 파이프라인 SW L1~L4 구현, E2E PASS. **다음: Mac에서 --build 실행 → 레퍼런스 클라우드 + FPFH 캐싱 생성** |
 
 ---
 
@@ -167,6 +168,22 @@
 │
 ├── factory-pc/                  # 공장 PC 스크립트
 │   └── file_receiver.py         # STL 파일 수신 + 스크린샷 서빙 (포트 8089)
+│
+├── bin_picking/                  # Phase 5: 3D 빈피킹 비전 시스템
+│   ├── src/
+│   │   ├── acquisition/         # L1: 카메라 캡처 (depth_to_pointcloud, realsense_capture)
+│   │   ├── preprocessing/       # L2: 전처리 (cloud_filter — ROI, 이상치, 다운샘플, RANSAC, 법선)
+│   │   ├── segmentation/        # L3: 분할 (dbscan_segmenter)
+│   │   ├── recognition/         # L4: 인식+자세 (cad_library, pose_estimator, size_filter)
+│   │   ├── grasping/            # L5: 그래스프 계획 (미구현)
+│   │   └── communication/       # L6: 로봇 통신 (미구현)
+│   ├── models/
+│   │   ├── cad/                 # STL 원본 (46개, 고유 45종)
+│   │   ├── reference_clouds/    # pickle 캐시 (포인트+법선+bbox)
+│   │   └── fpfh_features/       # pickle 캐시 (FPFH 33D)
+│   ├── config/
+│   ├── tests/                   # E2E 테스트 (test_e2e_redwood, test_e2e_realsense)
+│   └── tutorials/               # Open3D 학습 (01~11)
 │
 ├── OpenMV/                      # Phase 4: OpenMV 카메라 (참고자료 + 스크립트)
 ├── robot-control/               # Phase 3: 로봇 제어 (미구현)
