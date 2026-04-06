@@ -40,10 +40,8 @@ import numpy as np
 from pymodbus.server import StartTcpServer
 from pymodbus.datastore import (
     ModbusSequentialDataBlock,
-    ModbusSlaveContext,
     ModbusServerContext,
 )
-from pymodbus.device import ModbusDeviceIdentification
 
 
 # ============================================================
@@ -103,9 +101,12 @@ class PickingModbusServer:
         self._server_thread: Optional[threading.Thread] = None
 
         # 데이터 블록 초기화 (Holding Registers)
+        # pymodbus 3.x: devices={slave_id: {"h": block}}, "h" = Holding Register
         self._block = ModbusSequentialDataBlock(0, [0] * TOTAL_REGISTERS)
-        self._store = ModbusSlaveContext(hr=self._block)
-        self._context = ModbusServerContext(slaves=self._store, single=True)
+        self._context = ModbusServerContext(
+            devices={1: {"h": self._block}},
+            single=True,
+        )
 
         # 부품 이름 → ID 매핑 (런타임에 설정)
         self._part_id_map: Dict[str, int] = {}
@@ -196,11 +197,6 @@ class PickingModbusServer:
         Args:
             blocking: True면 메인 스레드에서 블로킹, False면 백그라운드 스레드
         """
-        identity = ModbusDeviceIdentification()
-        identity.VendorName = "Orinu"
-        identity.ProductCode = "BinPick-Vision"
-        identity.ProductName = "Bin Picking Vision Server"
-
         print(f"  Modbus TCP 서버 시작: {self.host}:{self.port}")
         print(f"  레지스터: 40001~400{TOTAL_REGISTERS}")
         print(f"  부품 ID 맵: {len(self._part_id_map)}종")
@@ -208,7 +204,6 @@ class PickingModbusServer:
         if blocking:
             StartTcpServer(
                 context=self._context,
-                identity=identity,
                 address=(self.host, self.port),
             )
         else:
@@ -216,7 +211,6 @@ class PickingModbusServer:
                 target=StartTcpServer,
                 kwargs={
                     "context": self._context,
-                    "identity": identity,
                     "address": (self.host, self.port),
                 },
                 daemon=True,
