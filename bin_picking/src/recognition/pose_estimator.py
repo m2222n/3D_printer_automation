@@ -202,11 +202,16 @@ class PoseEstimator:
         """
         t0 = time.time()
 
-        # 초기 정합
+        # 초기 정합 (FGR → RANSAC fallback)
         if self.use_fgr:
-            result_global = self._global_registration_fgr(
-                source_down, source_fpfh, target_down, target_fpfh
-            )
+            try:
+                result_global = self._global_registration_fgr(
+                    source_down, source_fpfh, target_down, target_fpfh
+                )
+            except RuntimeError:
+                result_global = self._global_registration_ransac(
+                    source_down, source_fpfh, target_down, target_fpfh
+                )
         else:
             result_global = self._global_registration_ransac(
                 source_down, source_fpfh, target_down, target_fpfh
