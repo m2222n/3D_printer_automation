@@ -1,0 +1,198 @@
+# 그래스프 데이터베이스 — 부품별 피킹 자세 정의
+# ================================================
+#
+# 각 부품에 대해 그리퍼가 부품을 잡는 로컬 자세를 정의한다.
+# L4에서 부품의 월드 자세(T_part_world)가 나오면:
+#   T_grasp_world = T_part_world @ T_grasp_local
+# 로봇은 T_grasp_world로 이동하여 피킹한다.
+#
+# 좌표계:
+#   - 부품 로컬: 부품 중심 = 원점, STL 기준 방향
+#   - approach_axis: 그리퍼 접근 방향 (부품 로컬)
+#   - grasp_depth_mm: 접근 축 방향으로 진입 깊이
+#
+# 그리퍼 파라미터:
+#   - gripper_width_mm: 그리퍼 벌림 (부품 폭에 맞춤)
+#   - gripper_force_N: 파지력 (SLA 레진 손상 방지)
+#
+# 초기: 대표 5종 정의 → 검증 후 30종 확장
+# 부품 추가 시: 아래 형식 복사 후 수정
+#
+# ⚠️ 실제 값은 카메라 입고 + 로봇 티칭 후 실측으로 교정 필요
+# ⚠️ 현재 값은 STL bbox 기반 추정치 (초기 개발/테스트용)
+
+# 기본 그리퍼 설정 (HCR-10L 기본값)
+defaults:
+  gripper_width_mm: 40        # 기본 벌림
+  gripper_force_N: 15         # SLA 레진 기본 파지력 (낮게 시작)
+  approach_speed_mm_s: 50     # 접근 속도
+  retreat_height_mm: 100      # 피킹 후 상승 높이
+  max_grasp_attempts: 2       # 최대 재시도 횟수
+
+# ============================================================
+# 부품별 그래스프 정의
+# ============================================================
+parts:
+
+  # --- SOL BLOCK 시리즈 (솔레노이드 블록) ---
+  01_sol_block_a:
+    description: "솔레노이드 블록 A (55×11.5×45mm)"
+    approach_axis: [0, 0, -1]       # 위에서 아래로 접근 (-Z)
+    grasp_center_mm: [0, 0, 0]      # 부품 중심 잡기
+    grasp_depth_mm: 15              # 15mm 진입
+    gripper_width_mm: 20            # 11.5mm 폭 + 여유
+    gripper_force_N: 15
+    grasp_type: "parallel"          # 평행 그리퍼
+
+  02_sol_block_b:
+    description: "솔레노이드 블록 B (55×9×45mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 15
+    gripper_width_mm: 18
+    gripper_force_N: 15
+    grasp_type: "parallel"
+
+  03_sol_block_front:
+    description: "솔레노이드 블록 FRONT (55×30×52.9mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 40
+    gripper_force_N: 15
+    grasp_type: "parallel"
+
+  06_sol_block_back:
+    description: "솔레노이드 블록 BACK (55×28.9×57.9mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 38
+    gripper_force_N: 15
+    grasp_type: "parallel"
+
+  # --- GUIDE PAPER 시리즈 ---
+  07_guide_paper_l:
+    description: "가이드 페이퍼 L (69×116×25.5mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 80
+    gripper_force_N: 12             # 넓은 부품 — 낮은 힘
+    grasp_type: "parallel"
+
+  08_r_guide_a:
+    description: "R 가이드 A (271×40×34.5mm) — 길이가 길어 중심 잡기"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 50
+    gripper_force_N: 15
+    grasp_type: "parallel"
+
+  09_guide_paper_r:
+    description: "가이드 페이퍼 R (50×116×25.5mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 60
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  10_guide_paper_roll_l:
+    description: "가이드 페이퍼 롤 L (236×51.5×67.5mm) — 대형"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 25
+    gripper_width_mm: 60
+    gripper_force_N: 15
+    grasp_type: "parallel"
+
+  # --- 소형 부품 ---
+  11_sw_block:
+    description: "스위치 블록 (22×7×7.1mm) — 소형"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 10
+    gripper_width_mm: 15
+    gripper_force_N: 8              # 소형 — 약한 힘
+    grasp_type: "parallel"
+
+  15_roller_bracket:
+    description: "롤러 브래킷 (10×17.5×40mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 12
+    gripper_width_mm: 25
+    gripper_force_N: 10
+    grasp_type: "parallel"
+
+  16_cam_f_bracket:
+    description: "캠 F 브래킷 (38×20×28mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 15
+    gripper_width_mm: 30
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  17_mks_holder:
+    description: "MKS 홀더 (131.3×11×82.5mm) — 길쭉한 형상"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 20
+    gripper_force_N: 15
+    grasp_type: "parallel"
+
+  18_button_function_niro:
+    description: "버튼 기능 니로 (110×44×15.7mm) — 대형 평판"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 12
+    gripper_width_mm: 55
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  # --- 브래킷/센서 ---
+  bracket_sensor1:
+    description: "브래킷 센서1 (15×26.1×42.1mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 15
+    gripper_width_mm: 30
+    gripper_force_N: 10
+    grasp_type: "parallel"
+
+  bracket_sensor2:
+    description: "브래킷 센서2 (4.8×2.5×34.8mm) — 매우 얇음"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 10
+    gripper_width_mm: 12
+    gripper_force_N: 5              # 얇은 부품 — 최소 힘
+    grasp_type: "parallel"
+
+  guide_paper_roll_cover_left:
+    description: "가이드 롤 커버 L (28×48×59.2mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 40
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  guide_paper_roll_cover_right:
+    description: "가이드 롤 커버 R (22×48×59.2mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 35
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  # --- 나머지 (미정의 부품은 기본값 사용) ---
+  # 13_variant, 13_x2_bcf8ccb4, 14_13, bracket_case,
+  # bracket_sen_1, brkt_switch, main_body, plate_e,
+  # r_guide_a_l, r_guide_a_r, top_inner_sheet, top_inner_sheet004
+  # → 카메라 입고 후 실측으로 추가 예정

@@ -1,17 +1,17 @@
 """
-빈피킹 메인 파이프라인 — L1→L2→L3→L4(→L5→L6)
+빈피킹 메인 파이프라인 — L1→L2→L3→L4→L5→L6
 =================================================
 
-카메라 입력(또는 저장된 프레임)에서 부품 인식 + 6DoF 자세 추정까지
-전체 파이프라인을 실행한다.
+카메라 입력(또는 저장된 프레임)에서 부품 인식 + 피킹 자세 계산 +
+로봇 통신까지 전체 파이프라인을 실행한다.
 
 파이프라인:
   L1: 영상 취득     — 카메라 캡처 또는 저장된 depth/color 로드
   L2: 전처리        — ROI, SOR, 다운샘플, RANSAC 바닥 제거, 법선
   L3: 분할          — DBSCAN 클러스터링
-  L4: 인식+자세     — SizeFilter → FPFH+RANSAC+ICP 매칭
-  L5: 그래스프 계획 — (미구현, 스텁)
-  L6: 로봇 통신     — (미구현, 스텁)
+  L4: 인식+자세     — FPFH+RANSAC+ICP 매칭
+  L5: 그래스프 계획 — grasp_database.yaml 기반 피킹 자세 계산
+  L6: 로봇 통신     — Modbus TCP 서버 → HCR-10L
 
 사용법:
   # 저장된 프레임으로 실행 (카메라 없이)
@@ -47,6 +47,8 @@ from bin_picking.src.recognition.size_filter import SizeFilter, compute_bbox_fea
 from bin_picking.src.preprocessing.cloud_filter import CloudFilter
 from bin_picking.src.segmentation.dbscan_segmenter import DBSCANSegmenter
 from bin_picking.src.acquisition.depth_to_pointcloud import depth_to_pointcloud
+from bin_picking.src.grasping.grasp_planner import GraspPlanner
+from bin_picking.src.communication.modbus_server import PickingModbusServer
 
 
 # ============================================================
@@ -121,6 +123,13 @@ class BinPickingPipeline:
 
         # L3: 분할
         self.segmenter = DBSCANSegmenter(eps=0.010, min_points=30)
+
+        # L5: 그래스프 계획
+        self.grasp_planner = GraspPlanner()
+        print(f"  그래스프 DB: {self.grasp_planner.part_count}종 정의")
+
+        # L6: Modbus 서버 (start_modbus() 호출 시 활성화)
+        self.modbus_server: Optional[PickingModbusServer] = None
 
     def run(
         self,
@@ -215,12 +224,29 @@ class BinPickingPipeline:
                 })
 
         timings["L4"] = time.time() - t0
-        timings["total"] = time.time() - t_total
 
         n_accepted = sum(1 for p in parts if p["decision"] == "ACCEPT" and p["rank"] == 0)
 
+        # ============================================================
+        # L5: 그래스프 계획
+        # ============================================================
+        t0 = time.time()
+        picks = self.grasp_planner.plan_picks(parts)
+        timings["L5"] = time.time() - t0
+
+        # ============================================================
+        # L6: Modbus 전송 (서버 활성화 시)
+        # ============================================================
+        t0 = time.time()
+        if self.modbus_server and picks:
+            self.modbus_server.write_pick_command(picks[0])  # 첫 번째 부품부터
+        timings["L6"] = time.time() - t0
+
+        timings["total"] = time.time() - t_total
+
         return {
             "parts": parts,
+            "picks": picks,
             "timings": timings,
             "n_clusters": len(clusters),
             "n_accepted": n_accepted,
@@ -250,10 +276,23 @@ class BinPickingPipeline:
                       f"{p['fitness']:>8.4f} {p['rmse']*1000:>9.2f} "
                       f"{pos:>30} {p['decision']:>8}")
 
+        # L5 피킹 계획
+        picks = result.get("picks", [])
+        if picks:
+            print(f"\n  --- L5 피킹 계획 ({len(picks)}개, z 높은 순) ---")
+            for i, pick in enumerate(picks):
+                pos = pick["position_mm"]
+                defined = "✅" if pick["defined"] else "⚠️"
+                print(f"  [{i+1}] {pick['part_name']:>30}  "
+                      f"pos=({pos['x']:+7.1f}, {pos['y']:+7.1f}, {pos['z']:+7.1f})mm  "
+                      f"grip={pick['gripper_width_mm']}mm/{pick['gripper_force_N']}N  {defined}")
+
         print()
         print(f"  시간: L2={timings.get('L2',0):.3f}s, "
               f"L3={timings.get('L3',0):.3f}s, "
               f"L4={timings.get('L4',0):.2f}s, "
+              f"L5={timings.get('L5',0):.3f}s, "
+              f"L6={timings.get('L6',0):.3f}s, "
               f"총={timings.get('total',0):.2f}s")
 
 
