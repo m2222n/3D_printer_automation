@@ -304,11 +304,25 @@ def create_synthetic_scene(cad_library: CADLibrary, n_parts: int = 3) -> o3d.geo
     import trimesh
 
     np.random.seed(42)
+
+    # 중형 부품 우선 선택 (소형 부품은 다운샘플 후 소실 가능)
+    preferred = [
+        "01_sol_block_a", "07_guide_paper_l", "17_mks_holder",
+        "bracket_sensor1", "guide_paper_roll_cover_left",
+        "03_sol_block_front", "16_cam_f_bracket", "08_r_guide_a",
+    ]
     available = cad_library.list_stl_files()
     if not available:
         raise RuntimeError("STL 파일이 없습니다")
 
-    selected = list(np.random.choice(available, min(n_parts, len(available)), replace=False))
+    # preferred 목록에서 존재하는 것 우선, 부족하면 나머지에서 보충
+    avail_names = {f.stem for f in available}
+    selected_names = [n for n in preferred if n in avail_names][:n_parts]
+    if len(selected_names) < n_parts:
+        rest = [f for f in available if f.stem not in set(selected_names)]
+        selected_names.extend([f.stem for f in rest[:n_parts - len(selected_names)]])
+
+    selected = [cad_library.cad_dir / f"{n}.stl" for n in selected_names]
     all_points = []
 
     for i, stl_path in enumerate(selected):
