@@ -66,12 +66,12 @@ class PoseEstimator:
         # 파생 파라미터 (논문 리뷰 + 실측 튜닝)
         self.fpfh_radius = voxel_size * 5        # 10mm
         self.fpfh_max_nn = 100
-        self.normal_radius = voxel_size * 3      # 6mm (노이즈에 덜 민감)
+        self.normal_radius = voxel_size * 3      # 6mm
         self.normal_max_nn = 30
-        self.ransac_distance = voxel_size * 2.0  # 4mm (부분 가시에 여유)
-        self.ransac_max_iter = 200_000           # 반복 증가 (정밀도 향상)
-        self.ransac_confidence = 0.9999
-        self.icp_distance = voxel_size * 1.0     # 2mm (넓은 수렴 범위)
+        self.ransac_distance = voxel_size * 2.0  # 4mm
+        self.ransac_max_iter = 100_000
+        self.ransac_confidence = 0.999
+        self.icp_distance = voxel_size * 1.0     # 2mm
 
         # 판정 임계값
         self.fitness_threshold = 0.3    # 이 이상이면 매칭 수락
