@@ -53,13 +53,13 @@
 | **Phase 2** | Local API 원격 제어 + UI | ✅ 완료 | PreFormServer 연동, 5탭 UI, 슬라이스/통계/알림 |
 | **Phase 3** | HCR 로봇 연동 | ✅ 코드 머지 완료 | 한솔코에버 시퀀스 서비스 + 자동화 프론트엔드 통합 |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🔄 진행 중 (일시 대기) | WiFi+MQTT E2E 성공, 학습 이미지 350장 — 빈피킹 우선 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | ✅ SW 완성 | L1~L6 전체 파이프라인 구현, 인식률 100%, 카메라 입고 대기 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | ✅ SW 완성 | L1~L6 파이프라인 + OBB SizeFilter, 인식률 100%(medium), 매칭 0.5s, 카메라 입고 대기 |
 
-### 현재 상태 (2026-04-06)
+### 현재 상태 (2026-04-08)
 - **Phase 1~3 완료**: 웹 모니터링 + 원격 프린트 + 로봇 연동 (한솔코에버 머지)
 - **Phase 5 L1~L6 SW 완성**: 빈피킹 전체 파이프라인 구현 완료
-  - STL 29종 레퍼런스 캐시 빌드, **인식률 100% (easy), RMSE 1.13mm**
-  - FGR(Fast Global Registration) 적용, 매칭 2.25s
+  - STL 29종 레퍼런스 캐시 빌드, **인식률 100% (easy/medium), RMSE 1.12~1.47mm**
+  - OBB SizeFilter + 포인트 수 비율 필터 → **매칭 0.4~0.5s/부품 (이전 2.25s 대비 4~5배 개선)**
   - L5 그래스프 DB 17종 + L6 Modbus TCP 서버
 - **다음**: 카메라 입고(5월) → 실데이터 검증 + Colored ICP + HCR-10L 실전 피킹
 
@@ -113,13 +113,13 @@
 ```
 L1 Acquisition     L2 Preprocessing     L3 Segmentation    L4 Recognition       L5 Grasping      L6 Robot
 +--------------+   +----------------+   +---------------+  +-----------------+  +-------------+  +-----------+
-| Blaze-112    |   | ROI Crop       |   | DBSCAN        |  | FPFH Feature    |  | Grasp DB    |  | HCR-10L   |
-| depth map    |-->| SOR Outlier    |-->| Clustering    |->| FGR Global Reg. |->| T_grasp =   |->| Modbus TCP|
-| + ace2 RGB   |   | Voxel Down     |   | Size Filter   |  | ICP Refine      |  | T_part @    |  | 6DoF Pose |
+| Blaze-112    |   | ROI Crop       |   | DBSCAN        |  | OBB SizeFilter  |  | Grasp DB    |  | HCR-10L   |
+| depth map    |-->| SOR Outlier    |-->| Clustering    |->| FPFH + FGR/ICP  |->| T_grasp =   |->| Modbus TCP|
+| + ace2 RGB   |   | Voxel Down     |   | Size Filter   |  | Point Ratio Chk |  | T_part @    |  | 6DoF Pose |
 | → PointCloud |   | RANSAC Plane   |   | BBox Extract  |  | 29종 STL Match  |  | T_local     |  | Gripper   |
 +--------------+   +----------------+   +---------------+  +-----------------+  +-------------+  +-----------+
        ✅                  ✅                  ✅                  ✅                 ✅               ✅
-                                                          인식률 100% | RMSE 1.13mm | 2.25s
+                                              인식률 100% (easy/medium) | RMSE 1.12mm | 0.5s/부품
 ```
 
 ### Network
@@ -184,7 +184,7 @@ Office                                      Factory
 - **L1 취득**: Blaze-112 ToF depth + ace2 RGB → colored PointCloud (+ RealSense D435 테스트)
 - **L2 전처리**: ROI 크롭 → SOR 이상치 제거 → Voxel 다운샘플 → RANSAC 바닥면 제거 → 법선 추정
 - **L3 분할**: DBSCAN 클러스터링, 포인트 수/크기 필터링
-- **L4 인식**: FPFH(33D) + FGR/RANSAC 초기 정합 + ICP Point-to-Plane 정밀 정합, **29종 STL 매칭 (인식률 100%, RMSE 1.13mm)**
+- **L4 인식**: OBB SizeFilter(회전 불변) 후보 축소 → FPFH(33D) + FGR/RANSAC + ICP 정밀 정합 + 포인트 수 비율 필터, **인식률 100% (easy/medium), RMSE 1.12mm, 0.5s/부품**
 - **L5 그래스프**: grasp_database.yaml 17종 부품별 피킹 자세 (접근방향, 깊이, 그리퍼 폭/힘), z순 피킹 계획
 - **L6 로봇 통신**: Modbus TCP 서버 (pymodbus 3.x), 레지스터 40001~40016 (6DoF FLOAT32 + 그리퍼)
 - **통합 파이프라인**: `BinPickingPipeline` — 카메라/저장프레임/합성씬 입력 → L1~L6 자동 실행
