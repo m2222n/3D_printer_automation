@@ -260,9 +260,13 @@ class CADLibrary:
             ),
         )
 
-        # 7. 바운딩 박스 특징 (SizeFilter용)
-        bbox = pcd_down.get_axis_aligned_bounding_box()
-        extent = np.sort(bbox.get_extent())
+        # 7. 바운딩 박스 특징 (SizeFilter용) — OBB 사용 (회전 불변)
+        if len(pcd_down.points) >= 4:
+            obb = pcd_down.get_oriented_bounding_box()
+            extent = np.sort(obb.extent)
+        else:
+            bbox = pcd_down.get_axis_aligned_bounding_box()
+            extent = np.sort(bbox.get_extent())
         extent = np.maximum(extent, 1e-6)
         bbox_features = {
             "extent_x": float(extent[0]),

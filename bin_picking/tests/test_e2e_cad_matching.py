@@ -267,13 +267,15 @@ def run_pipeline(
     total_match_time = 0.0
 
     for j, cluster in enumerate(clusters):
-        # L4a: 후보 선정
-        # SizeFilter는 회전된 부품의 AABB가 원본과 크게 달라져서 정답을 제외함
-        # → 29종은 전체 매칭해도 시간 내 가능 (SizeFilter는 실제 카메라 환경에서 재검증)
+        # L4a: 후보 선정 — OBB 기반 SizeFilter (회전 불변)
         t_filter = time.time()
-        candidates = list(reference_cache.keys())  # 전체 29종
+        candidates = size_filter.filter_candidates(cluster.pcd)
         t_filter_elapsed = time.time() - t_filter
-        filter_note = f"전체 {len(candidates)}종"
+        if not candidates:
+            candidates = list(reference_cache.keys())  # fallback 전체
+            filter_note = f"SizeFilter 0 → fallback 전체 {len(candidates)}종"
+        else:
+            filter_note = f"SizeFilter {len(candidates)}/{len(reference_cache)}종"
 
         # L4b: PoseEstimator
         t_match = time.time()

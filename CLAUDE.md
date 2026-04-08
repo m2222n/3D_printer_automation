@@ -66,16 +66,16 @@
 
 ### 2026.04.03 (빈피킹 지시)
 - **3D+RGB 카메라 확인**: Blaze-112(ToF) 단독인지, ace2(RGB)와 조합해서 포인트 잡는지 확인
-- **STL 파일 수집 완료 (4/6)**: Google Drive에서 46개 STL 다운로드 → 중복 제거 + 파일명 정리 → `bin_picking/models/cad/`에 배치 (고유 형상 45종). **최종 확정 파일 아님** — 과거 버전 + 업그레이드 버전 혼재, assy 파일과 번호 부품 간 동일 형상 다수. 향후 모델링 미세 변경 가능성 있음. 최종 부품 목록은 대표님 확인 필요 (문서상 25~30종)
-- **cad_library.py 작성 완료 (4/6)**: STL → trimesh 로드 → 10,000점 균일 샘플링 → Open3D FPFH(33D) 사전 계산 → pickle 캐시. MD5 변경 감지 지원 (--incremental). 서버 trimesh 검증 PASS, **Mac에서 --build 실행 필요** (서버 Open3D AVX2 미지원)
-- **RealSense D435 카메라 테스트**: USB로 받음 (스테레오 depth + RGB, 640x480, 측정 0.105~3m). 이걸로도 빈피킹 되는지 확인
+- **STL 수집+정리+중복제거 완료 (4/6)**: 55개 다운 → 중복 제거 → 46개 → bbox 동일 분석 → **29종** (17개 `_duplicates/`). STL 최종 목록은 아직 미확정 (대표님도 확정 전, 킵고잉)
+- **L1~L6 전체 파이프라인 SW 완성 (4/6)**: cad_library + E2E 테스트 + main_pipeline + L5 그래스프 + L6 Modbus TCP. 인식률 80%(easy), RMSE 1.12mm. 매칭 속도 4.59s(목표 2.0s)
+- **RealSense D435**: USB로 받음 (스테레오 depth + RGB, 640x480). USB 3.0 젠더 필요 (라이브 테스트 블로킹)
 
 ### 2026.03.27 (공장 PC 장애 복구)
 - 공장 PC 재부팅 후 `file_receiver.py`(8089) 자동 시작 안 됨 → 미리보기 "모델 임포트 실패"
 - file_receiver 위치: `C:\Users\devfl\file_receiver.py`, 수동 실행하여 복구
 - Windows cmd QuickEdit 모드 때문에 file_receiver 반복 멈춤 → QuickEdit 해제로 해결
 - 출력 전송 후 프린터 미동작: PreFormServer 재시작 시 빌드플랫폼 상태 MISSING 리셋 → 프린터 터치스크린 확인 필요
-- **TODO**: file_receiver 시작 프로그램 등록
+- ✅ file_receiver 시작 프로그램 등록 완료
 - ✅ **웹 UI readiness 체크 구현 완료** (`0e3451e`): 프린트 전 6가지 검증 + 경고 배너 + 버튼 비활성화
 
 ---
@@ -88,7 +88,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3 완료 — **L1~L6 전체 파이프라인 구현 완료**. STL 29종, 인식률 80% (easy), RMSE 1.12mm. L5 그래스프 DB 17종 + L6 Modbus TCP. **다음: 카메라 입고(5월) → 실데이터 검증 + Colored ICP** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3 완료 — **L1~L6 전체 파이프라인 구현 완료**. STL 29종. **인식률 100% (easy, FGR), RMSE 1.13mm, 매칭 2.25s**. L5 그래스프 DB 17종 + L6 Modbus TCP. **다음: 카메라 입고(5월) → 실데이터 검증 + Colored ICP** |
 
 ---
 
@@ -492,9 +492,9 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 **W3 (실제 STL 29종 기반 E2E, 4/6)**:
 | 지표 | 결과 | 목표 | 판정 |
 |------|------|------|------|
-| 인식률 (easy, 5종) | **80%** (4/5) | 85% | ⚠️ 근접 |
-| RMSE | **1.12mm** | 3mm | ✅ 우수 |
-| 매칭 시간 (29종 전체) | 4.59초 | 2.0초 | ❌ 속도 개선 필요 |
+| 인식률 (easy, 5종) | **100%** (5/5, FGR) | 85% | ✅ |
+| RMSE | **1.13mm** | 3mm | ✅ 우수 |
+| 매칭 시간 (29종, FGR) | **2.25초** | 2.0초 | ⚠️ 0.25s 초과 |
 | L1~L6 파이프라인 | **전체 구현 완료** | 카메라 전 SW 완성 | ✅ |
 | L5 그래스프 DB | 17종 정의 | 30종 | 🔄 확장 예정 |
 | L6 Modbus TCP | 서버 동작 확인 | 로봇 실전 | 🔄 입고 후 |

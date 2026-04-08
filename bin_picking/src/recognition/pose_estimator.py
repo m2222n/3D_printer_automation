@@ -59,14 +59,19 @@ class PoseEstimator:
     RANSAC(폴백): FPFH 기반 확률적 매칭 — FGR 실패 시 사용
     """
 
-    def __init__(self, voxel_size: float = DEFAULT_VOXEL_SIZE, use_fgr: bool = True):
+    def __init__(self, voxel_size: float = DEFAULT_VOXEL_SIZE, use_fgr: bool = True,
+                 min_point_ratio: float = 0.15):
         """
         Args:
             voxel_size: 다운샘플링 복셀 크기 (미터). 기본 2mm.
             use_fgr: True면 FGR 사용 (빠름), False면 RANSAC 사용
+            min_point_ratio: 레퍼런스/클러스터 포인트 수 최소 비율.
+                             이 비율 미만이면 매칭 스킵 (소형 레퍼런스 오매칭 방지).
+                             기본 0.15 (레퍼런스가 클러스터의 15% 미만이면 스킵)
         """
         self.voxel_size = voxel_size
         self.use_fgr = use_fgr
+        self.min_point_ratio = min_point_ratio
 
         # 파생 파라미터 (논문 리뷰 + 실측 튜닝)
         self.fpfh_radius = voxel_size * 5        # 10mm
@@ -257,6 +262,7 @@ class PoseEstimator:
         """
         # 클러스터 전처리
         cluster_down, cluster_fpfh = self.preprocess(cluster_pcd)
+        n_cluster = len(cluster_down.points)
 
         # 매칭 대상 결정
         if candidate_names is not None:
@@ -265,11 +271,21 @@ class PoseEstimator:
             names_to_try = list(reference_cache.keys())
 
         results = []
+        skipped_by_ratio = 0
 
         for ref_name in names_to_try:
             ref_data = reference_cache[ref_name]
             ref_down = ref_data["pcd_down"]
             ref_fpfh = ref_data["fpfh"]
+
+            # 포인트 수 비율 필터: 레퍼런스가 클러스터 대비 너무 작으면 스킵
+            # 예: 60pts 레퍼런스 vs 2000pts 클러스터 → 비율 0.03 → 스킵
+            n_ref = len(ref_down.points)
+            if n_cluster > 0 and self.min_point_ratio > 0:
+                ratio = n_ref / n_cluster
+                if ratio < self.min_point_ratio:
+                    skipped_by_ratio += 1
+                    continue
 
             result, elapsed = self.register(
                 ref_down, ref_fpfh, cluster_down, cluster_fpfh
@@ -282,6 +298,7 @@ class PoseEstimator:
                 "transformation": np.array(result.transformation),
                 "time": elapsed,
                 "correspondences": len(result.correspondence_set),
+                "point_ratio": n_ref / n_cluster if n_cluster > 0 else 0,
             })
 
         # fitness 높은 순 정렬 (동점 시 RMSE 낮은 순)

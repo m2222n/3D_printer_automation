@@ -35,11 +35,12 @@ VOXEL_SIZE = 0.002  # 2mm — 빈피킹 SLA 부품용
 # ============================================================
 # 1. 바운딩박스 특징 계산
 # ============================================================
-def compute_bbox_features(pcd: o3d.geometry.PointCloud) -> Dict[str, float]:
+def compute_bbox_features(pcd: o3d.geometry.PointCloud, use_obb: bool = True) -> Dict[str, float]:
     """포인트클라우드의 바운딩박스 기반 크기 특징을 계산한다.
 
     Args:
         pcd: 입력 포인트클라우드
+        use_obb: True면 OBB(회전 불변), False면 AABB(축 정렬) 사용
 
     Returns:
         dict: 다음 키를 포함하는 특징 딕셔너리
@@ -48,8 +49,12 @@ def compute_bbox_features(pcd: o3d.geometry.PointCloud) -> Dict[str, float]:
             - diagonal: 바운딩박스 대각선 길이 (m)
             - aspect_ratios: (min/mid, mid/max) 종횡비 튜플
     """
-    bbox = pcd.get_axis_aligned_bounding_box()
-    extent = np.sort(bbox.get_extent())  # 오름차순 정렬
+    if use_obb and len(pcd.points) >= 4:
+        obb = pcd.get_oriented_bounding_box()
+        extent = np.sort(obb.extent)  # 오름차순 정렬
+    else:
+        bbox = pcd.get_axis_aligned_bounding_box()
+        extent = np.sort(bbox.get_extent())  # 오름차순 정렬
 
     # 0 크기 방어 (평면 또는 직선 형태)
     extent = np.maximum(extent, 1e-6)
@@ -130,7 +135,7 @@ class SizeFilter:
         if not self._references:
             return []
 
-        cluster_feat = compute_bbox_features(cluster_pcd)
+        cluster_feat = compute_bbox_features(cluster_pcd, use_obb=True)
         cluster_extents = np.array([
             cluster_feat["extent_x"],
             cluster_feat["extent_y"],
