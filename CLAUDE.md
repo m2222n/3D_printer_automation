@@ -67,7 +67,7 @@
 ### 2026.04.03 (빈피킹 지시)
 - **3D+RGB 카메라 확인**: Blaze-112(ToF) 단독인지, ace2(RGB)와 조합해서 포인트 잡는지 확인
 - **STL 수집+정리+중복제거 완료 (4/6)**: 55개 다운 → 중복 제거 → 46개 → bbox 동일 분석 → **29종** (17개 `_duplicates/`). STL 최종 목록은 아직 미확정 (대표님도 확정 전, 킵고잉)
-- **L1~L6 전체 파이프라인 SW 완성 (4/6~8)**: cad_library + E2E 테스트 + main_pipeline + L5 그래스프 + L6 Modbus TCP. OBB SizeFilter + 포인트 비율 필터 추가 (4/8). **인식률 100%(easy/medium), RMSE 1.12mm, 매칭 0.5s/부품**
+- **L1~L6 전체 파이프라인 SW 완성 (4/6~10)**: cad_library + E2E 테스트 + main_pipeline + L5 그래스프 + L6 Modbus TCP. OBB SizeFilter + 포인트 비율 필터 (4/8). 그래스프 DB 29종 완성 + E2E 시나리오 확장 + multi-res ICP (4/10). **인식률 100%(easy), crowded 90%, hard 60%. RMSE 1.0~1.5mm, 매칭 0.4~0.6s/부품**
 - **RealSense D435**: USB로 받음 (스테레오 depth + RGB, 640x480). USB 3.0 젠더 필요 (라이브 테스트 블로킹)
 
 ### 2026.03.27 (공장 PC 장애 복구)
@@ -88,7 +88,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3 완료 — **L1~L6 전체 파이프라인 구현 완료**. STL 29종. **인식률 100% (easy/medium), RMSE 1.12mm, 매칭 0.5s/부품**. OBB SizeFilter + 포인트 비율 필터. L5 그래스프 DB 17종 + L6 Modbus TCP. **다음: 카메라 입고(5월) → 실데이터 검증 + Colored ICP** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3+ 완료 — **L1~L6 전체 파이프라인 구현 완료**. STL 29종, **그래스프 DB 29종 완성**. **인식률 100%(easy), crowded 90%, hard 60%**. RMSE 1.0~1.5mm, 매칭 0.4~0.6s/부품. E2E 시나리오 확장(crowded/mixed-size/stress) + multi-res ICP 옵션. **다음: 카메라 입고(5월) → 실데이터 검증 + Colored ICP** |
 
 ---
 
@@ -464,7 +464,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ---
 
-## Phase 5: 3D 빈피킹 비전 시스템 🔄 W0 완료 → W3 준비
+## Phase 5: 3D 빈피킹 비전 시스템 🔄 W3+ 완료 → 카메라 입고 대기
 
 > **문서**: ORINU-DEV-2026-002 (구본경 대표, 2026-03-18) — PDF로 재수령 (4/1), docx는 헤더 깨짐
 > **개발**: Mac (Intel) + venv binpick (Python 3.12 + Open3D 0.19.0) — 6000 서버 Open3D 불가 (AVX2 미지원)
@@ -489,16 +489,16 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | 인식률 | **100%** (더미 3종 자기매칭) | 85% | ✅ |
 | SizeFilter 효과 | 5종→2.2종 (56% 절감) | — | ✅ |
 
-**W3 (실제 STL 29종 기반 E2E, 4/6~4/8)**:
+**W3+ (실제 STL 29종 기반 E2E, 4/6~4/10)**:
 | 지표 | 결과 | 목표 | 판정 |
 |------|------|------|------|
 | 인식률 (easy, 5종) | **100%** (5/5) | 85% | ✅ |
-| 인식률 (medium, 5종) | **100%** (5/5) | 85% | ✅ |
+| 인식률 (crowded, 10종) | **90%** (9/10) | 80% | ✅ |
 | 인식률 (hard, 5종) | **60%** (3/5) | 85% | ⚠️ FPFH 한계, Colored ICP 필요 |
-| RMSE | **1.12~1.47mm** | 3mm | ✅ 우수 |
-| 매칭 시간 (OBB SizeFilter) | **0.4~0.5초** | 2.0초 | ✅ 4배 여유 |
+| RMSE | **1.0~1.5mm** | 3mm | ✅ 우수 |
+| 매칭 시간 (OBB SizeFilter) | **0.4~0.6초** | 2.0초 | ✅ 3~5배 여유 |
 | L1~L6 파이프라인 | **전체 구현 완료** | 카메라 전 SW 완성 | ✅ |
-| L5 그래스프 DB | 17종 정의 | 30종 | 🔄 확장 예정 |
+| L5 그래스프 DB | **29종 완성** | 29종 | ✅ |
 | L6 Modbus TCP | 서버 동작 확인 | 로봇 실전 | 🔄 입고 후 |
 
 ### 레진별 파라미터 추천
@@ -526,7 +526,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | `tutorials/11_noise_robustness_advanced.py` | 590 | 노이즈 심화 (Clear 대응) |
 | `src/recognition/cad_library.py` | 430 | STL→레퍼런스 클라우드+FPFH 캐시 (빌드/로드/변경감지) |
 | `src/recognition/size_filter.py` | 441 | 크기 사전 필터 (30→2.2종) |
-| `src/recognition/pose_estimator.py` | 619 | 1:N 매칭 루프 |
+| `src/recognition/pose_estimator.py` | 776 | 1:N 매칭 루프 + multi-res ICP + top-K 리파인 |
 | `src/grasping/grasp_planner.py` | 250 | L5 그래스프 자세 계산 (grasp_database.yaml 기반) |
 | `src/communication/modbus_server.py` | 250 | L6 Modbus TCP 서버 (pymodbus 3.x, FLOAT32) |
 | `src/main_pipeline.py` | 350 | L1~L6 통합 파이프라인 (BinPickingPipeline) |
@@ -534,9 +534,9 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | `src/acquisition/depth_to_pointcloud.py` | 155 | depth map → Open3D PointCloud 변환 |
 | `src/preprocessing/cloud_filter.py` | 236 | L2 전처리 파이프라인 (레진별 프리셋) |
 | `src/segmentation/dbscan_segmenter.py` | 208 | L3 DBSCAN 분할 + Cluster 클래스 |
-| `config/grasp_database.yaml` | 170 | 17종 부품별 그래스프 파라미터 정의 |
+| `config/grasp_database.yaml` | 307 | 29종 부품별 그래스프 파라미터 정의 |
 | `tests/test_e2e_redwood.py` | 240 | Redwood RGB-D E2E 5단계 테스트 |
-| `tests/test_e2e_cad_matching.py` | 400 | 실제 STL 29종 기반 합성 씬 E2E (easy/medium/hard) |
+| `tests/test_e2e_cad_matching.py` | 700 | 실제 STL 29종 기반 합성 씬 E2E (easy/medium/hard + crowded/mixed-size/stress 시나리오) |
 
 ### 7.1 필수 학습 체크리스트
 
@@ -571,6 +571,8 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | ~~L1~L6 통합~~ | ~~main_pipeline.py~~ | — | ✅ 완료 (4/6, `8c6629b`) |
 | ~~OBB SizeFilter + 포인트 비율 필터~~ | ~~size_filter.py, pose_estimator.py~~ | — | ✅ 완료 (4/8, `9cce5de`) — medium 100%, 0.5s |
 | ~~E2E 난이도 테스트 (medium/hard)~~ | ~~테스트 결과 분석~~ | — | ✅ 완료 (4/8) — easy/medium 100%, hard 60% |
+| ~~그래스프 DB 29종 완성~~ | ~~grasp_database.yaml~~ | — | ✅ 완료 (4/10, `2c27a9f`) — STL bbox 기반 추정 |
+| ~~E2E 시나리오 확장~~ | ~~crowded/mixed-size/stress~~ | — | ✅ 완료 (4/10, `2c27a9f`) — crowded 90%, multi-res ICP |
 | W7: 카메라 입고 + 실제 연동 | calibration.py | 카메라 5월 초 | 5/5~5/9 |
 | 대표님 보고 | 진행 보고서 | — | 수시 |
 
@@ -756,6 +758,7 @@ POLLING_INTERVAL_SECONDS=15
 - ✅ ~~L5 그래스프 + L6 Modbus + L1~L6 통합~~ (4/6)
 - ✅ ~~OBB SizeFilter + 포인트 비율 필터~~ (4/8, medium 100%, 0.5s)
 - ✅ ~~E2E 난이도 테스트 medium/hard~~ (4/8)
+- ✅ ~~그래스프 DB 29종 완성 + 시나리오 확장 + multi-res ICP~~ (4/10, crowded 90%)
 - 🔴 **D435 라이브 테스트** → USB 3.0 젠더 확보 후 Mac에서 진행
 - 🟡 **[한솔 협업]** 이예승 사원 온보딩 + sequence_service 연동
 - 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
