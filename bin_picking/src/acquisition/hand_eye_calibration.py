@@ -2,11 +2,12 @@
 Hand-Eye Calibration for 3D Bin Picking System
 ===============================================
 
-Eye-to-Hand (Fixed Camera) 캘리브레이션 템플릿
+Eye-to-Hand (고정 카메라) + Eye-in-Hand (로봇암 카메라) 캘리브레이션
 
-카메라: Basler Blaze-112 ToF (고정 프레임에 설치, 빈 위쪽)
 로봇: HCR-10L (Modbus TCP, 포트 502)
-설정: Eye-to-Hand (카메라 고정, 로봇 이동)
+
+설정 1 (Eye-to-Hand): Blaze-112 ToF 고정 카메라 → T_cam_to_base
+설정 2 (Eye-in-Hand): ace2 5MP RGB 로봇암 카메라 → T_cam_to_gripper
 
 캘리브레이션 원리 (Eye-to-Hand / Fixed Camera):
     AX = XB  (고전적 Hand-Eye 문제)
@@ -16,11 +17,13 @@ Eye-to-Hand (Fixed Camera) 캘리브레이션 템플릿
       - B = T_cam_to_target(i) * T_cam_to_target(j)^{-1}      (카메라-보드 상대 변환)
       - X = T_cam_to_base                                       (구하려는 변환)
 
-    OpenCV cv2.calibrateHandEye()는 내부적으로 이를 처리하며,
-    eye-to-hand 설정에서는 입력을 다음과 같이 넣어야 한다:
-      - R_gripper2base, t_gripper2base  →  로봇 base 좌표계 기준 그리퍼 포즈
-      - R_target2cam, t_target2cam      →  카메라 좌표계 기준 체커보드 포즈
-    결과: R_cam2gripper, t_cam2gripper  →  실제로는 T_cam_to_base (eye-to-hand)
+    OpenCV cv2.calibrateHandEye()는 기본적으로 eye-in-hand를 가정:
+      - eye-in-hand: R_gripper2base에 직접 전달 → 결과 = T_cam_to_gripper
+      - eye-to-hand: R_gripper2base에 역행렬 전달 → 결과 = T_cam_to_base
+
+    Eye-in-Hand 좌표 변환:
+      P_base = T_gripper_to_base @ T_cam_to_gripper @ P_camera
+      (→ 매 캡처 시 현재 로봇 포즈 T_gripper_to_base가 필요)
 
 카메라 입고 후 이 코드를 바로 실행하여 캘리브레이션 수행
 (카메라 입고 예상: 2026년 5월)
@@ -77,6 +80,32 @@ from typing import List, Optional, Tuple
 import cv2
 import numpy as np
 from scipy.spatial.transform import Rotation
+
+
+# 캘리브레이션 결과 저장 디렉토리
+CALIBRATION_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "calibration"
+
+# 카메라 프리셋 (카메라 입고 후 실측값으로 교체)
+CAMERA_PRESETS = {
+    "blaze-112": {
+        "width": 640, "height": 480,
+        "fx": 460.0, "fy": 460.0, "cx": 320.0, "cy": 240.0,
+        "dist_coeffs": [0, 0, 0, 0, 0],
+        "description": "Basler Blaze-112 ToF (eye-to-hand, overhead)",
+    },
+    "ace2-5mp": {
+        "width": 2448, "height": 2048,
+        "fx": 3000.0, "fy": 3000.0, "cx": 1224.0, "cy": 1024.0,
+        "dist_coeffs": [0, 0, 0, 0, 0],
+        "description": "Basler ace2 5MP RGB (eye-in-hand, arm-mounted)",
+    },
+    "d435": {
+        "width": 640, "height": 480,
+        "fx": 607.7, "fy": 607.4, "cx": 319.3, "cy": 242.4,
+        "dist_coeffs": [0, 0, 0, 0, 0],
+        "description": "Intel RealSense D435 (development/test)",
+    },
+}
 
 
 # ============================================================================
@@ -137,11 +166,13 @@ def translation_error_mm(t1: np.ndarray, t2: np.ndarray) -> float:
 # ============================================================================
 
 class HandEyeCalibrator:
-    """Eye-to-Hand (고정 카메라) Hand-Eye 캘리브레이션.
+    """Hand-Eye 캘리브레이션 (Eye-to-Hand + Eye-in-Hand 지원).
 
-    Basler Blaze-112 ToF 카메라가 빈 위에 고정 설치된 상태에서,
-    HCR-10L 로봇 그리퍼에 체커보드를 장착하고 여러 포즈에서 촬영하여
-    카메라↔로봇 베이스 간 변환 행렬(T_cam_to_base)을 구한다.
+    Eye-to-Hand: 카메라 고정(빈 위), 체커보드는 로봇 그리퍼에 장착
+      → T_cam_to_base (카메라→로봇 베이스)
+    Eye-in-Hand: 카메라가 로봇암에 장착, 체커보드는 고정 위치
+      → T_cam_to_gripper (카메라→그리퍼)
+      → P_base = T_gripper_to_base @ T_cam_to_gripper @ P_camera
     """
 
     # OpenCV Hand-Eye 캘리브레이션 메서드 매핑
@@ -152,13 +183,19 @@ class HandEyeCalibrator:
         "daniilidis": cv2.CALIB_HAND_EYE_DANIILIDIS,
     }
 
-    def __init__(self, board_size: Tuple[int, int] = (9, 6), square_size: float = 0.015):
+    def __init__(self, board_size: Tuple[int, int] = (9, 6), square_size: float = 0.015,
+                 mode: str = "eye-to-hand"):
         """초기화.
 
         Args:
             board_size: 체커보드 내부 코너 수 (columns, rows). 기본 9x6.
             square_size: 체커보드 사각형 한 변 길이 [m]. 기본 15mm.
+            mode: "eye-to-hand" (고정 카메라) 또는 "eye-in-hand" (로봇암 카메라)
         """
+        if mode not in ("eye-to-hand", "eye-in-hand"):
+            raise ValueError(f"mode must be 'eye-to-hand' or 'eye-in-hand', got '{mode}'")
+
+        self.mode = mode
         self.board_size = board_size
         self.square_size = square_size
 
@@ -172,18 +209,38 @@ class HandEyeCalibrator:
         self.cam_to_board_poses: List[np.ndarray] = []  # T_target_to_cam (4x4)
         self.images: List[np.ndarray] = []               # 원본 이미지 (검증용)
 
-        # 카메라 내부 파라미터 (Basler Blaze-112 근사값, 실제 캘리브레이션으로 교체 필요)
-        # Blaze-112: 640x480, ~60deg FoV → fx,fy ≈ 500
+        # 카메라 내부 파라미터 (모드별 기본값)
+        if mode == "eye-to-hand":
+            preset = CAMERA_PRESETS["blaze-112"]
+        else:
+            preset = CAMERA_PRESETS["ace2-5mp"]
         self.camera_matrix = np.array([
-            [500.0,   0.0, 320.0],
-            [  0.0, 500.0, 240.0],
-            [  0.0,   0.0,   1.0],
+            [preset["fx"], 0.0, preset["cx"]],
+            [0.0, preset["fy"], preset["cy"]],
+            [0.0, 0.0, 1.0],
         ], dtype=np.float64)
-        self.dist_coeffs = np.zeros(5, dtype=np.float64)
+        self.dist_coeffs = np.array(preset["dist_coeffs"], dtype=np.float64)
 
         # 캘리브레이션 결과
-        self.T_cam_to_base: Optional[np.ndarray] = None
+        self.T_cam_to_base: Optional[np.ndarray] = None      # eye-to-hand 결과
+        self.T_cam_to_gripper: Optional[np.ndarray] = None    # eye-in-hand 결과
         self.calibration_error: Optional[float] = None
+
+    def set_camera_preset(self, name: str):
+        """카메라 프리셋으로 내부 파라미터 설정.
+
+        Args:
+            name: "blaze-112", "ace2-5mp", "d435" 중 하나
+        """
+        if name not in CAMERA_PRESETS:
+            raise ValueError(f"Unknown preset: {name}. Available: {list(CAMERA_PRESETS.keys())}")
+        p = CAMERA_PRESETS[name]
+        self.camera_matrix = np.array([
+            [p["fx"], 0.0, p["cx"]],
+            [0.0, p["fy"], p["cy"]],
+            [0.0, 0.0, 1.0],
+        ], dtype=np.float64)
+        self.dist_coeffs = np.array(p["dist_coeffs"], dtype=np.float64)
 
     def set_camera_intrinsics(self, camera_matrix: np.ndarray, dist_coeffs: np.ndarray):
         """카메라 내부 파라미터 설정 (카메라 캘리브레이션 결과 사용).
@@ -287,18 +344,20 @@ class HandEyeCalibrator:
             raise ValueError(f"지원되지 않는 메서드: {method}. "
                              f"가능한 값: {list(self.METHODS.keys())}")
 
-        # Eye-to-Hand: 로봇 포즈의 역행렬을 사용
-        # OpenCV calibrateHandEye는 기본적으로 eye-in-hand를 가정하므로,
-        # eye-to-hand에서는 로봇 포즈의 역행렬을 gripper2base로 전달한다.
+        # OpenCV calibrateHandEye는 기본적으로 eye-in-hand를 가정.
+        # eye-to-hand: 로봇 포즈의 역행렬 전달 → 결과 = T_cam_to_base
+        # eye-in-hand: 로봇 포즈 직접 전달 → 결과 = T_cam_to_gripper
         R_gripper2base_list = []
         t_gripper2base_list = []
         R_target2cam_list = []
         t_target2cam_list = []
 
         for i in range(n):
-            # Eye-to-hand: 로봇 포즈의 역행렬 사용
-            T_base2gripper = np.linalg.inv(self.robot_poses[i])
-            rvec_bg, tvec_bg = matrix_to_rvec_tvec(T_base2gripper)
+            if self.mode == "eye-to-hand":
+                T_input = np.linalg.inv(self.robot_poses[i])
+            else:  # eye-in-hand
+                T_input = self.robot_poses[i]
+            rvec_bg, tvec_bg = matrix_to_rvec_tvec(T_input)
             R_gripper2base_list.append(rvec_bg)
             t_gripper2base_list.append(tvec_bg)
 
@@ -318,7 +377,11 @@ class HandEyeCalibrator:
         T = np.eye(4)
         T[:3, :3] = R_cam2base
         T[:3, 3] = t_cam2base.flatten()
-        self.T_cam_to_base = T
+
+        if self.mode == "eye-to-hand":
+            self.T_cam_to_base = T
+        else:  # eye-in-hand
+            self.T_cam_to_gripper = T
 
         # 재투영 오차 계산
         error = self._compute_reprojection_error(T)
@@ -349,7 +412,10 @@ class HandEyeCalibrator:
         # 최적 결과 선택 (최소 재투영 오차)
         best_method = min(results, key=lambda m: results[m][1])
         best_T, best_error = results[best_method]
-        self.T_cam_to_base = best_T
+        if self.mode == "eye-to-hand":
+            self.T_cam_to_base = best_T
+        else:
+            self.T_cam_to_gripper = best_T
         self.calibration_error = best_error
 
         return best_T, best_method, best_error, results
@@ -390,11 +456,15 @@ class HandEyeCalibrator:
                 # 카메라 상대 변환
                 T_ij_cam = self.cam_to_board_poses[i] @ np.linalg.inv(self.cam_to_board_poses[j])
 
-                # 일관성: T_cam2base @ T_ij_cam = T_ij_robot_inv @ T_cam2base
-                # → T_cam2base @ T_ij_cam @ T_cam2base^{-1} ≈ T_ij_robot_inv
-                T_cam2base_inv = np.linalg.inv(T_cam2base)
-                lhs = T_cam2base @ T_ij_cam @ T_cam2base_inv
-                rhs = np.linalg.inv(T_ij_robot)
+                T_inv = np.linalg.inv(T_cam2base)
+                if self.mode == "eye-to-hand":
+                    # T_cam2base @ T_ij_cam @ T_cam2base^{-1} ≈ T_ij_robot^{-1}
+                    lhs = T_cam2base @ T_ij_cam @ T_inv
+                    rhs = np.linalg.inv(T_ij_robot)
+                else:
+                    # eye-in-hand: T_cam2gripper^{-1} @ T_ij_robot @ T_cam2gripper ≈ T_ij_cam
+                    lhs = T_inv @ T_ij_robot @ T_cam2base
+                    rhs = T_ij_cam
 
                 # 이동 오차 (mm)
                 t_err = np.linalg.norm(lhs[:3, 3] - rhs[:3, 3]) * 1000.0
@@ -402,25 +472,38 @@ class HandEyeCalibrator:
 
         return float(np.mean(pair_errors)) if pair_errors else 0.0
 
-    def transform_to_base(self, points_camera: np.ndarray) -> np.ndarray:
+    def transform_to_base(self, points_camera: np.ndarray,
+                          T_gripper_to_base: Optional[np.ndarray] = None) -> np.ndarray:
         """카메라 좌표계의 3D 포인트를 로봇 베이스 좌표계로 변환.
+
+        Eye-to-hand: P_base = T_cam_to_base @ P_cam
+        Eye-in-hand: P_base = T_gripper_to_base @ T_cam_to_gripper @ P_cam
+                     (→ T_gripper_to_base 필수, 캡처 시점의 현재 로봇 포즈)
 
         Args:
             points_camera: (N, 3) 카메라 좌표계 포인트 [m]
+            T_gripper_to_base: (4,4) 현재 그리퍼→베이스 변환 (eye-in-hand에서 필수)
 
         Returns:
             points_base: (N, 3) 로봇 베이스 좌표계 포인트 [m]
         """
-        if self.T_cam_to_base is None:
-            raise RuntimeError("캘리브레이션이 수행되지 않았습니다. calibrate()를 먼저 호출하세요.")
-
         pts = np.asarray(points_camera, dtype=np.float64)
         if pts.ndim == 1:
             pts = pts.reshape(1, 3)
 
-        R = self.T_cam_to_base[:3, :3]
-        t = self.T_cam_to_base[:3, 3]
+        if self.mode == "eye-to-hand":
+            if self.T_cam_to_base is None:
+                raise RuntimeError("캘리브레이션이 수행되지 않았습니다. calibrate()를 먼저 호출하세요.")
+            T = self.T_cam_to_base
+        else:  # eye-in-hand
+            if self.T_cam_to_gripper is None:
+                raise RuntimeError("캘리브레이션이 수행되지 않았습니다. calibrate()를 먼저 호출하세요.")
+            if T_gripper_to_base is None:
+                raise ValueError("eye-in-hand 모드에서는 T_gripper_to_base (현재 로봇 포즈)가 필수입니다.")
+            T = T_gripper_to_base @ self.T_cam_to_gripper
 
+        R = T[:3, :3]
+        t = T[:3, 3]
         points_base = (R @ pts.T).T + t
         return points_base
 
@@ -473,14 +556,21 @@ class HandEyeCalibrator:
         error = cv2.norm(corners_refined, projected, cv2.NORM_L2) / len(projected)
         return float(error)
 
-    def save(self, filepath: str):
+    def save(self, filepath: str = ""):
         """캘리브레이션 결과 저장.
 
         Args:
-            filepath: 저장 경로 (.pkl)
+            filepath: 저장 경로 (.pkl). 빈 문자열이면 기본 경로 사용.
         """
+        if not filepath:
+            CALIBRATION_DIR.mkdir(parents=True, exist_ok=True)
+            filename = f"{self.mode.replace('-', '_')}.pkl"
+            filepath = str(CALIBRATION_DIR / filename)
+
         data = {
+            "mode": self.mode,
             "T_cam_to_base": self.T_cam_to_base,
+            "T_cam_to_gripper": self.T_cam_to_gripper,
             "calibration_error": self.calibration_error,
             "camera_matrix": self.camera_matrix,
             "dist_coeffs": self.dist_coeffs,
@@ -490,7 +580,7 @@ class HandEyeCalibrator:
         }
         with open(filepath, "wb") as f:
             pickle.dump(data, f)
-        print(f"캘리브레이션 결과 저장: {filepath}")
+        print(f"캘리브레이션 결과 저장: {filepath} (mode={self.mode})")
 
     def load(self, filepath: str):
         """캘리브레이션 결과 로드.
@@ -500,13 +590,15 @@ class HandEyeCalibrator:
         """
         with open(filepath, "rb") as f:
             data = pickle.load(f)
-        self.T_cam_to_base = data["T_cam_to_base"]
+        self.mode = data.get("mode", "eye-to-hand")
+        self.T_cam_to_base = data.get("T_cam_to_base")
+        self.T_cam_to_gripper = data.get("T_cam_to_gripper")
         self.calibration_error = data["calibration_error"]
         self.camera_matrix = data["camera_matrix"]
         self.dist_coeffs = data["dist_coeffs"]
         self.board_size = data["board_size"]
         self.square_size = data["square_size"]
-        print(f"캘리브레이션 결과 로드: {filepath} ({data['n_measurements']}개 측정)")
+        print(f"캘리브레이션 결과 로드: {filepath} (mode={self.mode}, {data['n_measurements']}개 측정)")
 
 
 # ============================================================================
@@ -648,13 +740,90 @@ def _simulate_measurements(
     return valid_robot_poses, cam_to_board_poses, T_cam_to_base_gt
 
 
+def _simulate_measurements_eye_in_hand(
+    n_poses: int = 15,
+    noise_rot_deg: float = 0.3,
+    noise_trans_mm: float = 0.5,
+    seed: int = 42,
+) -> Tuple[
+    List[np.ndarray],  # robot_poses
+    List[np.ndarray],  # cam_to_board_poses
+    np.ndarray,        # ground_truth T_cam_to_gripper
+]:
+    """Eye-in-Hand 시뮬레이션 캘리브레이션 측정 데이터 생성.
+
+    카메라가 로봇암에 장착, 체커보드가 빈 옆 고정 위치에 놓인 상태.
+    알려진 GT T_cam_to_gripper로부터 측정 데이터를 역산.
+
+    Args:
+        n_poses: 포즈 수
+        noise_rot_deg: 회전 노이즈 (degrees)
+        noise_trans_mm: 이동 노이즈 (mm)
+        seed: 난수 시드
+
+    Returns:
+        robot_poses: T_gripper_to_base 리스트
+        cam_to_board_poses: T_target_to_cam 리스트
+        T_cam_to_gripper_gt: ground truth 변환 행렬
+    """
+    rng = np.random.default_rng(seed)
+
+    # --- Ground Truth: 카메라→그리퍼 변환 ---
+    # 카메라가 그리퍼에서 약간 오프셋 (50mm 앞, 30mm 아래)
+    cam_pos = np.array([0.0, -0.03, 0.05])  # 그리퍼 기준 Z축 5cm 앞, Y축 3cm 아래
+    cam_rot = Rotation.from_euler('xyz', [0, 0, 0], degrees=True).as_matrix()
+    T_cam_to_gripper_gt = np.eye(4)
+    T_cam_to_gripper_gt[:3, :3] = cam_rot
+    T_cam_to_gripper_gt[:3, 3] = cam_pos
+
+    # --- 체커보드 고정 위치 (로봇 베이스 기준) ---
+    T_board_to_base = np.eye(4)
+    T_board_to_base[:3, 3] = [0.40, 0.15, 0.0]  # 빈 옆 테이블
+
+    # --- 로봇 포즈 생성 ---
+    robot_poses = generate_calibration_poses(n_poses)
+
+    # --- 대응하는 카메라-보드 변환 계산 ---
+    cam_to_board_poses = []
+    valid_robot_poses = []
+
+    for T_gripper_to_base in robot_poses:
+        # T_cam_to_base = T_gripper_to_base @ T_cam_to_gripper
+        T_cam_to_base = T_gripper_to_base @ T_cam_to_gripper_gt
+
+        # T_board_to_cam = T_cam_to_base^{-1} @ T_board_to_base
+        T_base_to_cam = np.linalg.inv(T_cam_to_base)
+        T_board_to_cam = T_base_to_cam @ T_board_to_base
+
+        # 노이즈 추가
+        noise_r = Rotation.from_euler(
+            'xyz', rng.normal(0, noise_rot_deg, 3), degrees=True
+        ).as_matrix()
+        noise_t = rng.normal(0, noise_trans_mm / 1000.0, 3)
+
+        T_target_to_cam = T_board_to_cam.copy()
+        T_target_to_cam[:3, :3] = noise_r @ T_target_to_cam[:3, :3]
+        T_target_to_cam[:3, 3] += noise_t
+
+        cam_to_board_poses.append(T_target_to_cam)
+        valid_robot_poses.append(T_gripper_to_base)
+
+    return valid_robot_poses, cam_to_board_poses, T_cam_to_gripper_gt
+
+
 # ============================================================================
 # 메인 실행
 # ============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Hand-Eye Calibration 시뮬레이션 (Eye-to-Hand, 고정 카메라)",
+        description="Hand-Eye Calibration 시뮬레이션",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["eye-to-hand", "eye-in-hand"],
+        default="eye-to-hand",
+        help="캘리브레이션 모드 (기본: eye-to-hand)",
     )
     parser.add_argument(
         "--no-vis",
@@ -681,23 +850,37 @@ def main():
     )
     args = parser.parse_args()
 
+    mode = args.mode
+    mode_label = "Eye-to-Hand (고정 카메라)" if mode == "eye-to-hand" else "Eye-in-Hand (로봇암 카메라)"
+
     # ====================================================================
     # 1. 시뮬레이션 데이터 생성
     # ====================================================================
     print("=" * 70)
-    print("  Hand-Eye Calibration 시뮬레이션 (Eye-to-Hand)")
+    print(f"  Hand-Eye Calibration 시뮬레이션 ({mode_label})")
     print("=" * 70)
     print()
 
     print("--- 1단계: 시뮬레이션 데이터 생성 ---")
-    robot_poses, cam_to_board_poses, T_gt = _simulate_measurements(
-        n_poses=args.n_poses,
-        noise_rot_deg=args.noise_rot,
-        noise_trans_mm=args.noise_trans,
-    )
+    if mode == "eye-to-hand":
+        robot_poses, cam_to_board_poses, T_gt = _simulate_measurements(
+            n_poses=args.n_poses,
+            noise_rot_deg=args.noise_rot,
+            noise_trans_mm=args.noise_trans,
+        )
+        gt_label = "T_cam_to_base"
+    else:
+        robot_poses, cam_to_board_poses, T_gt = _simulate_measurements_eye_in_hand(
+            n_poses=args.n_poses,
+            noise_rot_deg=args.noise_rot,
+            noise_trans_mm=args.noise_trans,
+        )
+        gt_label = "T_cam_to_gripper"
+
+    print(f"  모드: {mode_label}")
     print(f"  포즈 수: {len(robot_poses)}")
     print(f"  노이즈: 회전 {args.noise_rot}deg, 이동 {args.noise_trans}mm")
-    print(f"  Ground Truth T_cam_to_base:")
+    print(f"  Ground Truth {gt_label}:")
     print(f"    위치: [{T_gt[0,3]:.3f}, {T_gt[1,3]:.3f}, {T_gt[2,3]:.3f}] m")
     gt_euler = Rotation.from_matrix(T_gt[:3, :3]).as_euler('xyz', degrees=True)
     print(f"    회전: [{gt_euler[0]:.1f}, {gt_euler[1]:.1f}, {gt_euler[2]:.1f}] deg")
@@ -708,7 +891,7 @@ def main():
     # ====================================================================
     print("--- 2단계: 캘리브레이션 (4가지 메서드 비교) ---")
 
-    calibrator = HandEyeCalibrator(board_size=(9, 6), square_size=0.015)
+    calibrator = HandEyeCalibrator(board_size=(9, 6), square_size=0.015, mode=mode)
 
     for rp, cp in zip(robot_poses, cam_to_board_poses):
         calibrator.add_measurement_from_transform(rp, cp)
@@ -743,7 +926,7 @@ def main():
     print(f"  GT 대비 회전 오차: {r_err:.4f} deg")
     print(f"  GT 대비 이동 오차: {t_err:.4f} mm")
     print()
-    print("  T_cam_to_base (4x4):")
+    print(f"  {gt_label} (4x4):")
     for row in best_T:
         print(f"    [{row[0]:>10.6f}  {row[1]:>10.6f}  {row[2]:>10.6f}  {row[3]:>10.6f}]")
     print()
@@ -761,7 +944,13 @@ def main():
         [-0.05, -0.05, 0.3],  # 좌하 0.3m
     ])
 
-    points_base = calibrator.transform_to_base(points_cam)
+    if mode == "eye-in-hand":
+        # eye-in-hand: 현재 로봇 포즈가 필요 (첫 번째 포즈 사용)
+        T_gripper = robot_poses[0]
+        print(f"  (eye-in-hand: T_gripper_to_base = robot_poses[0])")
+        points_base = calibrator.transform_to_base(points_cam, T_gripper_to_base=T_gripper)
+    else:
+        points_base = calibrator.transform_to_base(points_cam)
 
     print(f"  {'카메라 좌표 (m)':<30} {'베이스 좌표 (m)':<30}")
     print(f"  {'-'*30} {'-'*30}")
@@ -775,15 +964,19 @@ def main():
     # 5. 저장/로드 테스트
     # ====================================================================
     print("--- 5단계: 저장/로드 테스트 ---")
-    save_path = "/tmp/hand_eye_calibration_test.pkl"
+    save_path = f"/tmp/hand_eye_calibration_test_{mode.replace('-', '_')}.pkl"
     calibrator.save(save_path)
 
-    calibrator2 = HandEyeCalibrator()
+    calibrator2 = HandEyeCalibrator(mode=mode)
     calibrator2.load(save_path)
 
-    if calibrator2.T_cam_to_base is not None:
+    if mode == "eye-to-hand" and calibrator2.T_cam_to_base is not None:
         diff = np.max(np.abs(calibrator.T_cam_to_base - calibrator2.T_cam_to_base))
         print(f"  로드 후 차이: {diff:.2e} (0이면 정상)")
+    elif mode == "eye-in-hand" and calibrator2.T_cam_to_gripper is not None:
+        diff = np.max(np.abs(calibrator.T_cam_to_gripper - calibrator2.T_cam_to_gripper))
+        print(f"  로드 후 차이: {diff:.2e} (0이면 정상)")
+    print(f"  로드된 모드: {calibrator2.mode}")
     print()
 
     # ====================================================================
@@ -833,8 +1026,10 @@ def main():
 
     print()
     print("=" * 70)
-    print("  캘리브레이션 시뮬레이션 완료")
+    print(f"  캘리브레이션 시뮬레이션 완료 ({mode_label})")
     print("  카메라 입고 후 이 코드를 바로 실행하여 캘리브레이션 수행")
+    print("  eye-to-hand: python hand_eye_calibration.py --mode eye-to-hand")
+    print("  eye-in-hand: python hand_eye_calibration.py --mode eye-in-hand")
     print("=" * 70)
 
 

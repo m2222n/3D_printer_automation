@@ -717,9 +717,9 @@ POLLING_INTERVAL_SECONDS=15
 - **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 — L1~L6 SW 완성 + 그래스프 DB 29종 완성 + D435 라이브 연동 성공 + 프레임 저장/로드. 대표님 피드백: eye-in-hand 카메라 배치 + 실패 케이스 시각화 요청**
 
 ### 현재 진행 / 다음 작업
-- 🔄 **E2E 실패 케이스 시각화** (4/13 구현) — `--save-viz`로 PNG 자동 저장. overview + cluster 상세 + 오매칭 비교. **Mac 테스트 필요**
+- ✅ ~~E2E 실패 케이스 시각화~~ (4/13 완료) — `--save-viz`로 PNG 자동 저장. easy 6장 + hard 9장(failure 3장) 생성 확인. 대표님 보고용 시각 자료 준비 완료
 - ✅ ~~D435 라이브 테스트~~ (4/13 완료) — USB 3.2 인식, sudo 실행, pyrealsense2 v2.57.7 소스빌드. `--save`/`--load` 옵션 추가. 유효 depth 91%, 서버 로드 검증 PASS
-- 🟡 **eye-in-hand 카메라 배치 설계** — 캘리브레이션 2세트 (eye-to-hand + eye-in-hand), multi-view 재촬영 파이프라인
+- ✅ ~~eye-in-hand 카메라 배치 설계~~ (4/13 완료) — HandEyeCalibrator에 eye-in-hand 모드 추가, 카메라 프리셋(Blaze-112/ace2/D435), 시뮬레이션 검증. multi-view 재촬영은 카메라 입고 후
 - 🟡 **[한솔 협업]** 이예승 사원 온보딩 + sequence_service 연동
 - 🟡 **4/14(화) 오후**: 한솔코에버 HCR-10L 로봇 티칭 교육
 - 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
