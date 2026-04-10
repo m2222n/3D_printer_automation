@@ -10,14 +10,21 @@ RealSense 캡처 모듈 → depth_to_pointcloud() → L2 전처리 → L3 분할
     python bin_picking/tests/test_e2e_realsense.py
 
     # 카메라 연결 시 라이브 캡처 테스트:
-    python bin_picking/tests/test_e2e_realsense.py --live
+    sudo .venv/binpick/bin/python bin_picking/tests/test_e2e_realsense.py --live
+
+    # 라이브 캡처 + 프레임 영구 저장 (서버 로드 테스트용):
+    sudo .venv/binpick/bin/python bin_picking/tests/test_e2e_realsense.py --live --save
+
+    # 저장된 프레임으로 로드 테스트 (카메라 불필요):
+    python bin_picking/tests/test_e2e_realsense.py --load
 
 테스트 내용:
     1. RealSenseCapture 모듈 임포트 + CapturedFrames 생성
     2. CapturedFrames → depth_to_pointcloud() 변환
-    3. 프레임 저장/로드 라운드트립
+    3. 프레임 저장/로드 라운드트립 (--save: 영구 저장)
     4. L2 전처리 → L3 분할 → L4 매칭 (기존 파이프라인 연결)
     5. (--live) 실제 카메라 캡처 + 파이프라인 실행
+    6. (--load) 저장된 D435 프레임 로드 + 파이프라인 실행
 """
 
 import sys
@@ -44,6 +51,11 @@ from bin_picking.src.acquisition.realsense_capture import (
 )
 
 LIVE_MODE = "--live" in sys.argv
+SAVE_MODE = "--save" in sys.argv
+LOAD_MODE = "--load" in sys.argv
+
+# 프레임 저장 경로 (서버 로드 테스트용)
+FRAMES_DIR = os.path.join(PROJECT_ROOT, "bin_picking", "models", "d435_frames")
 
 
 def make_simulated_frames() -> CapturedFrames:
@@ -75,7 +87,18 @@ def step1_capture_or_simulate():
     print("Step 1: 프레임 취득")
     print("=" * 60)
 
-    if LIVE_MODE:
+    if LOAD_MODE:
+        print(f"  모드: LOAD (저장된 D435 프레임: {FRAMES_DIR}/)")
+        if not os.path.isdir(FRAMES_DIR):
+            print(f"  [ERROR] 프레임 디렉토리 없음: {FRAMES_DIR}")
+            print("  먼저 --live --save로 프레임을 저장하세요.")
+            sys.exit(1)
+        frames = RealSenseCapture.load_frames(FRAMES_DIR)
+        print(f"  depth shape: {frames.depth_map.shape}")
+        print(f"  color shape: {frames.color_image.shape}")
+        print(f"  intrinsics: fx={frames.intrinsics.fx:.1f}, fy={frames.intrinsics.fy:.1f}")
+        print(f"  depth_scale: {frames.depth_scale}")
+    elif LIVE_MODE:
         print("  모드: LIVE (RealSense 카메라)")
         cap = RealSenseCapture(width=640, height=480, fps=30)
         cap.start()
@@ -134,7 +157,7 @@ def step2_to_pointcloud(frames: CapturedFrames):
 
 
 def step3_save_load_roundtrip(frames: CapturedFrames):
-    """3단계: 프레임 저장/로드 라운드트립 검증."""
+    """3단계: 프레임 저장/로드 라운드트립 검증 + --save 시 영구 저장."""
     print("\n" + "=" * 60)
     print("Step 3: 프레임 저장/로드 라운드트립")
     print("=" * 60)
@@ -154,6 +177,27 @@ def step3_save_load_roundtrip(frames: CapturedFrames):
         print(f"  color.npy: {frames.color_image.nbytes / 1024:.0f} KB")
         print("  로드 후 일치: depth ✓ color ✓ intrinsics ✓")
     print("  [PASS] Step 3")
+
+    # --save: 서버 로드 테스트용 영구 저장
+    if SAVE_MODE:
+        print(f"\n  [SAVE] 프레임 영구 저장 → {FRAMES_DIR}/")
+        frames.save(FRAMES_DIR)
+
+        # 저장 검증
+        loaded = RealSenseCapture.load_frames(FRAMES_DIR)
+        assert np.array_equal(frames.depth_map, loaded.depth_map), "영구 저장 depth 불일치"
+        assert np.array_equal(frames.color_image, loaded.color_image), "영구 저장 color 불일치"
+
+        depth_kb = os.path.getsize(os.path.join(FRAMES_DIR, "depth.npy")) / 1024
+        color_kb = os.path.getsize(os.path.join(FRAMES_DIR, "color.npy")) / 1024
+        meta_kb = os.path.getsize(os.path.join(FRAMES_DIR, "meta.json")) / 1024
+        total_mb = (depth_kb + color_kb + meta_kb) / 1024
+        print(f"  depth.npy: {depth_kb:.0f} KB")
+        print(f"  color.npy: {color_kb:.0f} KB")
+        print(f"  meta.json: {meta_kb:.1f} KB")
+        print(f"  합계: {total_mb:.1f} MB")
+        print("  저장 검증: depth ✓ color ✓")
+        print("  [PASS] 영구 저장 완료")
 
 
 def step4_pipeline(pcd):
@@ -261,7 +305,13 @@ def step4_pipeline(pcd):
 def main():
     print("=" * 60)
     print("RealSense E2E 파이프라인 테스트")
-    print(f"모드: {'LIVE' if LIVE_MODE else 'SIMULATED (Redwood)'}")
+    if LOAD_MODE:
+        mode_str = "LOAD (저장된 D435 프레임)"
+    elif LIVE_MODE:
+        mode_str = f"LIVE{' + SAVE' if SAVE_MODE else ''}"
+    else:
+        mode_str = "SIMULATED (Redwood)"
+    print(f"모드: {mode_str}")
     print("=" * 60)
 
     t_total = time.time()

@@ -715,7 +715,7 @@ POLLING_INTERVAL_SECONDS=15
 
 ### 현재 진행 / 다음 작업
 - 🔴 **E2E 실패 케이스 시각화 구현** — 매칭 결과 오버레이 + 오매칭 비교 이미지 PNG 자동 저장 (대표님 요청)
-- ✅ ~~D435 라이브 테스트~~ (4/13 완료) — USB 3.2 인식, sudo 실행, pyrealsense2 v2.57.7 소스빌드
+- ✅ ~~D435 라이브 테스트~~ (4/13 완료) — USB 3.2 인식, sudo 실행, pyrealsense2 v2.57.7 소스빌드. `--save`/`--load` 옵션 추가
 - 🟡 **eye-in-hand 카메라 배치 설계** — 캘리브레이션 2세트 (eye-to-hand + eye-in-hand), multi-view 재촬영 파이프라인
 - 🟡 **[한솔 협업]** 이예승 사원 온보딩 + sequence_service 연동
 - 🟡 **4/14(화) 오후**: 한솔코에버 HCR-10L 로봇 티칭 교육
