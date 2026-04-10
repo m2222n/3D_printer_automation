@@ -60,7 +60,7 @@ class PoseEstimator:
     """
 
     def __init__(self, voxel_size: float = DEFAULT_VOXEL_SIZE, use_fgr: bool = True,
-                 min_point_ratio: float = 0.15):
+                 min_point_ratio: float = 0.15, refine_top_k: int = 0):
         """
         Args:
             voxel_size: 다운샘플링 복셀 크기 (미터). 기본 2mm.
@@ -68,10 +68,14 @@ class PoseEstimator:
             min_point_ratio: 레퍼런스/클러스터 포인트 수 최소 비율.
                              이 비율 미만이면 매칭 스킵 (소형 레퍼런스 오매칭 방지).
                              기본 0.15 (레퍼런스가 클러스터의 15% 미만이면 스킵)
+            refine_top_k: >0이면 1차 매칭 후 상위 K개를 multi-resolution ICP로
+                          재평가하여 최종 순위를 결정한다. hard 난이도 개선용.
+                          기본 0 (비활성 — 기존 동작 유지)
         """
         self.voxel_size = voxel_size
         self.use_fgr = use_fgr
         self.min_point_ratio = min_point_ratio
+        self.refine_top_k = refine_top_k
 
         # 파생 파라미터 (논문 리뷰 + 실측 튜닝)
         self.fpfh_radius = voxel_size * 5        # 10mm
@@ -240,6 +244,52 @@ class PoseEstimator:
         return result_icp, elapsed
 
     # ============================================================
+    # Multi-resolution ICP 정밀 재평가 (refine_top_k용)
+    # ============================================================
+    def _refine_icp_multi_res(
+        self,
+        source_pcd: o3d.geometry.PointCloud,
+        target_pcd: o3d.geometry.PointCloud,
+        init_transform: np.ndarray,
+    ) -> o3d.pipelines.registration.RegistrationResult:
+        """Coarse-to-fine multi-resolution ICP.
+
+        3단계 해상도(4mm→2mm→1mm)에서 순차적으로 ICP를 실행하여
+        초기 정합이 부정확해도 정밀 수렴 기회를 높인다.
+        hard 난이도(±45° 회전, 70% 가시)에서 효과적.
+        """
+        voxel_sizes = [self.voxel_size * 2, self.voxel_size, self.voxel_size * 0.5]
+        max_iters = [80, 50, 30]
+
+        current_T = init_transform.copy()
+
+        for vs, max_iter in zip(voxel_sizes, max_iters):
+            src_down = source_pcd.voxel_down_sample(vs)
+            tgt_down = target_pcd.voxel_down_sample(vs)
+
+            src_down.estimate_normals(
+                o3d.geometry.KDTreeSearchParamHybrid(radius=vs * 3, max_nn=30)
+            )
+            tgt_down.estimate_normals(
+                o3d.geometry.KDTreeSearchParamHybrid(radius=vs * 3, max_nn=30)
+            )
+
+            loss = o3d.pipelines.registration.TukeyLoss(k=vs)
+            result = o3d.pipelines.registration.registration_icp(
+                src_down, tgt_down,
+                max_correspondence_distance=vs * 3,
+                init=current_T,
+                estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPlane(loss),
+                criteria=o3d.pipelines.registration.ICPConvergenceCriteria(
+                    relative_fitness=1e-7, relative_rmse=1e-7, max_iteration=max_iter
+                ),
+            )
+            current_T = result.transformation
+
+        # 최종 해상도에서 fitness/RMSE 재계산
+        return result
+
+    # ============================================================
     # 1:N 매칭 루프
     # ============================================================
     def match_against_references(
@@ -303,6 +353,37 @@ class PoseEstimator:
 
         # fitness 높은 순 정렬 (동점 시 RMSE 낮은 순)
         results.sort(key=lambda x: (-x["fitness"], x["rmse"]))
+
+        # top-K multi-resolution ICP 재평가
+        if self.refine_top_k > 0 and len(results) > 1:
+            k = min(self.refine_top_k, len(results))
+            top_k = results[:k]
+
+            # 클러스터/레퍼런스의 원본(다운샘플 전) 포인트클라우드로 정밀 ICP
+            refined = []
+            for r in top_k:
+                ref_data = reference_cache[r["name"]]
+                ref_pcd = ref_data["pcd_down"]
+
+                try:
+                    result_refined = self._refine_icp_multi_res(
+                        ref_pcd, cluster_down, r["transformation"]
+                    )
+                    r_copy = dict(r)
+                    r_copy["fitness"] = result_refined.fitness
+                    r_copy["rmse"] = result_refined.inlier_rmse
+                    r_copy["transformation"] = np.array(result_refined.transformation)
+                    r_copy["correspondences"] = len(result_refined.correspondence_set)
+                    r_copy["refined"] = True
+                    refined.append(r_copy)
+                except Exception:
+                    r_copy = dict(r)
+                    r_copy["refined"] = False
+                    refined.append(r_copy)
+
+            # 재정렬 후 나머지 결과 합침
+            refined.sort(key=lambda x: (-x["fitness"], x["rmse"]))
+            results = refined + results[k:]
 
         return results
 

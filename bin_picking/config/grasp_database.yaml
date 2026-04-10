@@ -191,8 +191,117 @@ parts:
     gripper_force_N: 12
     grasp_type: "parallel"
 
-  # --- 나머지 (미정의 부품은 기본값 사용) ---
-  # 13_variant, 13_x2_bcf8ccb4, 14_13, bracket_case,
-  # bracket_sen_1, brkt_switch, main_body, plate_e,
-  # r_guide_a_l, r_guide_a_r, top_inner_sheet, top_inner_sheet004
-  # → 카메라 입고 후 실측으로 추가 예정
+  # --- 번호 시리즈 (13~14번대) ---
+  13_variant:
+    description: "13번 변형 (6×42.2×48.9mm) — 얇은 판형"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 15
+    gripper_width_mm: 52
+    gripper_force_N: 10
+    grasp_type: "parallel"
+
+  13_x2_bcf8ccb4:
+    description: "13번 v2 본체 (15×32.1×42.1mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 12
+    gripper_width_mm: 42
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  "14_13":
+    description: "14번 (6×42.2×45.9mm) — 얇은 판형, 13_variant 유사"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 15
+    gripper_width_mm: 52
+    gripper_force_N: 10
+    grasp_type: "parallel"
+
+  # --- 브래킷/케이스 추가 ---
+  bracket_case:
+    description: "케이스 브래킷 (4.8×5.5×10mm) — 매우 소형"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 10
+    gripper_width_mm: 16
+    gripper_force_N: 5
+    grasp_type: "parallel"
+
+  bracket_sen_1:
+    description: "센서 브래킷1 (15×53.1×56.1mm)"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 18
+    gripper_width_mm: 63
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  brkt_switch:
+    description: "스위치 브래킷 (20×20.4×22.5mm) — 정육면체에 가까움"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 12
+    gripper_width_mm: 30
+    gripper_force_N: 10
+    grasp_type: "parallel"
+
+  # --- 본체/플레이트 ---
+  main_body:
+    description: "본체 (6×25×32mm) — 얇은 형상"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 12
+    gripper_width_mm: 35
+    gripper_force_N: 10
+    grasp_type: "parallel"
+
+  plate_e:
+    description: "E 플레이트 (20×45×56mm) — 중형 평판"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 18
+    gripper_width_mm: 55
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  # --- R 가이드 좌/우 ---
+  r_guide_a_l:
+    description: "R 가이드 A 좌측 (34.5×40×163mm) — 길쭉한 형상"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 50
+    gripper_force_N: 15
+    grasp_type: "parallel"
+
+  r_guide_a_r:
+    description: "R 가이드 A 우측 (34.5×40×117.8mm) — 길쭉한 형상"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 20
+    gripper_width_mm: 50
+    gripper_force_N: 15
+    grasp_type: "parallel"
+
+  # --- 시트류 ---
+  top_inner_sheet:
+    description: "상단 내부 시트 (1×19×19mm) — 극박 소형"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 10
+    gripper_width_mm: 29
+    gripper_force_N: 5
+    grasp_type: "parallel"
+
+  top_inner_sheet004:
+    description: "상단 내부 시트 v4 (1×89×303mm) — 극박 대형"
+    approach_axis: [0, 0, -1]
+    grasp_center_mm: [0, 0, 0]
+    grasp_depth_mm: 10
+    gripper_width_mm: 99
+    gripper_force_N: 12
+    grasp_type: "parallel"
+
+  # ⚠️ 모든 값은 STL bbox 기반 추정치 — 카메라 입고 + 로봇 티칭 후 실측 교정 필요

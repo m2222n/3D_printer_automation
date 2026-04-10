@@ -67,7 +67,7 @@
 ### 2026.04.03 (빈피킹 지시)
 - **3D+RGB 카메라 확인**: Blaze-112(ToF) 단독인지, ace2(RGB)와 조합해서 포인트 잡는지 확인
 - **STL 수집+정리+중복제거 완료 (4/6)**: 55개 다운 → 중복 제거 → 46개 → bbox 동일 분석 → **29종** (17개 `_duplicates/`). STL 최종 목록은 아직 미확정 (대표님도 확정 전, 킵고잉)
-- **L1~L6 전체 파이프라인 SW 완성 (4/6)**: cad_library + E2E 테스트 + main_pipeline + L5 그래스프 + L6 Modbus TCP. 인식률 80%(easy), RMSE 1.12mm. 매칭 속도 4.59s(목표 2.0s)
+- **L1~L6 전체 파이프라인 SW 완성 (4/6~8)**: cad_library + E2E 테스트 + main_pipeline + L5 그래스프 + L6 Modbus TCP. OBB SizeFilter + 포인트 비율 필터 추가 (4/8). **인식률 100%(easy/medium), RMSE 1.12mm, 매칭 0.5s/부품**
 - **RealSense D435**: USB로 받음 (스테레오 depth + RGB, 640x480). USB 3.0 젠더 필요 (라이브 테스트 블로킹)
 
 ### 2026.03.27 (공장 PC 장애 복구)
@@ -560,15 +560,17 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 | 작업 | 산출물 | 블로커 | 예상 시점 |
 |------|--------|--------|----------|
-| **공장 PC STL 25종 가져오기** | models/cad/ | 대표님: 공장 PC에 25종 있음 (4/3). 가져와서 테스트 | 🔄 즉시 |
-| STL→레퍼런스 + FPFH 캐싱 | cad_library.py, models/ | STL 변환 완료 후 | STL 준비 즉시 |
+| ~~공장 PC STL 25종 가져오기~~ | ~~models/cad/~~ | — | ✅ 완료 (4/6) — Google Drive 55개 → 29종 |
+| ~~STL→레퍼런스 + FPFH 캐싱~~ | ~~cad_library.py~~ | — | ✅ 완료 (4/6, `b111192`) |
 | ~~폴더 구조 리팩토링~~ | ~~문서 섹션 6 구조로 전환~~ | — | ✅ 완료 (4/3, `99b02fe`) |
-| ~~depth_to_pointcloud + Redwood E2E~~ | ~~blaze_camera.py 스켈레톤~~ | — | ✅ 완료 (4/3, `d977890`) — Mac 실행 대기 |
-| ~~L2 전처리 모듈화~~ | ~~src/preprocessing/cloud_filter.py~~ | — | ✅ 완료 (4/3, `9517987`) — 레진별 프리셋, 5단계 파이프라인 |
-| ~~L3 분할 모듈화~~ | ~~src/segmentation/dbscan_segmenter.py~~ | — | ✅ 완료 (4/3, `9517987`) — DBSCAN + Cluster 클래스 |
-| L5 그래스프 계획 | grasp_planner.py, grasp_database.yaml | — | W5-6 |
-| L6 로봇 통신 | modbus_server.py | — | W5-6 |
-| L1~L6 통합 | main_pipeline.py | 위 항목 완료 | W6 |
+| ~~depth_to_pointcloud + Redwood E2E~~ | ~~blaze_camera.py 스켈레톤~~ | — | ✅ 완료 (4/3, `d977890`) |
+| ~~L2 전처리 모듈화~~ | ~~src/preprocessing/cloud_filter.py~~ | — | ✅ 완료 (4/3, `9517987`) |
+| ~~L3 분할 모듈화~~ | ~~src/segmentation/dbscan_segmenter.py~~ | — | ✅ 완료 (4/3, `9517987`) |
+| ~~L5 그래스프 계획~~ | ~~grasp_planner.py, grasp_database.yaml~~ | — | ✅ 완료 (4/6, `8c6629b`) — 17종 |
+| ~~L6 로봇 통신~~ | ~~modbus_server.py~~ | — | ✅ 완료 (4/6, `8c6629b`) |
+| ~~L1~L6 통합~~ | ~~main_pipeline.py~~ | — | ✅ 완료 (4/6, `8c6629b`) |
+| ~~OBB SizeFilter + 포인트 비율 필터~~ | ~~size_filter.py, pose_estimator.py~~ | — | ✅ 완료 (4/8, `9cce5de`) — medium 100%, 0.5s |
+| ~~E2E 난이도 테스트 (medium/hard)~~ | ~~테스트 결과 분석~~ | — | ✅ 완료 (4/8) — easy/medium 100%, hard 60% |
 | W7: 카메라 입고 + 실제 연동 | calibration.py | 카메라 5월 초 | 5/5~5/9 |
 | 대표님 보고 | 진행 보고서 | — | 수시 |
 
@@ -750,13 +752,14 @@ POLLING_INTERVAL_SECONDS=15
 - ✅ **README.md 전체 업데이트** (`8607c3c`): Phase 3/5, D435, 구조/스택 갱신
 
 ### 현재 진행 / 다음 작업
-- 🔴 **한솔 자동화 문서 수신 → 대표님께 합쳐서 보고** — 웹 대시보드 문서 작성 완료 (`docs/웹_대시보드_기능현황.md`)
-- 🔴 **회사 출근 → STL 25종 파일 옮기기** — (구)공장 PC에서 수거
+- ✅ ~~STL 수집+정리+캐싱~~ (4/6, 29종)
+- ✅ ~~L5 그래스프 + L6 Modbus + L1~L6 통합~~ (4/6)
+- ✅ ~~OBB SizeFilter + 포인트 비율 필터~~ (4/8, medium 100%, 0.5s)
+- ✅ ~~E2E 난이도 테스트 medium/hard~~ (4/8)
 - 🔴 **D435 라이브 테스트** → USB 3.0 젠더 확보 후 Mac에서 진행
-- 🔴 **STL→레퍼런스 + FPFH 캐싱** → STL 받으면 즉시
-- 🟡 **[한솔 협업]** sequence_service 프린터별 프리셋 연동 + 프린터 선택 기능 + 작업지시 UX
-- 🟡 L5 그래스프 계획 / L6 로봇 통신 / 통합 파이프라인 (W3~4)
+- 🟡 **[한솔 협업]** 이예승 사원 온보딩 + sequence_service 연동
 - 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
+- 🔄 **카메라 입고 대기 (5월)** → 실데이터 검증 + Colored ICP + 핸드-아이 캘리브레이션
 
 ### 대기 중
 - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 `lab.flickdone.com` 확정

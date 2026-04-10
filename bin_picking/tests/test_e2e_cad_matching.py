@@ -2,20 +2,26 @@
 실제 STL 레퍼런스 기반 E2E 매칭 테스트
 ========================================
 
-cad_library.py로 빌드한 실제 46종 레퍼런스 캐시를 로드하여,
+cad_library.py로 빌드한 실제 29종 레퍼런스 캐시를 로드하여,
 합성 씬(STL에서 포인트 샘플링 + 랜덤 자세 + 노이즈)에 대해
 L2→L3→L4 전체 파이프라인을 검증한다.
 
 테스트 시나리오:
   1. CADLibrary에서 실제 레퍼런스 캐시 로드
-  2. STL에서 5종 부품을 선택하여 합성 씬 생성
+  2. STL에서 N종 부품을 선택하여 합성 씬 생성
      - 랜덤 6DoF 자세 (회전 + 이동)
      - ToF 카메라 노이즈 (σ=0.3mm, Blaze-112 수준)
-     - 부분 가시성 시뮬레이션 (70% 가시)
+     - 부분 가시성 시뮬레이션 (70~100% 가시)
   3. L2 전처리 (CloudFilter)
   4. L3 분할 (DBSCANSegmenter)
   5. L4 인식+자세 (SizeFilter → PoseEstimator)
   6. 결과 검증: 인식률, 자세 정밀도, 처리 시간
+
+시나리오:
+  - default:    기본 5종 (기존 테스트)
+  - crowded:    10종 밀집 배치 (간격 80mm, 클러스터 분리 도전)
+  - mixed-size: 극소형~극대형 혼합 (SizeFilter 극한 검증)
+  - stress:     29종 중 랜덤 N종 × 다양한 seed
 
 성능 목표:
   - 인식률 >= 80% (5종 중 4종 이상 ACCEPT)
@@ -27,6 +33,8 @@ L2→L3→L4 전체 파이프라인을 검증한다.
   python bin_picking/tests/test_e2e_cad_matching.py
   python bin_picking/tests/test_e2e_cad_matching.py --no-vis    # 시각화 없이
   python bin_picking/tests/test_e2e_cad_matching.py --parts 10  # 부품 수 변경
+  python bin_picking/tests/test_e2e_cad_matching.py --scenario crowded --difficulty medium
+  python bin_picking/tests/test_e2e_cad_matching.py --scenario stress --seed 123
 """
 
 import argparse
@@ -90,6 +98,41 @@ DEFAULT_TEST_PARTS = [
     "guide_paper_roll_cover_left",  # 28×48×59mm — 중형 커버
 ]
 
+# 시나리오별 부품 세트
+SCENARIO_PARTS = {
+    "default": DEFAULT_TEST_PARTS,
+    "crowded": [
+        # 10종 밀집 — 다양한 크기 혼합, 간격 축소 테스트
+        "01_sol_block_a", "02_sol_block_b", "03_sol_block_front",
+        "07_guide_paper_l", "09_guide_paper_r",
+        "15_roller_bracket", "16_cam_f_bracket",
+        "bracket_sensor1", "brkt_switch", "plate_e",
+    ],
+    "mixed-size": [
+        # 극소형~극대형 혼합 — SizeFilter 극한 검증
+        "bracket_case",             # 4.8×5.5×10mm (극소형)
+        "bracket_sensor2",          # 4.8×2.5×34.8mm (극박)
+        "11_sw_block",              # 22×7×7.1mm (소형)
+        "top_inner_sheet",          # 1×19×19mm (극박 소형)
+        "18_button_function_niro",  # 110×44×15.7mm (대형 평판)
+        "r_guide_a_l",              # 34.5×40×163mm (대형 길쭉)
+        "10_guide_paper_roll_l",    # 236×51.5×67.5mm (최대형)
+    ],
+    # stress: 런타임에 전체 29종에서 랜덤 선택
+}
+
+# 시나리오별 씬 파라미터 오버라이드
+SCENARIO_OVERRIDES = {
+    "crowded": {
+        "spacing": 0.08,     # 80mm 간격 (기본 150mm → 밀집)
+        "floor_points": 15000,  # 바닥 포인트 증가 (밀집 씬에서 RANSAC 안정성)
+    },
+    "mixed-size": {
+        "spacing": 0.20,     # 200mm 간격 (대형 부품 충돌 방지)
+        "sample_points": 8000,  # 포인트 증가 (소형 부품 디테일)
+    },
+}
+
 
 def print_section(title: str):
     print(f"\n{'='*70}")
@@ -103,6 +146,10 @@ def generate_synthetic_scene(
     noise_sigma: float = NOISE_SIGMA,
     visibility: float = 1.0,
     max_rotation_deg: float = 15,
+    spacing: float = SCENE_SPACING,
+    sample_points: int = SAMPLE_POINTS,
+    floor_points: int = FLOOR_POINTS,
+    seed: int = 42,
 ) -> Tuple[o3d.geometry.PointCloud, List[Dict[str, Any]]]:
     """실제 STL에서 합성 빈피킹 씬을 생성한다.
 
@@ -112,13 +159,20 @@ def generate_synthetic_scene(
         noise_sigma: 가우시안 노이즈 표준편차 (미터)
         visibility: 가시 비율 (0.0~1.0, 1.0=전체 가시)
         max_rotation_deg: 최대 회전 각도 (도)
+        spacing: 부품 간 간격 (미터, 기본 0.15)
+        sample_points: 부품당 샘플링 포인트 수 (기본 5000)
+        floor_points: 바닥면 포인트 수 (기본 10000)
+        seed: 랜덤 시드 (기본 42)
 
     Returns:
         (scene_pcd, ground_truth): 합성 씬 포인트 클라우드, 부품별 정답 정보
     """
-    np.random.seed(42)
+    np.random.seed(seed)
     all_points = []
     ground_truth = []
+
+    # 격자 열 수: 부품 수에 따라 조절
+    cols = max(3, int(np.ceil(np.sqrt(len(part_names)))))
 
     for i, name in enumerate(part_names):
         stl_path = cad_library.cad_dir / f"{name}.stl"
@@ -136,8 +190,11 @@ def generate_synthetic_scene(
         if max(mesh.bounding_box.extents) > 1.0:
             mesh.apply_scale(0.001)
 
-        # 표면 샘플링
-        points, _ = trimesh.sample.sample_surface(mesh, SAMPLE_POINTS)
+        # 표면 샘플링 — 소형 부품은 메쉬 면적 대비 포인트 부족 방지
+        mesh_area = mesh.area
+        adjusted_points = max(sample_points, int(mesh_area * 1e6))  # 1pt/mm²
+        adjusted_points = min(adjusted_points, sample_points * 2)   # 상한
+        points, _ = trimesh.sample.sample_surface(mesh, adjusted_points)
 
         # 부분 가시성: 상위 방향에서 보이는 점만 (z축 기준 상위 visibility%)
         if visibility < 1.0:
@@ -158,11 +215,11 @@ def generate_synthetic_scene(
         points_rotated = (R_mat @ points_centered.T).T
 
         # 빈 내 배치: 격자 형태로 배치
-        row = i // 3
-        col = i % 3
+        row = i // cols
+        col = i % cols
         offset = np.array([
-            col * SCENE_SPACING,
-            row * SCENE_SPACING,
+            col * spacing,
+            row * spacing,
             0.06 + np.random.uniform(0, 0.01)  # 빈 바닥(z=0)에서 60mm 위
         ])
         points_placed = points_rotated + offset
@@ -194,12 +251,14 @@ def generate_synthetic_scene(
 
     # 빈 바닥면 추가 (RANSAC 제거 테스트용)
     # 바닥 포인트를 부품보다 많게 → RANSAC이 바닥을 확실히 잡음
-    n_floor = FLOOR_POINTS
-    floor_x = np.random.uniform(-0.10, 0.50, n_floor)
-    floor_y = np.random.uniform(-0.10, 0.40, n_floor)
+    n_floor = floor_points
+    max_col = (len(part_names) - 1) % cols if part_names else 2
+    max_row = (len(part_names) - 1) // cols if part_names else 1
+    floor_x = np.random.uniform(-0.10, (max_col + 1) * spacing + 0.10, n_floor)
+    floor_y = np.random.uniform(-0.10, (max_row + 1) * spacing + 0.10, n_floor)
     floor_z = np.random.normal(0.0, 0.0003, n_floor)  # z≈0 평면 + 미세 노이즈
-    floor_points = np.column_stack([floor_x, floor_y, floor_z])
-    all_points.append(floor_points)
+    floor_points_arr = np.column_stack([floor_x, floor_y, floor_z])
+    all_points.append(floor_points_arr)
     print(f"  [바닥] 평면 포인트 {n_floor}개 추가 (RANSAC 바닥 감지 보장)")
 
     # 합성 씬 생성
@@ -227,8 +286,12 @@ def run_pipeline(
     # L2: 전처리
     # ============================================================
     t0 = time.time()
-    roi_min = np.array([-0.15, -0.15, -0.01])
-    roi_max = np.array([0.50, 0.40, 0.20])
+    # 씬 범위에 맞게 ROI 자동 설정
+    scene_pts = np.asarray(scene_pcd.points)
+    roi_min = scene_pts.min(axis=0) - 0.05
+    roi_max = scene_pts.max(axis=0) + 0.05
+    roi_min[2] = -0.01  # 바닥 아래 약간 포함
+    roi_max[2] = max(roi_max[2], 0.20)  # 최소 200mm 높이
     cf = CloudFilter(
         voxel_size=VOXEL_SIZE,  # 2mm (부품 디테일 유지)
         sor_nb_neighbors=20,
@@ -390,14 +453,27 @@ def main():
     )
     parser.add_argument("--no-vis", action="store_true", help="시각화 건너뛰기")
     parser.add_argument("--parts", type=int, default=5, help="테스트 부품 수 (기본 5)")
-    parser.add_argument("--all-parts", action="store_true", help="전체 46종에서 랜덤 선택")
+    parser.add_argument("--all-parts", action="store_true", help="전체 29종에서 랜덤 선택")
     parser.add_argument("--difficulty", type=str, default=DEFAULT_DIFFICULTY,
                         choices=["easy", "medium", "hard"],
                         help="난이도 (기본: easy)")
+    parser.add_argument("--scenario", type=str, default="default",
+                        choices=["default", "crowded", "mixed-size", "stress"],
+                        help="시나리오 (기본: default)")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="랜덤 시드 (기본: 42)")
+    parser.add_argument("--refine-top-k", type=int, default=0,
+                        help="상위 K개를 multi-resolution ICP로 재평가 (기본: 0=비활성, 권장: 3)")
     args = parser.parse_args()
 
     difficulty = DIFFICULTY_PRESETS[args.difficulty]
+    scenario = args.scenario
+    overrides = SCENARIO_OVERRIDES.get(scenario, {})
+
     print(f"  난이도: {args.difficulty} — {difficulty['description']}")
+    print(f"  시나리오: {scenario}")
+    if overrides:
+        print(f"  오버라이드: {overrides}")
 
     # ============================================================
     # Step 1: CADLibrary 캐시 로드
@@ -423,10 +499,12 @@ def main():
     print(f"  SizeFilter: {size_filter.reference_count}종 등록")
 
     # PoseEstimator 생성
-    estimator = PoseEstimator(voxel_size=VOXEL_SIZE)
+    estimator = PoseEstimator(voxel_size=VOXEL_SIZE, refine_top_k=args.refine_top_k)
     print(f"  PoseEstimator: voxel={VOXEL_SIZE*1000}mm, "
           f"FPFH radius={estimator.fpfh_radius*1000}mm, "
           f"ICP threshold={estimator.icp_distance*1000}mm")
+    if args.refine_top_k > 0:
+        print(f"  Multi-res ICP 재평가: top-{args.refine_top_k}")
 
     # ============================================================
     # Step 2: 테스트 부품 선택
@@ -435,15 +513,17 @@ def main():
 
     available = sorted(reference_cache.keys())
 
-    if args.all_parts:
-        np.random.seed(42)
+    if scenario == "stress" or args.all_parts:
+        np.random.seed(args.seed)
         n = min(args.parts, len(available))
         test_parts = list(np.random.choice(available, n, replace=False))
+    elif scenario in SCENARIO_PARTS:
+        test_parts = [p for p in SCENARIO_PARTS[scenario] if p in available]
     else:
         test_parts = [p for p in DEFAULT_TEST_PARTS[:args.parts] if p in available]
         if len(test_parts) < args.parts:
             remaining = [p for p in available if p not in test_parts]
-            np.random.seed(42)
+            np.random.seed(args.seed)
             extra = list(np.random.choice(
                 remaining, min(args.parts - len(test_parts), len(remaining)), replace=False
             ))
@@ -465,6 +545,10 @@ def main():
         noise_sigma=NOISE_SIGMA,
         visibility=difficulty["visibility"],
         max_rotation_deg=difficulty["max_rotation_deg"],
+        spacing=overrides.get("spacing", SCENE_SPACING),
+        sample_points=overrides.get("sample_points", SAMPLE_POINTS),
+        floor_points=overrides.get("floor_points", FLOOR_POINTS),
+        seed=args.seed,
     )
 
     print(f"\n  씬 총 포인트: {len(scene_pcd.points):,}")
