@@ -498,17 +498,14 @@ def main():
         size_filter.add_reference(name, data["bbox_features"])
     print(f"  SizeFilter: {size_filter.reference_count}종 등록")
 
-    # PoseEstimator 생성 — hard 난이도에서 refine-top-k=3 자동 활성화
-    refine_k = args.refine_top_k
-    if refine_k == 0 and args.difficulty == "hard":
-        refine_k = 3  # hard에서 기본 활성화 (RMSE 2.34→1.23mm, 인식률 +20%)
-    estimator = PoseEstimator(voxel_size=VOXEL_SIZE, refine_top_k=refine_k)
+    # PoseEstimator 생성 — refine-top-k는 명시적 옵션으로만 활성화
+    # (4/10 테스트에서 hard 자동 활성화 시 불안정 확인 → 제거)
+    estimator = PoseEstimator(voxel_size=VOXEL_SIZE, refine_top_k=args.refine_top_k)
     print(f"  PoseEstimator: voxel={VOXEL_SIZE*1000}mm, "
           f"FPFH radius={estimator.fpfh_radius*1000}mm, "
           f"ICP threshold={estimator.icp_distance*1000}mm")
-    if refine_k > 0:
-        print(f"  Multi-res ICP 재평가: top-{refine_k}"
-              f"{' (hard 자동)' if args.refine_top_k == 0 else ''}")
+    if args.refine_top_k > 0:
+        print(f"  Multi-res ICP 재평가: top-{args.refine_top_k}")
 
     # ============================================================
     # Step 2: 테스트 부품 선택
