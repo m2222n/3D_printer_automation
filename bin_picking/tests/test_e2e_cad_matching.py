@@ -274,11 +274,11 @@ def run_pipeline(
     reference_cache: Dict[str, Dict[str, Any]],
     size_filter: SizeFilter,
     estimator: PoseEstimator,
-) -> Tuple[List[Dict[str, Any]], Dict[str, float]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, float], List]:
     """L2→L3→L4 파이프라인을 실행한다.
 
     Returns:
-        (results, timings): 클러스터별 매칭 결과, 단계별 소요 시간
+        (results, timings, clusters): 클러스터별 매칭 결과, 단계별 소요 시간, 클러스터 목록
     """
     timings = {}
 
@@ -366,6 +366,7 @@ def run_pipeline(
                 "n_candidates": len(candidates),
                 "n_cluster_pts": cluster.n_points,
                 "cluster_extent_mm": cluster.extent_mm,
+                "cluster_center": cluster.center,
             })
 
             print(f"    클러스터 {j} → {best['name']:>35}  "
@@ -387,13 +388,14 @@ def run_pipeline(
                 "n_candidates": 0,
                 "n_cluster_pts": cluster.n_points,
                 "cluster_extent_mm": cluster.extent_mm,
+                "cluster_center": cluster.center,
             })
             print(f"    클러스터 {j} → 매칭 실패")
 
     timings["L4_total_match"] = total_match_time
     timings["L4_avg_match"] = total_match_time / len(clusters) if clusters else 0
 
-    return results, timings
+    return results, timings, clusters
 
 
 def evaluate_results(
@@ -464,6 +466,8 @@ def main():
                         help="랜덤 시드 (기본: 42)")
     parser.add_argument("--refine-top-k", type=int, default=0,
                         help="상위 K개를 multi-resolution ICP로 재평가 (기본: 0=비활성, 권장: 3)")
+    parser.add_argument("--save-viz", type=str, default="",
+                        help="시각화 PNG 저장 경로 (빈값=저장안함, 예: viz_output)")
     args = parser.parse_args()
 
     difficulty = DIFFICULTY_PRESETS[args.difficulty]
@@ -561,7 +565,7 @@ def main():
     print_section("Step 4: L2→L3→L4 파이프라인 실행")
 
     t_pipeline = time.time()
-    results, timings = run_pipeline(
+    results, timings, clusters = run_pipeline(
         scene_pcd, reference_cache, size_filter, estimator
     )
     timings["total_pipeline"] = time.time() - t_pipeline
@@ -648,6 +652,31 @@ def main():
         print(f"  === E2E 테스트 PASS ===")
     else:
         print(f"  === E2E 테스트 FAIL — 위 항목 확인 필요 ===")
+
+    # ============================================================
+    # 시각화 PNG 저장 (--save-viz)
+    # ============================================================
+    if args.save_viz:
+        from bin_picking.src.visualization.e2e_viz import E2EVisualizer
+
+        viz_dir = os.path.join(
+            args.save_viz, f"{args.difficulty}_{scenario}_{args.seed}"
+        )
+        viz = E2EVisualizer(output_dir=viz_dir)
+        viz.generate_all(
+            scene_pcd=scene_pcd,
+            results=results,
+            clusters=clusters,
+            ground_truth=ground_truth,
+            reference_cache=reference_cache,
+            eval_result=eval_result,
+            metadata={
+                "difficulty": args.difficulty,
+                "scenario": scenario,
+                "seed": args.seed,
+                "spacing": overrides.get("spacing", SCENE_SPACING),
+            },
+        )
 
     # ============================================================
     # 시각화 (선택)

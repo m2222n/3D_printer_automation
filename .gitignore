@@ -230,3 +230,6 @@ PROJECT_STATUS_*.md
 # D435 캡처 프레임 (npy, 수 MB)
 bin_picking/models/d435_frames/
 bin_picking/models/d435_realworld/
+
+# E2E 시각화 출력 (PNG)
+bin_picking/tests/viz_output/

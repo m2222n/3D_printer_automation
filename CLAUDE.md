@@ -82,6 +82,9 @@
 - **STL 수집+정리+중복제거 완료 (4/6)**: 55개 다운 → 중복 제거 → 46개 → bbox 동일 분석 → **29종** (17개 `_duplicates/`). STL 최종 목록은 아직 미확정 (대표님도 확정 전, 킵고잉)
 - **L1~L6 전체 파이프라인 SW 완성 (4/6~10)**: cad_library + E2E 테스트 + main_pipeline + L5 그래스프 + L6 Modbus TCP. OBB SizeFilter + 포인트 비율 필터 (4/8). 그래스프 DB 29종 완성 + E2E 시나리오 확장 + multi-res ICP (4/10). **인식률 100%(easy), crowded 90%, hard 60%. RMSE 1.0~1.5mm, 매칭 0.4~0.6s/부품**
 - **RealSense D435**: ✅ **라이브 연동 성공 (4/13)** — USB 3.2(5Gbps), S/N `420122070194`, FW `5.17.0.10`. macOS에서 sudo 필요 (`sudo .venv/binpick/bin/python`). pyrealsense2 v2.57.7 소스빌드 완료
+  - **프레임 저장/로드 (4/13)**: `--live --save`로 영구 저장 → `--load`로 카메라 없이 테스트. 유효 depth 91%(278K/307K), range 156~4349mm, 파일 1.5MB
+  - 서버 로드 검증 PASS (numpy only, Open3D 불필요)
+  - **실데이터 L1~L3 테스트 PASS (4/13)**: 책상 위 일반 사물 촬영 → 11 클러스터 검출, 바닥면 정상 분리, 파이프라인 0.29s. 빈피킹 환경에서 더 좋은 결과 기대
 
 ### 2026.03.27 (공장 PC 장애 복구)
 - 공장 PC 재부팅 후 `file_receiver.py`(8089) 자동 시작 안 됨 → 미리보기 "모델 임포트 실패"
@@ -710,12 +713,12 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-10
-- **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 — L1~L6 SW 완성 + 그래스프 DB 29종 완성. 대표님 피드백: eye-in-hand 카메라 배치 + 실패 케이스 시각화 요청**
+- **날짜**: 2026-04-13
+- **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 — L1~L6 SW 완성 + 그래스프 DB 29종 완성 + D435 라이브 연동 성공 + 프레임 저장/로드. 대표님 피드백: eye-in-hand 카메라 배치 + 실패 케이스 시각화 요청**
 
 ### 현재 진행 / 다음 작업
-- 🔴 **E2E 실패 케이스 시각화 구현** — 매칭 결과 오버레이 + 오매칭 비교 이미지 PNG 자동 저장 (대표님 요청)
-- ✅ ~~D435 라이브 테스트~~ (4/13 완료) — USB 3.2 인식, sudo 실행, pyrealsense2 v2.57.7 소스빌드. `--save`/`--load` 옵션 추가
+- 🔄 **E2E 실패 케이스 시각화** (4/13 구현) — `--save-viz`로 PNG 자동 저장. overview + cluster 상세 + 오매칭 비교. **Mac 테스트 필요**
+- ✅ ~~D435 라이브 테스트~~ (4/13 완료) — USB 3.2 인식, sudo 실행, pyrealsense2 v2.57.7 소스빌드. `--save`/`--load` 옵션 추가. 유효 depth 91%, 서버 로드 검증 PASS
 - 🟡 **eye-in-hand 카메라 배치 설계** — 캘리브레이션 2세트 (eye-to-hand + eye-in-hand), multi-view 재촬영 파이프라인
 - 🟡 **[한솔 협업]** 이예승 사원 온보딩 + sequence_service 연동
 - 🟡 **4/14(화) 오후**: 한솔코에버 HCR-10L 로봇 티칭 교육
