@@ -229,3 +229,4 @@ PROJECT_STATUS_*.md
 
 # D435 캡처 프레임 (npy, 수 MB)
 bin_picking/models/d435_frames/
+bin_picking/models/d435_realworld/
