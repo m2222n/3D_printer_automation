@@ -67,7 +67,17 @@
 ### 2026.04.10 (산업용 PC 카메라 구성 + 로봇 교육)
 - **산업용 PC 카메라 구성**: Bottom Vision 1대 + 빈피킹 2대(Blaze-112+ace2) + 3D프린터/경화기 모니터링 1~2대 + 양손 로봇(추후) 1대 = **최대 6대**
 - **산업용 PC 스펙 우려**: 5060, RAM 8GB — 카메라 6대 버거울 수 있음 → **젯슨 나노로 분산** 가능성
-- **4/14(화) 오후**: 한솔코에버에서 HCR-10L **로봇 티칭 교육** 예정
+
+### 2026.04.14 (HCR-10L 로봇 교육 1회차)
+- ✅ **교육 완료**: 펜던트 기본 기능 + Modbus TCP 통신 + 자동화 시스템 기본 개념
+- **교육 자료 수령**: `PLC_Cobot_Modbus_Guide.pdf` (34페이지) — PLC↔Robot Modbus TCP/IP 가이드 (예제 3건)
+- **한화 HCR 개발 특성**: 두산/현대와 달리 **펜던트(Rodi)로 개발**해야 함. 외부 PC는 Modbus 레지스터 간접 제어
+  - 비전PC가 Modbus 레지스터에 피킹 좌표 쓰기 → 펜던트 프로그램이 읽어서 모션 실행
+- **사용자 사용 가능 레지스터: 130~255** (문서상 128~이나 실사용 130번부터)
+- **좌표계**: Base(로봇 바닥 고정부 기준) vs TCP(Tool Center Point, 그리퍼 끝단 기준)
+- **TCP 좌표 Modbus 읽기**: Register 400~405 (1/10mm, 1/10deg, 16bit 정수)
+- **티칭(교시) 교육은 별도 스케줄로 추후 진행**
+- **TBD 항목은 그리퍼 장착 + 빈 배치 후 실측** (TCP 오프셋, 작업 영역, 오일러 컨벤션)
 
 ### 2026.04.10 오후 (빈피킹 보고 피드백 — 카메라 배치 + 시각화 요청)
 - **카메라 배치 변경**: 1대 고정(eye-to-hand, 오버헤드) + **1대 로봇암 장착(eye-in-hand)**
@@ -85,7 +95,8 @@
   - **프레임 저장/로드 (4/13)**: `--live --save`로 영구 저장 → `--load`로 카메라 없이 테스트. 유효 depth 91%(278K/307K), range 156~4349mm, 파일 1.5MB
   - 서버 로드 검증 PASS (numpy only, Open3D 불필요)
   - **실데이터 L1~L3 테스트 PASS (4/13)**: 책상 위 일반 사물 촬영 → 11 클러스터 검출, 바닥면 정상 분리, 파이프라인 0.29s. 빈피킹 환경에서 더 좋은 결과 기대
-  - **Full Pipeline L1~L5 테스트 PASS (4/14)**: 일반 사물 8클러스터 → ACCEPT 0 / WARN 3 / REJECT 5. CAD 미등록 물체 오탐 없음 확인. RMSE 3mm 임계값이 WARN(fitness 0.47)도 차단. 총 1.83s (0.18s/클러스터)
+  - **Full Pipeline L1~L5 테스트 PASS (4/14)**: 2회 실행 모두 ACCEPT 0. ①d435_frames 8클러스터 WARN 3/REJECT 5, 1.83s ②d435_realworld 6클러스터 WARN 4/REJECT 2, 0.89s. CAD 미등록 물체 오탐 없음. RMSE 3mm 임계값이 핵심 안전장치 (fitness 0.47도 차단)
+  - **다음**: 공장에서 실물 SLA 부품 3~5개 가져와서 D435로 촬영 → CAD 매칭 ACCEPT 검증 (미등록 REJECT은 확인됨, 등록 부품 ACCEPT 미검증)
 
 ### 2026.03.27 (공장 PC 장애 복구)
 - 공장 PC 재부팅 후 `file_receiver.py`(8089) 자동 시작 안 됨 → 미리보기 "모델 임포트 실패"
@@ -105,7 +116,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3++ — **L1~L6 SW 완성 + 그래스프 DB 29종 + D435 라이브 연동 + 실데이터 L1~L3 PASS + E2E 시각화 + eye-in-hand 설계**. 인식률 100%(easy), crowded 90%, hard 60%. **다음: 카메라 입고(5월) → 실데이터 L4 검증 + Colored ICP + 실제 캘리브레이션** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W4 — **L1~L6 SW 완성 + 그래스프 DB 29종 + D435 Full Pipeline PASS + E2E 시각화 + eye-in-hand 설계 + HCR-10L 로봇 파라미터 정비 + 로봇 교육 1회차 완료**. 인식률 100%(easy), crowded 90%, hard 60%. **다음: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → Colored ICP + 실제 캘리브레이션** |
 
 ---
 
@@ -722,8 +733,8 @@ POLLING_INTERVAL_SECONDS=15
 - ✅ `grasp_planner.py`에 `validate_pick()` 안전 검증 로직 추가 (작업 영역/Z충돌/힘 제한)
 - ✅ `modbus_server.py`에 오일러 컨벤션(ZYX) 명시 + 피킹 사이클 문서화 + `wait_for_done()` 추가
 - ✅ `hand_eye_calibration.py`에 `set_tcp_offset()` + `load_tcp_offset_from_yaml()` 추가
-- ✅ **D435 Full Pipeline (L1~L5) 테스트 PASS** — 일반 사물 8클러스터, ACCEPT 0 / WARN 3 / REJECT 5. CAD 미등록 물체 오탐 없음. RMSE 임계값(3mm)이 WARN도 차단. 1.83s
-- ⚠️ TCP 오프셋, 작업 영역, 오일러 컨벤션 = TBD (4/14 오후 교육 후 실측)
+- ✅ **D435 Full Pipeline (L1~L5) 테스트 2회 PASS** — 일반 사물, 2회 모두 ACCEPT 0 (오탐 없음). RMSE 3mm 임계값이 핵심 안전장치
+- ⚠️ TCP 오프셋, 작업 영역, 오일러 컨벤션 = TBD (그리퍼 장착 + 빈 배치 후 설정)
 
 ### 4/13 완료
 - ✅ D435 라이브 연동 — USB 3.2, pyrealsense2 v2.57.7 소스빌드, 프레임 저장/로드
@@ -732,10 +743,11 @@ POLLING_INTERVAL_SECONDS=15
 - ✅ eye-in-hand 캘리브레이션 — 시뮬 PASS (회전 0.28°, 이동 0.57mm)
 
 ### 다음 작업
-- 🟡 **4/14(화) 오후**: 한솔코에버 HCR-10L 로봇 티칭 교육 → TCP 오프셋/오일러 컨벤션/작업 영역 실측
+- 🟡 **4/14(화) 오후**: 한솔코에버 HCR-10L 로봇 **티칭 사용법 교육** (펜던트 조작, 좌표계, TCP 설정 메뉴 위치 파악)
+- 🟡 **실물 SLA 부품 확보** → D435로 촬영 → CAD 매칭 ACCEPT 검증 (공장에서 3~5개 가져오기)
 - 🟡 **[한솔 협업]** 이예승 사원 온보딩 + sequence_service 연동
 - 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
-- 🔄 **카메라 입고 대기 (5월)** → 실데이터 L4 CAD 매칭 + Colored ICP + 실제 핸드-아이 캘리브레이션 (2세트) + multi-view 재촬영
+- 🔄 **카메라 입고 대기 (5월)** → Colored ICP + 실제 핸드-아이 캘리브레이션 (2세트) + multi-view 재촬영
 
 ### 대기 중
 - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 `lab.flickdone.com` 확정
