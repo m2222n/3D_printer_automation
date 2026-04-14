@@ -79,6 +79,13 @@
 - **티칭(교시) 교육은 별도 스케줄로 추후 진행**
 - **TBD 항목은 그리퍼 장착 + 빈 배치 후 실측** (TCP 오프셋, 작업 영역, 오일러 컨벤션)
 
+### 2026.04.14 (대표님 지시 — MaixCAM 장비 모니터링)
+- **Sipeed MaixCAM으로 프린터/세척기/경화기 전용 모니터링 연구**
+- **OpenMV AE3 대체** — MaixCAM이 성능 우위 (RISC-V + 0.5TOPS NPU, 400만 화소)
+- **Cloud 없이 온디바이스 AI로 진행** (엣지 AI, 현장 독립 동작)
+- 보유 장비: MaixCAM 1대 + LicheeRV Nano 2대 (4/6 수령)
+- **우선순위**: 빈피킹(Phase 5) 우선, MaixCAM은 여유 시 착수
+
 ### 2026.04.14 (웹 서비스 인프라 정비)
 - **웹 서비스 접속 불가 원인**: uvicorn 수동 실행 방식이라 프로세스 종료 후 재시작 안 됨
 - ✅ **systemd user service 등록**: `~/.config/systemd/user/formlabs-web.service` (포트 8085)
@@ -130,7 +137,7 @@
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | 2주 | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
-| **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
+| **Phase 4** | ~~OpenMV~~ → **MaixCAM** 장비 모니터링 | 🟡 HIGH | 6주 | 🔄 OpenMV 제외, **MaixCAM으로 전환** (4/14 대표님 지시). 리서치 완료 — 1 TOPS NPU, find_blobs()/YOLO, MQTT/Modbus 내장. 빈피킹 우선, 여유 시 PoC |
 | **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W4 — **L1~L6 SW 완성 + 그래스프 DB 29종 + D435 Full Pipeline PASS + E2E 시각화 + eye-in-hand 설계 + HCR-10L 로봇 파라미터 정비 + 로봇 교육 1회차 완료**. 인식률 100%(easy), crowded 90%, hard 60%. **다음: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → Colored ICP + 실제 캘리브레이션** |
 
 ---
@@ -254,21 +261,18 @@
 | 가반하중 | 12 kg | 10 kg |
 | 통신 | Modbus TCP (포트 502) | 동일 |
 
-### 후처리 장비 (⚠️ API 미지원 → OpenMV 카메라로 해결)
+### 후처리 장비 (⚠️ API 미지원 → 카메라로 완료 감지)
 - Form Wash (2대), Form Cure (2대)
-- **해결**: OpenMV 카메라로 완료 감지 (대표님 확정, 02-06)
+- **해결**: ~~OpenMV 카메라~~ → **Sipeed MaixCAM**으로 완료 감지 (4/14 대표님 지시, OpenMV 제외)
 
-### OpenMV 카메라 (세척기/경화기 완료 감지용)
-- **모델**: OpenMV AE3 ($85) - WiFi/BT 내장, NPU, 초저전력
-- **센서**: PAG7936
-- **펌웨어**: 4.8.1 (최신, 2026-03-09 업그레이드)
-- **IDE**: OpenMV IDE v4.7.0 (Intel Mac용, v4.8.x는 ARM 전용)
-- **연결 확인**: USB C-to-C → Mac, helloworld 정상 동작 (FPS 15.6)
-- **WiFi**: `OrinuAI_2.4GHz` (5GHz 미지원) → 192.168.100.x 대역 (서버와 동일)
-- **통신**: WiFi → MQTT (`192.168.100.29:1883`) → FastAPI 서버 ✅ E2E 통신 확인 (3/12)
-- **자동 실행**: 카메라 내부 플래시에 `main.py` 저장 시 전원 ON 자동 실행
-- **⚠️ 플래시 저장 주의**: `/flash/`에 저장된 파일은 IDE Disconnect/USB 분리 시 소실됨 → 이미지 캡처 시 Mac 직접 저장(IDE Frame Buffer) 방식 사용
-- **참고**: https://openmv.io/
+### Sipeed MaixCAM (세척기/경화기 완료 감지용, OpenMV 대체)
+- **모델**: Sipeed MaixCAM ($33~48) - RISC-V SG2002 + **1 TOPS NPU**, WiFi 6, 2.3" IPS 터치, 4MP
+- **접근법**: find_blobs() LED 감지 (100+fps, NPU 불필요) → MQTT → 서버, 온디바이스 AI
+- **통신**: WiFi 6 → MQTT (paho-mqtt 내장) + Modbus TCP/RTU 내장 + Flask HTTP 서버
+- **모델 학습**: MaixHub (무료, 사진→어노테이션→학습→QR배포)
+- **자동 실행**: 전원 ON 시 autostart 지원
+- **참고**: https://wiki.sipeed.com/maixcam
+- ~~기존 OpenMV AE3는 프로젝트에서 제외 (4/14 대표님 지시)~~
 
 ---
 
