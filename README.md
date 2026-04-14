@@ -58,15 +58,18 @@
 | **Phase 2** | Local API 원격 제어 + UI | ✅ 완료 | PreFormServer 연동, 5탭 UI, 슬라이스/통계/알림 |
 | **Phase 3** | HCR 로봇 연동 | ✅ 코드 머지 완료 | 한솔코에버 시퀀스 서비스 + 자동화 프론트엔드 통합 |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🔄 진행 중 (일시 대기) | WiFi+MQTT E2E 성공, 학습 이미지 350장 — 빈피킹 우선 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | ✅ SW 완성 | L1~L6 파이프라인 + OBB SizeFilter, 인식률 100%(medium), 매칭 0.5s, 카메라 입고 대기 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | ✅ SW 완성 | L1~L6 파이프라인 + 그래스프 DB 29종 + D435 실데이터 PASS + eye-in-hand 설계 + HCR-10L 로봇 파라미터 정비 |
 
-### 현재 상태 (2026-04-08)
+### 현재 상태 (2026-04-14)
 - **Phase 1~3 완료**: 웹 모니터링 + 원격 프린트 + 로봇 연동 (한솔코에버 머지)
-- **Phase 5 L1~L6 SW 완성**: 빈피킹 전체 파이프라인 구현 완료
-  - STL 29종 레퍼런스 캐시 빌드, **인식률 100% (easy/medium), RMSE 1.12~1.47mm**
-  - OBB SizeFilter + 포인트 수 비율 필터 → **매칭 0.4~0.5s/부품 (이전 2.25s 대비 4~5배 개선)**
-  - L5 그래스프 DB 17종 + L6 Modbus TCP 서버
-- **다음**: 카메라 입고(5월) → 실데이터 검증 + Colored ICP + HCR-10L 실전 피킹
+- **웹 서비스 인프라 정비**: systemd 자동시작 (포트 8085) + WireGuard VPN 자동시작 + 한솔 머지 코드 Linux 호환 수정
+- **Phase 5 빈피킹 — SW 완성 + 실데이터 검증 진행 중**:
+  - STL 29종 레퍼런스 캐시 + **인식률 100% (easy/medium), RMSE 1.02~1.50mm, 매칭 0.4~0.6s/부품**
+  - L5 그래스프 DB **29종** 완성 + L6 Modbus TCP 서버
+  - RealSense D435 라이브 연동 + **Full Pipeline (L1~L5) 2회 PASS** — CAD 미등록 물체 REJECT 일관성 확인
+  - E2E 실패 케이스 시각화 (`--save-viz`), eye-in-hand 캘리브레이션 설계 완료
+  - HCR-10L 로봇 파라미터 정비 (validate_pick, wait_for_done, TCP 오프셋) + **로봇 교육 1회차 완료**
+- **다음**: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → Colored ICP + 실제 캘리브레이션 + HCR-10L 실전 피킹
 
 ---
 
@@ -108,7 +111,7 @@
                                                     |
                                          +---------------------+
                                          | Server (FastAPI)    |
-                                         | Dev: 6000 (:8085)   |
+                                         | Dev: 8085 (systemd) |
                                          | Prod: Kakao Cloud   |
                                          +---------------------+
 ```
@@ -186,13 +189,17 @@ Office                                      Factory
 - 로봇 미연결 시 시뮬레이션 모드
 
 ### Phase 5: 3D 빈피킹 비전 시스템 (L1~L6 SW 완성)
-- **L1 취득**: Blaze-112 ToF depth + ace2 RGB → colored PointCloud (+ RealSense D435 테스트)
+- **L1 취득**: Blaze-112 ToF depth + ace2 RGB → colored PointCloud + **RealSense D435 라이브 연동** (USB 3.2, 프레임 저장/로드)
 - **L2 전처리**: ROI 크롭 → SOR 이상치 제거 → Voxel 다운샘플 → RANSAC 바닥면 제거 → 법선 추정
 - **L3 분할**: DBSCAN 클러스터링, 포인트 수/크기 필터링
-- **L4 인식**: OBB SizeFilter(회전 불변) 후보 축소 → FPFH(33D) + FGR/RANSAC + ICP 정밀 정합 + 포인트 수 비율 필터, **인식률 100% (easy/medium), RMSE 1.12mm, 0.5s/부품**
-- **L5 그래스프**: grasp_database.yaml 17종 부품별 피킹 자세 (접근방향, 깊이, 그리퍼 폭/힘), z순 피킹 계획
-- **L6 로봇 통신**: Modbus TCP 서버 (pymodbus 3.x), 레지스터 40001~40016 (6DoF FLOAT32 + 그리퍼)
+- **L4 인식**: OBB SizeFilter(회전 불변) 후보 축소 → FPFH(33D) + FGR/RANSAC + ICP 정밀 정합 + 포인트 수 비율 필터, **인식률 100% (easy/medium), RMSE 1.02~1.50mm, 0.4~0.6s/부품**
+- **L5 그래스프**: grasp_database.yaml **29종** 부품별 피킹 자세 + `validate_pick()` 안전 검증 (작업 영역/Z/힘), z순 피킹 계획
+- **L6 로봇 통신**: Modbus TCP 서버 (pymodbus 3.x), 레지스터 40001~40016 (6DoF FLOAT32 + 그리퍼) + `wait_for_done()` 피킹 사이클
 - **통합 파이프라인**: `BinPickingPipeline` — 카메라/저장프레임/합성씬 입력 → L1~L6 자동 실행
+- **D435 실데이터 검증**: Full Pipeline 2회 PASS — ACCEPT 0 (미등록 물체 REJECT), RMSE 3mm 임계값이 핵심 안전장치
+- **E2E 시각화**: `--save-viz` — overview/cluster/failure PNG 자동 생성 (대표님 요청)
+- **eye-in-hand 캘리브레이션**: eye-to-hand + eye-in-hand 듀얼 모드 (시뮬 PASS: 회전 0.28°, 이동 0.57mm)
+- **HCR-10L 로봇 연동**: grasp_database.yaml에 로봇 스펙/TCP 오프셋/안전 파라미터 + 로봇 교육 1회차 완료
 - **레진별 프리셋**: Grey/White/Clear/Flexible 각각 최적 파라미터
 
 ### 프린터 상태 표시
@@ -398,7 +405,8 @@ Office                                      Factory
 │   │   ├── main_pipeline.py            # BinPickingPipeline (L1~L6 통합)
 │   │   ├── acquisition/                # L1: 카메라 취득
 │   │   │   ├── depth_to_pointcloud.py  # depth → PointCloud
-│   │   │   └── realsense_capture.py    # RealSense D435 드라이버
+│   │   │   ├── realsense_capture.py    # RealSense D435 드라이버
+│   │   │   └── hand_eye_calibration.py # 핸드-아이 캘리브레이션 (eye-to-hand + eye-in-hand)
 │   │   ├── preprocessing/              # L2: 전처리
 │   │   │   └── cloud_filter.py         # 5단계 필터 (레진별 프리셋)
 │   │   ├── segmentation/               # L3: 분할
@@ -408,15 +416,20 @@ Office                                      Factory
 │   │   │   ├── pose_estimator.py       # FGR/RANSAC+ICP 1:N 매칭
 │   │   │   └── size_filter.py          # 바운딩박스 사전 필터
 │   │   ├── grasping/                   # L5: 그래스프 계획
-│   │   │   └── grasp_planner.py        # grasp_database.yaml 기반 피킹 자세
-│   │   └── communication/              # L6: 로봇 통신
-│   │       └── modbus_server.py        # Modbus TCP 서버 (pymodbus 3.x)
+│   │   │   └── grasp_planner.py        # grasp_database.yaml 기반 피킹 자세 + validate_pick()
+│   │   ├── communication/              # L6: 로봇 통신
+│   │   │   └── modbus_server.py        # Modbus TCP 서버 (pymodbus 3.x) + wait_for_done()
+│   │   └── visualization/             # 시각화
+│   │       └── e2e_viz.py              # E2E 실패 케이스 PNG 자동 생성
 │   ├── config/
-│   │   └── grasp_database.yaml         # 17종 부품별 그래스프 파라미터
+│   │   ├── grasp_database.yaml         # 29종 부품별 그래스프 + HCR-10L 로봇 파라미터
+│   │   └── calibration/                # 핸드-아이 캘리브레이션 결과 저장
 │   ├── tests/
 │   │   ├── test_e2e_redwood.py         # Redwood RGB-D E2E
 │   │   ├── test_e2e_realsense.py       # RealSense D435 E2E
-│   │   └── test_e2e_cad_matching.py    # 실제 STL 29종 E2E (easy/medium/hard)
+│   │   ├── test_e2e_cad_matching.py    # 실제 STL 29종 E2E (easy/medium/hard, --save-viz)
+│   │   ├── test_d435_realworld.py      # D435 실데이터 L1~L3 테스트
+│   │   └── test_d435_full_pipeline.py  # D435 Full Pipeline L1~L5 테스트
 │   ├── tutorials/                      # Open3D 학습 (01~11)
 │   └── models/
 │       ├── cad/                        # STL 원본 (29종 활성 + 17종 _duplicates)
