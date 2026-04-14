@@ -37,7 +37,7 @@
 ### 2026.02.12 (데모 후)
 - PreForm 대시보드 기능 동등 구현 지시 (슬라이스, 예열, 시간, 일시정지)
 - 프린터 4대 각각 독립 컨테이너, 탭 구분, 히스토리/대기 페이지 추가
-- 서버 구성: 5090=운영, 6000=개발
+- 서버 구성: 5090=운영(폐기예정), **8085=개발(현재 운영 중, systemd 자동시작)**
 
 ### 2026.02.24 (한솔코에버 미팅)
 - ~~소스코드 공유 X, 가이드라인만~~ → **2/26 변경: 소스코드 공유 결정**
@@ -78,6 +78,21 @@
 - **TCP 좌표 Modbus 읽기**: Register 400~405 (1/10mm, 1/10deg, 16bit 정수)
 - **티칭(교시) 교육은 별도 스케줄로 추후 진행**
 - **TBD 항목은 그리퍼 장착 + 빈 배치 후 실측** (TCP 오프셋, 작업 영역, 오일러 컨벤션)
+
+### 2026.04.14 (웹 서비스 인프라 정비)
+- **웹 서비스 접속 불가 원인**: uvicorn 수동 실행 방식이라 프로세스 종료 후 재시작 안 됨
+- ✅ **systemd user service 등록**: `~/.config/systemd/user/formlabs-web.service` (포트 8085)
+  - `Restart=always` (크래시 시 5초 후 자동 재시작)
+  - `loginctl enable-linger jtm` (로그아웃 후에도 유지)
+  - `systemctl --user enable formlabs-web` (서버 재부팅 시 자동 시작)
+- ✅ **한솔 머지 코드 Linux 호환 수정**:
+  - `automation_db.py`: MySQL engine lazy 초기화 (MySQL 없어도 앱 시작 가능)
+  - `ajin_io.py`: `WinDLL` import를 Windows에서만 (Linux에서 import 에러 해결)
+  - `pymysql` 패키지 설치
+- ✅ **WireGuard VPN 복구**: `sudo wg-quick up wg0` + `systemctl enable wg-quick@wg0` (재부팅 시 자동)
+- ✅ **PreFormServer(44388) + file_receiver(8089) 정상 연결 확인**
+- **외부 접속**: `http://106.244.6.242:8085/` (ipTIME 포트포워딩 8085→8085)
+- **관리 명령어**: `systemctl --user status/restart/stop formlabs-web`, `journalctl --user -u formlabs-web -f`
 
 ### 2026.04.10 오후 (빈피킹 보고 피드백 — 카메라 배치 + 시각화 요청)
 - **카메라 배치 변경**: 1대 고정(eye-to-hand, 오버헤드) + **1대 로봇암 장착(eye-in-hand)**

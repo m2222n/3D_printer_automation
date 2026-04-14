@@ -13,11 +13,19 @@ from sqlalchemy import create_engine, text
 from app.core.config import get_settings
 
 settings = get_settings()
-engine = create_engine(settings.SEQUENCE_MYSQL_DSN, future=True)
+
+# Lazy engine: MySQL이 없어도 앱 시작 가능 (자동화 API 호출 시에만 연결 시도)
+_engine = None
+
+def _get_engine():
+    global _engine
+    if _engine is None:
+        _engine = create_engine(settings.SEQUENCE_MYSQL_DSN, future=True)
+    return _engine
 
 
 def _ensure_automation_log_table() -> None:
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         conn.execute(
             text(
                 """
@@ -37,7 +45,7 @@ def _ensure_automation_log_table() -> None:
 
 
 def _ensure_automation_comm_config_table() -> None:
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         conn.execute(
             text(
                 """
@@ -76,7 +84,7 @@ def _ensure_automation_comm_config_table() -> None:
 
 def get_comm_targets() -> dict[str, Any]:
     _ensure_automation_comm_config_table()
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         row = conn.execute(
             text(
                 """
@@ -110,7 +118,7 @@ def set_comm_targets(
     robot_port = int(robot_port)
     vision_port = int(vision_port)
     now = datetime.now()
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         conn.execute(
             text(
                 """
@@ -143,7 +151,7 @@ def add_log(log_type: int, source: str, message: str, cmd_id: str | None = None)
     if not message:
         return
     _ensure_automation_log_table()
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         conn.execute(
             text(
                 """
@@ -172,7 +180,7 @@ def create_command(
     cmd_id = str(uuid.uuid4())
     resolved_name = file_name.strip() if file_name else Path(file_path).name
     payload = allocated_data or {}
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         conn.execute(
             text(
                 """
@@ -205,7 +213,7 @@ def create_command(
 
 
 def list_commands(limit: int = 100) -> list[dict[str, Any]]:
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         # Disable previous-day commands on each read to avoid accidental re-production.
         conn.execute(
             text(
@@ -248,7 +256,7 @@ def set_commands_use_yn(cmd_ids: list[str], use_yn: str) -> int:
     params: dict[str, Any] = {"use_yn": normalized, "updated_at": now}
     for i, cmd_id in enumerate(cmd_ids):
         params[f"id_{i}"] = cmd_id
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         if normalized == "N":
             # Treat Use=N from Automation UI as cancellation request.
             # Do not overwrite terminal DONE/ERROR states.
@@ -302,7 +310,7 @@ def set_cell_state(action: str) -> dict[str, bool]:
         raise ValueError(f"invalid action: {action}")
 
     now = datetime.now()
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         row = conn.execute(
             text("SELECT id, running, paused FROM cell_state WHERE id = 1 LIMIT 1")
         ).mappings().first()
@@ -347,7 +355,7 @@ def set_cell_state(action: str) -> dict[str, bool]:
 
 
 def get_cell_state() -> dict[str, bool]:
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         row = conn.execute(
             text("SELECT running, paused FROM cell_state WHERE id = 1 LIMIT 1")
         ).mappings().first()
@@ -357,7 +365,7 @@ def get_cell_state() -> dict[str, bool]:
 
 
 def get_queue_state() -> dict[str, Any]:
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         row = conn.execute(
             text("SELECT queue_state FROM cell_state WHERE id = 1 LIMIT 1")
         ).mappings().first()
@@ -374,7 +382,7 @@ def get_queue_state() -> dict[str, Any]:
 
 def list_logs(limit: int = 200) -> list[dict[str, Any]]:
     _ensure_automation_log_table()
-    with engine.begin() as conn:
+    with _get_engine().begin() as conn:
         rows = conn.execute(
             text(
                 """

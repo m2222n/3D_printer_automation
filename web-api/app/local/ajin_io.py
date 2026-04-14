@@ -1,9 +1,16 @@
 from __future__ import annotations
 
-from ctypes import POINTER, WinDLL, byref, c_int, c_uint
+import sys
 from pathlib import Path
 from threading import Lock
 from typing import Any
+
+if sys.platform == "win32":
+    from ctypes import POINTER, WinDLL, byref, c_int, c_uint
+else:
+    # Linux/macOS: Ajin DLL 사용 불가 — simulation 모드만 가능
+    WinDLL = None
+    POINTER = c_int = c_uint = byref = None  # type: ignore
 
 
 AXT_RT_SUCCESS = 0
