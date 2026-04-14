@@ -85,6 +85,7 @@
   - **프레임 저장/로드 (4/13)**: `--live --save`로 영구 저장 → `--load`로 카메라 없이 테스트. 유효 depth 91%(278K/307K), range 156~4349mm, 파일 1.5MB
   - 서버 로드 검증 PASS (numpy only, Open3D 불필요)
   - **실데이터 L1~L3 테스트 PASS (4/13)**: 책상 위 일반 사물 촬영 → 11 클러스터 검출, 바닥면 정상 분리, 파이프라인 0.29s. 빈피킹 환경에서 더 좋은 결과 기대
+  - **Full Pipeline L1~L5 테스트 PASS (4/14)**: 일반 사물 8클러스터 → ACCEPT 0 / WARN 3 / REJECT 5. CAD 미등록 물체 오탐 없음 확인. RMSE 3mm 임계값이 WARN(fitness 0.47)도 차단. 총 1.83s (0.18s/클러스터)
 
 ### 2026.03.27 (공장 PC 장애 복구)
 - 공장 PC 재부팅 후 `file_receiver.py`(8089) 자동 시작 안 됨 → 미리보기 "모델 임포트 실패"
@@ -714,13 +715,14 @@ POLLING_INTERVAL_SECONDS=15
 ## 마지막 업데이트
 
 - **날짜**: 2026-04-14
-- **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 — L1~L6 SW 완성 + HCR-10L 로봇 파라미터 정비 + 안전 검증 로직. 카메라 입고(5월) 전 SW 준비 완료.**
+- **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 — L1~L6 SW 완성 + HCR-10L 로봇 파라미터 정비 + D435 Full Pipeline PASS (미등록 물체 REJECT 확인). 카메라 입고(5월) 전 SW 준비 완료.**
 
-### 4/14 오전 — HCR-10L 로봇 연동 코드 정비
+### 4/14 — HCR-10L 로봇 코드 정비 + D435 Full Pipeline PASS
 - ✅ `grasp_database.yaml`에 HCR-10L 로봇 스펙 섹션 추가 (TCP 오프셋, 관절 제한, 작업 영역, 안전 파라미터)
 - ✅ `grasp_planner.py`에 `validate_pick()` 안전 검증 로직 추가 (작업 영역/Z충돌/힘 제한)
 - ✅ `modbus_server.py`에 오일러 컨벤션(ZYX) 명시 + 피킹 사이클 문서화 + `wait_for_done()` 추가
 - ✅ `hand_eye_calibration.py`에 `set_tcp_offset()` + `load_tcp_offset_from_yaml()` 추가
+- ✅ **D435 Full Pipeline (L1~L5) 테스트 PASS** — 일반 사물 8클러스터, ACCEPT 0 / WARN 3 / REJECT 5. CAD 미등록 물체 오탐 없음. RMSE 임계값(3mm)이 WARN도 차단. 1.83s
 - ⚠️ TCP 오프셋, 작업 영역, 오일러 컨벤션 = TBD (4/14 오후 교육 후 실측)
 
 ### 4/13 완료
