@@ -104,7 +104,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | OpenMV + YOLO 비전 검사 | 🟡 HIGH | 6주 | 🔄 진행 중 (Step 1~3 완료, Step 5 WiFi+MQTT E2E 성공, 학습 이미지 350장 추출) — 빈피킹 우선으로 일시 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3+ 완료 — **L1~L6 전체 파이프라인 구현 완료**. STL 29종, **그래스프 DB 29종 완성**. **인식률 100%(easy), crowded 90%, hard 60%**. RMSE 1.0~1.5mm, 매칭 0.4~0.6s/부품. E2E 시나리오 확장(crowded/mixed-size/stress) + multi-res ICP 옵션. **다음: 카메라 입고(5월) → 실데이터 검증 + Colored ICP** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W3++ — **L1~L6 SW 완성 + 그래스프 DB 29종 + D435 라이브 연동 + 실데이터 L1~L3 PASS + E2E 시각화 + eye-in-hand 설계**. 인식률 100%(easy), crowded 90%, hard 60%. **다음: 카메라 입고(5월) → 실데이터 L4 검증 + Colored ICP + 실제 캘리브레이션** |
 
 ---
 
@@ -713,17 +713,27 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-13
-- **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 — L1~L6 SW 완성 + 그래스프 DB 29종 완성 + D435 라이브 연동 성공 + 프레임 저장/로드. 대표님 피드백: eye-in-hand 카메라 배치 + 실패 케이스 시각화 요청**
+- **날짜**: 2026-04-14
+- **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 — L1~L6 SW 완성 + HCR-10L 로봇 파라미터 정비 + 안전 검증 로직. 카메라 입고(5월) 전 SW 준비 완료.**
 
-### 현재 진행 / 다음 작업
-- ✅ ~~E2E 실패 케이스 시각화~~ (4/13 완료) — `--save-viz`로 PNG 자동 저장. easy 6장 + hard 9장(failure 3장) 생성 확인. 대표님 보고용 시각 자료 준비 완료
-- ✅ ~~D435 라이브 테스트~~ (4/13 완료) — USB 3.2 인식, sudo 실행, pyrealsense2 v2.57.7 소스빌드. `--save`/`--load` 옵션 추가. 유효 depth 91%, 서버 로드 검증 PASS
-- ✅ ~~eye-in-hand 카메라 배치 설계~~ (4/13 완료) — HandEyeCalibrator에 eye-in-hand 모드 추가, 카메라 프리셋(Blaze-112/ace2/D435), 시뮬레이션 검증. multi-view 재촬영은 카메라 입고 후
+### 4/14 오전 — HCR-10L 로봇 연동 코드 정비
+- ✅ `grasp_database.yaml`에 HCR-10L 로봇 스펙 섹션 추가 (TCP 오프셋, 관절 제한, 작업 영역, 안전 파라미터)
+- ✅ `grasp_planner.py`에 `validate_pick()` 안전 검증 로직 추가 (작업 영역/Z충돌/힘 제한)
+- ✅ `modbus_server.py`에 오일러 컨벤션(ZYX) 명시 + 피킹 사이클 문서화 + `wait_for_done()` 추가
+- ✅ `hand_eye_calibration.py`에 `set_tcp_offset()` + `load_tcp_offset_from_yaml()` 추가
+- ⚠️ TCP 오프셋, 작업 영역, 오일러 컨벤션 = TBD (4/14 오후 교육 후 실측)
+
+### 4/13 완료
+- ✅ D435 라이브 연동 — USB 3.2, pyrealsense2 v2.57.7 소스빌드, 프레임 저장/로드
+- ✅ D435 실데이터 L1~L3 — 일반 사물로 파이프라인 검증 (11클러스터, 0.29s)
+- ✅ E2E 실패 케이스 시각화 — `--save-viz` PNG 자동 저장 (대표님 요청)
+- ✅ eye-in-hand 캘리브레이션 — 시뮬 PASS (회전 0.28°, 이동 0.57mm)
+
+### 다음 작업
+- 🟡 **4/14(화) 오후**: 한솔코에버 HCR-10L 로봇 티칭 교육 → TCP 오프셋/오일러 컨벤션/작업 영역 실측
 - 🟡 **[한솔 협업]** 이예승 사원 온보딩 + sequence_service 연동
-- 🟡 **4/14(화) 오후**: 한솔코에버 HCR-10L 로봇 티칭 교육
 - 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
-- 🔄 **카메라 입고 대기 (5월)** → 실데이터 검증 + Colored ICP + 핸드-아이 캘리브레이션 (2세트)
+- 🔄 **카메라 입고 대기 (5월)** → 실데이터 L4 CAD 매칭 + Colored ICP + 실제 핸드-아이 캘리브레이션 (2세트) + multi-view 재촬영
 
 ### 대기 중
 - ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 `lab.flickdone.com` 확정

@@ -221,6 +221,9 @@ class HandEyeCalibrator:
         ], dtype=np.float64)
         self.dist_coeffs = np.array(preset["dist_coeffs"], dtype=np.float64)
 
+        # HCR-10L TCP 오프셋 (그리퍼 장착 후 실측값으로 설정)
+        self.tcp_offset: Optional[np.ndarray] = None  # 4x4, 플랜지→TCP
+
         # 캘리브레이션 결과
         self.T_cam_to_base: Optional[np.ndarray] = None      # eye-to-hand 결과
         self.T_cam_to_gripper: Optional[np.ndarray] = None    # eye-in-hand 결과
@@ -251,6 +254,35 @@ class HandEyeCalibrator:
         """
         self.camera_matrix = camera_matrix.astype(np.float64)
         self.dist_coeffs = dist_coeffs.flatten().astype(np.float64)
+
+    def set_tcp_offset(self, x: float = 0, y: float = 0, z: float = 0,
+                       rx: float = 0, ry: float = 0, rz: float = 0):
+        """HCR-10L TCP 오프셋 설정 (플랜지 → 공구 끝점).
+
+        로봇 티칭 후 실측값을 입력한다. 단위: mm, deg.
+        grasp_database.yaml의 robot.tcp_offset_mm 값과 동일.
+
+        Args:
+            x, y, z: 위치 오프셋 (mm)
+            rx, ry, rz: 회전 오프셋 (deg)
+        """
+        R = Rotation.from_euler("ZYX", [rz, ry, rx], degrees=True).as_matrix()
+        self.tcp_offset = np.eye(4)
+        self.tcp_offset[:3, :3] = R
+        self.tcp_offset[:3, 3] = np.array([x, y, z]) * 0.001  # mm → m
+
+    def load_tcp_offset_from_yaml(self, yaml_path: Optional[str] = None):
+        """grasp_database.yaml에서 TCP 오프셋을 로드한다."""
+        import yaml
+        if yaml_path is None:
+            yaml_path = Path(__file__).resolve().parent.parent.parent / "config" / "grasp_database.yaml"
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        tcp = data.get("robot", {}).get("tcp_offset_mm", {})
+        self.set_tcp_offset(
+            x=tcp.get("x", 0), y=tcp.get("y", 0), z=tcp.get("z", 0),
+            rx=tcp.get("rx", 0), ry=tcp.get("ry", 0), rz=tcp.get("rz", 0),
+        )
 
     def add_measurement(
         self,

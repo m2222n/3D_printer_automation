@@ -52,6 +52,7 @@ class GraspPlanner:
         self.db_path = Path(db_path)
         self._db: Dict[str, Any] = {}
         self._defaults: Dict[str, Any] = {}
+        self._robot: Dict[str, Any] = {}
 
         self.load_database()
 
@@ -63,6 +64,7 @@ class GraspPlanner:
         with open(self.db_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
+        self._robot = data.get("robot", {})
         self._defaults = data.get("defaults", {})
         self._db = data.get("parts", {})
 
@@ -187,6 +189,45 @@ class GraspPlanner:
             "defined": part_name in self._db,
         }
 
+    def validate_pick(self, grasp: Dict[str, Any]) -> Dict[str, Any]:
+        """피킹 자세가 로봇 안전 범위 내인지 검증한다.
+
+        Args:
+            grasp: compute_grasp_world() 반환값
+
+        Returns:
+            {"safe": bool, "warnings": [str]} — 위반 항목 목록
+        """
+        warnings = []
+        pos = grasp["position_mm"]
+        safety = self._robot.get("safety", {})
+        workspace = self._robot.get("workspace_mm", {})
+
+        # 작업 영역 체크
+        for axis in ["x", "y", "z"]:
+            bounds = workspace.get(axis)
+            if bounds and not (bounds[0] <= pos[axis] <= bounds[1]):
+                warnings.append(
+                    f"{axis.upper()}={pos[axis]:.1f}mm 작업 영역 벗어남 "
+                    f"[{bounds[0]}, {bounds[1]}]"
+                )
+
+        # 최소 Z 높이 (빈 바닥 충돌 방지)
+        min_z = safety.get("min_z_mm")
+        if min_z is not None and pos["z"] < min_z:
+            warnings.append(
+                f"Z={pos['z']:.1f}mm < min_z={min_z}mm (충돌 위험)"
+            )
+
+        # 그리퍼 힘 제한
+        max_force = safety.get("max_gripper_force_N")
+        if max_force and grasp["gripper_force_N"] > max_force:
+            warnings.append(
+                f"force={grasp['gripper_force_N']}N > max={max_force}N"
+            )
+
+        return {"safe": len(warnings) == 0, "warnings": warnings}
+
     def plan_picks(
         self,
         recognized_parts: List[Dict[str, Any]],
@@ -216,6 +257,12 @@ class GraspPlanner:
             grasp["cluster_id"] = part.get("cluster_id")
             grasp["fitness"] = part.get("fitness")
             grasp["rmse"] = part.get("rmse")
+
+            # 로봇 안전 검증
+            validation = self.validate_pick(grasp)
+            grasp["safe"] = validation["safe"]
+            grasp["warnings"] = validation["warnings"]
+
             picks.append(grasp)
 
         # z축 높은 순 (위에 있는 부품부터 피킹 — 충돌 방지)

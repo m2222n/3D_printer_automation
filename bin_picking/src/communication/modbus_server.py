@@ -19,6 +19,17 @@ HCR-10L 협동로봇이 클라이언트로 레지스터를 읽어간다.
 
 FLOAT32 인코딩: IEEE 754, Big-endian (2 x UINT16 레지스터)
 
+오일러 각 순서: ZYX (Rz→Ry→Rx, intrinsic)
+  - scipy.spatial.transform.Rotation.as_euler("ZYX") 사용
+  - HCR-10L 티칭 펜던트와 동일 여부 4/14 교육에서 확인 필요
+  - 불일치 시 euler_convention 변경 + 레지스터 순서 조정
+
+피킹 사이클:
+  1. 비전 PC → CMD_NEW_PICK (1) + 자세 데이터 쓰기
+  2. 로봇 → 레지스터 폴링 → CMD_NEW_PICK 확인 → 피킹 실행
+  3. 로봇 → CMD_DONE (2) 쓰기
+  4. 비전 PC → CMD_DONE 확인 → 다음 부품 또는 CMD_IDLE (0)
+
 사용법:
   # 서버 시작 (기본 포트 502)
   python bin_picking/src/communication/modbus_server.py --port 5020
@@ -132,6 +143,8 @@ class PickingModbusServer:
         pos = grasp_result["position_mm"]
 
         # 오일러 각도 추출 (T_grasp_world에서)
+        # 컨벤션: ZYX intrinsic (Rz→Ry→Rx) — grasp_database.yaml robot.euler_convention과 일치
+        # ⚠️ HCR-10L 실제 컨벤션은 4/14 교육에서 확인
         T = grasp_result["T_grasp_world"]
         from scipy.spatial.transform import Rotation
         euler = Rotation.from_matrix(T[:3, :3]).as_euler("ZYX", degrees=True)
@@ -230,6 +243,34 @@ class PickingModbusServer:
         print(f"  위치: ({regs['x_mm']:+.1f}, {regs['y_mm']:+.1f}, {regs['z_mm']:+.1f}) mm")
         print(f"  회전: ({regs['rx_deg']:+.1f}, {regs['ry_deg']:+.1f}, {regs['rz_deg']:+.1f}) deg")
         print(f"  그리퍼: width={regs['gripper_width_mm']:.1f}mm, force={regs['gripper_force_N']:.1f}N")
+
+    def wait_for_done(self, timeout_s: float = 30.0, poll_hz: float = 10.0) -> bool:
+        """로봇이 CMD_DONE을 쓸 때까지 대기한다.
+
+        피킹 사이클: write_pick_command() → wait_for_done() → (다음 부품 or idle)
+
+        Args:
+            timeout_s: 최대 대기 시간 (초)
+            poll_hz: 폴링 주기 (Hz)
+
+        Returns:
+            True: CMD_DONE 수신, False: 타임아웃 또는 CMD_ERROR
+        """
+        interval = 1.0 / poll_hz
+        elapsed = 0.0
+
+        while elapsed < timeout_s:
+            cmd = self.read_command()
+            if cmd == CMD_DONE:
+                return True
+            if cmd == CMD_ERROR:
+                print(f"  ⚠️ 로봇 에러 수신 (CMD_ERROR)")
+                return False
+            time.sleep(interval)
+            elapsed += interval
+
+        print(f"  ⚠️ 타임아웃 ({timeout_s}s) — 로봇 응답 없음")
+        return False
 
 
 # ============================================================
