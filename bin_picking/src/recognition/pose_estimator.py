@@ -3,20 +3,28 @@
 ================================================================
 
 SizeFilter로 30종 → 5~8 후보 축소 후,
-각 후보 레퍼런스에 대해 FPFH+RANSAC → ICP Point-to-Plane(TukeyLoss)을
+각 후보 레퍼런스에 대해 FPFH+RANSAC → ICP 정밀 정합을
 순차 실행하고 최적 매칭을 선택한다.
 
 파이프라인: L4 인식/자세 추정
-  - FPFH(33D) + RANSAC 초기 정합
-  - ICP Point-to-Plane + Robust (TukeyLoss) 정밀 정합
+  - FPFH(33D) + FGR/RANSAC 초기 정합
+  - ICP 정밀 정합:
+    - Point-to-Plane + Robust (TukeyLoss) — 기본 (기하만)
+    - Colored ICP — 컬러 있을 때 자동 활성화 (기하+색상 동시 최적화)
   - 판정: fitness >= 0.3, RMSE <= 3mm
+
+Colored ICP:
+  - Open3D registration_colored_icp() 사용
+  - 기하(geometry) + 색상(photometric) 에너지를 동시에 최소화
+  - FPFH만으로 구분 못 하는 유사 형상/크기 부품(좌우 대칭 등)에 효과적
+  - lambda_geometric 파라미터로 기하 vs 색상 비중 조절 (0.968 기본)
+  - 컬러 없는 포인트클라우드에서는 자동으로 Point-to-Plane ICP로 폴백
 
 파라미터 (논문 리뷰 결정):
   - voxel_size: 2mm (0.002m)
   - FPFH radius: 10mm (5 x voxel)
   - RANSAC distance threshold: 3mm (1.5 x voxel)
   - ICP distance threshold: 1mm (0.5 x voxel)
-  - ICP: Point-to-Plane + TukeyLoss
 
 실행: source .venv/binpick/bin/activate && python bin_picking/src/pose_estimator.py --no-vis
 """
@@ -60,7 +68,8 @@ class PoseEstimator:
     """
 
     def __init__(self, voxel_size: float = DEFAULT_VOXEL_SIZE, use_fgr: bool = True,
-                 min_point_ratio: float = 0.15, refine_top_k: int = 0):
+                 min_point_ratio: float = 0.15, refine_top_k: int = 0,
+                 use_colored_icp: bool = True, lambda_geometric: float = 0.968):
         """
         Args:
             voxel_size: 다운샘플링 복셀 크기 (미터). 기본 2mm.
@@ -71,11 +80,18 @@ class PoseEstimator:
             refine_top_k: >0이면 1차 매칭 후 상위 K개를 multi-resolution ICP로
                           재평가하여 최종 순위를 결정한다. hard 난이도 개선용.
                           기본 0 (비활성 — 기존 동작 유지)
+            use_colored_icp: True면 컬러 포인트클라우드일 때 Colored ICP 사용.
+                             컬러 없으면 자동으로 Point-to-Plane 폴백.
+                             기본 True.
+            lambda_geometric: Colored ICP에서 기하 vs 색상 비중.
+                              1.0 = 기하만, 0.0 = 색상만, 기본 0.968.
         """
         self.voxel_size = voxel_size
         self.use_fgr = use_fgr
         self.min_point_ratio = min_point_ratio
         self.refine_top_k = refine_top_k
+        self.use_colored_icp = use_colored_icp
+        self.lambda_geometric = lambda_geometric
 
         # 파생 파라미터 (논문 리뷰 + 실측 튜닝)
         self.fpfh_radius = voxel_size * 5        # 10mm
@@ -189,7 +205,21 @@ class PoseEstimator:
         )
 
     # ============================================================
-    # 등록: 초기 정합 + ICP Point-to-Plane (TukeyLoss)
+    # 유틸: 포인트클라우드 컬러 유무 판정
+    # ============================================================
+    @staticmethod
+    def _has_colors(pcd: o3d.geometry.PointCloud) -> bool:
+        """포인트클라우드에 유효한 컬러 정보가 있는지 확인한다."""
+        if not pcd.has_colors():
+            return False
+        colors = np.asarray(pcd.colors)
+        if len(colors) == 0:
+            return False
+        # 모든 컬러가 동일하면 (uniform paint 등) 컬러 정보 없는 것과 동일
+        return not np.allclose(colors[0], colors, atol=0.01)
+
+    # ============================================================
+    # 등록: 초기 정합 + ICP (Point-to-Plane 또는 Colored ICP)
     # ============================================================
     def register(
         self,
@@ -199,6 +229,9 @@ class PoseEstimator:
         target_fpfh: o3d.pipelines.registration.Feature,
     ) -> Tuple[o3d.pipelines.registration.RegistrationResult, float]:
         """초기 정합(FGR/RANSAC) + ICP 정밀 정합을 실행한다.
+
+        양쪽 포인트클라우드에 컬러가 있고 use_colored_icp=True이면
+        Colored ICP를 사용하고, 그렇지 않으면 Point-to-Plane ICP를 사용한다.
 
         Args:
             source_down: 레퍼런스 (다운샘플링됨)
@@ -226,22 +259,89 @@ class PoseEstimator:
                 source_down, source_fpfh, target_down, target_fpfh
             )
 
-        # ICP Point-to-Plane + TukeyLoss — 정밀 정합
+        # 정밀 정합: Colored ICP 또는 Point-to-Plane ICP
+        both_have_color = (self._has_colors(source_down) and
+                           self._has_colors(target_down))
+
+        if self.use_colored_icp and both_have_color:
+            result_icp = self._colored_icp(
+                source_down, target_down, result_global.transformation
+            )
+        else:
+            result_icp = self._point_to_plane_icp(
+                source_down, target_down, result_global.transformation
+            )
+
+        elapsed = time.time() - t0
+        return result_icp, elapsed
+
+    def _point_to_plane_icp(
+        self,
+        source: o3d.geometry.PointCloud,
+        target: o3d.geometry.PointCloud,
+        init_transform: np.ndarray,
+    ) -> o3d.pipelines.registration.RegistrationResult:
+        """Point-to-Plane ICP + TukeyLoss — 기하 기반 정밀 정합."""
         loss = o3d.pipelines.registration.TukeyLoss(k=self.icp_distance)
         estimation = o3d.pipelines.registration.TransformationEstimationPointToPlane(loss)
 
-        result_icp = o3d.pipelines.registration.registration_icp(
-            source_down, target_down,
+        return o3d.pipelines.registration.registration_icp(
+            source, target,
             max_correspondence_distance=self.icp_distance * 3,
-            init=result_global.transformation,
+            init=init_transform,
             estimation_method=estimation,
             criteria=o3d.pipelines.registration.ICPConvergenceCriteria(
                 relative_fitness=1e-6, relative_rmse=1e-6, max_iteration=50
             ),
         )
 
-        elapsed = time.time() - t0
-        return result_icp, elapsed
+    def _colored_icp(
+        self,
+        source: o3d.geometry.PointCloud,
+        target: o3d.geometry.PointCloud,
+        init_transform: np.ndarray,
+    ) -> o3d.pipelines.registration.RegistrationResult:
+        """Colored ICP — 기하 + 색상 동시 최적화.
+
+        Open3D registration_colored_icp()는 Point-to-Plane 에너지에
+        색상(photometric) 에너지를 추가하여 유사 형상 부품 변별력을 높인다.
+        multi-scale: 4mm → 2mm → 1mm coarse-to-fine으로 안정적 수렴.
+        """
+        voxel_sizes = [self.voxel_size * 2, self.voxel_size, self.voxel_size * 0.5]
+        max_iters = [50, 30, 20]
+
+        current_T = init_transform.copy()
+        result = None
+
+        for vs, max_iter in zip(voxel_sizes, max_iters):
+            src_down = source.voxel_down_sample(vs)
+            tgt_down = target.voxel_down_sample(vs)
+
+            src_down.estimate_normals(
+                o3d.geometry.KDTreeSearchParamHybrid(radius=vs * 3, max_nn=30)
+            )
+            tgt_down.estimate_normals(
+                o3d.geometry.KDTreeSearchParamHybrid(radius=vs * 3, max_nn=30)
+            )
+
+            result = o3d.pipelines.registration.registration_colored_icp(
+                src_down, tgt_down,
+                voxel_size=vs,
+                init=current_T,
+                estimation_method=(
+                    o3d.pipelines.registration
+                    .TransformationEstimationForColoredICP(
+                        lambda_geometric=self.lambda_geometric
+                    )
+                ),
+                criteria=o3d.pipelines.registration.ICPConvergenceCriteria(
+                    relative_fitness=1e-6, relative_rmse=1e-6,
+                    max_iteration=max_iter,
+                ),
+            )
+            current_T = result.transformation
+
+        return result
 
     # ============================================================
     # Multi-resolution ICP 정밀 재평가 (refine_top_k용)
@@ -323,6 +423,9 @@ class PoseEstimator:
         results = []
         skipped_by_ratio = 0
 
+        # Colored ICP 사용 여부 판정 (클러스터에 컬러가 있을 때)
+        cluster_has_color = self._has_colors(cluster_down)
+
         for ref_name in names_to_try:
             ref_data = reference_cache[ref_name]
             ref_down = ref_data["pcd_down"]
@@ -341,6 +444,10 @@ class PoseEstimator:
                 ref_down, ref_fpfh, cluster_down, cluster_fpfh
             )
 
+            # Colored ICP 사용 여부: 양쪽 모두 컬러 있을 때만 활성화
+            used_colored = (self.use_colored_icp and cluster_has_color
+                           and self._has_colors(ref_down))
+
             results.append({
                 "name": ref_name,
                 "fitness": result.fitness,
@@ -349,6 +456,7 @@ class PoseEstimator:
                 "time": elapsed,
                 "correspondences": len(result.correspondence_set),
                 "point_ratio": n_ref / n_cluster if n_cluster > 0 else 0,
+                "colored_icp": used_colored,
             })
 
         # fitness 높은 순 정렬 (동점 시 RMSE 낮은 순)
