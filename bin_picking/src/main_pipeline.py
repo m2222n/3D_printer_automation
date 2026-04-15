@@ -369,6 +369,7 @@ def main():
     parser = argparse.ArgumentParser(description="빈피킹 메인 파이프라인")
     parser.add_argument("--input", type=str, help="저장된 프레임 디렉토리 (depth.npy + meta.json)")
     parser.add_argument("--realsense", action="store_true", help="RealSense D435 라이브 캡처")
+    parser.add_argument("--basler", action="store_true", help="Basler Blaze-112 + ace2 라이브 캡처")
     parser.add_argument("--synthetic", action="store_true", help="합성 테스트 씬 사용")
     parser.add_argument("--n-parts", type=int, default=3, help="합성 씬 부품 수 (기본 3)")
     parser.add_argument("--no-vis", action="store_true", help="시각화 건너뛰기")
@@ -431,8 +432,24 @@ def main():
             print(f"  [오류] RealSense 캡처 실패: {e}")
             sys.exit(1)
 
+    elif args.basler:
+        print("  모드: Basler Blaze-112 + ace2 라이브 캡처")
+        try:
+            from bin_picking.src.acquisition.basler_capture import BaslerCapture
+            cam = BaslerCapture()
+            result = cam.start()
+            print(f"  Blaze-112: {'OK' if result['blaze'] else 'FAIL'}")
+            print(f"  ace2:      {'OK' if result['ace2'] else 'N/A'}")
+            frames = cam.capture()
+            scene_pcd = cam.to_pointcloud(frames)
+            cam.stop()
+            print(f"  캡처 완료: 포인트 {len(scene_pcd.points):,}")
+        except Exception as e:
+            print(f"  [오류] Basler 캡처 실패: {e}")
+            sys.exit(1)
+
     else:
-        print("  입력 모드를 지정하세요: --synthetic, --input <dir>, --realsense")
+        print("  입력 모드를 지정하세요: --synthetic, --input <dir>, --realsense, --basler")
         parser.print_help()
         sys.exit(1)
 
