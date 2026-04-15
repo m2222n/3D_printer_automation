@@ -57,7 +57,10 @@ robot:
   # 통신
   modbus_port: 502
   modbus_slave_id: 1
-  euler_convention: "ZYX"          # Rz→Ry→Rx (현재 modbus_server.py와 일치)
+  euler_convention: "ZYX"          # Rz→Ry→Rx (modbus_server.py와 일치)
+  modbus_encoding: "INT16"         # 1/10mm, 1/10deg (HCR 펜던트와 동일)
+  user_registers: [130, 255]       # 사용자 사용 가능 레지스터 범위
+  tcp_read_registers: [400, 405]   # 현재 TCP 좌표 읽기 (X,Y,Z,Rx,Ry,Rz)
 
   # 작업 영역 제한 (로봇 베이스 기준, mm) — 빈 위치에 맞춰 교정 필요
   workspace_mm:
