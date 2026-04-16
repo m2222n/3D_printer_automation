@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   controlAutomation,
   createAutomationCommand,
@@ -22,6 +22,7 @@ type FormState = {
   preset_id: string;
   washing_time: number;
   curing_time: number;
+  target_printer: number | ''; // 260410 추가
 };
 type QueueTab = 'board' | 'job';
 
@@ -74,9 +75,8 @@ function printerStatusTone(printer: PrinterSummary): string {
 function OnOffBadge({ on }: { on: boolean }) {
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-        on ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'
-      }`}
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${on ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'
+        }`}
     >
       {on ? 'ON' : 'OFF'}
     </span>
@@ -102,6 +102,7 @@ export function AutomationPage() {
     preset_id: '',
     washing_time: 360,
     curing_time: 120,
+    target_printer: '', // 260410 추가  
   });
   const [presets, setPresets] = useState<Preset[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -205,6 +206,7 @@ export function AutomationPage() {
         preset_id: form.preset_id || undefined,
         washing_time: form.washing_time,
         curing_time: form.curing_time,
+        target_printer: form.target_printer ? Number(form.target_printer) : undefined, // 260410 추가
       });
       setMessage(`CMD created: ${r.cmd_id}`);
       setShowCreateModal(false);
@@ -685,6 +687,20 @@ export function AutomationPage() {
                     value={form.curing_time}
                     onChange={(e) => setForm((p) => ({ ...p, curing_time: Number(e.target.value || 0) }))}
                   />
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Target Printer</label>
+                  <select
+                    className="w-full border rounded px-3 py-2 text-sm"
+                    value={form.target_printer}
+                    onChange={(e) => setForm((p) => ({ ...p, target_printer: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  >
+                    <option value="">Any Printer (공용/아무 프린터나)</option>
+                    <option value="1">Printer 1 전용</option>
+                    <option value="2">Printer 2 전용</option>
+                    <option value="3">Printer 3 전용</option>
+                    <option value="4">Printer 4 전용</option>
+                  </select>
                 </div>
               </div>
               <div className="flex gap-2 pt-2">

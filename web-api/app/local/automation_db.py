@@ -175,6 +175,7 @@ def create_command(
     washing_time: int,
     curing_time: int,
     allocated_data: dict[str, Any] | None = None,
+    target_printer: int | None = None, # 260410 추가
 ) -> str:
     now = datetime.now()
     cmd_id = str(uuid.uuid4())
@@ -201,7 +202,7 @@ def create_command(
                 "wash_minutes": max(1, int(math.ceil(washing_time / 60))),
                 "washing_time": washing_time,
                 "curing_time": curing_time,
-                "target_printer": None,
+                "target_printer": target_printer, # None에서 target_printer로 수정
                 "allocated_data": json.dumps(payload),
                 "message": "QUEUED from automation tab",
                 "created_at": now,

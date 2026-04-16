@@ -359,6 +359,7 @@ export interface AutomationCommandCreate {
   preset_id?: string;
   washing_time: number;
   curing_time: number;
+  target_printer?: number; // 260410 추가
 }
 
 export interface AutomationCommandItem {
