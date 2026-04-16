@@ -1142,6 +1142,7 @@ class AutomationCommandCreate(BaseModel):
     preset_id: str | None = Field(default=None, max_length=36)
     washing_time: int = Field(..., ge=1, le=86400)
     curing_time: int = Field(..., ge=1, le=7200)
+    target_printer: int | None = Field(default=None, ge=1, le=4) #260410 추가
 
 
 class AutomationManualSend(BaseModel):
@@ -1207,6 +1208,7 @@ async def create_automation_command(body: AutomationCommandCreate, db: Session =
             washing_time=body.washing_time,
             curing_time=body.curing_time,
             allocated_data=allocated_data,
+            target_printer=body.target_printer  #260410 추가
         )
         return {"ok": True, "cmd_id": cmd_id}
     except HTTPException:
