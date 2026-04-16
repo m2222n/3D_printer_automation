@@ -64,6 +64,17 @@
 - **3/27 한솔코에버 최종 시연** (한솔 자체 진행, 정태민은 Azure 교육 중)
 - **4/3 김기원 주임 퇴사 확인** — 한솔코에버 퇴사. 직접 지원 불가, 구조/플로우 문의는 가능. 코드 docs 폴더에 역할별 요약 있다고 함
 
+### 2026.04.16 (한솔코에버 이예승 사원 — 프린터 할당 기능)
+- 이예승 사원이 `hansol-dev` 브랜치에 커밋 `74584fb` 업로드 (4/16)
+- **내용**: 자동화 CMD 생성 시 특정 프린터 할당 콤보박스 연동 (기존: 랜덤 → 1~4번 지정 가능) + 공용 큐 버그 수정
+- **추가 파일**: `sequence_service/.env.copy` — Modbus 레지스터 매핑 환경변수 템플릿
+- ✅ **머지 완료 (4/16)** — `hansol-merge-2` 브랜치에서 cherry-pick + 검토 후 main 머지 (`e68c2b1`)
+  - 머지 커밋(`34507f0`)의 인코딩 깨짐 차단 — App.tsx mojibake, auth.py 한글 주석 파괴 방지
+  - localApi.ts 불필요한 포매팅 변경 되돌림
+  - TypeScript 타입 체크 + Vite 빌드 PASS 확인
+  - origin + personal 양쪽 push 완료
+- **예승님 질문**: 공장 PC 배포 디렉토리 → 답변 대기 중
+
 ### 2026.04.10 (산업용 PC 카메라 구성 + 로봇 교육)
 - **산업용 PC 카메라 구성**: Bottom Vision 1대 + 빈피킹 2대(Blaze-112+ace2) + 3D프린터/경화기 모니터링 1~2대 + 양손 로봇(추후) 1대 = **최대 6대**
 - **산업용 PC 스펙 우려**: 5060, RAM 8GB — 카메라 6대 버거울 수 있음 → **젯슨 나노로 분산** 가능성
@@ -109,6 +120,22 @@
 - **보고 시 시각화 요청**: 안 되는 케이스에 대해 **스크린샷/이미지 첨부**하여 왜 안 되는지 시각적으로 설명해달라
   - → E2E 테스트에 실패 케이스 시각화 기능 구현 필요 (매칭 결과 오버레이, 오매칭 비교 이미지 자동 저장)
 
+### 2026.04.15 (카메라 입고 전 SW 마무리)
+- ✅ **Modbus 레지스터 맵 HCR-10L 실제 스펙으로 재설계** (`a13b5ce`)
+  - 레지스터 주소 40001~ → HCR-10L 사용자 영역 130~140 (비전PC→로봇), 150~151 (로봇→비전PC)
+  - 인코딩 FLOAT32(2레지스터) → INT16(1레지스터, 1/10mm, 1/10deg) — 펜던트와 동일
+  - 로봇 내장 레지스터 매핑: 400~405(TCP 좌표), 600(상태), 700~702(명령)
+  - 시퀀스 번호 동기화 + 쓰기 순서 보장 (좌표→CMD)
+- ✅ **Colored ICP 파이프라인 추가** (`b33547b`)
+  - `use_colored_icp=True` 기본: 양쪽 컬러 있으면 자동 활성화, 없으면 Point-to-Plane 폴백
+  - multi-scale Colored ICP (4mm→2mm→1mm coarse-to-fine)
+  - hard 난이도 60% → 개선 기대 (좌우 대칭 부품 변별력 향상)
+- ✅ **Basler Blaze-112 + ace2 듀얼 캡처 모듈** (`6ad4668`)
+  - `basler_capture.py`: pypylon 기반, RealSenseCapture와 동일 인터페이스
+  - Blaze-112(ToF depth) + ace2(RGB 5MP) 듀얼 캡처
+  - save/load 라운드트립, 시뮬 프레임, CLI(--list, --test)
+  - main_pipeline.py에 `--basler` 옵션 추가
+
 ### 2026.04.03 (빈피킹 지시)
 - **3D+RGB 카메라 확인**: Blaze-112(ToF) 단독인지, ace2(RGB)와 조합해서 포인트 잡는지 확인
 - **STL 수집+정리+중복제거 완료 (4/6)**: 55개 다운 → 중복 제거 → 46개 → bbox 동일 분석 → **29종** (17개 `_duplicates/`). STL 최종 목록은 아직 미확정 (대표님도 확정 전, 킵고잉)
@@ -138,7 +165,7 @@
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | ~~OpenMV~~ → **MaixCAM** 장비 모니터링 | 🟡 HIGH | 6주 | 🔄 OpenMV 제외, **MaixCAM으로 전환** (4/14 대표님 지시). 리서치 완료 — 1 TOPS NPU, find_blobs()/YOLO, MQTT/Modbus 내장. 빈피킹 우선, 여유 시 PoC |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W4 — **L1~L6 SW 완성 + 그래스프 DB 29종 + D435 Full Pipeline PASS + E2E 시각화 + eye-in-hand 설계 + HCR-10L 로봇 파라미터 정비 + 로봇 교육 1회차 완료**. 인식률 100%(easy), crowded 90%, hard 60%. **다음: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → Colored ICP + 실제 캘리브레이션** |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W5 — **Modbus INT16 재설계 + Colored ICP 파이프라인 + Basler 듀얼 캡처 모듈** 추가. L1~L6 SW 완성 + 그래스프 DB 29종 + D435 Full Pipeline PASS. 인식률 100%(easy), crowded 90%, hard 60%. **다음: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → 실제 캘리브레이션** |
 
 ---
 
@@ -221,12 +248,12 @@
 │
 ├── bin_picking/                  # Phase 5: 3D 빈피킹 비전 시스템
 │   ├── src/
-│   │   ├── acquisition/         # L1: 카메라 캡처 (depth_to_pointcloud, realsense_capture)
+│   │   ├── acquisition/         # L1: 카메라 캡처 (depth_to_pointcloud, realsense_capture, basler_capture)
 │   │   ├── preprocessing/       # L2: 전처리 (cloud_filter — ROI, 이상치, 다운샘플, RANSAC, 법선)
 │   │   ├── segmentation/        # L3: 분할 (dbscan_segmenter)
 │   │   ├── recognition/         # L4: 인식+자세 (cad_library, pose_estimator, size_filter)
-│   │   ├── grasping/            # L5: 그래스프 계획 (미구현)
-│   │   └── communication/       # L6: 로봇 통신 (미구현)
+│   │   ├── grasping/            # L5: 그래스프 계획 (grasp_planner, grasp_database.yaml)
+│   │   └── communication/       # L6: 로봇 통신 (modbus_server — HCR-10L INT16)
 │   ├── models/
 │   │   ├── cad/                 # STL 원본 (46개, 고유 45종)
 │   │   ├── reference_clouds/    # pickle 캐시 (포인트+법선+bbox)
@@ -417,14 +444,15 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 - [ ] 실제 프린터 프린트 전송 테스트 (레진 탱크 장착 필요)
 
 ### 인프라
-| 구분 | 서버 | 외부 포트 | 용도 |
-|------|------|----------|------|
-| 6000 서버 | 192.168.100.29:8085 (VPN: 10.145.113.8) | 8085 | **개발용** (현재 동작 중 ✅) |
-| 카카오 클라우드 | 61.109.239.142:22 | 미정 | **운영용** (VM 생성 완료, 세팅 대기) |
+| 구분 | 서버 | 외부 포트 | 용도 | 상태 |
+|------|------|----------|------|------|
+| 6000 서버 | 192.168.100.29:8085 (VPN: 10.145.113.8) | 8085 | **개발용** (이전 후 git 저장소만) | ✅ 동작 중 |
+| 카카오 클라우드 | 61.109.239.142:8085 | 8085 | **운영용** (웹 서비스) | ✅ 내부 동작, ⏳ 외부 포트 대기 |
 
-### VPN 네트워크 구조 (현재)
+### 네트워크 구조
 ```
-브라우저 → http://106.244.6.242:8085 → 6000 서버 (VPN: 10.145.113.8) → WireGuard Tunnel → 공장 PC (VPN: 10.145.113.3) → 프린터 4대
+[기존/6000] 브라우저 → 106.244.6.242:8085 → 6000서버 → WireGuard → 공장PC → 프린터
+[이전/카카오] 브라우저 → 61.109.239.142:8085 → 카카오VM → (TBD) → 공장PC → 프린터
 ```
 - **6000 서버 WireGuard 클라이언트 설치 완료 (3/26)**: Method B 적용 — 파리드님 conf 파일 제공, VPN IP `10.145.113.8/24`
 - ~~Method A (공유기 라우팅)~~ 실패 → Method B (서버에 WG 직접 설치)로 해결
@@ -719,13 +747,14 @@ POLLING_INTERVAL_SECONDS=15
 
 ---
 
-## 한솔코에버 협업 타임라인 (전체 완료)
+## 한솔코에버 협업 타임라인
 
 - ✅ HW 설계변경 및 구축 (02-25~03-18): 바렐→스핀들, 재원텍+코에버
 - ✅ SW 개발 (02-26~03-19): API 분석, 로봇/비전/3D프린팅 연동, 시퀀스 개발 — 김기원(퇴사), 이나라, 이예승
 - ✅ 데모 시연 (03-20): 경기ITP-코에버 3자 최종 확인 완료
 - ✅ 한솔 최종 시연 (03-27): 한솔 자체 진행
-- ✅ 코드 머지 (04-03): `hansol-dev` → main (`9c161dc`)
+- ✅ 코드 머지 1차 (04-03): `hansol-dev` → main (`9c161dc`) — 김기원 주임 코드
+- ✅ 코드 머지 2차 (04-16): `hansol-dev` → main (`e68c2b1`) — 이예승 사원, 프린터 할당 기능
 
 ---
 
@@ -737,15 +766,29 @@ POLLING_INTERVAL_SECONDS=15
 | main 보호 | Require PR + Restrict deletions + Block force pushes |
 | 오리누 작업 | `main` 브랜치 |
 | 한솔 작업 | `hansol-dev` 브랜치 |
-| 한솔 권한 | Write (Collaborator: `justkiwon`) |
+| 한솔 권한 | Write (Collaborator: ~~`justkiwon`~~ 퇴사, `eseung97` 이예승) |
 | 리모트 | `origin` = orinu-ai, `personal` = m2222n |
 
 ---
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-14
-- **현재 상태**: Phase 1~3 완료. **Phase 5 빈피킹 — L1~L6 SW 완성 + HCR-10L 로봇 파라미터 정비 + D435 Full Pipeline PASS (미등록 물체 REJECT 확인). 카메라 입고(5월) 전 SW 준비 완료.**
+- **날짜**: 2026-04-16
+- **현재 상태**: Phase 1~3 완료. Phase 5 빈피킹 SW 완성 (카메라 입고 5월 대기). **카카오 클라우드 VM으로 웹 서비스 이전 진행 중** (파리드님 권고, 6000 서버 VPN → 카카오 VM 공인 IP).
+
+### 4/16 — 카카오 클라우드 VM 이전 + 한솔 머지 2차
+- ✅ **한솔 머지 2차 완료** (`e68c2b1`) — 이예승 사원 `74584fb` cherry-pick. 자동화 CMD 프린터 할당 + .env.copy 추가
+- ✅ **카카오 VM 세팅 완료** (내부 동작 확인):
+  - rsync로 소스 전송 (.git 포함, 최신 `e68c2b1`)
+  - Python 3.12.3 venv + 의존성 설치 완료
+  - Node.js 18 설치, frontend dist 전송
+  - systemd user service 등록 + enable + linger (자동 시작)
+  - **localhost:8085 API 정상** — 프린터 4대 Cloud API 폴링 동작, 프론트엔드 HTML 서빙 확인
+- ✅ **카카오 보안 그룹 8085 오픈 완료** — 파리드님 카카오 클라우드 콘솔에서 인바운드 TCP 8085 추가
+- ⚠️ **VM SSH 접속 불가** — 보안 그룹 변경 후 SSH(22)도 타임아웃. VM 내부 ufw allow 8085 미실행 상태. 파리드님 확인 대기
+- ⏳ **블로커**: 공장 PC 연결 — 파리드님 답변: **WireGuard 쓰지 말고 공인 IP로 통신**. 구체적 방법은 추후 결정
+- **도메인**: 지금은 IP(61.109.239.142)만 사용, 대표님이 새 도메인 구매 후 설정
+- **한솔 예승님 확인**: sequence_service는 공장 PC(현장)에서 실행 — 로컬 MySQL로 자동화 시퀀스 로그 관리
 
 ### 4/14 — HCR-10L 로봇 코드 정비 + D435 Full Pipeline PASS
 - ✅ `grasp_database.yaml`에 HCR-10L 로봇 스펙 섹션 추가 (TCP 오프셋, 관절 제한, 작업 영역, 안전 파라미터)
@@ -762,12 +805,14 @@ POLLING_INTERVAL_SECONDS=15
 - ✅ eye-in-hand 캘리브레이션 — 시뮬 PASS (회전 0.28°, 이동 0.57mm)
 
 ### 다음 작업
-- 🟡 **4/14(화) 오후**: 한솔코에버 HCR-10L 로봇 **티칭 사용법 교육** (펜던트 조작, 좌표계, TCP 설정 메뉴 위치 파악)
+- 🔴 **카카오 VM SSH 복구** → ufw allow 8085 실행 → 외부 접속 테스트 → 6000 서버 웹 서비스 중지
+- 🔴 **공장 PC ↔ 카카오 VM 연결** — SSH 리버스 터널 또는 다른 방법 (파리드님과 협의)
 - 🟡 **실물 SLA 부품 확보** → D435로 촬영 → CAD 매칭 ACCEPT 검증 (공장에서 3~5개 가져오기)
-- 🟡 **[한솔 협업]** 이예승 사원 온보딩 + sequence_service 연동
-- 🔄 카카오 클라우드 + Cloudflare Tunnel — 파리드님에게 요청 예정
+- 🟡 **[한솔 협업]** 이예승 사원 — sequence_service 공장 PC 배포
 - 🔄 **카메라 입고 대기 (5월)** → Colored ICP + 실제 핸드-아이 캘리브레이션 (2세트) + multi-view 재촬영
 
 ### 대기 중
-- ⬜ 카카오 클라우드 VM 환경 세팅 (운영 서버 이전) — 도메인 `lab.flickdone.com` 확정
-- ⬜ 한솔코에버 자동화 탭 문서 수신 대기 (예승님)
+- ⏳ 카카오 VM SSH 접속 불가 — 파리드님 확인 대기 (보안 그룹 변경 후 SSH+8085 모두 타임아웃)
+- ⏳ 공장 PC 연결 구체 방안 — 파리드님과 협의 필요
+- ⬜ 도메인 설정 — 대표님이 새 도메인 구매 후 DNS A 레코드 설정
+- ⬜ GitHub deploy key 등록 — 카카오 VM에서 직접 git pull 가능하도록
