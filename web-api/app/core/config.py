@@ -142,6 +142,12 @@ class Settings(BaseSettings):
     VISION_TCP_PORT: int = 9200
     MANUAL_TCP_TIMEOUT_SECONDS: float = 5.0
 
+    # ===========================================
+    # Basic Auth (웹 접근 보호)
+    # ===========================================
+    BASIC_AUTH_USERNAME: str = ""
+    BASIC_AUTH_PASSWORD: str = ""
+
     # Ajin IO (AXL.dll) — Windows 전용
     AJIN_SIMULATION: bool = True
     AJIN_IRQ_NO: int = 7

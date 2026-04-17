@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from app.core.config import get_settings
+from app.core.basic_auth import BasicAuthMiddleware
 from app.services.polling_service import start_polling_service, stop_polling_service, get_polling_service
 from app.services.notification_service import notification_handler
 from app.api.routes import router as api_router
@@ -162,6 +163,15 @@ Web API 기반 모니터링 시스템
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Basic Auth (CORS 뒤에 추가 → 요청 시 auth가 먼저 실행됨)
+    if settings.BASIC_AUTH_USERNAME and settings.BASIC_AUTH_PASSWORD:
+        app.add_middleware(
+            BasicAuthMiddleware,
+            username=settings.BASIC_AUTH_USERNAME,
+            password=settings.BASIC_AUTH_PASSWORD,
+        )
+        logger.info("🔒 Basic Auth 활성화")
     
     # API 라우터 등록
     app.include_router(api_router, prefix="/api/v1")

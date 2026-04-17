@@ -46,7 +46,7 @@
 | 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 |
 | 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 |
 | 깊이 카메라 | Intel RealSense D435 | 1대 | RGB-D 스테레오 (빈피킹 보조/테스트) |
-| 비전 카메라 | OpenMV AE3 | 4대 (예정) | 세척기/경화기 완료 감지 |
+| 비전 카메라 | Sipeed MaixCAM | 1+대 | 세척기/경화기 완료 감지 (OpenMV 대체) |
 
 ---
 
@@ -57,18 +57,19 @@
 | **Phase 1** | Web API 모니터링 | ✅ 완료 | Formlabs Cloud API, 실시간 대시보드, WebSocket |
 | **Phase 2** | Local API 원격 제어 + UI | ✅ 완료 | PreFormServer 연동, 5탭 UI, 슬라이스/통계/알림 |
 | **Phase 3** | HCR 로봇 연동 | ✅ 코드 머지 완료 | 한솔코에버 시퀀스 서비스 + 자동화 프론트엔드 통합 |
-| **Phase 4** | OpenMV + YOLO 비전 검사 | 🔄 진행 중 (일시 대기) | WiFi+MQTT E2E 성공, 학습 이미지 350장 — 빈피킹 우선 |
+| **Phase 4** | MaixCAM 장비 모니터링 | 🔄 대기 (빈피킹 우선) | OpenMV→MaixCAM 전환, 온디바이스 AI, MQTT — 빈피킹 우선 |
 | **Phase 5** | 3D 빈피킹 비전 시스템 | ✅ SW 완성 | L1~L6 파이프라인 + 그래스프 DB 29종 + D435 실데이터 PASS + eye-in-hand 설계 + HCR-10L 로봇 파라미터 정비 |
 
-### 현재 상태 (2026-04-14)
-- **Phase 1~3 완료**: 웹 모니터링 + 원격 프린트 + 로봇 연동 (한솔코에버 머지)
-- **웹 서비스 인프라 정비**: systemd 자동시작 (포트 8085) + WireGuard VPN 자동시작 + 한솔 머지 코드 Linux 호환 수정
+### 현재 상태 (2026-04-17)
+- **Phase 1~3 완료**: 웹 모니터링 + 원격 프린트 + 로봇 연동 (한솔코에버 머지 2차 포함)
+- **카카오 클라우드 VM 이전 완료** (모니터링):
+  - `http://61.109.239.142:8085/` — Cloud API 폴링 + 프론트엔드 + Basic Auth
+  - 6000 서버와 병행 운영 중, 공장 PC 연결은 도메인 확정 후 Cloudflare Tunnel로 진행
 - **Phase 5 빈피킹 — SW 완성 + 실데이터 검증 진행 중**:
   - STL 29종 레퍼런스 캐시 + **인식률 100% (easy/medium), RMSE 1.02~1.50mm, 매칭 0.4~0.6s/부품**
-  - L5 그래스프 DB **29종** 완성 + L6 Modbus TCP 서버
+  - L5 그래스프 DB **29종** 완성 + L6 Modbus TCP (HCR-10L INT16 재설계) + Colored ICP + Basler 듀얼 캡처
   - RealSense D435 라이브 연동 + **Full Pipeline (L1~L5) 2회 PASS** — CAD 미등록 물체 REJECT 일관성 확인
-  - E2E 실패 케이스 시각화 (`--save-viz`), eye-in-hand 캘리브레이션 설계 완료
-  - HCR-10L 로봇 파라미터 정비 (validate_pick, wait_for_done, TCP 오프셋) + **로봇 교육 1회차 완료**
+  - HCR-10L 로봇 교육 1회차 완료 + 로봇 파라미터 정비
 - **다음**: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → Colored ICP + 실제 캘리브레이션 + HCR-10L 실전 피킹
 
 ---
@@ -106,14 +107,15 @@
 +----------------+ +------------------+ | +---------------------------+ |
                                         | | Form 4 x4 (WiFi)         | |
                                         +-------------------------------+
-                                                    |
-                                            WireGuard VPN
-                                                    |
-                                         +---------------------+
-                                         | Server (FastAPI)    |
-                                         | Dev: 8085 (systemd) |
-                                         | Prod: Kakao Cloud   |
-                                         +---------------------+
+                                              |                |
+                                       WireGuard VPN    (Future: Cloudflare Tunnel)
+                                              |                |
+                                    +----------------+ +-------------------+
+                                    | 6000 Server    | | Kakao Cloud VM    |
+                                    | Dev + Control  | | Monitoring Only   |
+                                    | :8085 (systemd)| | :8085 (systemd)   |
+                                    +----------------+ | + Basic Auth       |
+                                                       +-------------------+
 ```
 
 ### 빈피킹 비전 파이프라인 (Phase 5)
@@ -133,13 +135,25 @@ L1 Acquisition     L2 Preprocessing     L3 Segmentation    L4 Recognition       
 ### Network
 
 ```
-Office                                      Factory
-+----------------------+ WireGuard VPN +--------------------------+
-| Server (FastAPI)     | <============> | Factory PC              |
-| Dev: 6000 (:8085)    |  10.145.113.x  | PreFormServer :44388    |
-| Prod: Kakao Cloud    |                | file_receiver :8089     |
-+----------------------+                | Form 4 x4 (WiFi)        |
-                                        +-------------------------+
+Browser
+   |
+   +---------> Kakao Cloud VM (61.109.239.142:8085) [Basic Auth]
+   |           - Monitoring (Cloud API polling)
+   |           - Frontend dashboard
+   |
+   +---------> 6000 Server (106.244.6.242:8085) [Basic Auth]
+               - Monitoring + Printer Control (via VPN)
+               - Development environment
+               |
+               | WireGuard VPN (10.145.113.x)
+               v
+            Factory PC (Windows)
+            - PreFormServer :44388
+            - file_receiver :8089
+            - sequence_service (Hansol)
+            - Form 4 x4 (WiFi)
+
+[Future] Kakao VM --Cloudflare Tunnel--> Factory PC (after domain setup)
 ```
 
 ---
