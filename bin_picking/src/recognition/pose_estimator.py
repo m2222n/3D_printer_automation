@@ -120,6 +120,55 @@ class PoseEstimator:
         self.camera_location = np.array([0.0, 0.0, 0.0])
 
     # ============================================================
+    # 레진 프리셋 생성자
+    # ============================================================
+    @classmethod
+    def from_resin(
+        cls,
+        resin_type: str,
+        use_fgr: bool = True,
+        min_point_ratio: float = 0.15,
+        refine_top_k: int = 0,
+        use_colored_icp: bool = True,
+        lambda_geometric: float = 0.968,
+    ) -> "PoseEstimator":
+        """레진 타입에 맞는 PoseEstimator를 생성한다.
+
+        SSOT(bin_picking/config/resin_presets.py)의 voxel_size와 판정 임계값을 적용한다.
+        FPFH 반경과 ICP 거리는 voxel_size에서 자동 파생되므로 voxel_size만 바꿔도
+        일관된 세트가 된다.
+
+        Args:
+            resin_type: "grey" | "white" | "clear" | "flexible"
+            나머지 인자는 __init__과 동일.
+
+        Returns:
+            프리셋이 적용된 PoseEstimator 인스턴스.
+        """
+        # 지연 import — 순환 import 방지
+        from bin_picking.config.resin_presets import get_preset
+
+        preset = get_preset(resin_type)
+        est = cls(
+            voxel_size=preset.voxel_size,
+            use_fgr=use_fgr,
+            min_point_ratio=min_point_ratio,
+            refine_top_k=refine_top_k,
+            use_colored_icp=use_colored_icp,
+            lambda_geometric=lambda_geometric,
+        )
+
+        # 프리셋에서 ICP 거리 / 판정 임계값 덮어쓰기
+        # (voxel_size 기반 자동 파생값보다 프리셋 명시값이 우선)
+        est.icp_distance = preset.icp_distance
+        est.fitness_threshold = preset.fitness_threshold
+        est.rmse_threshold = preset.rmse_threshold
+
+        # 프리셋 메타 정보 보존 (디버깅/로그 용)
+        est.resin_preset = preset
+        return est
+
+    # ============================================================
     # 전처리: 다운샘플링 → 법선 → FPFH
     # ============================================================
     def preprocess(

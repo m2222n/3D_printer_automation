@@ -12,8 +12,11 @@ ToF 카메라(Basler Blaze-112) + SLA 레진 부품 환경에 맞춘 전처리.
 
 사용법:
     from bin_picking.src.preprocessing.cloud_filter import CloudFilter
-    cf = CloudFilter()
+    cf = CloudFilter()                          # 기본값 (Grey V5 상당)
+    cf = CloudFilter.from_resin("clear")         # 레진별 프리셋 (SSOT 적용)
     pcd_objects = cf.process(raw_pcd)
+
+프리셋 SSOT: bin_picking/config/resin_presets.py
 """
 
 import numpy as np
@@ -24,41 +27,34 @@ except ImportError:
     o3d = None
 
 
-# 레진별 추천 파라미터 (논문 리뷰 + tutorials/11 결과)
-RESIN_PRESETS = {
-    "grey": {
-        "voxel_size": 0.002,
-        "sor_nb_neighbors": 20,
-        "sor_std_ratio": 2.0,
-        "normal_radius": 0.006,
-        "normal_max_nn": 30,
-        "plane_distance": 0.005,
-    },
-    "white": {
-        "voxel_size": 0.002,
-        "sor_nb_neighbors": 20,
-        "sor_std_ratio": 2.0,
-        "normal_radius": 0.006,
-        "normal_max_nn": 30,
-        "plane_distance": 0.005,
-    },
-    "clear": {
-        "voxel_size": 0.003,  # 반투명 → 노이즈 큼 → voxel 증가
-        "sor_nb_neighbors": 30,
-        "sor_std_ratio": 1.5,  # 더 엄격하게
-        "normal_radius": 0.009,
-        "normal_max_nn": 30,
-        "plane_distance": 0.005,
-    },
-    "flexible": {
-        "voxel_size": 0.002,
-        "sor_nb_neighbors": 20,
-        "sor_std_ratio": 2.0,
-        "normal_radius": 0.006,
-        "normal_max_nn": 30,
-        "plane_distance": 0.005,
-    },
-}
+# 레진별 프리셋은 SSOT(bin_picking/config/resin_presets.py)에서 단독 관리된다.
+# 여기서는 역호환을 위한 얕은 딕셔너리 뷰만 제공한다.
+try:
+    from bin_picking.config.resin_presets import get_preset, list_presets
+    _HAS_SSOT = True
+except ImportError:
+    _HAS_SSOT = False
+
+
+def _build_resin_presets_view() -> dict:
+    """SSOT 프리셋에서 CloudFilter 생성자 kwargs만 추출한 역호환 뷰."""
+    if not _HAS_SSOT:
+        return {}
+    view = {}
+    for name in list_presets():
+        p = get_preset(name)
+        view[name] = {
+            "voxel_size": p.voxel_size,
+            "sor_nb_neighbors": p.sor_nb_neighbors,
+            "sor_std_ratio": p.sor_std_ratio,
+            "normal_radius": p.normal_radius,
+            "normal_max_nn": p.normal_max_nn,
+            "plane_distance": p.plane_distance,
+        }
+    return view
+
+
+RESIN_PRESETS = _build_resin_presets_view()
 
 
 class CloudFilter:
@@ -120,21 +116,21 @@ class CloudFilter:
     def from_resin(cls, resin_type: str, **overrides) -> "CloudFilter":
         """레진 타입에 맞는 프리셋으로 생성.
 
+        SSOT(bin_picking/config/resin_presets.py)에서 파라미터를 가져온다.
+
         Parameters
         ----------
         resin_type : str
             "grey", "white", "clear", "flexible" 중 하나.
         **overrides
-            프리셋 값을 덮어쓸 키워드 인자.
+            프리셋 값을 덮어쓸 키워드 인자 (예: roi_min, roi_max).
         """
-        resin_type = resin_type.lower()
-        if resin_type not in RESIN_PRESETS:
-            raise ValueError(
-                f"알 수 없는 레진: {resin_type}. "
-                f"사용 가능: {list(RESIN_PRESETS.keys())}"
-            )
-        params = {**RESIN_PRESETS[resin_type], **overrides}
-        return cls(**params)
+        if not _HAS_SSOT:
+            raise RuntimeError("resin_presets 모듈을 찾을 수 없습니다.")
+        preset = get_preset(resin_type)
+        kwargs = preset.cloud_filter_kwargs()
+        kwargs.update(overrides)
+        return cls(**kwargs)
 
     def crop_roi(self, pcd: "o3d.geometry.PointCloud") -> "o3d.geometry.PointCloud":
         """1단계: ROI 크롭."""

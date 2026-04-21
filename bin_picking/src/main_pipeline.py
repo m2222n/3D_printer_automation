@@ -85,7 +85,16 @@ class BinPickingPipeline:
         roi: Optional[Dict[str, List[float]]] = None,
         size_filter_tolerance: float = 0.5,
         max_candidates: int = 10,
+        resin: Optional[str] = None,
     ):
+        # 레진 프리셋 해석 (voxel_size는 프리셋 값으로 덮어씀)
+        self._preset = None
+        if resin is not None:
+            from bin_picking.config.resin_presets import get_preset
+            self._preset = get_preset(resin)
+            voxel_size = self._preset.voxel_size
+            print(f"  레진 프리셋: {self._preset.name} (voxel={voxel_size*1000:.1f}mm)")
+
         self.voxel_size = voxel_size
         self.roi = roi or DEFAULT_ROI
         self.max_candidates = max_candidates
@@ -110,16 +119,26 @@ class BinPickingPipeline:
         for name, data in self.reference_cache.items():
             self.size_filter.add_reference(name, data["bbox_features"])
 
-        # PoseEstimator
-        self.estimator = PoseEstimator(voxel_size=voxel_size)
+        # PoseEstimator — 레진 프리셋이 설정되어 있으면 인스턴스 재생성
+        if hasattr(self, "_preset") and self._preset is not None:
+            self.estimator = PoseEstimator.from_resin(self._preset.name)
+        else:
+            self.estimator = PoseEstimator(voxel_size=voxel_size)
 
-        # L2: 전처리
-        self.cloud_filter = CloudFilter(
-            voxel_size=voxel_size,
-            plane_distance=0.003,
-            roi_min=np.array(self.roi["min"]),
-            roi_max=np.array(self.roi["max"]),
-        )
+        # L2: 전처리 — 레진 프리셋이 설정되어 있으면 해당 파라미터로 생성
+        if hasattr(self, "_preset") and self._preset is not None:
+            self.cloud_filter = CloudFilter.from_resin(
+                self._preset.name,
+                roi_min=np.array(self.roi["min"]),
+                roi_max=np.array(self.roi["max"]),
+            )
+        else:
+            self.cloud_filter = CloudFilter(
+                voxel_size=voxel_size,
+                plane_distance=0.003,
+                roi_min=np.array(self.roi["min"]),
+                roi_max=np.array(self.roi["max"]),
+            )
 
         # L3: 분할
         self.segmenter = DBSCANSegmenter(eps=0.010, min_points=30)
@@ -130,6 +149,29 @@ class BinPickingPipeline:
 
         # L6: Modbus 서버 (start_modbus() 호출 시 활성화)
         self.modbus_server: Optional[PickingModbusServer] = None
+
+    @classmethod
+    def from_resin(
+        cls,
+        resin: str,
+        roi: Optional[Dict[str, List[float]]] = None,
+        size_filter_tolerance: float = 0.5,
+        max_candidates: int = 10,
+    ) -> "BinPickingPipeline":
+        """레진 프리셋 기반 파이프라인 생성.
+
+        L2 전처리(CloudFilter), L4 매칭(PoseEstimator)의 voxel_size 및 판정 임계값이
+        SSOT(bin_picking/config/resin_presets.py)에서 일관되게 적용된다.
+
+        Args:
+            resin: "grey" | "white" | "clear" | "flexible"
+        """
+        return cls(
+            roi=roi,
+            size_filter_tolerance=size_filter_tolerance,
+            max_candidates=max_candidates,
+            resin=resin,
+        )
 
     def run(
         self,
@@ -373,13 +415,23 @@ def main():
     parser.add_argument("--synthetic", action="store_true", help="합성 테스트 씬 사용")
     parser.add_argument("--n-parts", type=int, default=3, help="합성 씬 부품 수 (기본 3)")
     parser.add_argument("--no-vis", action="store_true", help="시각화 건너뛰기")
+    parser.add_argument(
+        "--resin",
+        type=str,
+        default=None,
+        choices=["grey", "white", "clear", "flexible"],
+        help="레진 프리셋 (L2 + L4 파라미터 일관 적용). 미지정 시 기본값(voxel 2mm)",
+    )
     args = parser.parse_args()
 
     # ============================================================
     # 파이프라인 초기화
     # ============================================================
     print_section("빈피킹 파이프라인 초기화")
-    pipeline = BinPickingPipeline()
+    if args.resin:
+        pipeline = BinPickingPipeline.from_resin(args.resin)
+    else:
+        pipeline = BinPickingPipeline()
 
     # ============================================================
     # L1: 입력 취득
