@@ -58,19 +58,23 @@
 | **Phase 2** | Local API 원격 제어 + UI | ✅ 완료 | PreFormServer 연동, 5탭 UI, 슬라이스/통계/알림 |
 | **Phase 3** | HCR 로봇 연동 | ✅ 코드 머지 완료 | 한솔코에버 시퀀스 서비스 + 자동화 프론트엔드 통합 |
 | **Phase 4** | MaixCAM 장비 모니터링 | 🔄 대기 (빈피킹 우선) | OpenMV→MaixCAM 전환, 온디바이스 AI, MQTT — 빈피킹 우선 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | ✅ SW 완성 | L1~L6 파이프라인 + 그래스프 DB 29종 + D435 실데이터 PASS + eye-in-hand 설계 + HCR-10L 로봇 파라미터 정비 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | ✅ SW 완성 / 🚚 카메라 4/23 도착 예정 | L1~L6 파이프라인 + 그래스프 DB 29종 + D435 실데이터 PASS + eye-in-hand 설계 + HCR-10L Modbus INT16 재설계 + Colored ICP + Basler 듀얼 캡처 + 레진 프리셋 SSOT + 설치 자동화 |
 
-### 현재 상태 (2026-04-17)
+### 현재 상태 (2026-04-21)
 - **Phase 1~3 완료**: 웹 모니터링 + 원격 프린트 + 로봇 연동 (한솔코에버 머지 2차 포함)
 - **카카오 클라우드 VM 이전 완료** (모니터링):
   - `http://61.109.239.142:8085/` — Cloud API 폴링 + 프론트엔드 + Basic Auth
-  - 6000 서버와 병행 운영 중, 공장 PC 연결은 도메인 확정 후 Cloudflare Tunnel로 진행
-- **Phase 5 빈피킹 — SW 완성 + 실데이터 검증 진행 중**:
+  - 6000 서버와 병행 운영 중, 공장 PC 연결은 `factory.flickdone.com` Cloudflare Tunnel로 진행 예정
+  - 도메인 확정 (4/21), Cloudflare 계정 초대 대기 중
+- **Phase 5 빈피킹 — SW 완성 + 카메라 도착 대비 완료**:
   - STL 29종 레퍼런스 캐시 + **인식률 100% (easy/medium), RMSE 1.02~1.50mm, 매칭 0.4~0.6s/부품**
-  - L5 그래스프 DB **29종** 완성 + L6 Modbus TCP (HCR-10L INT16 재설계) + Colored ICP + Basler 듀얼 캡처
+  - L5 그래스프 DB **29종** 완성 + **L6 Modbus INT16 재설계** (HCR-10L 사용자 영역 Reg 130~151, 1/10mm)
+  - **Colored ICP** 파이프라인 + **Basler Blaze-112 + ace2 듀얼 캡처 모듈** + **레진별 프리셋 SSOT** (grey/white/clear/flexible)
   - RealSense D435 라이브 연동 + **Full Pipeline (L1~L5) 2회 PASS** — CAD 미등록 물체 REJECT 일관성 확인
   - HCR-10L 로봇 교육 1회차 완료 + 로봇 파라미터 정비
-- **다음**: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → Colored ICP + 실제 캘리브레이션 + HCR-10L 실전 피킹
+  - **Basler 드라이버 설치 자동화 스크립트 + 스모크 테스트** — 카메라 도착 당일 3시간 → 1시간 단축
+- **카메라 도착 예정**: 4/23 (목) — 당일 실연동 + 실물 SLA 부품 ACCEPT 검증 착수
+- **다음**: Basler 실연동 → Colored ICP 실데이터 검증 → 실제 핸드-아이 캘리브레이션 (2세트) → HCR-10L 실전 피킹
 
 ---
 
@@ -203,18 +207,24 @@ Browser
 - 로봇 미연결 시 시뮬레이션 모드
 
 ### Phase 5: 3D 빈피킹 비전 시스템 (L1~L6 SW 완성)
-- **L1 취득**: Blaze-112 ToF depth + ace2 RGB → colored PointCloud + **RealSense D435 라이브 연동** (USB 3.2, 프레임 저장/로드)
+- **L1 취득**: Blaze-112 ToF depth + ace2 RGB 듀얼 캡처 (pypylon) → colored PointCloud + **RealSense D435 라이브 연동** (USB 3.2, 프레임 저장/로드)
 - **L2 전처리**: ROI 크롭 → SOR 이상치 제거 → Voxel 다운샘플 → RANSAC 바닥면 제거 → 법선 추정
 - **L3 분할**: DBSCAN 클러스터링, 포인트 수/크기 필터링
 - **L4 인식**: OBB SizeFilter(회전 불변) 후보 축소 → FPFH(33D) + FGR/RANSAC + ICP 정밀 정합 + 포인트 수 비율 필터, **인식률 100% (easy/medium), RMSE 1.02~1.50mm, 0.4~0.6s/부품**
+- **Colored ICP**: 컬러 있으면 자동 활성화, multi-scale 4→2→1mm, hard 난이도 FPFH 한계(60%) 극복 대비
 - **L5 그래스프**: grasp_database.yaml **29종** 부품별 피킹 자세 + `validate_pick()` 안전 검증 (작업 영역/Z/힘), z순 피킹 계획
-- **L6 로봇 통신**: Modbus TCP 서버 (pymodbus 3.x), 레지스터 40001~40016 (6DoF FLOAT32 + 그리퍼) + `wait_for_done()` 피킹 사이클
+- **L6 로봇 통신**: Modbus TCP 서버 (pymodbus 3.x) — **HCR-10L 실스펙 INT16 재설계** (4/15)
+  - 비전PC→로봇: Reg 130~140 (CMD/부품ID/X,Y,Z,Rx,Ry,Rz/그리퍼/시퀀스, 1/10mm·1/10deg)
+  - 로봇→비전PC: Reg 150~151 (ROBOT_STATE/seq echo)
+  - 로봇 내장: Reg 400~405(TCP) / 600(Program State) / 700~702(Command)
+  - `wait_for_done()` 피킹 사이클 + ZYX 오일러 컨벤션
 - **통합 파이프라인**: `BinPickingPipeline` — 카메라/저장프레임/합성씬 입력 → L1~L6 자동 실행
+- **레진별 프리셋 SSOT**: `config/resin_presets.py` — `--resin grey|white|clear|flexible` 한 옵션으로 L2+L4 파라미터 일관 적용 (회귀 테스트 53건 PASS)
 - **D435 실데이터 검증**: Full Pipeline 2회 PASS — ACCEPT 0 (미등록 물체 REJECT), RMSE 3mm 임계값이 핵심 안전장치
 - **E2E 시각화**: `--save-viz` — overview/cluster/failure PNG 자동 생성 (대표님 요청)
 - **eye-in-hand 캘리브레이션**: eye-to-hand + eye-in-hand 듀얼 모드 (시뮬 PASS: 회전 0.28°, 이동 0.57mm)
 - **HCR-10L 로봇 연동**: grasp_database.yaml에 로봇 스펙/TCP 오프셋/안전 파라미터 + 로봇 교육 1회차 완료
-- **레진별 프리셋**: Grey/White/Clear/Flexible 각각 최적 파라미터
+- **Basler 설치 자동화** (4/21): `scripts/basler_setup.sh` (pylon+Blaze+GigE 튜닝) + `scripts/basler_smoke_test.py` (9단계 스모크) — 카메라 도착 당일 3시간 → 1시간
 
 ### 프린터 상태 표시
 - **출력 중 (PRINTING)**: 진행률, 경과/남은/전체 시간, 레이어 정보
@@ -355,6 +365,14 @@ Browser
 ├── README.md
 ├── CLAUDE.md                    # 프로젝트 상태 문서
 ├── docs/                        # 문서
+│   ├── binpicking_summary.md         # Phase 5 전체 현황 총정리
+│   ├── binpicking_report_0417.md     # 4/17 빈피킹 중간 보고서
+│   ├── meeting_0422.md               # 4/22 대표님 회의 자료
+│   ├── basler_download_checklist.md  # pylon + Blaze 드라이버 다운로드 가이드
+│   ├── Phase2_LocalAPI_아키텍처설계.md
+│   ├── Phase4_OpenMV_개발설계서.md
+│   ├── 한솔코에버_API_가이드라인.md
+│   └── ...
 │
 ├── web-api/                     # 백엔드 (FastAPI) - Phase 1 + 2 통합
 │   ├── .env.example             # 환경변수 템플릿
@@ -416,34 +434,41 @@ Browser
 │
 ├── bin_picking/                 # Phase 5: 3D 빈피킹 비전 시스템 (L1~L6 완성)
 │   ├── src/
-│   │   ├── main_pipeline.py            # BinPickingPipeline (L1~L6 통합)
+│   │   ├── main_pipeline.py            # BinPickingPipeline (L1~L6 통합, --resin CLI)
 │   │   ├── acquisition/                # L1: 카메라 취득
 │   │   │   ├── depth_to_pointcloud.py  # depth → PointCloud
 │   │   │   ├── realsense_capture.py    # RealSense D435 드라이버
+│   │   │   ├── basler_capture.py       # Basler Blaze-112 + ace2 듀얼 캡처 (pypylon)
 │   │   │   └── hand_eye_calibration.py # 핸드-아이 캘리브레이션 (eye-to-hand + eye-in-hand)
 │   │   ├── preprocessing/              # L2: 전처리
-│   │   │   └── cloud_filter.py         # 5단계 필터 (레진별 프리셋)
+│   │   │   └── cloud_filter.py         # 5단계 필터 (레진별 프리셋 SSOT 연동)
 │   │   ├── segmentation/               # L3: 분할
 │   │   │   └── dbscan_segmenter.py     # DBSCAN 클러스터링
 │   │   ├── recognition/                # L4: 인식/정합
 │   │   │   ├── cad_library.py          # STL→레퍼런스+FPFH 캐시 빌드
-│   │   │   ├── pose_estimator.py       # FGR/RANSAC+ICP 1:N 매칭
-│   │   │   └── size_filter.py          # 바운딩박스 사전 필터
+│   │   │   ├── pose_estimator.py       # FGR/RANSAC+ICP 1:N 매칭 + Colored ICP + from_resin()
+│   │   │   └── size_filter.py          # OBB 바운딩박스 사전 필터 (회전 불변)
 │   │   ├── grasping/                   # L5: 그래스프 계획
 │   │   │   └── grasp_planner.py        # grasp_database.yaml 기반 피킹 자세 + validate_pick()
 │   │   ├── communication/              # L6: 로봇 통신
-│   │   │   └── modbus_server.py        # Modbus TCP 서버 (pymodbus 3.x) + wait_for_done()
+│   │   │   └── modbus_server.py        # HCR-10L INT16 Modbus TCP (Reg 130~151) + wait_for_done()
 │   │   └── visualization/             # 시각화
 │   │       └── e2e_viz.py              # E2E 실패 케이스 PNG 자동 생성
 │   ├── config/
 │   │   ├── grasp_database.yaml         # 29종 부품별 그래스프 + HCR-10L 로봇 파라미터
+│   │   ├── resin_presets.py            # 레진별 파이프라인 프리셋 SSOT (grey/white/clear/flexible)
 │   │   └── calibration/                # 핸드-아이 캘리브레이션 결과 저장
+│   ├── scripts/                        # 현장 설치/검증 자동화
+│   │   ├── README.md                   # 현장 작업 순서서 (카메라 도착 당일)
+│   │   ├── basler_setup.sh             # pylon + Blaze 자동 설치 + GigE 튜닝
+│   │   └── basler_smoke_test.py        # 9단계 스모크 테스트
 │   ├── tests/
 │   │   ├── test_e2e_redwood.py         # Redwood RGB-D E2E
 │   │   ├── test_e2e_realsense.py       # RealSense D435 E2E
 │   │   ├── test_e2e_cad_matching.py    # 실제 STL 29종 E2E (easy/medium/hard, --save-viz)
 │   │   ├── test_d435_realworld.py      # D435 실데이터 L1~L3 테스트
-│   │   └── test_d435_full_pipeline.py  # D435 Full Pipeline L1~L5 테스트
+│   │   ├── test_d435_full_pipeline.py  # D435 Full Pipeline L1~L5 테스트
+│   │   └── test_resin_presets.py       # 레진 프리셋 SSOT 회귀 테스트 (53건 PASS)
 │   ├── tutorials/                      # Open3D 학습 (01~11)
 │   └── models/
 │       ├── cad/                        # STL 원본 (29종 활성 + 17종 _duplicates)
@@ -572,6 +597,34 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python app/main.py
+```
+
+**빈피킹 파이프라인 (Phase 5):**
+```bash
+# venv (Mac 개발 환경)
+source .venv/binpick/bin/activate
+
+# 합성 씬으로 L1~L6 실행
+python bin_picking/src/main_pipeline.py --synthetic
+
+# 레진별 프리셋 (voxel/FPFH/ICP/판정 임계값 일관 적용)
+python bin_picking/src/main_pipeline.py --synthetic --resin clear
+python bin_picking/src/main_pipeline.py --synthetic --resin flexible
+
+# 저장된 RealSense/Basler 프레임으로 실행
+python bin_picking/src/main_pipeline.py --input /path/to/frames --resin grey
+
+# Basler 라이브 캡처 (카메라 연결 시)
+python bin_picking/src/main_pipeline.py --basler --resin grey --save-viz /tmp/viz
+```
+
+**카메라 도착 당일 스모크 (비전 PC):**
+```bash
+# 1. 드라이버 설치 (pylon + Blaze + GigE 네트워크 튜닝)
+bash bin_picking/scripts/basler_setup.sh
+
+# 2. 카메라 연결 스모크 테스트 (9단계)
+python bin_picking/scripts/basler_smoke_test.py
 ```
 
 ### 접속
