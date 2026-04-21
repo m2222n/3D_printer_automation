@@ -773,8 +773,18 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-17
-- **현재 상태**: Phase 1~3 완료. Phase 5 빈피킹 SW 완성 (카메라 입고 5월 대기). **카카오 VM 모니터링 이전 완료** + Basic Auth 적용. 공장 PC 연결은 도메인 확정 후 Cloudflare Tunnel로 진행 예정.
+- **날짜**: 2026-04-21
+- **현재 상태**: Phase 1~3 완료. Phase 5 빈피킹 SW 완성 (카메라 입고 5월 대기). **카카오 VM 모니터링 이전 완료** + Basic Auth 적용. 도메인 `factory.flickdone.com` 확정, Cloudflare 계정 초대 대기 중.
+
+### 4/21 — 도메인 확정 + D435 USB 케이블 테스트
+- ✅ **도메인 확정**: `factory.flickdone.com` (대표님 flickdone.com 서브도메인 사용 승인)
+  - 향후 flickdone.com을 제조공정 자동화 브랜드로 사용 예정
+  - Cloudflare 계정 초대 대표님께 요청 완료 → 권한 대기 중
+  - 파리드님 Cloudflare 권한 없음 → **태민님이 직접 진행** 예정
+- ✅ **카카오 클라우드 IAM Admin 권한 확보** — VM/보안 그룹 직접 관리 가능
+- ✅ **D435 USB 3.2 20Gbps 케이블 테스트** — 정상 인식 (S/N 420122070194, USB 3.2)
+  - 대표님 구매, D435 자체 Gen 1(5Gbps) 한계이나 신호 품질 향상
+  - RealSense Viewer (brew librealsense 2.57.7) — RGB+Depth+IR 4스트림 정상 확인
 
 ### 4/16 — 카카오 클라우드 VM 이전 + 한솔 머지 2차
 - ✅ **한솔 머지 2차 완료** (`e68c2b1`) — 이예승 사원 `74584fb` cherry-pick. 자동화 CMD 프린터 할당 + .env.copy 추가
@@ -814,17 +824,18 @@ POLLING_INTERVAL_SECONDS=15
 - ✅ eye-in-hand 캘리브레이션 — 시뮬 PASS (회전 0.28°, 이동 0.57mm)
 
 ### 다음 작업
-- 🟡 **실물 SLA 부품 확보** → D435로 촬영 → CAD 매칭 ACCEPT 검증 (공장에서 3~5개 가져오기)
+- 🟡 **Cloudflare Tunnel 설정** — 계정 초대 받으면 즉시 진행 (`factory.flickdone.com`)
+- 🟡 **실물 SLA 부품 확보** → D435로 오버헤드(~50cm) 촬영 → CAD 매칭 ACCEPT 검증
 - 🟡 **[한솔 협업]** 이예승 사원 — sequence_service 공장 PC 배포
 - 🔄 **카메라 입고 대기 (5월)** → Colored ICP + 실제 핸드-아이 캘리브레이션 (2세트) + multi-view 재촬영
 
 ### 대기 중
-- ⏳ **도메인 확정** (대표님) → Cloudflare Tunnel로 공장 PC 연결 + 6000 서버 웹 서비스 중지
+- ⏳ **Cloudflare 계정 초대** (대표님) → Tunnel 설정 → 공장 PC 연결 + 6000 서버 웹 서비스 중지
 - ⬜ Basic Auth → 로그인 페이지 + JWT 업그레이드 (나중에)
 - ⬜ MaixCAM 장비 모니터링 PoC (빈피킹 우선, 여유 시)
 - ⬜ GitHub deploy key 등록 — 카카오 VM에서 직접 git pull 가능하도록
 
-### 서버 운영 현황 (4/17)
+### 서버 운영 현황 (4/21)
 | 서버 | URL | 역할 | 상태 |
 |------|-----|------|------|
 | **카카오 VM** | `http://61.109.239.142:8085/` | 모니터링 (Cloud API) | ✅ 운영 중 (Basic Auth) |

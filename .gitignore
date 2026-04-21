@@ -224,6 +224,9 @@ OpenMV/.DS_Store
 OpenMV/*.zip
 OpenMV/*.exe
 OpenMV/firmware_*/
+# 학습 이미지/비디오 (70MB, MaixCAM 전환으로 미사용)
+OpenMV/training_images/
+OpenMV/training_videos/
 
 PROJECT_STATUS_*.md
 
