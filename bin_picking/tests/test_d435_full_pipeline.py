@@ -74,6 +74,11 @@ def parse_args():
     parser.add_argument("--depth-max", type=float, default=1.5, help="최대 depth (m)")
     parser.add_argument("--no-vis", action="store_true", help="시각화 건너뛰기")
     parser.add_argument("--top-k", type=int, default=1, help="클러스터별 상위 K개 매칭 (기본 1)")
+    parser.add_argument(
+        "--only", default=None,
+        help="특정 키워드로 후보 제한 (쉼표 구분). 예: --only bracket,brkt "
+             "설정 시 SizeFilter 우회하고 매칭된 레퍼런스만 후보로 사용.",
+    )
     return parser.parse_args()
 
 
@@ -121,6 +126,15 @@ def step_l1(args) -> CapturedFrames:
     print(f"  depth: {frames.depth_map.shape}, 유효 {valid:,}/{total:,} ({valid/total*100:.0f}%)")
     print(f"  color: {frames.color_image.shape}")
     print(f"  intrinsics: fx={frames.intrinsics.fx:.1f}, fy={frames.intrinsics.fy:.1f}")
+
+    nonzero = frames.depth_map[frames.depth_map > 0]
+    if nonzero.size > 0:
+        depth_m = nonzero.astype(float) / frames.depth_scale
+        print(f"  depth 범위: min={depth_m.min():.2f}m  "
+              f"median={np.median(depth_m):.2f}m  max={depth_m.max():.2f}m")
+        in_range = ((depth_m >= args.depth_min) & (depth_m <= args.depth_max)).sum()
+        print(f"  범위 내({args.depth_min}~{args.depth_max}m): {in_range:,} pts "
+              f"({in_range/depth_m.size*100:.0f}%)")
     return frames
 
 
@@ -145,14 +159,13 @@ def frames_to_pointcloud(frames: CapturedFrames, args) -> o3d.geometry.PointClou
 def compute_auto_roi(pcd: o3d.geometry.PointCloud, margin: float = 0.02):
     """포인트 클라우드 범위에서 ROI를 자동 계산한다.
 
-    바닥면(z 최소 근처)은 약간 위로, 나머지는 margin만큼 확장.
+    카메라 좌표계(z=카메라로부터의 거리) 기준 — 가까운 물체가 z 최소.
+    ROI는 xyz 전체 범위를 margin만큼만 확장 (바닥 휴리스틱 없음 —
+    바닥 제거는 RANSAC이 담당).
     """
     pts = np.asarray(pcd.points)
     roi_min = pts.min(axis=0) - margin
     roi_max = pts.max(axis=0) + margin
-
-    # 바닥면 위 5mm부터 (바닥 제거 후 객체만 남기기 위해)
-    roi_min[2] = max(roi_min[2], pts[:, 2].min() + 0.005)
 
     return {
         "min": roi_min.tolist(),
@@ -245,13 +258,28 @@ def run_full_pipeline(pcd: o3d.geometry.PointCloud, args):
     t0 = time.time()
     parts = []
 
-    for i, cluster in enumerate(clusters):
-        # SizeFilter: 후보 축소
-        candidates = size_filter.filter_candidates(cluster.pcd)
-        if not candidates:
-            candidates = list(reference_cache.keys())
+    # --only 키워드 처리
+    only_keywords = None
+    if args.only:
+        only_keywords = [k.strip().lower() for k in args.only.split(",") if k.strip()]
+        forced = [
+            name for name in reference_cache.keys()
+            if any(kw in name.lower() for kw in only_keywords)
+        ]
+        print(f"  --only {only_keywords} → 후보 {len(forced)}종 강제:")
+        for name in forced:
+            print(f"    - {name}")
 
-        n_candidates = min(len(candidates), 10)
+    for i, cluster in enumerate(clusters):
+        if only_keywords is not None:
+            # SizeFilter 우회
+            candidates = forced
+        else:
+            candidates = size_filter.filter_candidates(cluster.pcd)
+            if not candidates:
+                candidates = list(reference_cache.keys())
+
+        n_candidates = min(len(candidates), max(10, len(candidates)))
 
         # PoseEstimator: 1:N 매칭
         match_results = estimator.match_against_references(
@@ -287,14 +315,13 @@ def run_full_pipeline(pcd: o3d.geometry.PointCloud, args):
     print(f"  ACCEPT: {n_accepted}, WARN: {n_warn}, REJECT: {n_rejected}")
     print(f"  L4 시간: {timings['L4']:.2f}s ({timings['L4']/len(clusters):.2f}s/클러스터)")
 
-    # 상세 결과
-    print(f"\n  {'ID':>3} {'부품명':>35} {'Fitness':>8} {'RMSE(mm)':>9} "
+    # 상세 결과 (클러스터별 top-K 전체)
+    print(f"\n  {'ID':>3} {'Rank':>4} {'부품명':>35} {'Fitness':>8} {'RMSE(mm)':>9} "
           f"{'판정':>8} {'후보':>4} {'포인트':>7}")
-    print(f"  {'-'*85}")
+    print(f"  {'-'*92}")
     for p in parts:
-        if p["rank"] > 0:
-            continue
-        print(f"  {p['cluster_id']:>3} {p['name']:>35} "
+        marker = "★" if p["rank"] == 0 else " "
+        print(f"  {p['cluster_id']:>3} {marker}{p['rank']+1:>3} {p['name']:>35} "
               f"{p['fitness']:>8.4f} {p['rmse']*1000:>9.2f} "
               f"{p['decision']:>8} {p['n_candidates']:>4} {p['n_points']:>7}")
 
@@ -426,6 +453,13 @@ def main():
 
     # PointCloud 변환
     pcd = frames_to_pointcloud(frames, args)
+
+    if len(pcd.points) == 0:
+        print("\n[ERROR] PointCloud 0 pts — depth 범위 밖.")
+        print(f"  현재 범위: {args.depth_min}~{args.depth_max}m")
+        print(f"  위의 'depth 범위' 줄을 확인해서 --depth-min/--depth-max를 맞추거나")
+        print(f"  부품 위치를 지정 범위 안으로 조정하세요.")
+        sys.exit(1)
 
     # Full Pipeline (L2~L5)
     result = run_full_pipeline(pcd, args)

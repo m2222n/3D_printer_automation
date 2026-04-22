@@ -188,12 +188,16 @@ class CloudFilter:
         camera_location: np.ndarray = np.array([0, 0, 0]),
     ) -> "o3d.geometry.PointCloud":
         """5단계: 법선 추정 + 카메라 방향 정렬."""
+        if len(pcd.points) == 0:
+            self.stats["normals_count"] = 0
+            return pcd
         pcd.estimate_normals(
             search_param=o3d.geometry.KDTreeSearchParamHybrid(
                 radius=self.normal_radius, max_nn=self.normal_max_nn
             )
         )
-        pcd.orient_normals_towards_camera_location(camera_location)
+        if len(pcd.normals) > 0:
+            pcd.orient_normals_towards_camera_location(camera_location)
         self.stats["normals_count"] = len(pcd.normals)
         return pcd
 
