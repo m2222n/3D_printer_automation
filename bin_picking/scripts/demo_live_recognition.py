@@ -498,7 +498,11 @@ def run_demo(args):
             elif key == ord('c') or key == ord(' '):  # c 또는 SPACE
                 print("  [캡처] 파이프라인 실행 중...")
                 t0 = time.time()
-                last_result = runner.run(fb)
+                try:
+                    last_result = runner.run(fb)
+                except Exception as e:
+                    print(f"  [WARN] 파이프라인 크래시: {e}")
+                    last_result = None
                 elapsed = time.time() - t0
 
                 if last_result is None:

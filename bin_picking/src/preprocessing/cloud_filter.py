@@ -170,7 +170,14 @@ class CloudFilter:
     def remove_plane(
         self, pcd: "o3d.geometry.PointCloud"
     ) -> tuple["o3d.geometry.PointCloud", np.ndarray]:
-        """4단계: 바닥면 제거 (RANSAC)."""
+        """4단계: 바닥면 제거 (RANSAC). 포인트 부족 시 원본을 반환."""
+        n_points = len(pcd.points)
+        if n_points < self.plane_ransac_n:
+            self.stats["plane_model"] = None
+            self.stats["plane_inliers"] = 0
+            self.stats["plane_after"] = n_points
+            self.stats["plane_skipped"] = "insufficient_points"
+            return pcd, np.zeros(4)
         plane_model, inliers = pcd.segment_plane(
             distance_threshold=self.plane_distance,
             ransac_n=self.plane_ransac_n,
