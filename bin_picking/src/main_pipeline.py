@@ -57,9 +57,12 @@ from bin_picking.src.communication.modbus_server import PickingModbusServer
 VOXEL_SIZE = 0.002       # 2mm
 
 # ROI: 빈(부품 박스) 영역 (미터) — 카메라 캘리브레이션 후 조정
+# Why: Basler Blaze-112 오버헤드(40~80cm) + depth_to_pointcloud 기본 depth_min(0.3m) +
+#      SyntheticSource depth(0.55~0.80m) 세 값이 한 세팅에서 일관되게 동작해야 함.
+#      D435 20cm 근접 테스트는 --roi-z-min/--roi-z-max CLI 오버라이드로 대응.
 DEFAULT_ROI = {
-    "min": [-0.15, -0.15, 0.005],   # 바닥면 약간 위
-    "max": [0.15, 0.15, 0.20],      # 빈 높이
+    "min": [-0.30, -0.30, 0.30],    # Basler 작동 거리 하한
+    "max": [0.30, 0.30, 1.00],      # 빈 상부까지 포함
 }
 
 
@@ -426,7 +429,48 @@ def main():
         choices=["grey", "white", "clear", "flexible"],
         help="레진 프리셋 (L2 + L4 파라미터 일관 적용). 미지정 시 기본값(voxel 2mm)",
     )
+    parser.add_argument(
+        "--roi-z-min", type=float, default=None,
+        help=f"ROI Z 하한 (m). 미지정 시 기본값 {DEFAULT_ROI['min'][2]:.2f}. "
+             "D435 근접 테스트는 0.02 권장.",
+    )
+    parser.add_argument(
+        "--roi-z-max", type=float, default=None,
+        help=f"ROI Z 상한 (m). 미지정 시 기본값 {DEFAULT_ROI['max'][2]:.2f}. "
+             "D435 근접 테스트는 0.30 권장.",
+    )
+    parser.add_argument(
+        "--depth-min", type=float, default=None,
+        help="depth_to_pointcloud 최소 깊이 (m). 기본 0.3. "
+             "D435 근접 테스트는 0.02 권장.",
+    )
+    parser.add_argument(
+        "--depth-max", type=float, default=None,
+        help="depth_to_pointcloud 최대 깊이 (m). 기본 3.0. "
+             "D435 근접 테스트는 0.50 권장.",
+    )
     args = parser.parse_args()
+
+    # ROI/depth 오버라이드 — 세팅 간 정합성 유지 (옵션 1: Basler 기준)
+    roi_override = None
+    if args.roi_z_min is not None or args.roi_z_max is not None:
+        roi_override = {
+            "min": list(DEFAULT_ROI["min"]),
+            "max": list(DEFAULT_ROI["max"]),
+        }
+        if args.roi_z_min is not None:
+            roi_override["min"][2] = args.roi_z_min
+        if args.roi_z_max is not None:
+            roi_override["max"][2] = args.roi_z_max
+        print(f"  [ROI override] z={roi_override['min'][2]:.3f}~{roi_override['max'][2]:.3f}m")
+
+    depth_kwargs = {}
+    if args.depth_min is not None:
+        depth_kwargs["depth_min"] = args.depth_min
+    if args.depth_max is not None:
+        depth_kwargs["depth_max"] = args.depth_max
+    if depth_kwargs:
+        print(f"  [depth override] {depth_kwargs}")
 
     # ============================================================
     # 파이프라인 초기화
@@ -436,6 +480,8 @@ def main():
         pipeline = BinPickingPipeline.from_resin(args.resin)
     else:
         pipeline = BinPickingPipeline()
+    if roi_override is not None:
+        pipeline.roi = roi_override
 
     # ============================================================
     # L1: 입력 취득
@@ -471,6 +517,7 @@ def main():
             cx=meta["cx"], cy=meta["cy"],
             depth_scale=meta.get("depth_scale", 1000.0),
             color_image=color_image,
+            **depth_kwargs,
         )
         print(f"  프레임 로드: {depth_map.shape}, 포인트 {len(scene_pcd.points):,}")
 

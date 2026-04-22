@@ -245,14 +245,37 @@ class SyntheticSource(FrameSource):
 class PipelineRunner:
     """BinPickingPipeline을 1회 초기화하고 여러 번 실행."""
 
-    def __init__(self, resin: Optional[str] = None):
-        from bin_picking.src.main_pipeline import BinPickingPipeline
+    def __init__(
+        self,
+        resin: Optional[str] = None,
+        roi_z: Optional[tuple] = None,
+        depth_range: Optional[tuple] = None,
+    ):
+        from bin_picking.src.main_pipeline import BinPickingPipeline, DEFAULT_ROI
         print("  [파이프라인] 레퍼런스 캐시 로딩...")
         t0 = time.time()
         if resin:
             self.pipeline = BinPickingPipeline.from_resin(resin)
         else:
             self.pipeline = BinPickingPipeline()
+
+        # ROI z 오버라이드 (D435 근접 테스트 등 — Basler 기준 DEFAULT_ROI에서 이탈할 때)
+        if roi_z is not None:
+            self.pipeline.roi = {
+                "min": list(DEFAULT_ROI["min"]),
+                "max": list(DEFAULT_ROI["max"]),
+            }
+            self.pipeline.roi["min"][2] = roi_z[0]
+            self.pipeline.roi["max"][2] = roi_z[1]
+            print(f"  [ROI override] z={roi_z[0]:.3f}~{roi_z[1]:.3f}m")
+
+        # depth_to_pointcloud 오버라이드 (근접 세팅에서 기본 0.3m 하한이 문제될 때)
+        self.depth_kwargs: Dict[str, float] = {}
+        if depth_range is not None:
+            self.depth_kwargs["depth_min"] = depth_range[0]
+            self.depth_kwargs["depth_max"] = depth_range[1]
+            print(f"  [depth override] min={depth_range[0]:.3f} max={depth_range[1]:.3f}m")
+
         print(f"  [파이프라인] 로드 완료 ({(time.time()-t0)*1000:.0f}ms)")
 
     def run(self, fb: FrameBundle) -> Optional[Dict[str, Any]]:
@@ -268,6 +291,7 @@ class PipelineRunner:
             fx=fb.fx, fy=fb.fy, cx=fb.cx, cy=fb.cy,
             color_image=fb.rgb,
             depth_scale=fb.depth_scale,
+            **self.depth_kwargs,
         )
         if len(pcd.points) < 100:
             return None
@@ -401,7 +425,19 @@ def run_demo(args):
         raise ValueError(f"Unknown mode: {args.mode}")
 
     # 2. 파이프라인 초기화
-    runner = PipelineRunner(resin=args.resin)
+    roi_z = None
+    if args.roi_z_min is not None or args.roi_z_max is not None:
+        from bin_picking.src.main_pipeline import DEFAULT_ROI
+        z_min = args.roi_z_min if args.roi_z_min is not None else DEFAULT_ROI["min"][2]
+        z_max = args.roi_z_max if args.roi_z_max is not None else DEFAULT_ROI["max"][2]
+        roi_z = (z_min, z_max)
+    depth_range = None
+    if args.depth_min is not None or args.depth_max is not None:
+        depth_range = (
+            args.depth_min if args.depth_min is not None else 0.3,
+            args.depth_max if args.depth_max is not None else 3.0,
+        )
+    runner = PipelineRunner(resin=args.resin, roi_z=roi_z, depth_range=depth_range)
 
     # 3. UI 렌더러
     renderer = DemoRenderer(cell_w=args.cell_w, cell_h=args.cell_h)
@@ -577,6 +613,22 @@ def main():
     )
     parser.add_argument("--cell-w", type=int, default=640, help="셀 가로 (기본 640)")
     parser.add_argument("--cell-h", type=int, default=480, help="셀 세로 (기본 480)")
+    parser.add_argument(
+        "--roi-z-min", type=float, default=None,
+        help="ROI Z 하한 (m). D435 근접 테스트는 0.02. 미지정 시 Basler 기준 DEFAULT_ROI 사용",
+    )
+    parser.add_argument(
+        "--roi-z-max", type=float, default=None,
+        help="ROI Z 상한 (m). D435 근접 테스트는 0.30. 미지정 시 Basler 기준 DEFAULT_ROI 사용",
+    )
+    parser.add_argument(
+        "--depth-min", type=float, default=None,
+        help="depth_to_pointcloud 최소 깊이 (m). 근접 테스트는 0.02",
+    )
+    parser.add_argument(
+        "--depth-max", type=float, default=None,
+        help="depth_to_pointcloud 최대 깊이 (m). 근접 테스트는 0.50",
+    )
     parser.add_argument(
         "--test-render", type=str, default=None,
         help="디스플레이 없이 1회 렌더링 후 PNG만 저장 (CI/서버 검증용)",
