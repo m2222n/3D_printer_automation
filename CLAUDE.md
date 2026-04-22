@@ -774,7 +774,33 @@ POLLING_INTERVAL_SECONDS=15
 ## 마지막 업데이트
 
 - **날짜**: 2026-04-22
-- **현재 상태**: Phase 1~3 완료. Phase 5 빈피킹 SW 완성 + 카메라 4/23(목) 도착 예정. D435 실데이터 full pipeline 완주 (버그 3개 발견+수정). 실물 브래킷 CAD 매칭은 USB 길이 제약으로 확정 불가 — Basler 입고 시 해결 예상.
+- **현재 상태**: Phase 1~3 완료. Phase 5 빈피킹 SW 완성 + 카메라 4/23(목) 도착 예정. **4/22 오후 데모 리허설로 파이프라인 버그 5개 수정 + ROI/depth 파라미터 정합성 확보 + 시연 UI 안정화 완료**. synthetic 리허설 1.5s로 단축. 실물 SLA 브래킷 CAD 매칭은 USB 20cm 제약으로 확정 불가 — Basler 입고 시 해결 예상.
+
+### 4/22 오후 — 데모 리허설 피드백 반영 (서버↔Mac 양방향 작업)
+- **Mac 리허설에서 크래시 2건 방어** (`ac0f283`, Mac 커밋)
+  - `cloud_filter.remove_plane`: 포인트 < `plane_ransac_n`일 때 segment_plane() 크래시 → 원본 반환 + stats `plane_skipped` 마킹
+  - `demo_live_recognition` capture 핸들러: 파이프라인 크래시 시 GUI 전체 종료 → try/except로 WARN 로그만
+- **[B] ROI/depth 기본값 3개 정합성 이슈 → 옵션 1(Basler 기준) 채택** (`c3a8477`)
+  - 기존: `DEFAULT_ROI z=0.005~0.20` / `depth_to_pointcloud depth_min=0.3` / `SyntheticSource depth=0.55~0.80` 세 값이 서로 다른 세팅 기준 → --synthetic은 ROI crop 후 포인트 0으로 RANSAC 크래시, --realsense도 ACCEPT 0 빈번
+  - 해결: Basler 오버헤드(40~80cm) 기준으로 `DEFAULT_ROI z=0.30~1.00` 통일, `SyntheticSource`/`depth_to_pointcloud` 기본값 유지 → 3값 정합
+  - D435 근접 테스트용 CLI 오버라이드 4개 추가: `--roi-z-min/-max`, `--depth-min/-max` (main_pipeline.py + demo_live_recognition.py 양쪽)
+- **[C] 데모 UI 3건 개선** (`696860f`)
+  - ACCEPT 뱃지: 좌상단 → 우상단, 폰트 0.9/th2 → 0.6/th1 (좌하 CAD 오버레이 가림 해소)
+  - 셀 타이틀 폰트 0.55/th1 → 0.8/th2, title_h 32 → 38px (시연 중 포인터 가독성)
+  - Filtered 라인에 kept% 병기 (예: `10,115 (3.3% kept, 23.4 ms)`)
+- **[추가] synthetic 매칭 9.7s → 1.5s + Matches 테이블 재작성** (`b63f4bf`)
+  - SyntheticSource noise σ 3 → 1: DBSCAN eps 8mm 안에서 노이즈가 별도 클러스터로 튀던 문제 → 36 클러스터 → 3 클러스터, L4 Matching 9240ms → 1158ms (8배 단축)
+  - Matches 테이블을 고정 x 좌표 5컬럼(#, Part, Fit, RMSE(mm), Dec)로 재작성 (단일 f-string mono-font 가정 제거)
+  - RMSE 단위 버그 수정: 값은 mm인데 표시는 "1.23m"로 오독되던 문제 → 헤더에 `(mm)` 명시, 값은 단위 기호 제거
+- **Mac 검증 결과**: Clusters 3개, L4 1158ms, Total 1.5s, 테이블 정렬/RMSE 단위/3상태 색상 코딩 모두 정상 — 시연 준비 완료
+- **6000 서버는 AVX2 미지원으로 Open3D 실행 불가** — 렌더 검증은 Mac에서만
+- **커밋 요약 (오늘 총 6건)**:
+  - `eb730ba` D435 버그 3개 (빈 pcd 법선, ROI 바닥 휴리스틱, top-K) — Mac 오전
+  - `36469aa` D435 진단 헬퍼 스크립트 3종 — Mac 오전
+  - `ac0f283` 리허설 크래시 방어 2건 (RANSAC/GUI) — Mac 리허설
+  - `c3a8477` [B] ROI/depth 기본값 Basler 기준 통일 + CLI 오버라이드 — 서버
+  - `696860f` [C] 뱃지·타이틀·Filtered% UI 개선 3건 — 서버
+  - `b63f4bf` synthetic 9.7s→1.5s + Matches 테이블 재작성 — 서버
 
 ### 4/22 — D435 실물 브래킷 CAD 매칭 시도 + 버그 수정
 - ✅ **실물 SLA 부품 2개 수령** (공장, 서포트 제거됨, H자 브래킷 형상, bracket_sen_1 추정)
