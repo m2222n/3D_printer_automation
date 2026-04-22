@@ -212,8 +212,9 @@ class SyntheticSource(FrameSource):
         ]:
             depth[py:py+ph, px:px+pw] = d
 
-        # 노이즈
-        depth = depth + np.random.normal(0, 3, (H, W)).astype(np.int16)
+        # 노이즈 (sigma=1: DBSCAN 8mm eps 안에서 노이즈 점이 별도 클러스터로 튀지 않게.
+        # 이전 sigma=3은 시연용 synthetic에서 36 클러스터 × 10 후보 매칭으로 9초 소요됨)
+        depth = depth + np.random.normal(0, 1, (H, W)).astype(np.int16)
         depth = np.clip(depth, 0, 65535).astype(np.uint16)
 
         # 색상

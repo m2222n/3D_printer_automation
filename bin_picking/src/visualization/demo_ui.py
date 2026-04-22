@@ -332,24 +332,36 @@ class DemoRenderer:
                         FONT, 0.6, COLOR_HEADER, 1, cv2.LINE_AA)
             y += line_h + 4
 
+            # 컬럼 레이아웃 — 고정 x 좌표로 정렬 (mono-font 가정 없앰)
+            col_x = {
+                "num":  16,
+                "name": 46,
+                "fit":  330,
+                "rmse": 410,
+                "dec":  510,
+            }
             # 헤더
-            cv2.putText(
-                img, f"{'#':>2} {'Part':<24} {'Fit':>6} {'RMSE':>7} {'Dec':>7}",
-                (16, y), FONT, 0.45, COLOR_TEXT, 1, cv2.LINE_AA,
-            )
-            y += line_h - 4
+            header_font = 0.5
+            for key, label in [("num", "#"), ("name", "Part"),
+                               ("fit", "Fit"), ("rmse", "RMSE(mm)"), ("dec", "Dec")]:
+                cv2.putText(img, label, (col_x[key], y),
+                            FONT, header_font, COLOR_HEADER, 1, cv2.LINE_AA)
+            y += line_h
 
+            row_font = 0.5
             for i, p in enumerate(parts[:5]):
-                name = p.name[:24]
-                line = (
-                    f"{i+1:>2} {name:<24} "
-                    f"{p.fitness:>6.2f} "
-                    f"{p.rmse_mm:>6.2f}m "
-                    f"{p.decision:>7}"
-                )
-                cv2.putText(img, line, (16, y),
-                            FONT, 0.45, p.color, 1, cv2.LINE_AA)
-                y += line_h - 4
+                name = p.name[:22]   # 22자까지 표시
+                cv2.putText(img, f"{i+1}", (col_x["num"], y),
+                            FONT, row_font, COLOR_TEXT, 1, cv2.LINE_AA)
+                cv2.putText(img, name, (col_x["name"], y),
+                            FONT, row_font, COLOR_TEXT, 1, cv2.LINE_AA)
+                cv2.putText(img, f"{p.fitness:.2f}", (col_x["fit"], y),
+                            FONT, row_font, COLOR_TEXT, 1, cv2.LINE_AA)
+                cv2.putText(img, f"{p.rmse_mm:.2f}", (col_x["rmse"], y),
+                            FONT, row_font, COLOR_TEXT, 1, cv2.LINE_AA)
+                cv2.putText(img, p.decision, (col_x["dec"], y),
+                            FONT, row_font, p.color, 1, cv2.LINE_AA)
+                y += line_h - 2
         else:
             cv2.putText(img, "No matches yet. Press [c] to capture.",
                         (16, y), FONT, 0.5, COLOR_TEXT, 1, cv2.LINE_AA)
