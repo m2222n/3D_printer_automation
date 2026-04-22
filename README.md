@@ -7,6 +7,8 @@
 [![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 [![Open3D](https://img.shields.io/badge/Open3D-0.19-4B8BBE?logo=python&logoColor=white)](http://www.open3d.org)
 [![Modbus](https://img.shields.io/badge/Modbus_TCP-pymodbus_3-FF6F00?logo=python&logoColor=white)](https://pymodbus.readthedocs.io)
 [![trimesh](https://img.shields.io/badge/trimesh-4.x-green?logo=python&logoColor=white)](https://trimesh.org)
@@ -364,18 +366,22 @@ GET    /api/v1/local/notifications
 |------|------|------|
 | Python | 3.11+ | 런타임 |
 | FastAPI | 0.109+ | REST + WebSocket |
-| httpx | 최신 | Formlabs API 호출 |
-| pydantic-settings | 최신 | 환경변수 로드 |
-| SQLAlchemy + SQLite | 최신 | 로컬 DB (web-api) |
-| PyMySQL | 최신 | MySQL (sequence_service) |
-| pymodbus | 3.x | Modbus TCP |
+| uvicorn | 0.27+ | ASGI 서버 |
+| httpx | 0.26+ | Formlabs API 호출 |
+| pydantic-settings | 2.1+ | 환경변수 로드 |
+| SQLAlchemy + SQLite | 2.0+ | 로컬 DB (web-api) |
+| PyMySQL | 1.1+ | MySQL (sequence_service) |
+| pymodbus | 3.6+ | Modbus TCP |
+| aiomqtt | 2.0+ | MQTT 비동기 클라이언트 (Phase 4) |
+| python-multipart | 0.0.6+ | 파일 업로드 |
 
 ### Frontend
 | 기술 | 버전 | 용도 |
 |------|------|------|
-| React + TypeScript | 18+ / 5+ | SPA |
-| Vite | 최신 | 개발 서버 + 빌드 |
-| Tailwind CSS | 4 | 스타일링 |
+| React | 18.3 | SPA |
+| TypeScript | 5.6 | 타입 시스템 |
+| Vite | 5.4 | 개발 서버 + 빌드 |
+| Tailwind CSS | 4.0 (beta) | 스타일링 |
 | WebSocket | 네이티브 | 실시간 업데이트 |
 
 ### 빈피킹 비전 (Phase 5)
