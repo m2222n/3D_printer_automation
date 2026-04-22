@@ -292,6 +292,10 @@ class BinPickingPipeline:
             "timings": timings,
             "n_clusters": len(clusters),
             "n_accepted": n_accepted,
+            # 시각화 용: filtered PointCloud + Cluster 객체 리스트
+            # (메모리 추가되지만 데모/디버그에 유용. 기존 호출자는 접근 안 해도 무방)
+            "filtered": filtered,
+            "clusters": clusters,
         }
 
     def print_results(self, result: Dict[str, Any]):
