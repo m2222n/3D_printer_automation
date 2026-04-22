@@ -98,41 +98,32 @@
 
 ### 서버 구성
 
-```
-┌──────────────────────────────────────────────────────┐
-│ 브라우저 (태민 노트북 / 예승 노트북 / 공장 PC)       │
-└──────────────────────────┬───────────────────────────┘
-                           │
-              ┌────────────┴─────────────┐
-              │                          │
-              ▼                          ▼
-┌──────────────────────────┐  ┌──────────────────────────┐
-│ 카카오 VM                │  │ 6000 서버                │
-│ 61.109.239.142:8085      │  │ 106.244.6.242:8085       │
-│                          │  │                          │
-│ web-api만 (모니터링)     │  │ web-api + 프린터 제어    │
-│ Basic Auth               │  │ (VPN 경유)               │
-└──────────────────────────┘  └────────────┬─────────────┘
-                                           │ WireGuard
-                                           ▼
-                              ┌──────────────────────────┐
-                              │ 공장 PC (Windows)        │
-                              │ 10.145.113.3             │
-                              │                          │
-                              │ • PreFormServer :44388   │
-                              │ • file_receiver :8089    │
-                              │ • sequence_service       │
-                              │ • HCR-10L, Ajin IO       │
-                              │ • MySQL (자동화 로그)    │
-                              └────────────┬─────────────┘
-                                           │
-                                           ▼
-                              ┌──────────────────────────┐
-                              │ Form 4 ×4, HCR-12/10L,   │
-                              │ Form Wash/Cure,          │
-                              │ Basler (4/23 입고),      │
-                              │ MaixCAM                  │
-                              └──────────────────────────┘
+```mermaid
+flowchart TB
+    Browser["🌐 브라우저<br/>태민 노트북 / 예승 노트북 / 공장 PC"]
+
+    KakaoVM["☁️ 카카오 VM<br/>61.109.239.142:8085<br/>─────────────────<br/>web-api만 (모니터링)<br/>Basic Auth"]
+
+    Server6000["🖥️ 6000 서버<br/>106.244.6.242:8085<br/>─────────────────<br/>web-api + 프린터 제어<br/>(VPN 경유)"]
+
+    FactoryPC["🏭 공장 PC (Windows)<br/>10.145.113.3<br/>─────────────────<br/>• PreFormServer :44388<br/>• file_receiver :8089<br/>• sequence_service<br/>• HCR-10L, Ajin IO<br/>• MySQL (자동화 로그)"]
+
+    Hardware["⚙️ 현장 하드웨어<br/>─────────────────<br/>Form 4 ×4<br/>HCR-12 / HCR-10L<br/>Form Wash / Cure<br/>Basler (4/23 입고)<br/>MaixCAM"]
+
+    Browser --> KakaoVM
+    Browser --> Server6000
+    Server6000 -->|WireGuard VPN| FactoryPC
+    FactoryPC --> Hardware
+
+    classDef browser fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef remote fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef factory fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef hardware fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
+
+    class Browser browser
+    class KakaoVM,Server6000 remote
+    class FactoryPC factory
+    class Hardware hardware
 ```
 
 ### 운영 서버 현황
@@ -149,11 +140,19 @@
 
 ### 빈피킹 비전 파이프라인 (Phase 5)
 
-```
-L1 영상 취득       → L2 전처리          → L3 분할           → L4 인식+자세        → L5 그래스프     → L6 로봇 전송
-  pypylon           Open3D              DBSCAN              FPFH+RANSAC+        grasp_planner     Modbus TCP
-  (Blaze-112 +      (ROI, 이상치,       (클러스터링)         (Colored) ICP       (29종 DB)        (INT16, Reg 130~)
-  ace2 듀얼 캡처)    다운샘플, RANSAC)                        + OBB SizeFilter
+```mermaid
+flowchart LR
+    L1["L1: 영상 취득<br/><br/>pypylon<br/>(Blaze-112 +<br/>ace2 듀얼 캡처)"]
+    L2["L2: 전처리<br/><br/>Open3D<br/>(ROI, 이상치,<br/>다운샘플, RANSAC)"]
+    L3["L3: 분할<br/><br/>DBSCAN<br/>(클러스터링)"]
+    L4["L4: 인식+자세<br/><br/>FPFH+RANSAC+<br/>(Colored) ICP<br/>+ OBB SizeFilter"]
+    L5["L5: 그래스프<br/><br/>grasp_planner<br/>(29종 DB)"]
+    L6["L6: 로봇 전송<br/><br/>Modbus TCP<br/>(INT16, Reg 130~)"]
+
+    L1 --> L2 --> L3 --> L4 --> L5 --> L6
+
+    classDef stage fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#000
+    class L1,L2,L3,L4,L5,L6 stage
 ```
 
 - 모든 단계 Python 단독 구현, CAD 기반 인식 (STL 29종)
