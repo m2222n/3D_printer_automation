@@ -773,8 +773,27 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-21
-- **현재 상태**: Phase 1~3 완료. Phase 5 빈피킹 SW 완성 (카메라 입고 5월 대기). **카카오 VM 모니터링 이전 완료** + Basic Auth 적용. 도메인 `factory.flickdone.com` 확정, Cloudflare 계정 초대 대기 중.
+- **날짜**: 2026-04-22
+- **현재 상태**: Phase 1~3 완료. Phase 5 빈피킹 SW 완성 + 카메라 4/23(목) 도착 예정. D435 실데이터 full pipeline 완주 (버그 3개 발견+수정). 실물 브래킷 CAD 매칭은 USB 길이 제약으로 확정 불가 — Basler 입고 시 해결 예상.
+
+### 4/22 — D435 실물 브래킷 CAD 매칭 시도 + 버그 수정
+- ✅ **실물 SLA 부품 2개 수령** (공장, 서포트 제거됨, H자 브래킷 형상, bracket_sen_1 추정)
+- ✅ **Mac D435 full pipeline 실데이터 완주** — 이전까지는 Redwood/합성/일반사물만
+- ✅ **버그 3개 발견 + 수정** (Mac, 커밋/푸시 필요):
+  - `cloud_filter.py`: 빈 pcd 법선 추정 크래시 방어
+  - `test_d435_full_pipeline.py`:
+    - PointCloud 0-pts 가드 + depth 범위 진단 로그
+    - `compute_auto_roi` 바닥 휴리스틱이 **탑다운 뷰에서 브래킷 상면을 잘라내는 버그** 수정 (z=카메라거리 혼동)
+    - top-K 전체 표시 (기존은 rank==0만)
+    - `--only` 키워드 옵션 — SizeFilter 우회, 카테고리 집중 매칭
+- ✅ **진단 헬퍼 스크립트 3종 추가**: `run_bracket_retry.sh`, `check_saved_frame.sh`, `identify_bracket_live.py`
+- ⚠️ **CAD 확정 불가 — 하드웨어 제약이 근본 원인**:
+  - USB 짧음 → 카메라 20cm 고정이 한계
+  - D435 640×480 최적 거리 28cm 미달 → depth unique 값 13개 (정상 30~50)
+  - Z축 두께 50% 오차 (16mm → 7mm)
+  - SizeFilter 탈락 + 3회 실행 3개 결과 (FGR/RANSAC seed 미고정)
+  - bracket_sen_1 fitness 0.00~0.16 (FPFH 대응점 부족)
+- 📝 **결론**: D435는 어차피 Basler 오기 전 임시 검증용 → 깊게 파지 않음. **파이프라인 버그 3개 + 진단 인프라**는 Basler 넘어가도 그대로 자산
 
 ### 4/21 — 도메인 확정 + D435 USB 케이블 테스트
 - ✅ **도메인 확정**: `factory.flickdone.com` (대표님 flickdone.com 서브도메인 사용 승인)
