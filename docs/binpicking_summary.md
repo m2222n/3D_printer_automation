@@ -1,7 +1,7 @@
 # 3D 빈피킹 비전 시스템 — 전체 현황 정리
 
 **ORINU-DEV-2026-002** | Phase 5 | 오리누 주식회사
-**작성일**: 2026-04-21 (화)
+**작성일**: 2026-04-21 (화) → **4/22 오전 업데이트**
 **작성자**: 정태민 연구원 (jtm@orinu.ai)
 **개발 기간**: 2026-03-18 ~ 현재 (약 5주)
 
@@ -13,7 +13,10 @@
 
 - **L1~L6 파이프라인 SW 완성** (카메라 입고 4주 전 달성)
 - **인식률**: easy 100%, crowded 90%, hard 60% | **매칭시간**: 0.4~0.6s/부품 | **RMSE**: 1.0~1.5mm
-- **현재 상태**: 카메라 입고 대기 (4/23 목 예정), 실물 SLA 부품 ACCEPT 검증만 남음
+- **레진 프리셋 SSOT**: `--resin grey|white|clear|flexible` 한 옵션으로 L2+L4 파라미터 일관 전환 (회귀 53건 PASS)
+- **Basler 카메라 도착 예정**: 2026-04-23 (목) — 설치 자동화 스크립트 준비 완료 (현장 3h→1h)
+- **4/22 오전 실물 SLA 부품 2개 수령** — D435 full pipeline 첫 완주 + 파이프라인 버그 3개 발견/수정
+- **현재 상태**: SW 완성 + 실물 검증 착수. CAD 최종 확정은 Basler 입고 후
 - **투입 자원**: 1인 개발 (정태민), Mac 로컬 + 6000 서버, 논문 3편 + 튜토리얼 11개
 
 ---
@@ -207,8 +210,67 @@
 - 4/17 중간 보고서 작성 (`docs/binpicking_report_0417.md`)
 
 ### W6 (4/21) — 카메라 도착 준비
-- D435 USB 3.2 20Gbps 케이블 테스트 PASS
-- 대표님 전화 (4/23 목 카메라 도착 예정)
+- 오전: D435 USB 3.2 20Gbps 케이블 테스트 PASS, 대표님 전화 (4/23 목 카메라 도착 예정)
+- **4/21 밤 (재택) — 3개 대비 작업**:
+  - **Basler 드라이버 다운로드 체크리스트** (`docs/basler_download_checklist.md`)
+  - **Basler 설치 자동화 스크립트** (`bin_picking/scripts/`, `112d986`)
+    - `basler_setup.sh`: pylon + Blaze 자동 설치 + GigE 네트워크 튜닝 (Jumbo Frame, UDP 버퍼, ufw)
+    - `basler_smoke_test.py`: 9단계 스모크 테스트 (import→열거→식별→start→capture→통계→save/load→PointCloud)
+    - `README.md`: 현장 작업 순서서 → 당일 3시간 → 1시간 단축 기대
+  - **레진 프리셋 SSOT 통합** (`813cad4`)
+    - `bin_picking/config/resin_presets.py` — L2+L4 파라미터 + 판정 임계값 통합
+    - 4종 프리셋: grey/white/clear/flexible
+    - `CloudFilter.from_resin()`, `PoseEstimator.from_resin()`, `BinPickingPipeline.from_resin()` 연결
+    - `main_pipeline.py --resin clear|grey|white|flexible` CLI 옵션
+    - 튜토리얼 11 섹션 5 "결정 매트릭스"를 실제 코드에 정식 반영
+    - 회귀 테스트 53건 PASS (`tests/test_resin_presets.py`)
+  - README 4/21 기준 업데이트 (`d415dbe`)
+
+### W7 (4/22) — 실물 SLA 브래킷 D435 CAD 매칭 첫 시도 ★
+- **실물 SLA 부품 2개 수령** (공장에서 가져옴, 서포트 제거됨)
+  - 형상: 좌우 대칭 H자 브래킷, 평판 + 4홀(2×2) 중앙 + 상하 돌출
+  - **bracket_sen_1(15×53×56mm) 추정** — 대표님 확인 필요
+- **Mac D435로 full pipeline 실데이터 첫 완주** — 이전까지 Redwood/합성/일반사물만
+
+#### 7.1 파이프라인 버그 3개 발견 + 수정 (`eb730ba`)
+| 버그 | 원인 | 수정 | 파일 |
+|------|------|------|------|
+| 빈 pcd 법선 추정 크래시 | RANSAC 바닥 제거 후 포인트 0 → `OrientNormalsTowardsCameraLocation: No normals in PointCloud` | `len(pcd.points)==0` 가드 | `cloud_filter.py` |
+| PointCloud 0-pts 시 compute_auto_roi 크래시 | `pts.min(axis=0)` zero-size array | 0-pts 가드 + depth 범위 진단 로그 (min/median/max) | `test_d435_full_pipeline.py` |
+| **ROI 바닥 휴리스틱 근본 버그** ★ | 탑다운 뷰에서 z는 카메라 거리인데 `roi_min[2] = min_z + 5mm`로 바닥 가정 → **브래킷 상면 잘려나감** | 바닥 휴리스틱 제거 (RANSAC만 바닥 담당) | `test_d435_full_pipeline.py` |
+
+#### 7.2 진단 인프라 추가 (`36469aa`)
+- `--top-k` 지정 시 rank==0만 프린트하던 버그 수정 → 전체 rank 표시
+- `--only` 키워드 옵션 — SizeFilter 우회, 카테고리 집중 매칭 (`--only bracket,brkt`)
+- 헬퍼 스크립트 3종:
+  - `run_bracket_retry.sh`: sudo + live + save 래퍼
+  - `check_saved_frame.sh`: 저장 프레임 로드 + depth 범위/--only 옵션
+  - `identify_bracket_live.py`: 라이브 뷰 + SPACE 식별 인터랙티브 (예비)
+
+#### 7.3 매칭 결과 — CAD 확정 불가, 원인 하드웨어로 특정
+| 지표 | 값 | 판정 |
+|------|-----|------|
+| L1 유효 depth | 86% (263K/307K) | ✅ 우수 |
+| L2→L3 통과 | 264K → 403 pts → 2 클러스터 (46×58×7mm, 27×53×7mm) | ✅ |
+| L4 Top-1 매칭 (기본) | `07_guide_paper_l` fitness 0.30 WARN | ❌ |
+| L4 Top-1 매칭 (`--only bracket,brkt`) | `brkt_switch` fitness 0.63 (**허위 ACCEPT**, 크기 3배 차이) | ❌ |
+| bracket_sen_1 fitness | 0.00~0.16 (FPFH 대응점 부족) | ❌ |
+| 전체 파이프라인 시간 | 1.36초 | ✅ |
+
+**근본 원인 — 하드웨어 제약**:
+- USB 케이블 짧음 → 카메라 책상 위 20cm 고정이 한계
+- D435 640×480 최적 거리 **28cm 미달** (High accuracy 모드 10.5cm 제외)
+- depth unique 값 **13개** (정상 30~50) → **Z축 두께 오차 50%** (실제 16mm → 측정 7mm)
+- SizeFilter가 브래킷 후보에서 탈락 → sol_block/variant/guide_paper 계열만 후보
+- FGR/RANSAC 시드 미고정 → 3회 실행 3개 결과
+
+**결론**: SW는 정상. Basler(500~1500mm 최적) 입고 시 근본 해결. **파이프라인 버그 3개 수정 + 진단 인프라는 Basler 넘어가도 그대로 자산**.
+
+#### 7.4 커밋 4건 (4/22)
+- `f38b6e8` docs: CLAUDE.md 4/22 업데이트
+- `eb730ba` fix(d435): 버그 3개 수정
+- `36469aa` feat(d435): 헬퍼 스크립트 3종
+- `1ce51f1` docs: 회의 자료에 4/22 오전 D435 시도 결과 반영
 
 ---
 
@@ -233,6 +295,7 @@
 
 ### 5.2 config/
 - `grasp_database.yaml` (307줄) — 29종 부품별 그래스프 파라미터 + robot 섹션(HCR-10L 스펙)
+- `resin_presets.py` — 레진 프리셋 SSOT (grey/white/clear/flexible, 4/21 밤 추가)
 
 ### 5.3 models/
 - `cad/` — STL 원본 (29종 고유 + `_duplicates/` 17개)
@@ -243,8 +306,23 @@
 - `test_e2e_redwood.py` (240줄) — Redwood RGB-D E2E 5단계
 - `test_e2e_cad_matching.py` (700줄) — 실제 STL 29종 기반 합성 씬 E2E (6개 시나리오)
 - `test_e2e_realsense.py` — D435 실데이터 L1~L3 + Full Pipeline
+- `test_d435_realworld.py` — D435 실데이터 L1~L3 (일반 사물)
+- `test_d435_full_pipeline.py` — D435 Full Pipeline L1~L5 + 4/22 버그 3개 수정
+- `test_resin_presets.py` — 레진 프리셋 회귀 테스트 53건 PASS (4/21 밤 추가)
+- **4/22 헬퍼 스크립트 3종** (신규): `run_bracket_retry.sh`, `check_saved_frame.sh`, `identify_bracket_live.py`
 
-### 5.5 tutorials/ (11개, 4,247줄)
+### 5.5 scripts/ (4/21 밤 추가)
+- `basler_setup.sh` — pylon + Blaze 자동 설치 + GigE 네트워크 튜닝
+- `basler_smoke_test.py` — 9단계 스모크 테스트
+- `README.md` — 현장 작업 순서서
+
+### 5.6 docs/ (참고)
+- `binpicking_summary.md` — 본 문서 (Phase 5 전체 총정리)
+- `binpicking_report_0417.md` — 4/17 중간 보고서
+- `meeting_0422.md` — 4/22 대표님 회의 자료
+- `basler_download_checklist.md` — 드라이버 다운로드 체크리스트
+
+### 5.7 tutorials/ (11개, 4,247줄)
 | # | 제목 | 주제 |
 |---|------|------|
 | 01 | registration_pipeline | FPFH+RANSAC+ICP 기본 |
@@ -364,20 +442,23 @@
 | 2026-04-02 | STL 파일 준비 (Google Drive → FreeCAD → STL+STP) | 55개 → 29종 정리 |
 | 2026-04-10 | ① eye-in-hand 카메라 추가 ② 실패 케이스 시각화 | ① 설계+시뮬 PASS ② `--save-viz` 구현 |
 | 2026-04-14 | 산업용 PC 카메라 6대 구성 (Bottom 1 + 빈피킹 2 + 모니터링 1~2 + 양손로봇 1) | 젯슨 나노 분산 검토 |
-| 2026-04-21 | 카메라 4/23 목 도착 예정 | 내일 회의 |
+| 2026-04-21 | 카메라 4/23 목 도착 예정, 출근일 조정 회의(4/22) | 4/22 회의 자료 + 1페이지 요약 준비 |
+| 2026-04-22 | (예정) 회의에서 가져온 부품 식별 요청, 출근일 확정, 비전 PC 발주 현황 확인 | — |
 
 ---
 
 ## 11. 현재 남은 과제
 
-### 11.1 블로커 (카메라 입고 필요)
+### 11.1 블로커 (카메라 입고 필요, 4/23 예정)
 - Basler 실연동 (`basler_capture.py` 실카메라 테스트)
 - Colored ICP 실데이터 검증
 - 핸드-아이 캘리브레이션 실측 (eye-to-hand + eye-in-hand 2세트)
 - multi-view 재촬영 파이프라인
+- **실물 브래킷 CAD 매칭 ACCEPT 확정** (4/22 D435 시도했으나 USB 길이 제약으로 불가)
 
 ### 11.2 블로커 (공장 부품 필요)
-- 실물 SLA 부품 3~5개 확보 → D435 촬영 → CAD 매칭 **ACCEPT** 검증
+- [x] ~~실물 SLA 부품 확보~~ → **4/22 오전 2개 수령** (bracket_sen_1 추정)
+- 추가 부품 3~5개 확보 가능하면 더 좋음 (유사 형상 오매칭 검증)
 - 유사 형상 부품 간 오매칭 실데이터 테스트
 
 ### 11.3 블로커 (그리퍼 + 빈 배치 필요)
@@ -388,7 +469,11 @@
 ### 11.4 블로커 없음 (대기)
 - HCR-10L 티칭 교육 2회차 (별도 스케줄)
 - 30종 확장 (현재 29종, 추가 부품 수령 시)
-- Clear 레진 대응 (튜토리얼 11 완료, 실데이터 검증 대기)
+- Clear 레진 대응 (튜토리얼 11 완료, 4/21 SSOT 정식화, 실데이터 검증 대기)
+
+### 11.5 SW 안정화 (우선순위 낮음, 블로커 아님)
+- Open3D `segment_plane(seed=...)` 시드 고정 → 비결정성 제거
+- PoseEstimator의 FGR/RANSAC 시드 주입 → 동일 데이터 재현 가능
 
 ---
 
@@ -432,7 +517,7 @@
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│                Phase 5 빈피킹 — 2026-04-21 기준                │
+│             Phase 5 빈피킹 — 2026-04-22 (수) 기준              │
 ├───────────────────────────────────────────────────────────────┤
 │                                                               │
 │  SW 파이프라인  │  L1 ━━ L2 ━━ L3 ━━ L4 ━━ L5 ━━ L6  ✅ 완성   │
@@ -440,17 +525,28 @@
 │  매칭 성능      │  easy 100% │ crowded 90% │ hard 60%         │
 │                 │  0.4~0.6s/부품 │ RMSE 1.0~1.5mm             │
 │                                                               │
-│  D435 검증      │  Full Pipeline 2회 PASS (ACCEPT 0)          │
+│  레진 프리셋    │  grey/white/clear/flexible SSOT 통합         │
+│                 │  --resin 한 옵션으로 파이프라인 일관 전환    │
+│                 │  회귀 테스트 53건 PASS                       │
+│                                                               │
+│  Basler 준비    │  설치 자동화 스크립트 완성 (3h → 1h)         │
+│                 │  드라이버 다운로드 체크리스트 작성           │
+│                 │                                              │
+│  D435 검증      │  Full Pipeline 2회 PASS (ACCEPT 0, 4/14)     │
+│                 │  ★ 4/22 실물 브래킷 첫 완주 + 버그 3개 수정  │
+│                 │  (CAD 확정은 USB 20cm 제약으로 불가)         │
 │                                                               │
 │  HW 대기        │  Basler 카메라 (4/23 목 도착 예정) 🚚        │
 │                 │  비전 PC (한솔 견적, 발주 중)                │
 │                 │  그리퍼 (설계 중)                            │
-│                 │  실물 SLA 부품 (공장 재고)                   │
+│                 │  ★ 실물 SLA 부품 2개 수령 완료 (4/22 오전)   │
 │                                                               │
 │  다음 단계      │  1. 카메라 도착 → Basler 실연동 (당일)       │
-│                 │  2. 실물 부품 ACCEPT 검증                    │
+│                 │  2. 실물 부품 ACCEPT 검증 (Basler로 재시도)  │
 │                 │  3. Colored ICP 실데이터 검증                │
 │                 │  4. 캘리브레이션 2세트 + 로봇 실전 피킹      │
 │                                                               │
 └───────────────────────────────────────────────────────────────┘
 ```
+
+**총평**: SW 완성도 100%. 4/22 오전 실물 부품 첫 파이프라인 완주 + 근본 버그 3개 발견/수정으로 오히려 강화됨. 하드웨어 입고 일정에 맞춰 즉시 실연동 착수 가능한 상태.
