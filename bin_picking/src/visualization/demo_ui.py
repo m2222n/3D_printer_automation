@@ -100,7 +100,7 @@ class DemoRenderer:
         self,
         cell_w: int = 640,
         cell_h: int = 480,
-        title_h: int = 32,
+        title_h: int = 38,
         padding: int = 8,
     ):
         """
@@ -257,21 +257,22 @@ class DemoRenderer:
         else:
             img = self._resize_keep_aspect(overlay, self.cell_w, self.cell_h)
 
-        # 판정 배지 (좌상단)
+        # 판정 배지 (우상단 — CAD 오버레이 가리지 않도록)
         if parts:
             top = parts[0]
             badge = top.decision
             color = top.color
-            # 배경 박스
-            text_size = cv2.getTextSize(badge, FONT, 0.9, 2)[0]
-            cv2.rectangle(
-                img, (10, 10),
-                (10 + text_size[0] + 16, 10 + text_size[1] + 14),
-                color, -1,
-            )
+            badge_font_scale = 0.6
+            badge_thickness = 1
+            text_size = cv2.getTextSize(badge, FONT, badge_font_scale, badge_thickness)[0]
+            box_w = text_size[0] + 12
+            box_h = text_size[1] + 10
+            x1 = self.cell_w - box_w - 10
+            y1 = 10
+            cv2.rectangle(img, (x1, y1), (x1 + box_w, y1 + box_h), color, -1)
             cv2.putText(
-                img, badge, (18, 10 + text_size[1] + 5),
-                FONT, 0.9, (255, 255, 255), 2, cv2.LINE_AA,
+                img, badge, (x1 + 6, y1 + text_size[1] + 4),
+                FONT, badge_font_scale, (255, 255, 255), badge_thickness, cv2.LINE_AA,
             )
 
         return img
@@ -296,10 +297,22 @@ class DemoRenderer:
                         FONT, 0.6, COLOR_HEADER, 1, cv2.LINE_AA)
             y += line_h + 4
 
+            # L2 감소율 (Input pts > 0일 때만 계산)
+            if stats.n_input_points > 0 and stats.n_filtered_points >= 0:
+                kept_pct = 100.0 * stats.n_filtered_points / stats.n_input_points
+                filtered_line = (
+                    f"Filtered  : {stats.n_filtered_points:>10,}  "
+                    f"({kept_pct:>4.1f}% kept, {stats.time_l2_ms:>6.1f} ms)"
+                )
+            else:
+                filtered_line = (
+                    f"Filtered  : {stats.n_filtered_points:>10,}  "
+                    f"({stats.time_l2_ms:>6.1f} ms)"
+                )
+
             lines = [
                 f"Input pts : {stats.n_input_points:>10,}",
-                f"Filtered  : {stats.n_filtered_points:>10,}  "
-                f"({stats.time_l2_ms:>6.1f} ms)",
+                filtered_line,
                 f"Clusters  : {stats.n_clusters:>10,}  "
                 f"({stats.time_l3_ms:>6.1f} ms)",
                 f"Matching  : ACCEPT {stats.n_accepted} / "
@@ -392,8 +405,8 @@ class DemoRenderer:
             COLOR_TITLE_BG, -1,
         )
         cv2.putText(
-            canvas, title, (x + 10, y + self.title_h - 10),
-            FONT, 0.55, COLOR_HEADER, 1, cv2.LINE_AA,
+            canvas, title, (x + 12, y + self.title_h - 12),
+            FONT, 0.8, COLOR_HEADER, 2, cv2.LINE_AA,
         )
 
         # 셀 이미지
