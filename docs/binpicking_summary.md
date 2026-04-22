@@ -16,7 +16,8 @@
 - **레진 프리셋 SSOT**: `--resin grey|white|clear|flexible` 한 옵션으로 L2+L4 파라미터 일관 전환 (회귀 53건 PASS)
 - **Basler 카메라 도착 예정**: 2026-04-23 (목) — 설치 자동화 스크립트 준비 완료 (현장 3h→1h)
 - **4/22 오전 실물 SLA 부품 2개 수령** — D435 full pipeline 첫 완주 + 파이프라인 버그 3개 발견/수정
-- **현재 상태**: SW 완성 + 실물 검증 착수. CAD 최종 확정은 Basler 입고 후
+- **4/22 오후 데모 리허설 피드백 반영** ★ — 크래시 방어 2건, ROI/depth 3값 정합성 Basler 기준 통일, UI 3건 개선, **synthetic 매칭 9.7s → 1.5s (8배 단축)** → 시연 준비 완료
+- **현재 상태**: SW 완성 + 실물 검증 착수 + 시연 파이프라인 안정화. CAD 최종 확정은 Basler 입고 후
 - **투입 자원**: 1인 개발 (정태민), Mac 로컬 + 6000 서버, 논문 3편 + 튜토리얼 11개
 
 ---
@@ -266,11 +267,90 @@
 
 **결론**: SW는 정상. Basler(500~1500mm 최적) 입고 시 근본 해결. **파이프라인 버그 3개 수정 + 진단 인프라는 Basler 넘어가도 그대로 자산**.
 
-#### 7.4 커밋 4건 (4/22)
+#### 7.4 커밋 4건 (4/22 오전)
 - `f38b6e8` docs: CLAUDE.md 4/22 업데이트
 - `eb730ba` fix(d435): 버그 3개 수정
 - `36469aa` feat(d435): 헬퍼 스크립트 3종
 - `1ce51f1` docs: 회의 자료에 4/22 오전 D435 시도 결과 반영
+
+### W7+ (4/22 오후) — 데모 리허설 피드백 6건 반영 ★
+
+Mac 리허설 중 추가 발견된 크래시 2건 + 서버↔Mac 양방향 개선 4건.
+**synthetic 매칭 9.7s → 1.5s (8배 단축), 데모 UI 안정화, ROI/depth 파라미터 정합성 확보.**
+
+#### 7.5 Mac 리허설 크래시 방어 2건 (`ac0f283`, Mac 커밋)
+- `cloud_filter.remove_plane`: 포인트 < `plane_ransac_n`일 때 `segment_plane()` 호출이 "There must be at least ransac_n points"로 크래시
+  - 방어: 원본 pcd + 0벡터 반환, stats에 `plane_skipped` 마킹
+- `demo_live_recognition.py` capture 핸들러: 파이프라인 크래시 시 GUI 전체 종료
+  - 방어: try/except로 WARN 로그만 찍고 라이브 모드 유지
+- 재현 조건: D435 20cm 근접 촬영에서 8번째 캡처 중 크래시 (프레임마다 유효 depth 포인트 수 편차로 RANSAC 최소치 미달)
+
+#### 7.6 ROI/depth 기본값 3개 정합성 재설계 (`c3a8477`) ★
+
+**발견된 근본 이슈**: 3개 값이 서로 다른 세팅 기준이어서 `--synthetic`은 L2 RANSAC 크래시, `--realsense`는 ACCEPT 0 빈번.
+
+| 값 | 기존 | 기준 |
+|----|------|------|
+| `DEFAULT_ROI` z | 0.005 ~ 0.20m | 근접(D435 20cm) 세팅 |
+| `depth_to_pointcloud` 기본 `depth_min` | 0.3m | Basler 거리 세팅 |
+| `SyntheticSource` depth | 0.55 ~ 0.80m | Basler 세팅 |
+
+→ synthetic depth 값(550~800mm)이 ROI 범위(5~200mm) 밖이라 crop 후 포인트 0 → RANSAC 실패.
+
+**옵션 1(Basler 실세팅 기준) 채택 근거**: Basler 4/23 입고 후 실운영 세팅이 40~80cm 오버헤드. 옵션 2(근접 기준)로 맞추면 Basler 도착 시 전부 되돌려야 함.
+
+**적용 변경**:
+- `main_pipeline.DEFAULT_ROI` z: 0.005~0.20 → **0.30~1.00m**
+- `SyntheticSource` depth / `depth_to_pointcloud` 기본값 **그대로 유지**
+- D435 근접 테스트용 CLI 오버라이드 4개 추가 (`main_pipeline.py` + `demo_live_recognition.py` 양쪽):
+  - `--roi-z-min`, `--roi-z-max`
+  - `--depth-min`, `--depth-max`
+- D435 근접 테스트 표준 커맨드:
+  ```bash
+  sudo .venv/binpick/bin/python bin_picking/scripts/demo_live_recognition.py \
+    --realsense --roi-z-min 0.02 --roi-z-max 0.30 \
+    --depth-min 0.02 --depth-max 0.50
+  ```
+
+#### 7.7 데모 UI 3건 개선 (`696860f`)
+Mac 렌더 확인으로 반영된 시각 개선:
+- **ACCEPT 뱃지**: 좌상단 → **우상단**, 폰트 0.9/th2 → 0.6/th1 (좌하 CAD 오버레이 가림 해소)
+- **셀 타이틀**: 폰트 0.55/th1 → 0.8/th2, title_h 32 → 38px (시연 중 포인터 가독성)
+- **Filtered 라인**: `kept%` 병기 — 예: `10,115 (3.3% kept, 23.4 ms)` (입력 대비 감소율 즉시 파악)
+
+#### 7.8 synthetic 매칭 9.7s → 1.5s 단축 + Matches 테이블 재작성 (`b63f4bf`) ★
+
+**문제**: synthetic 씬에서 L4 Matching **9240ms**, Total **9.7s** — 대표님 시연에서 9초 대기는 길음.
+
+**원인 분석**:
+- `SyntheticSource` noise σ=3이 DBSCAN eps 8mm 안에서 **노이즈 점을 별도 클러스터로 튀게** 만듦
+- 결과: 클러스터 **36개** × 후보 10개 = 360회 매칭
+- 실데이터(Basler/D435)는 이 문제 없음 — synthetic 파라미터만의 이슈
+
+**수정**:
+- `SyntheticSource` noise σ 3 → **1** (DBSCAN 실데이터 감도는 유지, 실데이터 파이프라인 무영향)
+
+**결과**:
+| 항목 | Before (`696860f`) | After (`b63f4bf`) |
+|------|-------------------|-------------------|
+| 클러스터 | 36 | **3** |
+| L4 Matching | 9240ms | **1158ms** (8배 단축) |
+| Total | ~9.7s | **1.5s** |
+
+부수 개선:
+- Matches 테이블을 **고정 x 좌표 5컬럼**(#, Part, Fit, RMSE(mm), Dec)로 재작성
+  (기존 단일 f-string이 mono-font 가정해서 640px 셀에 빡빡했던 문제 해소)
+- **RMSE 단위 버그 수정**: 값은 mm인데 표시가 "1.23m"로 오독되던 것 → 헤더에 `(mm)` 명시, 값은 단위 기호 제거
+
+**Mac 검증 결과**: Clusters 3개, L4 1158ms, Total 1.5s, 3상태 색상 코딩(ACCEPT/WARN/REJECT)이 모두 보여지는 구조 → **시연 준비 완료**.
+
+#### 7.9 커밋 4건 (4/22 오후, 빈피킹 관련)
+| 커밋 | 내용 | 출처 |
+|------|------|------|
+| `ac0f283` | 크래시 방어 2건 (RANSAC/GUI) | Mac 리허설 |
+| `c3a8477` | ROI/depth 기본값 Basler 기준 통일 + CLI 오버라이드 | 6000 서버 |
+| `696860f` | 뱃지·타이틀·Filtered% UI 개선 3건 | 6000 서버 |
+| `b63f4bf` | synthetic 9.7s→1.5s + Matches 테이블 재작성 | 6000 서버 |
 
 ---
 
@@ -517,21 +597,31 @@
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│             Phase 5 빈피킹 — 2026-04-22 (수) 기준              │
+│       Phase 5 빈피킹 — 2026-04-22 (수) 저녁 기준 (D-1)         │
 ├───────────────────────────────────────────────────────────────┤
 │                                                               │
 │  SW 파이프라인  │  L1 ━━ L2 ━━ L3 ━━ L4 ━━ L5 ━━ L6  ✅ 완성   │
+│                 │  + 4/22 오후 크래시 방어 2건 추가 내성 확보  │
 │                                                               │
 │  매칭 성능      │  easy 100% │ crowded 90% │ hard 60%         │
 │                 │  0.4~0.6s/부품 │ RMSE 1.0~1.5mm             │
+│                 │  synthetic 리허설 ★ 9.7s → 1.5s (8배 단축)   │
 │                                                               │
 │  레진 프리셋    │  grey/white/clear/flexible SSOT 통합         │
 │                 │  --resin 한 옵션으로 파이프라인 일관 전환    │
 │                 │  회귀 테스트 53건 PASS                       │
 │                                                               │
+│  ROI/depth 정합 │  Basler 실세팅(0.30~1.00m) 기준으로 통일 ★   │
+│                 │  D435 근접 테스트용 CLI 오버라이드 4개 추가  │
+│                                                               │
+│  데모 UI        │  2×2 그리드 + 3상태 색상 코딩 (ACC/WARN/REJ) │
+│                 │  뱃지 우상단 축소, 타이틀 확대, kept% 병기   │
+│                 │  Matches 테이블 5컬럼 정렬 + RMSE(mm) 단위    │
+│                 │  → Mac 렌더 검증 완료, 시연 준비 완료        │
+│                                                               │
 │  Basler 준비    │  설치 자동화 스크립트 완성 (3h → 1h)         │
 │                 │  드라이버 다운로드 체크리스트 작성           │
-│                 │                                              │
+│                                                               │
 │  D435 검증      │  Full Pipeline 2회 PASS (ACCEPT 0, 4/14)     │
 │                 │  ★ 4/22 실물 브래킷 첫 완주 + 버그 3개 수정  │
 │                 │  (CAD 확정은 USB 20cm 제약으로 불가)         │
@@ -549,4 +639,7 @@
 └───────────────────────────────────────────────────────────────┘
 ```
 
-**총평**: SW 완성도 100%. 4/22 오전 실물 부품 첫 파이프라인 완주 + 근본 버그 3개 발견/수정으로 오히려 강화됨. 하드웨어 입고 일정에 맞춰 즉시 실연동 착수 가능한 상태.
+**총평**:
+- SW 완성도 100%. 4/22 오전 실물 부품 첫 파이프라인 완주 + 근본 버그 3개 발견/수정으로 기반 강화.
+- 4/22 오후 데모 리허설 피드백 6건 반영으로 **시연 파이프라인 안정화**. synthetic 리허설 9.7s → 1.5s (8배), ROI/depth 3값 정합성 확보, UI 3건 개선 완료.
+- 4/23 Basler 입고 당일 바로 실연동 → 실물 부품 ACCEPT 검증 착수 가능한 상태.
