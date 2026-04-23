@@ -1,4 +1,4 @@
-﻿from collections import deque
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -69,7 +69,7 @@ class RuntimeCtx:
 
     # Equipment occupancy states
     wash_active_cmd: dict[int, str | None] = field(default_factory=lambda: {1: None, 2: None})
-    cure_active_cmd: dict[int, str | None] = field(default_factory=lambda: {1: None, 2: None})
+    cure_active_cmd: dict[int, str | None] = field(default_factory=lambda: {1: None})
     robot_active_cmd: str | None = None
 
     # Stage waiting queues

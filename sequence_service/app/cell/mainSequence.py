@@ -28,7 +28,7 @@ def build_main_sequences(runtime_ctx):
         # 4) Wash units (2 instances)
         WashingSequence(runtime_ctx, 1),
         WashingSequence(runtime_ctx, 2),
-        # 5) Cure units (2 instances)
+        # 5) Cure units (1 instances)
         CuringSequence(runtime_ctx, 1),
-        CuringSequence(runtime_ctx, 2),
+        # CuringSequence(runtime_ctx, 2),
     ]
