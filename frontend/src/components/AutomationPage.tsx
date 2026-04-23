@@ -273,7 +273,7 @@ export function AutomationPage() {
 
   const printerKeys = ['1', '2', '3', '4'];
   const washKeys = ['1', '2'];
-  const cureKeys = ['1', '2'];
+  const cureKeys = ['1'];
   const activeJobEntries = Object.entries(queues.active_jobs || {});
 
   return (
