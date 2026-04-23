@@ -209,6 +209,10 @@ __marimo__/
 # Claude Code files
 CLAUDE.local.md
 
+# 내부 회의 자료 (대표님/한솔 보고용 초안, 로컬만 유지)
+docs/meeting_0424_*.md
+docs/*_addendum.html
+
 # Runtime data
 *.db
 web-api/uploads/

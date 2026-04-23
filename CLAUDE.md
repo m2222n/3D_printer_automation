@@ -64,6 +64,16 @@
 - **3/27 한솔코에버 최종 시연** (한솔 자체 진행, 정태민은 Azure 교육 중)
 - **4/3 김기원 주임 퇴사 확인** — 한솔코에버 퇴사. 직접 지원 불가, 구조/플로우 문의는 가능. 코드 docs 폴더에 역할별 요약 있다고 함
 
+### 2026.04.23 (한솔코에버 이예승 사원 — 경화기 2대 → 1대 축소)
+- 예승님이 `hansol-dev` 브랜치에 커밋 `52a1c8f` 업로드 (4/23 14:02)
+- **내용**: sequence_service + AutomationPage UI에서 Cure 2 비활성화. `cureKeys`, `cure_active_cmd`, `CuringSequence(2)` 주석 처리
+- **변경 파일 3개**: `AutomationPage.tsx`(+1/-1), `ctx.py`(+2/-2, BOM 제거 포함), `mainSequence.py`(+2/-2)
+- ✅ **머지 완료 (4/23 저녁)** — `hansol-merge-3` 브랜치에서 cherry-pick(`47873fe`) → main 머지(`9f97f1e`)
+  - **인코딩 깨짐 없음** — 1·2차와 달리 예승님이 BOM까지 제거해서 깨끗함
+  - TypeScript + Python + Vite 빌드 전부 PASS
+  - origin + personal 양쪽 push 완료
+- **⚠️ 예승님 패치 불완전 발견**: `sequence_service/app/cell/runtime.py:121`에 `self.ctx.cure_active_cmd = {1: None, 2: None}` 리셋 하드코딩 잔존. 런타임 재설정 시 Cure 2 되살아날 가능성. 예승님과 후속 논의 후 추가 패치 예정
+
 ### 2026.04.16 (한솔코에버 이예승 사원 — 프린터 할당 기능)
 - 이예승 사원이 `hansol-dev` 브랜치에 커밋 `74584fb` 업로드 (4/16)
 - **내용**: 자동화 CMD 생성 시 특정 프린터 할당 콤보박스 연동 (기존: 랜덤 → 1~4번 지정 가능) + 공용 큐 버그 수정
@@ -163,7 +173,7 @@
 |-------|------|----------|------|------|
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | 2주 | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
-| **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 완료 (4/3) — 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
+| **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 3차 완료 (4/3 기원님, 4/16 예승님 프린터 할당, 4/23 예승님 경화기 1대 축소). 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
 | **Phase 4** | ~~OpenMV~~ → **MaixCAM** 장비 모니터링 | 🟡 HIGH | 6주 | 🔄 OpenMV 제외, **MaixCAM으로 전환** (4/14 대표님 지시). 리서치 완료 — 1 TOPS NPU, find_blobs()/YOLO, MQTT/Modbus 내장. 빈피킹 우선, 여유 시 PoC |
 | **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W5 — **Modbus INT16 재설계 + Colored ICP 파이프라인 + Basler 듀얼 캡처 모듈** 추가. L1~L6 SW 완성 + 그래스프 DB 29종 + D435 Full Pipeline PASS. 인식률 100%(easy), crowded 90%, hard 60%. **다음: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → 실제 캘리브레이션** |
 
@@ -773,18 +783,27 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-22 (저녁)
+- **날짜**: 2026-04-23 (목, 공장 방문 + 저녁 작업 완료)
+- **오늘 완료 작업 (4/23)**:
+  1. **하드웨어 입고 3건 확인 ✅** — Basler 카메라(Blaze-112 + ace2), 산업용 PC(IPC-510), Cloudflare 권한 활성
+  2. **예승+파트장(김주엽) 3자 회의 완료** — 14개 안건 논의, CLAUDE.local.md 상세 기록
+  3. **한솔 머지 3차 완료** — `9f97f1e` (경화기 2→1대 축소, origin+personal push 완료)
+  4. **4/24 대표님 회의자료 2종 작성** — [meeting_0424_ceo.md](docs/meeting_0424_ceo.md) 내부용 + [meeting_0424_ceo_pdf.md](docs/meeting_0424_ceo_pdf.md) 웹 Claude PDF 업로드용
+  5. **Cloudflare Tunnel 실행 가이드 준비** — 내일(4/24) 마감 목표, 단계별 체크리스트
 - **현재 상태 요약**:
-  - **Phase 1~3 완료**. Phase 5 빈피킹 SW 완성 (L1~L6 파이프라인 + 그래스프 DB 29종 + 데모 UI + 진단 인프라).
-  - **Basler 4/23(목) 도착 예정** — 실연동 + 핸드-아이 캘리브레이션 + Colored ICP 실데이터 검증 착수.
-  - **4/22 데모 리허설 피드백 6건 반영**: 크래시 방어 2건, ROI/depth 파라미터 정합성, UI 개선 3건, synthetic 9.7s → 1.5s.
-  - **D435 실물 브래킷 CAD 매칭**: USB 20cm 제약으로 확정 불가 (Basler 입고 시 해결 예상). 파이프라인 버그 3개 수정 + 진단 인프라는 Basler 넘어가도 자산.
-  - **sequence_service 배포 논의 예정** (4/23 예승님 미팅): 공장 PC 자동 시작, 배포 디렉토리, 원격 Automation 탭 정책, Cloudflare Tunnel. `docs/meeting_0423_sequence_service.md` 참조.
-  - **웹앱 운영 이슈** (4/22 발견): 공장 PC PreFormServer 재시작 필요 (3번째 반복 — 자동 시작 안정화 숙제). 공장 PC 127.0.0.1:8085는 카카오/6000 서버와 다른 프로세스로 추정 — 예승님 확인 필요.
+  - **빈피킹 컨셉 미확정 — 대표님 4/24 논의**: 펼쳐서(A) / 차곡차곡(B) / 무작위 힙(C) 중 결정 필요
+  - **Cloudflare Tunnel 방향 확정 (현장 합의)**: 설비제어는 로컬 유지 + 원격 UI는 Tunnel 경유 = 옵션 2c. 예승님 동의 ("안 되면 로컬로 내려도 OK")
+  - **카메라 설치 방식 합의**: 로봇 암 장착(eye-in-hand) + Blaze-112 + ace2 동시 마운트. 브라켓은 3D 프린팅 vs 외부 가공 결정 필요
+  - **이관 대기 항목** (한솔이 가이드/소스 제공):
+    - 빈피킹 좌표 → 로봇 전송 인터페이스 (현재 Modbus 구조 유지 가능성 크나 확정 대기)
+    - 바텀 비전 홀 검출 소스코드 (한솔 공유 예정)
+  - **관찰 이슈**:
+    - 스핀 3개 중 2개 ON/OFF 동시 작동 (하드웨어 제어 계통 공유 의심)
+    - `runtime.py:121` cure_active_cmd 리셋 하드코딩 잔존 (예승님 패치 불완전, 후속 논의 필요)
 
-- **이번주 남은 일정**:
-  - 4/23 (목): Basler 입고 + 예승님 미팅 (sequence_service 배포) — 대표님 부재
-  - 4/24 (금): 대표님 진행상황 회의 여부 확정 (원래 수·금이었으나 카메라 도착 관련 조정)
+- **내일(4/24) 일정**:
+  - 오전: 대표님 논의 — 빈피킹 컨셉 + Cloudflare Tunnel 범위 + 브라켓 제작 방식 + sequence_service 배포 정책 + 경화기 축소 보고 범위 + IPC-510 스펙 + 스핀 이슈
+  - 오후: **Cloudflare Tunnel 설정 마감** (대표님 범위 결정 직후 착수, 공장 PC cloudflared 설치)
 
 ### 4/22 오후 — 데모 리허설 피드백 반영 (서버↔Mac 양방향 작업)
 - **Mac 리허설에서 크래시 2건 방어** (`ac0f283`, Mac 커밋)
