@@ -1,50 +1,20 @@
 # 3D Printer Automation System
 
-> 3D프린터-로봇 연동 자동화 시스템 | Formlabs Form 4 + HCR 협동로봇 + 3D 빈피킹 비전 + MaixCAM
+> 3D프린터-로봇 연동 자동화 시스템 | Formlabs Form 4 + HCR 협동로봇 + 3D 빈피킹 비전 + 엣지 AI
 
-**상태**: ✅ Cloudflare Tunnel 허브 운영 중 (2026-04-24) — [factory.flickdone.com](https://factory.flickdone.com/)
-
-### Backend / Runtime
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![uvicorn](https://img.shields.io/badge/uvicorn-0.27+-499848?logo=gunicorn&logoColor=white)](https://www.uvicorn.org)
-[![Pydantic](https://img.shields.io/badge/Pydantic-2.5+-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-D71F00?logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org)
-
-### Frontend
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4_beta-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
-
-### Database
-[![MariaDB](https://img.shields.io/badge/MariaDB-11.3-003545?logo=mariadb&logoColor=white)](https://mariadb.org)
-[![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://sqlite.org)
-[![PyMySQL](https://img.shields.io/badge/PyMySQL-1.1+-4479A1?logo=mysql&logoColor=white)](https://pymysql.readthedocs.io)
-
-### Hardware / Vision
-[![Formlabs](https://img.shields.io/badge/Formlabs-Form_4_×4-000000?logo=formlabs&logoColor=white)](https://formlabs.com/3d-printers/form-4)
-[![HCR](https://img.shields.io/badge/HCR--12/10L-Hanwha-FF9800?logoColor=white)](https://www.hanwharobotics.com)
-[![Modbus](https://img.shields.io/badge/Modbus_TCP-pymodbus_3.6+-FF6F00?logo=python&logoColor=white)](https://pymodbus.readthedocs.io)
-[![Basler](https://img.shields.io/badge/Basler-Blaze--112_+_ace2-0078D4?logoColor=white)](https://www.baslerweb.com)
-[![RealSense](https://img.shields.io/badge/Intel_RealSense-D435-0071C5?logo=intel&logoColor=white)](https://www.intelrealsense.com)
-[![MaixCAM](https://img.shields.io/badge/MaixCAM-1_TOPS_NPU-E2231A?logoColor=white)](https://wiki.sipeed.com/maixcam)
-
-### Bin Picking / Pointcloud
-[![Open3D](https://img.shields.io/badge/Open3D-0.19-4B8BBE?logo=python&logoColor=white)](http://www.open3d.org)
-[![NumPy](https://img.shields.io/badge/NumPy-1.26+-013243?logo=numpy&logoColor=white)](https://numpy.org)
-[![OpenCV](https://img.shields.io/badge/OpenCV-4.8+-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org)
-[![trimesh](https://img.shields.io/badge/trimesh-4.x-4CAF50?logo=python&logoColor=white)](https://trimesh.org)
-[![SciPy](https://img.shields.io/badge/SciPy-1.x-8CAAE6?logo=scipy&logoColor=white)](https://scipy.org)
-[![pypylon](https://img.shields.io/badge/pypylon-26.x-0078D4?logo=python&logoColor=white)](https://github.com/basler/pypylon)
-
-### Infrastructure
-[![Cloudflare Tunnel](https://img.shields.io/badge/Cloudflare_Tunnel-RUNNING-F38020?logo=cloudflare&logoColor=white)](https://www.cloudflare.com/products/tunnel/)
-[![NSSM](https://img.shields.io/badge/NSSM-OrinuMain-008CFF?logoColor=white)](https://nssm.cc)
-[![systemd](https://img.shields.io/badge/systemd-formlabs--web-FCC624?logo=systemd&logoColor=black)](https://systemd.io)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
-[![WireGuard](https://img.shields.io/badge/WireGuard-VPN_(legacy)-88171A?logo=wireguard&logoColor=white)](https://www.wireguard.com)
+[![Open3D](https://img.shields.io/badge/Open3D-0.19-4B8BBE?logo=python&logoColor=white)](http://www.open3d.org)
+[![Modbus](https://img.shields.io/badge/Modbus_TCP-pymodbus_3-FF6F00?logo=python&logoColor=white)](https://pymodbus.readthedocs.io)
+[![Basler](https://img.shields.io/badge/Basler-pypylon-0078D4?logoColor=white)](https://www.baslerweb.com)
+[![RealSense](https://img.shields.io/badge/Intel_RealSense-D435-0071C5?logo=intel&logoColor=white)](https://www.intelrealsense.com)
 [![MQTT](https://img.shields.io/badge/MQTT-Mosquitto-660066?logo=mqtt&logoColor=white)](https://mosquitto.org)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-Tunnel-F38020?logo=cloudflare&logoColor=white)](https://www.cloudflare.com)
 
 ---
 
@@ -52,238 +22,145 @@
 
 점자프린터 플라스틱 부품(약 29종) 생산 공정을 자동화하는 시스템입니다.
 
-| 항목 | 내용 |
-|------|------|
-| 회사 | 오리누 주식회사 (구 플릭던) |
-| 사업 | 2025년 경기도 제조로봇 이니셔티브 후속사업 |
-| 개발 기간 | 2026.02 ~ |
-| 담당 개발자 | 정태민 |
-| 협업 | 한솔코에버 (로봇·시퀀스 서비스 개발, 이예승 사원) |
-
 ### 목표
 - **1차 목표**: 웹/앱에서 프린터 실시간 모니터링 + 원격 프린트 전송
-- **궁극적 목표**: 3D프린터 + 로봇 + 3D 비전(빈피킹) + 엣지 AI(MaixCAM)를 통합한 완전 자동화 생산 라인 → SaaS 플랫폼화
+- **궁극적 목표**: 3D프린터 + 로봇 + 3D 비전(빈피킹) + 엣지 AI를 통합한 완전 자동화 생산 라인
 
 ### 하드웨어 구성
 
-| 장비 | 모델 | 수량 | 용도 | 상태 |
-|------|------|------|------|------|
-| 3D 프린터 | Formlabs Form 4 | 4대 | SLA 레진 프린팅 | ✅ 전체 운용 중 (4/3 ShrewdStork 헤드커버 수리 완료) |
-| 협동로봇 | HCR-12 | 1대 | 빌드플레이트 교체, 세척기 투입 | 현장 배치 |
-| 협동로봇 | HCR-10L | 1대 | 후가공 탭, 제품 이송 | 현장 배치, 4/14 펜던트 교육 1회차 수료 |
-| 세척기 | Form Wash | 2대 | 레진 세척 | ✅ |
-| 경화기 | Form Cure | 2대 | UV 경화 | ✅ |
-| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 | ✅ **2026-04-23 입고 완료** |
-| 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 | ✅ **2026-04-23 입고 완료** |
-| 깊이 카메라 | Intel RealSense D435 | 1대 | 빈피킹 임시 검증 (USB 20cm 제약) | ✅ 라이브 연동 성공 (4/13) |
-| 엣지 AI 카메라 | Sipeed MaixCAM | 1+대 | 세척기/경화기 완료 감지 (OpenMV 대체) | 🔄 리서치 완료, PoC 대기 |
-
-> **참고**: 4/14 대표님 지시로 기존 OpenMV AE3 → Sipeed MaixCAM 전환. MaixCAM이 RISC-V + 1 TOPS NPU + WiFi 6로 성능 우위.
+| 장비 | 모델 | 수량 | 용도 |
+|------|------|------|------|
+| 3D 프린터 | Formlabs Form 4 | 4대 | SLA 레진 프린팅 |
+| 협동로봇 | HCR-12 | 1대 | 빌드플레이트 교체, 세척기 투입 |
+| 협동로봇 | HCR-10L | 1대 | 후가공 탭, 제품 이송 |
+| 세척기 | Form Wash | 2대 | 레진 세척 |
+| 경화기 | Form Cure | 1~2대 | UV 경화 |
+| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 |
+| 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 |
+| 깊이 카메라 | Intel RealSense D435 | 1대 | 빈피킹 임시 검증 |
+| 엣지 AI 카메라 | Sipeed MaixCAM | 1+대 | 세척기/경화기 완료 감지 (PoC) |
 
 ---
 
 ## 개발 단계
 
-### Phase별 상태
+| Phase | 항목 | 상태 |
+|-------|------|------|
+| **Phase 1** | Web API 모니터링 (Formlabs Cloud) | ✅ 완료 |
+| **Phase 2** | Local API 원격 프린트 제어 + 프론트엔드 UI | ✅ 완료 |
+| **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 | ✅ 통합 |
+| **Phase 4** | 장비 모니터링 (엣지 AI 카메라) | 🔄 리서치 완료, PoC 대기 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 L1~L6 SW 완성, 실기 검증 진행 |
 
-| Phase | 항목 | 우선순위 | 상태 |
-|-------|------|----------|------|
-| **Phase 1** | Web API 모니터링 (Formlabs Cloud) | 🔴 URGENT | ✅ 완료 |
-| **Phase 2** | Local API 원격 프린트 제어 + 프론트엔드 UI | 🔴 URGENT | ✅ 완료 |
-| **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 | 🟡 HIGH | ✅ 한솔코에버 코드 3회 머지 (4/3, 4/16, 4/23). 3/27 최종 시연 완료, 공장 PC `automation` DB에 자동화 이력 적재 중 |
-| **Phase 4** | 장비 모니터링 (MaixCAM — OpenMV 대체) | 🟡 HIGH | 🔄 리서치 완료, 빈피킹 우선 후 PoC |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 W6 — L1~L6 SW 완성 + 데모 UI 안정화, **Basler 4/23 입고 완료**, 실제 캘리브레이션 5월 초 예정 |
-
-### 현재 상태 (2026-04-24 오후)
-
-#### ✅ 완료된 것
-- Phase 1 + Phase 2 **프로덕션 운영 중** (카카오 VM + 6000 서버 + 공장 PC 3중 배포)
-- Phase 3 한솔코에버 코드 메인 머지 3회 완료 (4/3 기원님, 4/16 예승님 프린터 할당, 4/23 예승님 경화기 2→1대)
-- Phase 5 **L1~L6 파이프라인 SW 완성** + 그래스프 DB 29종 + 데모 UI 안정화
-  - 인식률: easy 100%, crowded 90%, hard 60% (FPFH 한계, Colored ICP 준비됨)
-  - 매칭 시간: 0.4~0.6s/부품
-  - 데모 UI 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT), synthetic 리허설 1.5s
-- **Basler Blaze-112 + ace2 입고 (4/23)** + 산업용 PC(IPC-510) 입고
-- **Cloudflare Tunnel `orinu-factory` 완성 (4/24)** — `https://factory.flickdone.com`, Page Rule 충돌 해결
-- **공장 PC 자동 시작 체계 완성 (4/24)** — NSSM `OrinuMain` 서비스 + cloudflared + PreFormServer + file_receiver 전부 재부팅 자동 복구 (55초)
-- **Formlabs Client Secret Rotate 완료 (4/24)** — 3곳 `.env` 전부 반영 (6000 서버 / 카카오 VM / 공장 PC)
-- **공장 PC MariaDB 11.3 확인 (4/24)** — 기존에 "MySQL 미설치"로 잘못 기록되어 있던 것 정정. `automation` DB에 sequence_service 자동화 이력 정상 적재 중
-- WireGuard VPN 안정화 (4/17 복구) — 현재는 유지(Cloudflare Tunnel로 단계적 대체 예정)
-- 카카오 VM 이전 + Basic Auth (4/16)
-- 레진 프리셋 SSOT 4종 (grey/white/clear/flexible)
-- Basler 설치 자동화 스크립트 (카메라 도착 당일 3시간 → 1시간 단축)
-
-#### 🔄 진행 중
-- Cloudflare Tunnel **옵션 2c 확장** — `factory-db.flickdone.com`으로 MariaDB TCP ingress 추가 + Access Service Token (4/28 예승님 방문 시 함께 구현)
-- 4/23 회의 이슈 후속: 경화기 축소 보고 범위, 스핀 3개 중 2개 동시 작동 이슈
-
-#### ⏳ 대기
-- 실제 핸드-아이 캘리브레이션 2세트 (eye-to-hand + eye-in-hand) — 5월 초 산업용 PC + 카메라 현장 셋업 후
-- Colored ICP 실데이터 검증 (코드 준비 완료, 실컬러 필요)
-- HCR-10L 실전 피킹 + 그리퍼 장착 후 TCP 오프셋·작업 영역·오일러 실측
-- MaixCAM 장비 모니터링 PoC
-- Cloudflare Backup Codes 생성 + 2FA Authy 재등록
+### 빈피킹 파이프라인 현황
+- L1~L6 Python 단독 구현 (CAD 기반 29종 인식)
+- 인식률: easy 100%, crowded 90%, hard 60% (Colored ICP 확장 준비)
+- 매칭 시간 0.4~0.6s/부품
+- 레진별 프리셋 4종 (grey/white/clear/flexible) 일관 적용
+- 데모 시각화: 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT)
 
 ---
 
 ## 시스템 아키텍처
 
-### 서버 구성 (Cloudflare 허브 중심, 4/24 기준)
-
 ```mermaid
-flowchart TB
-    Browser["🌐 브라우저<br/>외부 접속자"]
-    CF["☁️ Cloudflare Edge (ICN)<br/>factory.flickdone.com (HTTP)<br/>factory-db.flickdone.com (TCP, 4/28 예정)"]
+flowchart LR
+    Browser["🌐 브라우저"]
+    WebApp["🖥️ Web App<br/>(web-api + frontend)"]
+    Tunnel["☁️ Cloudflare Tunnel<br/>(외부 접속 허브)"]
+    FactoryPC["🏭 공장 PC<br/>(Ajin IO + 로봇 제어)"]
+    Hardware["⚙️ 현장 하드웨어<br/>Form 4 ×4<br/>HCR-12 / HCR-10L<br/>Wash / Cure<br/>Basler / MaixCAM"]
 
-    KakaoVM["☁️ 카카오 VM<br/>61.109.239.142:8085<br/>─────────────────<br/>web-api (모니터링)<br/>Basic Auth<br/>cloudflared (TCP 프록시, 4/28 예정)"]
-
-    Server6000["🖥️ 6000 서버<br/>106.244.6.242:8085<br/>─────────────────<br/>web-api + 프린터 제어<br/>(WireGuard VPN 경유)<br/>개발 환경 (Claude Code, git)"]
-
-    FactoryPC["🏭 공장 PC (Windows)<br/>D:\3D_printer_automation_0305<br/>─────────────────<br/>• cloudflared (Windows 서비스)<br/>• OrinuMain = python main.py (NSSM)<br/>  - web-api :8085<br/>  - sequence_service (Ajin IO, HCR-10L)<br/>• PreFormServer :44388<br/>• file_receiver :8089<br/>• MariaDB 11.3 :3306 (automation DB)"]
-
-    Hardware["⚙️ 현장 하드웨어<br/>─────────────────<br/>Form 4 ×4 (Wi-Fi)<br/>HCR-12 / HCR-10L (Modbus TCP)<br/>Form Wash / Cure<br/>Basler Blaze-112 + ace2<br/>MaixCAM (PoC 대기)"]
-
-    Browser --> CF
-    CF -->|HTTP :8085 터널| FactoryPC
-    Browser --> KakaoVM
-    Browser --> Server6000
-    KakaoVM -.->|Formlabs Cloud API 폴링| Cloud["Formlabs Cloud API"]
-    Server6000 -.->|Formlabs Cloud API 폴링| Cloud
-    Server6000 -->|WireGuard VPN| FactoryPC
-    KakaoVM -.->|TCP :3306 터널 (4/28 예정)| CF
+    Browser --> Tunnel --> FactoryPC
+    Browser --> WebApp
+    WebApp -.Formlabs Cloud API.-> Cloud["Formlabs Cloud"]
     FactoryPC --> Hardware
 
-    classDef browser fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
-    classDef cf fill:#fff8e1,stroke:#f57c00,stroke-width:2px,color:#000
-    classDef remote fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    classDef factory fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000
-    classDef hardware fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
-    classDef cloud fill:#eceff1,stroke:#546e7a,stroke-width:1px,color:#000
+    classDef browser fill:#e3f2fd,stroke:#1976d2,color:#000
+    classDef cf fill:#fff8e1,stroke:#f57c00,color:#000
+    classDef srv fill:#f3e5f5,stroke:#7b1fa2,color:#000
+    classDef factory fill:#fff3e0,stroke:#e65100,color:#000
+    classDef hw fill:#e8f5e9,stroke:#388e3c,color:#000
+    classDef cloud fill:#eceff1,stroke:#546e7a,color:#000
 
     class Browser browser
-    class CF cf
-    class KakaoVM,Server6000 remote
+    class Tunnel cf
+    class WebApp srv
     class FactoryPC factory
-    class Hardware hardware
+    class Hardware hw
     class Cloud cloud
 ```
 
-### 운영 서버 현황
-
-| 서버 | URL | 역할 | 상태 |
-|------|-----|------|------|
-| **Cloudflare Tunnel** | `https://factory.flickdone.com/` | 공장 PC 직결 (HTTP, 외부에서 접속) | ✅ 4/24 운영 시작 |
-| 카카오 VM | `http://61.109.239.142:8085/` | 모니터링 (Cloud API 폴링) | ✅ Basic Auth |
-| 6000 서버 | `http://106.244.6.242:8085/` | 모니터링 + 프린터 제어 (VPN) | ✅ 병행 운영 |
-| 6000 서버 SSH | `ssh -p 5533 jtm@106.244.6.242` | 개발 환경 (Claude Code, git) | ✅ |
-| Mac (로컬) | - | 빈피킹 개발 (Open3D — 6000 서버는 AVX2 미지원) | ✅ |
-| 공장 PC | AnyDesk / Cloudflare Tunnel | NSSM OrinuMain + cloudflared + PreFormServer + file_receiver + MariaDB | ✅ 전부 자동 시작 |
-
-> **접속**: `admin` / `orinu2026!` (Basic Auth). Cloudflare Access 적용 후 Service Token + (옵션) 로그인 페이지로 업그레이드 예정.
-> **허브 개념**: 로봇/프린터/카메라 같은 실시간 제어는 공장 PC 로컬 직결 유지(네트워크 장애 시 로봇 정지 방지). 원격 UI + DB 조회만 Cloudflare를 허브로 연결.
+**허브 개념**: 로봇·프린터·카메라 같은 실시간 제어는 공장 PC 로컬에서 직접 처리(네트워크 장애 시에도 안전). 원격 모니터링·UI·이력 조회만 Cloudflare Tunnel을 통해 제공.
 
 ### 빈피킹 비전 파이프라인 (Phase 5)
 
 ```mermaid
 flowchart LR
-    L1["L1: 영상 취득<br/><br/>pypylon<br/>(Blaze-112 +<br/>ace2 듀얼 캡처)"]
-    L2["L2: 전처리<br/><br/>Open3D<br/>(ROI, 이상치,<br/>다운샘플, RANSAC)"]
-    L3["L3: 분할<br/><br/>DBSCAN<br/>(클러스터링)"]
-    L4["L4: 인식+자세<br/><br/>FPFH+RANSAC+<br/>(Colored) ICP<br/>+ OBB SizeFilter"]
-    L5["L5: 그래스프<br/><br/>grasp_planner<br/>(29종 DB)"]
-    L6["L6: 로봇 전송<br/><br/>Modbus TCP<br/>(INT16, Reg 130~)"]
+    L1["L1: 영상 취득<br/>pypylon<br/>(Blaze-112 + ace2)"]
+    L2["L2: 전처리<br/>Open3D<br/>(ROI, RANSAC)"]
+    L3["L3: 분할<br/>DBSCAN"]
+    L4["L4: 인식+자세<br/>FPFH + (Colored)ICP<br/>+ OBB SizeFilter"]
+    L5["L5: 그래스프<br/>grasp_planner<br/>(29종 DB)"]
+    L6["L6: 로봇 전송<br/>Modbus TCP<br/>(INT16)"]
 
     L1 --> L2 --> L3 --> L4 --> L5 --> L6
 
-    classDef stage fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#000
+    classDef stage fill:#e8eaf6,stroke:#3f51b5,color:#000
     class L1,L2,L3,L4,L5,L6 stage
 ```
-
-- 모든 단계 Python 단독 구현, CAD 기반 인식 (STL 29종)
-- 레진별 프리셋 4종 (grey/white/clear/flexible) 일관 적용
-- 데모 시각화: 2×2 그리드 + 3상태 색상 코딩
-
-### DB 아키텍처 + 원격 접근 정책 (옵션 2c)
-
-**원칙**: 실시간 제어(로봇/프린터)는 **공장 PC 로컬 직결 유지** (네트워크 장애 시 로봇 정지 방지). 원격 UI + DB 조회만 Cloudflare Tunnel을 허브로 경유.
-
-| DB | 위치 | 용도 | 원격 접근 |
-|----|------|------|----------|
-| **MariaDB 11.3 `automation`** | 공장 PC (localhost:3306) | sequence_service 자동화 이력 | 카카오 VM에서 Cloudflare Tunnel + Access Service Token으로 읽기 (4/28 구현 예정) |
-| SQLite `local.db` | 각 서버 web-api 로컬 | 프리셋, 알림, 업로드 이력 | HTTP API 경유 |
-
-**Cloudflare Tunnel 규칙 (orinu-factory, 4/24 기준)**:
-- ✅ `factory.flickdone.com` → `http://localhost:8085` (HTTP, 운영 중)
-- 🔄 `factory-db.flickdone.com` → `tcp://localhost:3306` (MariaDB TCP, 4/28 예정)
-
-**4/23 회의에서 합의된 것** (한솔 이예승 사원 + 김주엽 파트장 + 태민):
-- ❌ **클라우드로 DB 이전**(인터넷 장애 시 로봇 정지) 및 **3306 포트 포워딩 직접 오픈**(봇넷 타겟) 금지
-- ✅ **옵션 2c 채택** — 공장 로컬 DB 유지 + Cloudflare Tunnel의 Private Access로만 원격 접근 허용
-- ✅ 카카오 VM에도 `cloudflared` 설치해서 TCP 터널 프록시 실행 (HTTP와 달리 TCP는 직접 접속 불가)
 
 ---
 
 ## 주요 기능
 
 ### Phase 1: 실시간 모니터링
-
-- Formlabs Cloud API 15초 폴링 → WebSocket 실시간 push
+- Formlabs Cloud API 폴링 → WebSocket 실시간 push
 - 프린터 4대 그리드 대시보드 + 상태 필터
 - 타임라인 간트 차트 + 프린터 상세 모달 (Details/Settings/Services 3탭)
 - 프린트 이력 + 통계 (재료 도넛, 일별 바차트, 프린터별 가동률)
 
 ### Phase 2: 원격 프린트 제어
-
 - 파일 업로드 → 프리셋 저장 → 프린터로 전송
-- 프리셋 CRUD (프린터별 독립 관리, 4/16 예승님 머지 이후)
-- 프린트 readiness 체크 (6가지 검증 + 경고 배너)
-- 프린트 전 유효성/간섭 검사, 내부 비우기(레진 절약), 시간 예측
-- 대기 중/히스토리 큐 + 드래그앤드롭 순서 변경
-- 알림벨 (30초 폴링, 드롭다운)
+- 프리셋 CRUD (프린터별 독립 관리)
+- 프린트 readiness 체크 + 유효성/간섭 검사
+- 대기 큐 + 드래그앤드롭 순서 변경
+- 알림벨 (폴링, 드롭다운)
 
-### Phase 3: HCR 로봇 연동 (한솔코에버 주도 개발)
+### Phase 3: HCR 로봇 연동
+- Modbus TCP (pymodbus 3.x) INT16 매핑
+- 자동화 시퀀스 + 수동 제어 UI
+- Ajin IO + Windows WinDLL (공장 PC 전용 실행)
 
-- Modbus TCP (pymodbus 3.x) — HCR-10L 실스펙 INT16 매핑
-- 비전PC→로봇: Reg 130(CMD) / 131(부품ID) / 132~137(XYZ Rxyz INT16 1/10mm,1/10deg) / 138~139(그리퍼) / 140(시퀀스)
-- 로봇→비전PC: Reg 150(ROBOT_STATE) / 151(seq echo)
-- HCR-10L 내장 (읽기): Reg 400~405(TCP 좌표) / 600(Program State) / 700~702(Command)
-- 자동화 시퀀스: Automation 탭(CMD 생성) + Automation_Manual(수동 제어)
-- 공장 PC 전용 실행 (Ajin IO + WinDLL 물리 의존)
-- 자동화 이력 저장: 공장 PC 로컬 **MariaDB 11.3** `automation` DB (카카오 VM에서의 원격 조회는 옵션 2c로 4/28 구현 예정)
-
-### Phase 5: 3D 빈피킹 비전 시스템 (L1~L6 SW 완성)
-
-- STL 29종 라이브러리 (cad_library.py FPFH 캐싱)
-- Multi-resolution ICP (4mm → 2mm → 1mm coarse-to-fine)
-- Colored ICP 파이프라인 (카메라 입고 후 검증)
+### Phase 5: 3D 빈피킹 비전 시스템
+- STL 29종 라이브러리 (FPFH 캐싱)
+- Multi-resolution ICP (coarse-to-fine)
+- Colored ICP 파이프라인
 - OBB SizeFilter (회전 불변) + 포인트 비율 필터
-- 레진 프리셋 SSOT (L2 전처리 + L4 판정 임계값 일관 적용)
-- 핸드-아이 캘리브레이션 (eye-to-hand + eye-in-hand 2세트 설계)
-- 데모 라이브 인식 UI (2×2 그리드, ACCEPT/WARN/REJECT 색상 코딩)
-- E2E 시각화 (실패 케이스 자동 저장)
+- 핸드-아이 캘리브레이션 (eye-to-hand + eye-in-hand 2세트)
+- E2E 실패 케이스 자동 시각화
 
 ### 웹앱 인프라
-- systemd user service (`formlabs-web.service`) — 자동 시작 + 크래시 시 자동 재시작
+- systemd user service로 자동 시작 + 크래시 재시작
 - Raw ASGI Basic Auth 미들웨어 (HTTP + WebSocket)
-- pymysql + Ajin WinDLL Linux 호환 가드
+- Cloudflare Tunnel을 통한 외부 접속 (내부 네트워크 비노출)
 
 ---
 
-## 프론트엔드 UI (5탭 + 자동화 + 알림벨)
+## 프론트엔드 UI
 
-| 탭 | 컴포넌트 | 기능 |
-|----|----------|------|
-| **모니터링** | Dashboard.tsx | 프린터 4대 그리드 카드, 상태 필터, 타임라인 |
-| **프린트 제어** | PrintPage.tsx | 프린터별 독립 컨테이너 (업로드·프리셋·프린트) |
-| **대기 중인 작업** | QueuePage.tsx | 드래그앤드롭 순서 변경, 예약 시간 |
-| **이전 작업 내용** | HistoryPage.tsx | 로컬+클라우드 이력, 필터, CSV, 메모 |
-| **통계** | StatisticsPage.tsx | 재료 도넛, 일별 바, 프린터별 가동률 |
-| **Automation** | AutomationPage.tsx | 자동화 CMD 생성·프린터 할당·진행 상황 (한솔코에버) |
-| **Automation_Manual** | AutomationManualPage.tsx | 수동 제어 (한솔코에버) |
-| 🔔 알림벨 | App.tsx | 미읽음 뱃지, 드롭다운, 30초 폴링 |
+| 탭 | 기능 |
+|----|------|
+| 모니터링 | 프린터 4대 그리드, 상태 필터, 타임라인 |
+| 프린트 제어 | 프린터별 독립 컨테이너 (업로드·프리셋·프린트) |
+| 대기 중인 작업 | 드래그앤드롭 순서 변경, 예약 시간 |
+| 이전 작업 내용 | 로컬+클라우드 이력, 필터, CSV, 메모 |
+| 통계 | 재료 도넛, 일별 바, 프린터별 가동률 |
+| Automation | 자동화 CMD 생성·프린터 할당·진행 상황 |
+| Automation_Manual | 수동 제어 |
+| 🔔 알림벨 | 미읽음 뱃지, 드롭다운, 폴링 |
 
-> **유의**: Automation / Automation_Manual 탭은 **공장 PC에서 sequence_service가 실행 중일 때만** 실제 동작합니다. 카카오 VM / 6000 서버에는 sequence_service 백엔드가 없어 UI만 보이고 동작하지 않습니다.
-> (4/23 예승님 미팅에서 정책 확정: **옵션 2c** = 설비제어 로컬 유지 + 원격 UI만 Cloudflare Tunnel 경유. 4/28 방문 시 MariaDB TCP 라우팅 추가 예정)
+> Automation / Automation_Manual 탭은 공장 PC에서 시퀀스 서비스가 실행 중일 때만 실제 동작합니다.
 
 ---
 
@@ -293,12 +170,12 @@ flowchart LR
 |---|------|------|
 | ① | STL 파일 업로드 | 사용자 (웹/앱) |
 | ② | 프린터로 작업 전송 | 백엔드 (Local API) |
-| ③ | 3D 프린팅 | Form 4 (4대) |
+| ③ | 3D 프린팅 | Form 4 |
 | ④ | 프린팅 완료 감지 | 백엔드 (Web API 폴링) |
 | ⑤~⑥ | 빌드플레이트 픽업 → 세척기 투입 | HCR-12 |
-| ⑦ | 세척 완료 감지 | MaixCAM #1, #2 |
+| ⑦ | 세척 완료 감지 | 엣지 AI 카메라 |
 | ⑧ | 경화기 투입 | HCR-12 |
-| ⑨ | 경화 완료 감지 | MaixCAM #3, #4 |
+| ⑨ | 경화 완료 감지 | 엣지 AI 카메라 |
 | ⑩~⑫ | 픽업 → 서포트 제거 → 후가공 | HCR-10L |
 | ⑬ | 3D 빈피킹 + 비전 검사 | Basler Blaze-112 + ace2 |
 | ⑭~⑮ | 양품/불량 분류 → 적재 | HCR-10L |
@@ -308,7 +185,7 @@ flowchart LR
 
 ## API 엔드포인트
 
-### Phase 1: Web API 모니터링 (11 routes)
+### Phase 1: Web API 모니터링
 ```
 GET  /api/v1/dashboard            # 4대 프린터 상태 요약
 GET  /api/v1/printers             # 프린터 목록
@@ -318,16 +195,16 @@ GET  /api/v1/statistics           # 통계
 WS   /api/v1/ws                   # 실시간 업데이트
 ```
 
-### Phase 2: Local API 원격 제어 (32 routes)
+### Phase 2: Local API 원격 제어
 ```
 GET    /api/v1/local/health
 POST   /api/v1/local/printers/discover
-CRUD   /api/v1/local/presets            # 프리셋 관리
-POST   /api/v1/local/presets/{id}/print # 프리셋으로 프린트
+CRUD   /api/v1/local/presets
+POST   /api/v1/local/presets/{id}/print
 POST   /api/v1/local/upload
 GET    /api/v1/local/files
-CRUD   /api/v1/local/print              # 프린트 작업
-CRUD   /api/v1/local/scene/*            # Scene + 모델 복제 + 유효성 + 간섭
+CRUD   /api/v1/local/print
+CRUD   /api/v1/local/scene/*      # Scene + 모델 복제 + 유효성 + 간섭
 GET    /api/v1/local/materials
 POST   /api/v1/local/scene/{id}/screenshot
 POST   /api/v1/local/scene/{id}/estimate-time
@@ -335,19 +212,11 @@ CRUD   /api/v1/local/notes
 GET    /api/v1/local/notifications
 ```
 
----
-
-## Formlabs API 사용 현황
-
-| 구분 | 전체 | 사용 중 | 사용률 |
-|------|------|--------|--------|
-| Web API | 19개 | 6개 | 32% |
-| Local API | 35개 | 17개 | 49% |
-| **합계** | **54개** | **23개** | **43%** |
-
-- Web API: **읽기 전용** (모니터링만)
-- Local API: **제어 가능** (프린트 전송, Scene 관리)
-- API 한계: Webhook 미지원 → 15초 폴링, Form Wash/Cure 제어 불가 → MaixCAM 카메라로 완료 감지
+### Formlabs API 사용 현황
+- Web API: 6개 사용 (전체 19개) — 읽기 전용 모니터링
+- Local API: 17개 사용 (전체 35개) — 프린트 전송·Scene 관리
+- Webhook 미지원 → 폴링 방식
+- Form Wash/Cure 제어 API 없음 → 엣지 AI 카메라로 완료 감지
 
 ---
 
@@ -355,68 +224,49 @@ GET    /api/v1/local/notifications
 
 ```
 3D_printer_automation/
-├── CLAUDE.md                      # 프로젝트 상태 문서
-├── CLAUDE.local.md                # 세션별 작업 이력 (git 제외)
-├── README.md                      # 이 파일
-│
-├── docs/                          # 설계 문서 + 회의록
-│   ├── Phase1_WebAPI_개발설계서.docx
-│   ├── Phase2_LocalAPI_아키텍처설계.md
-│   ├── Phase4_OpenMV_개발설계서.md
-│   ├── binpicking_summary.md
-│   ├── meeting_0422.md
-│   ├── meeting_0423_sequence_service.md   # 4/23 예승님 미팅용
-│   ├── basler_download_checklist.md
-│   └── WireGuard_LAN_VPN_연결_가이드.md
-│
 ├── web-api/                       # 백엔드 (FastAPI, Phase 1+2)
 │   ├── app/
-│   │   ├── main.py                # 앱 진입점
+│   │   ├── main.py
 │   │   ├── core/                  # 설정, OAuth2, Basic Auth 미들웨어
 │   │   ├── services/              # Formlabs 클라이언트, 폴링, 알림
 │   │   ├── api/routes.py          # Phase 1 REST + WebSocket
-│   │   ├── local/                 # Phase 2 로컬 API (32 routes)
-│   │   └── schemas/               # Pydantic 모델
-│   ├── data/local.db              # SQLite
+│   │   ├── local/                 # Phase 2 로컬 API
+│   │   └── schemas/
+│   ├── data/                      # SQLite
 │   └── Dockerfile / docker-compose.yml
 │
 ├── frontend/                      # React + Vite + TS + Tailwind CSS 4
 │   └── src/{components, services, types}
 │
-├── sequence_service/              # Phase 3 한솔코에버 시퀀스 런타임 (Windows 전용)
+├── sequence_service/              # Phase 3 시퀀스 런타임 (Windows 전용)
 │   ├── app/cell/                  # 시퀀스, Modbus, 로봇/프린터 제어
-│   ├── app/core/config.py         # SIMUL_MODE, AJIN_SIMULATION, Modbus 레지스터 매핑
-│   ├── app/db/                    # MySQL 모델/세션
-│   ├── app/io/                    # Ajin IO (AXL.dll, WinDLL)
-│   └── app/main.py                # 서비스 진입점
+│   ├── app/io/                    # Ajin IO (WinDLL)
+│   └── app/main.py
 │
-├── main.py                        # 통합 런처 (web-api + sequence_service, 공장 PC용)
+├── main.py                        # 통합 런처 (web-api + sequence_service)
 │
 ├── factory-pc/
-│   └── file_receiver.py           # STL 파일 수신 (포트 8089)
+│   └── file_receiver.py           # STL 파일 수신
 │
 ├── bin_picking/                   # Phase 5 3D 빈피킹
 │   ├── src/
-│   │   ├── acquisition/           # L1: realsense_capture, basler_capture, depth_to_pointcloud
+│   │   ├── acquisition/           # L1: realsense, basler, depth_to_pointcloud
 │   │   ├── preprocessing/         # L2: cloud_filter (레진별 프리셋)
 │   │   ├── segmentation/          # L3: dbscan_segmenter
-│   │   ├── recognition/           # L4: cad_library, pose_estimator, size_filter (OBB)
+│   │   ├── recognition/           # L4: cad_library, pose_estimator, size_filter
 │   │   ├── grasping/              # L5: grasp_planner, grasp_database.yaml
-│   │   ├── communication/         # L6: modbus_server (INT16, Reg 130~)
+│   │   ├── communication/         # L6: modbus_server
 │   │   └── visualization/         # demo_ui, e2e_viz
 │   ├── scripts/
-│   │   ├── demo_live_recognition.py   # 시연 데모 (2×2 그리드)
-│   │   ├── basler_setup.sh            # 현장 설치 자동화
-│   │   └── basler_smoke_test.py       # 9단계 스모크 테스트
+│   │   ├── demo_live_recognition.py
+│   │   ├── basler_setup.sh
+│   │   └── basler_smoke_test.py
 │   ├── models/{cad, reference_clouds, fpfh_features}
 │   ├── config/{resin_presets.py, grasp_database.yaml}
-│   ├── tests/                     # E2E (Redwood, 29종 CAD, D435)
-│   └── tutorials/                 # Open3D 학습 01~11
+│   ├── tests/
+│   └── tutorials/                 # Open3D 학습
 │
-├── OpenMV/                        # (참고자료, MaixCAM으로 전환됨)
-├── robot-control/                 # Phase 3 로봇 제어 (legacy)
-├── vision/                        # Phase 4 비전 검사 (legacy)
-└── shared/                        # 공유 유틸리티 (미구현)
+└── OpenMV/                        # 참고자료 (MaixCAM으로 전환)
 ```
 
 ---
@@ -424,50 +274,26 @@ GET    /api/v1/local/notifications
 ## 기술 스택
 
 ### Backend
-| 기술 | 버전 | 용도 |
-|------|------|------|
-| Python | 3.11+ | 런타임 |
-| FastAPI | 0.109+ | REST + WebSocket |
-| uvicorn | 0.27+ | ASGI 서버 |
-| httpx | 0.26+ | Formlabs API 호출 |
-| pydantic-settings | 2.1+ | 환경변수 로드 |
-| SQLAlchemy + SQLite | 2.0+ | 로컬 DB (web-api) |
-| PyMySQL | 1.1+ | MySQL (sequence_service) |
-| pymodbus | 3.6+ | Modbus TCP |
-| aiomqtt | 2.0+ | MQTT 비동기 클라이언트 (Phase 4) |
-| python-multipart | 0.0.6+ | 파일 업로드 |
-
-### Frontend
-| 기술 | 버전 | 용도 |
-|------|------|------|
-| React | 18.3 | SPA |
-| TypeScript | 5.6 | 타입 시스템 |
-| Vite | 5.4 | 개발 서버 + 빌드 |
-| Tailwind CSS | 4.0 (beta) | 스타일링 |
-| WebSocket | 네이티브 | 실시간 업데이트 |
-
-### 빈피킹 비전 (Phase 5)
-| 기술 | 버전 | 용도 |
-|------|------|------|
-| Open3D | 0.19 | 포인트 클라우드 처리 (Mac/공장 PC — 6000 서버는 AVX2 미지원) |
-| NumPy | 1.26+ | 수치 계산 |
-| OpenCV | 4.8+ | 이미지 처리 + UI 렌더 |
-| trimesh | 4.x | STL 로드 |
-| pypylon | 26.x | Basler 카메라 |
-| pyrealsense2 | 2.57 | Intel RealSense D435 |
-| SciPy | 1.x | 회전/정합 수학 |
-
-### Infrastructure
 | 기술 | 용도 |
 |------|------|
-| Docker + docker-compose | 웹앱 컨테이너화 |
-| WireGuard VPN | 6000 서버 ↔ 공장 PC (현재도 사용, 점진적으로 Cloudflare Tunnel로 대체 예정) |
-| **Cloudflare Tunnel** | ✅ **운영 중** — `factory.flickdone.com` (HTTP), `factory-db.flickdone.com` (MariaDB TCP, 4/28 예정) |
-| **NSSM (Windows 서비스 매니저)** | ✅ 공장 PC `python main.py`를 `OrinuMain` 서비스로 등록 → 재부팅 자동 시작 + 크래시 자동 재시작 |
-| systemd --user | 6000 서버 / 카카오 VM `formlabs-web.service` 자동 시작 |
-| MariaDB 11.3 | 공장 PC `automation` DB — sequence_service 자동화 이력 |
-| SQLite | web-api 로컬 DB (프리셋, 알림, 업로드 이력) |
-| Mosquitto MQTT | MaixCAM ↔ 백엔드 (Phase 4) |
+| Python 3.11+ | 런타임 |
+| FastAPI | REST + WebSocket |
+| uvicorn | ASGI 서버 |
+| httpx | Formlabs API 호출 |
+| pydantic-settings | 환경변수 로드 |
+| SQLAlchemy + SQLite | 로컬 DB (web-api) |
+| PyMySQL | MySQL/MariaDB (sequence_service) |
+| pymodbus 3.x | Modbus TCP |
+| aiomqtt | MQTT 비동기 클라이언트 |
+
+### Frontend
+React 18 · TypeScript 5 · Vite 5 · Tailwind CSS 4 · WebSocket
+
+### 빈피킹 비전 (Phase 5)
+Open3D 0.19 · NumPy · OpenCV · trimesh · pypylon · pyrealsense2 · SciPy
+
+### Infrastructure
+Docker · systemd --user · Cloudflare Tunnel · MQTT (Mosquitto)
 
 ---
 
@@ -477,60 +303,54 @@ GET    /api/v1/local/notifications
 - Python 3.11+
 - Node.js 18+
 - (선택) Docker + docker-compose
-- 빈피킹 개발은 Open3D 호환 CPU(AVX2) 필요 — 6000 서버 대신 Mac 또는 공장 PC 권장
+- 빈피킹 개발은 Open3D 호환 CPU (AVX2) 필요
 
-### 환경 변수 설정
+### 환경 변수
 
-`web-api/.env.example`을 복사해 `.env` 생성:
+`web-api/.env.example`을 복사해 `.env`를 만드세요:
 ```bash
-# Formlabs Web API (OAuth2 credentials — Developer Portal에서 발급)
-# ⚠️ Rotate 시 Client ID까지 함께 재발급됨. 3곳 서버 .env 모두 업데이트 필요.
+# Formlabs Web API (Developer Portal에서 발급)
 FORMLABS_CLIENT_ID=your_client_id
 FORMLABS_CLIENT_SECRET=your_client_secret
 
-# PreFormServer
-#   - 공장 PC에서 실행: 127.0.0.1
-#   - 6000 서버에서 VPN 경유: 10.145.113.3
-#   - 카카오 VM에서 Cloudflare Tunnel 경유 (예정): factory.flickdone.com
-PREFORM_SERVER_HOST=10.145.113.3
+# PreFormServer (Formlabs Local API)
+PREFORM_SERVER_HOST=127.0.0.1
 PREFORM_SERVER_PORT=44388
 
-# 공장 PC 파일 수신 (file_receiver.py, STL 업로드)
-FILE_RECEIVER_HOST=10.145.113.3
+# 공장 PC 파일 수신 (STL 업로드)
+FILE_RECEIVER_HOST=127.0.0.1
 FILE_RECEIVER_PORT=8089
 
 # Formlabs Cloud API 폴링 주기 (초)
 POLLING_INTERVAL_SECONDS=15
 
-# Basic Auth (공인 IP 노출 시 필수)
-BASIC_AUTH_USERNAME=admin
+# Basic Auth (공개 배포 시 필수)
+BASIC_AUTH_USERNAME=your_username
 BASIC_AUTH_PASSWORD=your_password
 ```
 
-**sequence_service `.env`** (공장 PC 전용, `sequence_service/.env`):
+`sequence_service/.env` (공장 PC 전용):
 ```bash
-# MariaDB 11.3 (로컬, localhost 전용)
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_NAME=automation
-DB_USER=<보안: 버전 관리 제외>
-DB_PASSWORD=<보안: 버전 관리 제외>
+DB_NAME=your_db_name
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
 
-# 시뮬 모드 (Ajin IO / 로봇 없이 로직만 검증)
 SIMUL_MODE=false
 AJIN_SIMULATION=false
 
-# Modbus 레지스터 매핑 (.env.copy 템플릿 참고, 4/16 예승님 추가)
+# Modbus 레지스터 매핑 (.env.copy 템플릿 참조)
 ENABLE_TCP_IO=true
-ROBOT_TCP_HOST=192.168.x.x
-# ...
+ROBOT_TCP_HOST=your_robot_ip
 ```
 
-### 방법 1: Docker로 실행 (권장)
+> **⚠️ `.env`는 절대 커밋하지 마세요.** credentials·IP·경로는 로컬 설정 파일에서만 관리합니다.
+
+### 방법 1: Docker
 ```bash
 cd web-api
 docker-compose up -d
-# 프론트엔드 dist 빌드 후 SPA 서빙됨
 ```
 
 ### 방법 2: 직접 실행
@@ -555,88 +375,25 @@ npm run dev
 ```bash
 cd frontend
 npm run build
-# dist/ 가 web-api에서 정적으로 서빙됨
+# dist/ 가 web-api에서 정적 서빙됨
 ```
 
-**공장 PC — NSSM Windows 서비스로 자동 시작 (4/24 완성)**:
-```cmd
-:: 수동 실행 금지. Windows 서비스로 자동 기동됨.
-:: 서비스 이름: OrinuMain (NSSM 등록)
-:: 실행 경로: D:\3D_printer_automation_0305\3D_printer_automation\.venv\Scripts\python.exe main.py
-:: 로그: D:\3D_printer_automation_0305\logs\orinu_stdout.log / orinu_stderr.log
-
-:: 상태 확인 / 재시작 (관리자 cmd 필요, nssm은 PATH 미등록이라 전체 경로)
-sc query OrinuMain
-C:\nssm\nssm-2.24\win64\nssm.exe restart OrinuMain
-```
-> 공장 PC는 Ajin IO (Windows WinDLL) + HCR-10L + **MariaDB 11.3** + PreFormServer 의존.
-> 재부팅 시 자동 시작되는 것: `cloudflared` (Cloudflare 터널) / `OrinuMain` (NSSM) / `PreFormServer` (시작 프로그램) / `file_receiver.py` / `AnyDesk` / `MariaDB`. 전원 ON 후 약 55초 내 전체 복구.
-
-### 접속
-
-| 환경 | URL |
-|------|-----|
-| **Cloudflare Tunnel (운영)** | **https://factory.flickdone.com/** ✅ |
-| 카카오 VM | http://61.109.239.142:8085/ |
-| 6000 서버 | http://106.244.6.242:8085/ |
-| 로컬 개발 | http://localhost:8085/ (또는 5173 — Vite dev) |
-
-### 빈피킹 데모 실행 (Mac / 공장 PC)
+### 빈피킹 데모
 
 ```bash
-# synthetic 씬 렌더 검증 (~1.5s)
-.venv/binpick/bin/python bin_picking/scripts/demo_live_recognition.py \
+# synthetic 씬 렌더 검증
+python bin_picking/scripts/demo_live_recognition.py \
   --synthetic --test-render /tmp/demo.png
 
-# RealSense D435 근접 테스트 (USB 20cm 제약 대응)
-sudo .venv/binpick/bin/python bin_picking/scripts/demo_live_recognition.py \
-  --realsense --roi-z-min 0.02 --roi-z-max 0.30 \
-  --depth-min 0.02 --depth-max 0.50
+# RealSense D435 라이브
+python bin_picking/scripts/demo_live_recognition.py --realsense
 
-# Basler 라이브 (4/23 이후)
-sudo .venv/binpick/bin/python bin_picking/scripts/demo_live_recognition.py --basler
+# Basler 라이브
+python bin_picking/scripts/demo_live_recognition.py --basler
 ```
-
----
-
-## 확인된 프린터 (4대)
-
-| 이름 | 시리얼 | IP | 비고 |
-|------|--------|-----|------|
-| CapableGecko | Form4-CapableGecko | 192.168.219.46 | Grey V5 |
-| HeavenlyTuna | Form4-HeavenlyTuna | 192.168.219.48 | Clear V5 |
-| CorrectPelican | Form4-CorrectPelican | 192.168.219.43 | Flexible 80A V1.1 |
-| ShrewdStork | Form4-ShrewdStork | 192.168.219.45 | ✅ 운용 중 (4/3 헤드커버 수리 완료) |
-
----
-
-## 최근 주요 마일스톤
-
-| 날짜 | 마일스톤 |
-|------|----------|
-| 2026-02-12 | 대표님 데모 성공 (Phase 2 UI) |
-| 2026-03-12 | 화성시 디지털 가속성장 발표평가 |
-| 2026-03-20 | 데모 시연 (경기ITP-코에버 3자 최종 확인) |
-| 2026-03-27 | 한솔코에버 최종 시연 |
-| 2026-04-03 | 한솔 머지 1차 (`9c161dc`) — 김기원 주임 코드 |
-| 2026-04-08 | 빈피킹 L1~L6 SW 파이프라인 완성 (일정 4주 앞당김) |
-| 2026-04-13 | RealSense D435 라이브 연동 + E2E 시각화 |
-| 2026-04-14 | HCR-10L 로봇 교육 1회차 + D435 Full Pipeline PASS |
-| 2026-04-15 | Modbus INT16 재설계 + Colored ICP + Basler 듀얼 캡처 모듈 |
-| 2026-04-16 | 한솔 머지 2차 (`e68c2b1`) — 이예승 사원 프린터 할당 + 카카오 VM 이전 |
-| 2026-04-21 | 도메인 확정 (`factory.flickdone.com`) + Basler 설치 자동화 + 레진 프리셋 SSOT |
-| 2026-04-22 | 데모 리허설 피드백 6건 반영 (synthetic 9.7s → 1.5s) |
-| 2026-04-23 | **Basler + IPC-510 입고** + 예승님 3자 회의 (옵션 2c 합의, 한솔 머지 3차 경화기 축소) |
-| **2026-04-24** | **Cloudflare Tunnel 완성 + NSSM 자동 시작 + 자동 복구 검증 + Formlabs Secret Rotate + MariaDB 11.3 실체 확인** |
 
 ---
 
 ## 라이선스
 
 내부 프로젝트 (Private)
-
-## 문의
-
-- **개발자**: 정태민 (jtm@flickdone.com)
-- **회사**: 오리누 주식회사 (구 플릭던)
-- **리포지토리**: https://github.com/orinu-ai/3D_printer_automation (Private, 한솔 협업 미러: https://github.com/m2222n/3D_printer_automation)
