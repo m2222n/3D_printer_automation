@@ -118,7 +118,7 @@ class SequenceThread(threading.Thread):
         self.ctx.printer_active_cmd = {1: None, 2: None, 3: None, 4: None}
         self.ctx.printer_queues = {1: deque(), 2: deque(), 3: deque(), 4: deque()}
         self.ctx.wash_active_cmd = {1: None, 2: None}
-        self.ctx.cure_active_cmd = {1: None, 2: None}
+        self.ctx.cure_active_cmd = {1: None}
         self.ctx.robot_active_cmd = None
         self.ctx.wash_waiting = deque()
         self.ctx.cure_waiting = deque()

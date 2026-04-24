@@ -72,7 +72,7 @@
   - **인코딩 깨짐 없음** — 1·2차와 달리 예승님이 BOM까지 제거해서 깨끗함
   - TypeScript + Python + Vite 빌드 전부 PASS
   - origin + personal 양쪽 push 완료
-- **⚠️ 예승님 패치 불완전 발견**: `sequence_service/app/cell/runtime.py:121`에 `self.ctx.cure_active_cmd = {1: None, 2: None}` 리셋 하드코딩 잔존. 런타임 재설정 시 Cure 2 되살아날 가능성. 예승님과 후속 논의 후 추가 패치 예정
+- **⚠️ 예승님 패치 불완전 → 오리누 측 후속 패치 완료 (4/24)**: `sequence_service/app/cell/runtime.py:121` `{1: None, 2: None}` → `{1: None}`으로 수정. ctx.py 기본값과 정합. (미커밋)
 
 ### 2026.04.16 (한솔코에버 이예승 사원 — 프린터 할당 기능)
 - 이예승 사원이 `hansol-dev` 브랜치에 커밋 `74584fb` 업로드 (4/16)
