@@ -783,6 +783,32 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
+- **날짜**: 2026-04-24 (금 오전, Cloudflare Tunnel 설정 + 한솔 잔존 이슈 수정)
+- **4/24 오전 완료 작업**:
+  1. **한솔 머지 3차 잔존 이슈 수정 ✅** — `bcb8e29` 커밋 (runtime.py:121 하드코딩 제거), origin + personal push 완료
+  2. **Cloudflare Tunnel `orinu-factory` 생성 ✅** — 터널 ID `b939f49b-e265-407d-b83f-247f7b4cb82c`
+  3. **공장 PC cloudflared 설치 + 서비스 RUNNING ✅** — Active replicas 1, Edge Location 서울(ICN)
+  4. **DNS 활성 ✅** — `factory.flickdone.com` → `*.cfargotunnel.com` CNAME 자동 생성, 전파 확인됨
+  5. **Route 매핑 ✅** — Service URL `http://localhost:8085` (초기 https 입력 후 수정)
+  6. **⚠️ 블로커 발견**: 공장 PC에 프로젝트 소스 자체가 배포된 적 없음 (예승님/태민 모두 배포 이력 없음)
+     - `main.py` 전체 하드디스크 검색 결과 site-packages 내부만 존재
+     - `netstat :8085` 비어있음
+     - → 예승님께 배포 경로/계획 문의 메시지 전송, 답변 대기
+- **진행 중**: 공장 PC에 Python `http.server`로 임시 Hello World 띄워서 터널 동작 증명 (대안 C) — 현재 파일 경로 문제로 404, 해결 작업 중
+- **오늘 남은 작업**:
+  - Cloudflare Tunnel 동작 증명 완료 (대안 C)
+  - Cloudflare 2FA 재설정 (Recovery Codes + Authy)
+  - 4/24 오후 대표님 회의 (빈피킹 컨셉, Cloudflare 범위, 브라켓, sequence_service 배포 정책 등 7개 안건)
+- **내일(4/25) 이후**:
+  - 예승님 답/대표님 회의 결과에 따라 공장 PC 실제 배포 (대안 A)
+  - `main.py` 또는 web-api 기동 + Windows 서비스 자동 시작 등록
+  - 외부 접속 최종 검증
+  - 카카오 VM `.env` 호스트 변경 (`PREFORM_SERVER_HOST=factory.flickdone.com`)
+
+---
+
+### 4/23 저녁 작업 요약 (이전 업데이트)
+
 - **날짜**: 2026-04-23 (목, 공장 방문 + 저녁 작업 완료)
 - **오늘 완료 작업 (4/23)**:
   1. **하드웨어 입고 3건 확인 ✅** — Basler 카메라(Blaze-112 + ace2), 산업용 PC(IPC-510), Cloudflare 권한 활성
