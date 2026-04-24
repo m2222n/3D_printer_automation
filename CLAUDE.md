@@ -783,27 +783,185 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-24 (금 오전, Cloudflare Tunnel 설정 + 한솔 잔존 이슈 수정)
-- **4/24 오전 완료 작업**:
-  1. **한솔 머지 3차 잔존 이슈 수정 ✅** — `bcb8e29` 커밋 (runtime.py:121 하드코딩 제거), origin + personal push 완료
-  2. **Cloudflare Tunnel `orinu-factory` 생성 ✅** — 터널 ID `b939f49b-e265-407d-b83f-247f7b4cb82c`
-  3. **공장 PC cloudflared 설치 + 서비스 RUNNING ✅** — Active replicas 1, Edge Location 서울(ICN)
-  4. **DNS 활성 ✅** — `factory.flickdone.com` → `*.cfargotunnel.com` CNAME 자동 생성, 전파 확인됨
-  5. **Route 매핑 ✅** — Service URL `http://localhost:8085` (초기 https 입력 후 수정)
-  6. **⚠️ 블로커 발견**: 공장 PC에 프로젝트 소스 자체가 배포된 적 없음 (예승님/태민 모두 배포 이력 없음)
-     - `main.py` 전체 하드디스크 검색 결과 site-packages 내부만 존재
-     - `netstat :8085` 비어있음
-     - → 예승님께 배포 경로/계획 문의 메시지 전송, 답변 대기
-- **진행 중**: 공장 PC에 Python `http.server`로 임시 Hello World 띄워서 터널 동작 증명 (대안 C) — 현재 파일 경로 문제로 404, 해결 작업 중
-- **오늘 남은 작업**:
-  - Cloudflare Tunnel 동작 증명 완료 (대안 C)
-  - Cloudflare 2FA 재설정 (Recovery Codes + Authy)
-  - 4/24 오후 대표님 회의 (빈피킹 컨셉, Cloudflare 범위, 브라켓, sequence_service 배포 정책 등 7개 안건)
-- **내일(4/25) 이후**:
-  - 예승님 답/대표님 회의 결과에 따라 공장 PC 실제 배포 (대안 A)
-  - `main.py` 또는 web-api 기동 + Windows 서비스 자동 시작 등록
-  - 외부 접속 최종 검증
-  - 카카오 VM `.env` 호스트 변경 (`PREFORM_SERVER_HOST=factory.flickdone.com`)
+- **날짜**: 2026-04-24 (금, 오전→점심→오후 공장 방문까지 전부 완료)
+
+### 4/24 오전 완료 (Cloudflare Tunnel 기본 세팅)
+1. **한솔 머지 3차 잔존 이슈 수정 ✅** — `bcb8e29` 커밋 (runtime.py:121 하드코딩 제거), origin + personal push 완료
+2. **Cloudflare Tunnel `orinu-factory` 생성 ✅** — 터널 ID `b939f49b-e265-407d-b83f-247f7b4cb82c`
+3. **공장 PC cloudflared 설치 + 서비스 RUNNING ✅** — Active replicas 1, Edge Location 서울(ICN)
+4. **DNS CNAME 활성 ✅** — `factory.flickdone.com` → `b939f49b-...cfargotunnel.com`
+5. **Route 매핑 ✅** — Service URL `http://localhost:8085` (초기 `https://` 입력 후 `http://`로 수정)
+
+### 4/24 점심 전후 (`python main.py` 기동 + Page Rule 해결)
+- 공장 PC 배포 경로 식별: **`D:\3D_printer_automation_0305\3D_printer_automation`** (예승님 답변)
+- 환경 점검: Python 3.14.3, Node v24, **MariaDB 11.3 설치·자동시작 중** (4/24 오후 재조사에서 확인, 오전 "MySQL 미설치" 기록은 오해였음), `.venv` 이미 생성, `.env` 존재
+- **`python main.py` 수동 기동 성공** — web-api 8085 LISTENING, sequence_service active (automation DB에 이력 정상 적재)
+- 공장 PC 로컬: `curl http://127.0.0.1:8085/` → `<title>3D 프린터 자동화 시스템</title>` ✅
+- **Cloudflare Page Rules 충돌 발견 + 해결 ✅**:
+  - Rule #1 `*flickdone.com/*` → `orinu.org/$1` (301 Permanent Redirect) 발견
+  - 누가 언제 왜 만들었는지 불명 → **Disable 처리** (Delete는 안전상 지양)
+  - 검증: 6000 서버 `curl -I https://factory.flickdone.com/` → HTTP 200 + React HTML ✅
+
+### 4/24 점심 후 일시 장애 (자연 복구)
+- Mac 캐시 삭제 중 **AnyDesk + Cloudflare Tunnel 530 동시 끊김**
+- 공장 PC 공인 IP ping 4/4 성공 → 공장 PC 자체 의심하고 공장 방문
+- 공장 도착 시점에는 **이미 자연 복구** (AnyDesk 정상, 외부 접속 200 OK)
+- 원인 특정 불가, 일시 장애로 결론
+
+### 4/24 오후 공장 방문 완료 (NSSM 자동 시작 등록) ⭐
+**목표**: `python main.py` 수동 실행 → Windows 서비스로 승격해서 재부팅/크래시 자동 복구 보장
+
+1. **NSSM 2.24 다운로드 + 설치 ✅**
+   - 공장 PC 브라우저 `https://nssm.cc/release/nssm-2.24.zip` → **503 Service Temporarily Unavailable**
+   - **우회법**: cmd에서 `curl -L -o ...` 직접 다운로드 성공 (공장 ISP의 브라우저 경로 이슈 추정)
+   - 최종 경로: `C:\nssm\nssm-2.24\win64\nssm.exe` (공식 빌드 331,264 bytes)
+
+2. **OrinuMain Windows 서비스 등록 ✅**
+   - `C:\nssm\nssm-2.24\win64\nssm.exe install OrinuMain` (관리자 cmd)
+   - Path: `D:\3D_printer_automation_0305\3D_printer_automation\.venv\Scripts\python.exe`
+   - Startup directory: `D:\3D_printer_automation_0305\3D_printer_automation`
+   - Arguments: `main.py`
+   - Startup type: Automatic
+   - 로그: `D:\3D_printer_automation_0305\logs\orinu_stdout.log` / `orinu_stderr.log`
+
+3. **자동 복구 검증 ✅**
+   - `taskkill /F /PID <web-api_pid>` → 서비스 자동 재시작 → 새 PID로 8085 LISTENING 재확인
+   - 외부 `curl https://factory.flickdone.com/` → HTTP 200 ✅
+   - 결론: 공장 PC 재부팅/정전/크래시에도 휴가 중 자동 복구 보장
+
+### NSSM 운영 노트 (트러블슈팅 중 배운 것)
+- **`nssm` 명령은 PATH 미등록** → 항상 전체 경로 `C:\nssm\nssm-2.24\win64\nssm.exe` 사용
+- **로그는 런처만 캡처** — `orinu_stderr.log`엔 `Starting web-api`, `All services started` 등 런처 출력만. web-api subprocess의 uvicorn 로그는 캡처 안 됨
+- **재시작 후 초기화 15~20초** — uvicorn + sequence_service + DB + 프린터 Modbus 시도 때문에 즉시 netstat 찍으면 LISTENING 안 보임 → `timeout /t 20` 필수
+- **python 좀비 처리** — 기동 실패 반복 시 python.exe 5~6개 떠있음. `taskkill /F /IM python.exe`로 싹 정리 후 재시작하면 해결
+- **Frontend skip 정상** — `START_FRONTEND` 환경변수 없어서 Vite dev 안 띄움. web-api가 `frontend/dist/` 정적 서빙하므로 영향 없음
+
+### 공장 PC 운영 명령어 (관리자 cmd)
+```cmd
+# 상태 확인
+sc query OrinuMain                                  # STATE : 4 RUNNING 기대
+sc query cloudflared                                # Tunnel 서비스 상태
+netstat -ano | findstr LISTENING | findstr 8085    # 0.0.0.0:8085 LISTENING
+
+# 재시작
+C:\nssm\nssm-2.24\win64\nssm.exe restart OrinuMain
+
+# 완전 정리 후 재시작 (좀비 발생 시)
+C:\nssm\nssm-2.24\win64\nssm.exe stop OrinuMain
+taskkill /F /IM python.exe
+timeout /t 5
+C:\nssm\nssm-2.24\win64\nssm.exe start OrinuMain
+timeout /t 20
+```
+
+### 오늘 남은 작업 (4/24 퇴근 전)
+- [x] 🚨 **Formlabs Client Secret Rotate** — Developer Portal Rotate 완료, 3곳 전부 반영 ✅
+  - [x] 6000 서버 `~/3D_printer_automation/web-api/.env` — `api.formlabs.com HTTP/1.1 200 OK` 검증
+  - [x] 카카오 VM `/home/ubuntu/3D_printer_automation/web-api/.env` — SSH `~/.ssh/kakao_key`로 접속, `systemctl --user restart formlabs-web` 후 `📊 4대 프린터 상태 조회 완료` 검증
+  - [x] 공장 PC `D:\3D_printer_automation_0305\3D_printer_automation\web-api\.env` — AnyDesk notepad 편집 + `nssm restart OrinuMain` → RUNNING + 8085 LISTENING(PID 17276) + 외부 HTML 200
+- [ ] 예승님께 최종 안내 메시지 (URL + 4/28 테스트 가능 범위)
+- [ ] Cloudflare Backup Codes 생성 (여유되면)
+
+### 공장 PC 재부팅 시 자동 시작되는 것 (4/24 완성 체계)
+> 휴가 중 정전/재부팅에도 전원 ON만으로 운영 시스템 전체가 자동 복구됨.
+
+| # | 이름 | 종류 | 포트 | 역할 |
+|---|------|------|------|------|
+| 1 | **cloudflared** | Windows 서비스 | - | Cloudflare Tunnel (`factory.flickdone.com` 외부 접속) |
+| 2 | **OrinuMain** ⭐ | Windows 서비스 (NSSM) | 8085 | `python main.py` (web-api + sequence_service + frontend 정적 서빙) |
+| 3 | **PreFormServer** | 시작 프로그램 바로가기 | 44388 | Formlabs Local API (프린트 작업 전송) |
+| +a | file_receiver.py | 시작 프로그램 | 8089 | STL 파일 수신 |
+| +a | AnyDesk | Windows 서비스 | - | 원격 접속 |
+
+**NSSM (Non-Sucking Service Manager)**: `python main.py` 같은 일반 프로그램을 Windows 서비스로 포장해주는 오픈소스 도구. 재부팅 자동 시작 + 크래시 자동 재시작 + 로그 파일 저장. 설치 경로 `C:\nssm\nssm-2.24\win64\nssm.exe` (PATH 미등록, 항상 전체 경로 사용).
+
+**재부팅 후 체크 (cmd)**:
+```cmd
+sc query cloudflared
+sc query OrinuMain
+netstat -ano | findstr LISTENING | findstr "8085 44388 8089"
+curl http://127.0.0.1:8085/
+```
+
+**상세 복구 가이드**: `~/.claude/projects/-home-jtm/memory/reference_factory_pc_deployment_guide.md`의 "재부팅 후 자동 시작 체계" 섹션
+
+---
+
+## DB 아키텍처 현황 (4/24 확정)
+
+### 서버별 DB 구성
+
+| 서버 | DB | 용도 | 상태 |
+|------|-----|------|------|
+| **공장 PC** | **MariaDB 11.3** (port 3306) | sequence_service 자동화 로그 (`automation` DB) | ✅ 서비스 AUTO_START, 실행 중 |
+| **공장 PC** | SQLite (`web-api/data/local.db`) | web-api 프리셋/알림/업로드 이력 | ✅ 동작 중 |
+| **6000 서버** | SQLite | web-api 모니터링 전용 | ✅ |
+| **카카오 VM** | SQLite | web-api 모니터링 전용 | ✅ |
+
+### MariaDB (공장 PC) 상세
+
+| 항목 | 값 |
+|------|-----|
+| 설치 경로 | `C:\Program Files\MariaDB 11.3\` |
+| 설정 파일 | `C:\Program Files\MariaDB 11.3\data\my.ini` |
+| Windows 서비스 | `MariaDB` (AUTO_START, NT SERVICE\MariaDB 계정) |
+| 포트 | 3306 (`0.0.0.0:3306` LISTENING — 4/28에 `127.0.0.1`로 제한 예정) |
+| 업무 DB | `automation` (한솔 sequence_service가 연결) |
+| 시스템 DB | information_schema, mysql, performance_schema, sys |
+
+### ⚠️ 문서 오류 정정
+- 4/24 **오전 기록의 "MySQL 미설치"는 오해**. 실제는 MariaDB가 설치되어 있었으나 `where mysql`·`sc query MySQL80`만 확인하고 놓친 것
+- 오해 이유: MariaDB 클라이언트(`mysql.exe`)가 PATH에 없었고, Windows 서비스 이름이 `MariaDB`로 등록 (MySQL/MySQL80 아님)
+- 올바른 확인 방법: `netstat -ano | findstr :3306` → LISTENING PID 확인 → `tasklist /FI "PID eq <pid>"` → `mysqld.exe` 나오면 DB 있음
+
+### 원격 DB 접근 (옵션 2c — 4/28 구현 예정)
+
+**배경**: 4/23 회의에서 "설비제어 로컬 유지 + 원격 UI는 Cloudflare Tunnel 경유"로 합의 (옵션 2c). 예승님 4/24 질문 "클라우드에서 공장 DB 읽을 수 있냐?" 요구사항 충족 목적.
+
+**기술적 가능성**: ✅ **가능**. Cloudflare Tunnel은 HTTP뿐 아니라 임의 TCP(MySQL wire protocol 포함) 운반 가능. 기존 `orinu-factory` 터널에 ingress 규칙 추가만 하면 됨.
+
+**구조**:
+```
+카카오 VM ── cloudflared(127.0.0.1:3307) ──→ CF Edge(ICN) ──→ 공장 PC cloudflared ──→ MariaDB(127.0.0.1:3306)
+```
+- 카카오 VM에 cloudflared 프록시 추가 설치 필요 (HTTP과 달리 TCP는 Edge가 공개 포트 안 열어줌)
+- Cloudflare Access Service Token으로 인증 (서버-서버 자동화용)
+- MariaDB에 `remote_readonly` 계정 분리 + SELECT만 허용
+- 실시간 제어(sequence_service)는 터널 경유 **절대 금지** — 공장 로컬 직결 유지, 터널은 **원격 조회/분석 전용**
+
+**4/28 작업**: `memory/project_sequence_service_deployment.md`의 "옵션 2c 구체 구현 가이드" 참조. 예상 1.5~2시간.
+
+**대표님 논의 필요**: 범위(읽기 전용만 vs 쓰기 권한도) + 보안 강화 수준 + Cloudflare Access 비용 (Free 플랜 Service Token 25개까지 무료)
+
+### 🔒 보안 원칙 (절대 금지)
+
+- ❌ MariaDB 3306을 공유기 포트포워딩으로 인터넷에 직접 노출
+- ❌ Cloudflare Tunnel에 TCP ingress만 추가하고 Access 없이 방치
+- ❌ sequence_service 같은 실시간 제어 서비스가 터널 경유 DB로 변경 (인터넷 장애 시 로봇 정지)
+
+### Formlabs Credentials 관리 메모 (4/24 배운 것)
+- Formlabs Developer Portal의 "Rotate Client Secret" 작업은 **Client ID도 같이 바뀜** (기존 ID는 즉시 무효화)
+- 반영 장소: 서버별 `.env`의 **`FORMLABS_CLIENT_ID`, `FORMLABS_CLIENT_SECRET` 두 줄 모두** 교체
+- 반영 누락 시 해당 서버는 Formlabs API 호출이 401로 실패하며 폴링 전체가 멈춤 — journalctl로 즉시 확인 가능
+- 스크린샷/문서 공유 시 `.env` 파일은 모자이크 처리 필수 (공개 채널 절대 금지)
+
+### 4/28 예승님 방문 시 / 이후
+- ~~MySQL 설치~~ **✅ 이미 MariaDB 11.3 설치·실행 중 (4/24 확인)**. DB Back260305.sql 복원 여부는 `automation` DB 현재 데이터 검토 후 판단
+- **옵션 2c 완성 — Cloudflare Tunnel TCP ingress 추가 (`factory-db.flickdone.com` → `tcp://localhost:3306`)** + Access Service Token 발급 + 카카오 VM에 cloudflared 프록시 설치 (상세: `memory/project_sequence_service_deployment.md` "옵션 2c 구체 구현 가이드")
+- MariaDB 보안 강화: `my.ini`에 `bind-address=127.0.0.1` 추가 + 원격 조회 전용 계정(`remote_readonly`) 분리
+- `git pull`로 소스 최신화 (예승님 공조, 공장 PC는 3/5 스냅샷 박제 상태)
+- Basic Auth 또는 Cloudflare Zero Trust Access 추가
+- 카카오 VM `.env` 호스트 변경 (`PREFORM_SERVER_HOST=factory.flickdone.com`)
+- 6000 서버 웹 서비스 중지 여부 결정
+- `orinu.org` 도메인 소유자/용도 대표님께 확인 (Page Rule #1 존재 이유)
+
+### 상세 운영/트러블슈팅 레퍼런스
+- [Cloudflare Tunnel 전체 설정 + NSSM 운영 명령어](../.claude/projects/-home-jtm/memory/project_cloudflare_tunnel.md)
+- [공장 PC 배포 가이드](../.claude/projects/-home-jtm/memory/reference_factory_pc_deployment_guide.md)
+
+## ⏰ 태민 휴가
+- 4/27(월)~28(화) 휴가. 4/28 당일 예승님 현장 방문 예정.
+- ✅ **NSSM 등록 + 자동 복구 검증 완료** — 휴가 중 공장 PC 재부팅/정전에도 안정 운용 가능
 
 ---
 

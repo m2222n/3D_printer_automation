@@ -2,22 +2,49 @@
 
 > 3D프린터-로봇 연동 자동화 시스템 | Formlabs Form 4 + HCR 협동로봇 + 3D 빈피킹 비전 + MaixCAM
 
+**상태**: ✅ Cloudflare Tunnel 허브 운영 중 (2026-04-24) — [factory.flickdone.com](https://factory.flickdone.com/)
+
+### Backend / Runtime
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
-[![Open3D](https://img.shields.io/badge/Open3D-0.19-4B8BBE?logo=python&logoColor=white)](http://www.open3d.org)
-[![Modbus](https://img.shields.io/badge/Modbus_TCP-pymodbus_3-FF6F00?logo=python&logoColor=white)](https://pymodbus.readthedocs.io)
-[![trimesh](https://img.shields.io/badge/trimesh-4.x-green?logo=python&logoColor=white)](https://trimesh.org)
-[![Basler](https://img.shields.io/badge/Basler-pypylon-0078D4?logoColor=white)](https://www.baslerweb.com)
+[![uvicorn](https://img.shields.io/badge/uvicorn-0.27+-499848?logo=gunicorn&logoColor=white)](https://www.uvicorn.org)
+[![Pydantic](https://img.shields.io/badge/Pydantic-2.5+-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-D71F00?logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org)
+
+### Frontend
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4_beta-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
+
+### Database
+[![MariaDB](https://img.shields.io/badge/MariaDB-11.3-003545?logo=mariadb&logoColor=white)](https://mariadb.org)
+[![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://sqlite.org)
+[![PyMySQL](https://img.shields.io/badge/PyMySQL-1.1+-4479A1?logo=mysql&logoColor=white)](https://pymysql.readthedocs.io)
+
+### Hardware / Vision
+[![Formlabs](https://img.shields.io/badge/Formlabs-Form_4_×4-000000?logo=formlabs&logoColor=white)](https://formlabs.com/3d-printers/form-4)
+[![HCR](https://img.shields.io/badge/HCR--12/10L-Hanwha-FF9800?logoColor=white)](https://www.hanwharobotics.com)
+[![Modbus](https://img.shields.io/badge/Modbus_TCP-pymodbus_3.6+-FF6F00?logo=python&logoColor=white)](https://pymodbus.readthedocs.io)
+[![Basler](https://img.shields.io/badge/Basler-Blaze--112_+_ace2-0078D4?logoColor=white)](https://www.baslerweb.com)
 [![RealSense](https://img.shields.io/badge/Intel_RealSense-D435-0071C5?logo=intel&logoColor=white)](https://www.intelrealsense.com)
+[![MaixCAM](https://img.shields.io/badge/MaixCAM-1_TOPS_NPU-E2231A?logoColor=white)](https://wiki.sipeed.com/maixcam)
+
+### Bin Picking / Pointcloud
+[![Open3D](https://img.shields.io/badge/Open3D-0.19-4B8BBE?logo=python&logoColor=white)](http://www.open3d.org)
+[![NumPy](https://img.shields.io/badge/NumPy-1.26+-013243?logo=numpy&logoColor=white)](https://numpy.org)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.8+-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org)
+[![trimesh](https://img.shields.io/badge/trimesh-4.x-4CAF50?logo=python&logoColor=white)](https://trimesh.org)
 [![SciPy](https://img.shields.io/badge/SciPy-1.x-8CAAE6?logo=scipy&logoColor=white)](https://scipy.org)
+[![pypylon](https://img.shields.io/badge/pypylon-26.x-0078D4?logo=python&logoColor=white)](https://github.com/basler/pypylon)
+
+### Infrastructure
+[![Cloudflare Tunnel](https://img.shields.io/badge/Cloudflare_Tunnel-RUNNING-F38020?logo=cloudflare&logoColor=white)](https://www.cloudflare.com/products/tunnel/)
+[![NSSM](https://img.shields.io/badge/NSSM-OrinuMain-008CFF?logoColor=white)](https://nssm.cc)
+[![systemd](https://img.shields.io/badge/systemd-formlabs--web-FCC624?logo=systemd&logoColor=black)](https://systemd.io)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![WireGuard](https://img.shields.io/badge/WireGuard-VPN_(legacy)-88171A?logo=wireguard&logoColor=white)](https://www.wireguard.com)
 [![MQTT](https://img.shields.io/badge/MQTT-Mosquitto-660066?logo=mqtt&logoColor=white)](https://mosquitto.org)
-[![WireGuard](https://img.shields.io/badge/WireGuard-VPN-88171A?logo=wireguard&logoColor=white)](https://www.wireguard.com)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Tunnel-F38020?logo=cloudflare&logoColor=white)](https://www.cloudflare.com)
 
 ---
 
@@ -46,8 +73,8 @@
 | 협동로봇 | HCR-10L | 1대 | 후가공 탭, 제품 이송 | 현장 배치, 4/14 펜던트 교육 1회차 수료 |
 | 세척기 | Form Wash | 2대 | 레진 세척 | ✅ |
 | 경화기 | Form Cure | 2대 | UV 경화 | ✅ |
-| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 | 🚚 **2026-04-23 도착 예정** |
-| 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 | 🚚 **2026-04-23 도착 예정** |
+| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 | ✅ **2026-04-23 입고 완료** |
+| 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 | ✅ **2026-04-23 입고 완료** |
 | 깊이 카메라 | Intel RealSense D435 | 1대 | 빈피킹 임시 검증 (USB 20cm 제약) | ✅ 라이브 연동 성공 (4/13) |
 | 엣지 AI 카메라 | Sipeed MaixCAM | 1+대 | 세척기/경화기 완료 감지 (OpenMV 대체) | 🔄 리서치 완료, PoC 대기 |
 
@@ -63,80 +90,97 @@
 |-------|------|----------|------|
 | **Phase 1** | Web API 모니터링 (Formlabs Cloud) | 🔴 URGENT | ✅ 완료 |
 | **Phase 2** | Local API 원격 프린트 제어 + 프론트엔드 UI | 🔴 URGENT | ✅ 완료 |
-| **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 | 🟡 HIGH | ✅ 한솔코에버 코드 2회 머지(4/3, 4/16). 3/27 최종 시연 완료 |
+| **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 | 🟡 HIGH | ✅ 한솔코에버 코드 3회 머지 (4/3, 4/16, 4/23). 3/27 최종 시연 완료, 공장 PC `automation` DB에 자동화 이력 적재 중 |
 | **Phase 4** | 장비 모니터링 (MaixCAM — OpenMV 대체) | 🟡 HIGH | 🔄 리서치 완료, 빈피킹 우선 후 PoC |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 W6 — L1~L6 SW 완성 + 데모 UI 안정화, Basler 4/23 입고 대기 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 W6 — L1~L6 SW 완성 + 데모 UI 안정화, **Basler 4/23 입고 완료**, 실제 캘리브레이션 5월 초 예정 |
 
-### 현재 상태 (2026-04-22 저녁)
+### 현재 상태 (2026-04-24 오후)
 
 #### ✅ 완료된 것
-- Phase 1 + Phase 2 **프로덕션 운영 중** (카카오 VM + 6000 서버)
-- Phase 3 한솔코에버 코드 메인 머지 완료 (`sequence_service` + Automation/Automation_Manual UI)
+- Phase 1 + Phase 2 **프로덕션 운영 중** (카카오 VM + 6000 서버 + 공장 PC 3중 배포)
+- Phase 3 한솔코에버 코드 메인 머지 3회 완료 (4/3 기원님, 4/16 예승님 프린터 할당, 4/23 예승님 경화기 2→1대)
 - Phase 5 **L1~L6 파이프라인 SW 완성** + 그래스프 DB 29종 + 데모 UI 안정화
   - 인식률: easy 100%, crowded 90%, hard 60% (FPFH 한계, Colored ICP 준비됨)
   - 매칭 시간: 0.4~0.6s/부품
   - 데모 UI 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT), synthetic 리허설 1.5s
-- WireGuard VPN 안정화 (4/17 복구)
+- **Basler Blaze-112 + ace2 입고 (4/23)** + 산업용 PC(IPC-510) 입고
+- **Cloudflare Tunnel `orinu-factory` 완성 (4/24)** — `https://factory.flickdone.com`, Page Rule 충돌 해결
+- **공장 PC 자동 시작 체계 완성 (4/24)** — NSSM `OrinuMain` 서비스 + cloudflared + PreFormServer + file_receiver 전부 재부팅 자동 복구 (55초)
+- **Formlabs Client Secret Rotate 완료 (4/24)** — 3곳 `.env` 전부 반영 (6000 서버 / 카카오 VM / 공장 PC)
+- **공장 PC MariaDB 11.3 확인 (4/24)** — 기존에 "MySQL 미설치"로 잘못 기록되어 있던 것 정정. `automation` DB에 sequence_service 자동화 이력 정상 적재 중
+- WireGuard VPN 안정화 (4/17 복구) — 현재는 유지(Cloudflare Tunnel로 단계적 대체 예정)
 - 카카오 VM 이전 + Basic Auth (4/16)
 - 레진 프리셋 SSOT 4종 (grey/white/clear/flexible)
-- Basler 설치 자동화 스크립트 (카메라 도착 당일 3시간 → 1시간 단축 예상)
+- Basler 설치 자동화 스크립트 (카메라 도착 당일 3시간 → 1시간 단축)
 
 #### 🔄 진행 중
-- Basler Blaze-112 + ace2 입고 준비 (4/23 목요일 도착)
-- Cloudflare Tunnel (`factory.flickdone.com`) — 대표님 계정 초대 대기
-- sequence_service 배포 정책 — 4/23 이예승 사원 미팅 예정
+- Cloudflare Tunnel **옵션 2c 확장** — `factory-db.flickdone.com`으로 MariaDB TCP ingress 추가 + Access Service Token (4/28 예승님 방문 시 함께 구현)
+- 4/23 회의 이슈 후속: 경화기 축소 보고 범위, 스핀 3개 중 2개 동시 작동 이슈
 
 #### ⏳ 대기
-- 실제 핸드-아이 캘리브레이션 2세트 (eye-to-hand + eye-in-hand) — 카메라 입고 후
-- Colored ICP 실데이터 검증 (코드 준비 완료)
-- HCR-10L 실전 피킹 + 그리퍼 장착 후 TCP 오프셋·작업 영역 실측
+- 실제 핸드-아이 캘리브레이션 2세트 (eye-to-hand + eye-in-hand) — 5월 초 산업용 PC + 카메라 현장 셋업 후
+- Colored ICP 실데이터 검증 (코드 준비 완료, 실컬러 필요)
+- HCR-10L 실전 피킹 + 그리퍼 장착 후 TCP 오프셋·작업 영역·오일러 실측
 - MaixCAM 장비 모니터링 PoC
+- Cloudflare Backup Codes 생성 + 2FA Authy 재등록
 
 ---
 
 ## 시스템 아키텍처
 
-### 서버 구성
+### 서버 구성 (Cloudflare 허브 중심, 4/24 기준)
 
 ```mermaid
 flowchart TB
-    Browser["🌐 브라우저<br/>태민 노트북 / 예승 노트북 / 공장 PC"]
+    Browser["🌐 브라우저<br/>외부 접속자"]
+    CF["☁️ Cloudflare Edge (ICN)<br/>factory.flickdone.com (HTTP)<br/>factory-db.flickdone.com (TCP, 4/28 예정)"]
 
-    KakaoVM["☁️ 카카오 VM<br/>61.109.239.142:8085<br/>─────────────────<br/>web-api만 (모니터링)<br/>Basic Auth"]
+    KakaoVM["☁️ 카카오 VM<br/>61.109.239.142:8085<br/>─────────────────<br/>web-api (모니터링)<br/>Basic Auth<br/>cloudflared (TCP 프록시, 4/28 예정)"]
 
-    Server6000["🖥️ 6000 서버<br/>106.244.6.242:8085<br/>─────────────────<br/>web-api + 프린터 제어<br/>(VPN 경유)"]
+    Server6000["🖥️ 6000 서버<br/>106.244.6.242:8085<br/>─────────────────<br/>web-api + 프린터 제어<br/>(WireGuard VPN 경유)<br/>개발 환경 (Claude Code, git)"]
 
-    FactoryPC["🏭 공장 PC (Windows)<br/>10.145.113.3<br/>─────────────────<br/>• PreFormServer :44388<br/>• file_receiver :8089<br/>• sequence_service<br/>• HCR-10L, Ajin IO<br/>• MySQL (자동화 로그)"]
+    FactoryPC["🏭 공장 PC (Windows)<br/>D:\3D_printer_automation_0305<br/>─────────────────<br/>• cloudflared (Windows 서비스)<br/>• OrinuMain = python main.py (NSSM)<br/>  - web-api :8085<br/>  - sequence_service (Ajin IO, HCR-10L)<br/>• PreFormServer :44388<br/>• file_receiver :8089<br/>• MariaDB 11.3 :3306 (automation DB)"]
 
-    Hardware["⚙️ 현장 하드웨어<br/>─────────────────<br/>Form 4 ×4<br/>HCR-12 / HCR-10L<br/>Form Wash / Cure<br/>Basler (4/23 입고)<br/>MaixCAM"]
+    Hardware["⚙️ 현장 하드웨어<br/>─────────────────<br/>Form 4 ×4 (Wi-Fi)<br/>HCR-12 / HCR-10L (Modbus TCP)<br/>Form Wash / Cure<br/>Basler Blaze-112 + ace2<br/>MaixCAM (PoC 대기)"]
 
+    Browser --> CF
+    CF -->|HTTP :8085 터널| FactoryPC
     Browser --> KakaoVM
     Browser --> Server6000
+    KakaoVM -.->|Formlabs Cloud API 폴링| Cloud["Formlabs Cloud API"]
+    Server6000 -.->|Formlabs Cloud API 폴링| Cloud
     Server6000 -->|WireGuard VPN| FactoryPC
+    KakaoVM -.->|TCP :3306 터널 (4/28 예정)| CF
     FactoryPC --> Hardware
 
     classDef browser fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
+    classDef cf fill:#fff8e1,stroke:#f57c00,stroke-width:2px,color:#000
     classDef remote fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    classDef factory fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    classDef factory fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000
     classDef hardware fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
+    classDef cloud fill:#eceff1,stroke:#546e7a,stroke-width:1px,color:#000
 
     class Browser browser
+    class CF cf
     class KakaoVM,Server6000 remote
     class FactoryPC factory
     class Hardware hardware
+    class Cloud cloud
 ```
 
 ### 운영 서버 현황
 
 | 서버 | URL | 역할 | 상태 |
 |------|-----|------|------|
+| **Cloudflare Tunnel** | `https://factory.flickdone.com/` | 공장 PC 직결 (HTTP, 외부에서 접속) | ✅ 4/24 운영 시작 |
 | 카카오 VM | `http://61.109.239.142:8085/` | 모니터링 (Cloud API 폴링) | ✅ Basic Auth |
 | 6000 서버 | `http://106.244.6.242:8085/` | 모니터링 + 프린터 제어 (VPN) | ✅ 병행 운영 |
-| 6000 서버 SSH | - | 개발 환경 (Claude Code, git) | ✅ |
+| 6000 서버 SSH | `ssh -p 5533 jtm@106.244.6.242` | 개발 환경 (Claude Code, git) | ✅ |
 | Mac (로컬) | - | 빈피킹 개발 (Open3D — 6000 서버는 AVX2 미지원) | ✅ |
-| 공장 PC | AnyDesk | PreFormServer + file_receiver + sequence_service + MySQL | ✅ |
+| 공장 PC | AnyDesk / Cloudflare Tunnel | NSSM OrinuMain + cloudflared + PreFormServer + file_receiver + MariaDB | ✅ 전부 자동 시작 |
 
-> **접속**: 현시점 기준 `admin` / `orinu2026!` (Basic Auth). Cloudflare Tunnel 적용 후 로그인 페이지 + JWT로 업그레이드 예정.
+> **접속**: `admin` / `orinu2026!` (Basic Auth). Cloudflare Access 적용 후 Service Token + (옵션) 로그인 페이지로 업그레이드 예정.
+> **허브 개념**: 로봇/프린터/카메라 같은 실시간 제어는 공장 PC 로컬 직결 유지(네트워크 장애 시 로봇 정지 방지). 원격 UI + DB 조회만 Cloudflare를 허브로 연결.
 
 ### 빈피킹 비전 파이프라인 (Phase 5)
 
@@ -158,6 +202,24 @@ flowchart LR
 - 모든 단계 Python 단독 구현, CAD 기반 인식 (STL 29종)
 - 레진별 프리셋 4종 (grey/white/clear/flexible) 일관 적용
 - 데모 시각화: 2×2 그리드 + 3상태 색상 코딩
+
+### DB 아키텍처 + 원격 접근 정책 (옵션 2c)
+
+**원칙**: 실시간 제어(로봇/프린터)는 **공장 PC 로컬 직결 유지** (네트워크 장애 시 로봇 정지 방지). 원격 UI + DB 조회만 Cloudflare Tunnel을 허브로 경유.
+
+| DB | 위치 | 용도 | 원격 접근 |
+|----|------|------|----------|
+| **MariaDB 11.3 `automation`** | 공장 PC (localhost:3306) | sequence_service 자동화 이력 | 카카오 VM에서 Cloudflare Tunnel + Access Service Token으로 읽기 (4/28 구현 예정) |
+| SQLite `local.db` | 각 서버 web-api 로컬 | 프리셋, 알림, 업로드 이력 | HTTP API 경유 |
+
+**Cloudflare Tunnel 규칙 (orinu-factory, 4/24 기준)**:
+- ✅ `factory.flickdone.com` → `http://localhost:8085` (HTTP, 운영 중)
+- 🔄 `factory-db.flickdone.com` → `tcp://localhost:3306` (MariaDB TCP, 4/28 예정)
+
+**4/23 회의에서 합의된 것** (한솔 이예승 사원 + 김주엽 파트장 + 태민):
+- ❌ **클라우드로 DB 이전**(인터넷 장애 시 로봇 정지) 및 **3306 포트 포워딩 직접 오픈**(봇넷 타겟) 금지
+- ✅ **옵션 2c 채택** — 공장 로컬 DB 유지 + Cloudflare Tunnel의 Private Access로만 원격 접근 허용
+- ✅ 카카오 VM에도 `cloudflared` 설치해서 TCP 터널 프록시 실행 (HTTP와 달리 TCP는 직접 접속 불가)
 
 ---
 
@@ -187,6 +249,7 @@ flowchart LR
 - HCR-10L 내장 (읽기): Reg 400~405(TCP 좌표) / 600(Program State) / 700~702(Command)
 - 자동화 시퀀스: Automation 탭(CMD 생성) + Automation_Manual(수동 제어)
 - 공장 PC 전용 실행 (Ajin IO + WinDLL 물리 의존)
+- 자동화 이력 저장: 공장 PC 로컬 **MariaDB 11.3** `automation` DB (카카오 VM에서의 원격 조회는 옵션 2c로 4/28 구현 예정)
 
 ### Phase 5: 3D 빈피킹 비전 시스템 (L1~L6 SW 완성)
 
@@ -219,7 +282,8 @@ flowchart LR
 | **Automation_Manual** | AutomationManualPage.tsx | 수동 제어 (한솔코에버) |
 | 🔔 알림벨 | App.tsx | 미읽음 뱃지, 드롭다운, 30초 폴링 |
 
-> **유의**: Automation / Automation_Manual 탭은 **공장 PC에서 sequence_service가 실행 중일 때만** 실제 동작합니다. 카카오 VM / 6000 서버에는 sequence_service 백엔드가 없어 UI만 보이고 동작하지 않습니다. (4/23 예승님 미팅에서 원격 정책 합의 예정)
+> **유의**: Automation / Automation_Manual 탭은 **공장 PC에서 sequence_service가 실행 중일 때만** 실제 동작합니다. 카카오 VM / 6000 서버에는 sequence_service 백엔드가 없어 UI만 보이고 동작하지 않습니다.
+> (4/23 예승님 미팅에서 정책 확정: **옵션 2c** = 설비제어 로컬 유지 + 원격 UI만 Cloudflare Tunnel 경유. 4/28 방문 시 MariaDB TCP 라우팅 추가 예정)
 
 ---
 
@@ -397,9 +461,12 @@ GET    /api/v1/local/notifications
 | 기술 | 용도 |
 |------|------|
 | Docker + docker-compose | 웹앱 컨테이너화 |
-| WireGuard VPN | 6000 서버 ↔ 공장 PC |
-| Cloudflare Tunnel | (준비 중) `factory.flickdone.com` 외부 노출 |
-| systemd --user | formlabs-web 자동 시작 |
+| WireGuard VPN | 6000 서버 ↔ 공장 PC (현재도 사용, 점진적으로 Cloudflare Tunnel로 대체 예정) |
+| **Cloudflare Tunnel** | ✅ **운영 중** — `factory.flickdone.com` (HTTP), `factory-db.flickdone.com` (MariaDB TCP, 4/28 예정) |
+| **NSSM (Windows 서비스 매니저)** | ✅ 공장 PC `python main.py`를 `OrinuMain` 서비스로 등록 → 재부팅 자동 시작 + 크래시 자동 재시작 |
+| systemd --user | 6000 서버 / 카카오 VM `formlabs-web.service` 자동 시작 |
+| MariaDB 11.3 | 공장 PC `automation` DB — sequence_service 자동화 이력 |
+| SQLite | web-api 로컬 DB (프리셋, 알림, 업로드 이력) |
 | Mosquitto MQTT | MaixCAM ↔ 백엔드 (Phase 4) |
 
 ---
@@ -416,24 +483,47 @@ GET    /api/v1/local/notifications
 
 `web-api/.env.example`을 복사해 `.env` 생성:
 ```bash
-# Formlabs Web API
+# Formlabs Web API (OAuth2 credentials — Developer Portal에서 발급)
+# ⚠️ Rotate 시 Client ID까지 함께 재발급됨. 3곳 서버 .env 모두 업데이트 필요.
 FORMLABS_CLIENT_ID=your_client_id
 FORMLABS_CLIENT_SECRET=your_client_secret
 
-# PreFormServer (공장 PC VPN)
+# PreFormServer
+#   - 공장 PC에서 실행: 127.0.0.1
+#   - 6000 서버에서 VPN 경유: 10.145.113.3
+#   - 카카오 VM에서 Cloudflare Tunnel 경유 (예정): factory.flickdone.com
 PREFORM_SERVER_HOST=10.145.113.3
 PREFORM_SERVER_PORT=44388
 
-# 공장 PC 파일 수신
+# 공장 PC 파일 수신 (file_receiver.py, STL 업로드)
 FILE_RECEIVER_HOST=10.145.113.3
 FILE_RECEIVER_PORT=8089
 
-# 폴링
+# Formlabs Cloud API 폴링 주기 (초)
 POLLING_INTERVAL_SECONDS=15
 
-# Basic Auth (공인 IP 노출 시)
+# Basic Auth (공인 IP 노출 시 필수)
 BASIC_AUTH_USERNAME=admin
 BASIC_AUTH_PASSWORD=your_password
+```
+
+**sequence_service `.env`** (공장 PC 전용, `sequence_service/.env`):
+```bash
+# MariaDB 11.3 (로컬, localhost 전용)
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=automation
+DB_USER=<보안: 버전 관리 제외>
+DB_PASSWORD=<보안: 버전 관리 제외>
+
+# 시뮬 모드 (Ajin IO / 로봇 없이 로직만 검증)
+SIMUL_MODE=false
+AJIN_SIMULATION=false
+
+# Modbus 레지스터 매핑 (.env.copy 템플릿 참고, 4/16 예승님 추가)
+ENABLE_TCP_IO=true
+ROBOT_TCP_HOST=192.168.x.x
+# ...
 ```
 
 ### 방법 1: Docker로 실행 (권장)
@@ -468,22 +558,28 @@ npm run build
 # dist/ 가 web-api에서 정적으로 서빙됨
 ```
 
-**공장 PC — 통합 런처 (sequence_service + web-api)**:
+**공장 PC — NSSM Windows 서비스로 자동 시작 (4/24 완성)**:
 ```cmd
-cd C:\3D_printer_automation
-python main.py
+:: 수동 실행 금지. Windows 서비스로 자동 기동됨.
+:: 서비스 이름: OrinuMain (NSSM 등록)
+:: 실행 경로: D:\3D_printer_automation_0305\3D_printer_automation\.venv\Scripts\python.exe main.py
+:: 로그: D:\3D_printer_automation_0305\logs\orinu_stdout.log / orinu_stderr.log
+
+:: 상태 확인 / 재시작 (관리자 cmd 필요, nssm은 PATH 미등록이라 전체 경로)
+sc query OrinuMain
+C:\nssm\nssm-2.24\win64\nssm.exe restart OrinuMain
 ```
-> 공장 PC는 Ajin IO (Windows WinDLL) + HCR-10L + MySQL + PreFormServer 의존.
-> 4/23 예승님과 배포 디렉토리·자동 시작 방식 합의 예정.
+> 공장 PC는 Ajin IO (Windows WinDLL) + HCR-10L + **MariaDB 11.3** + PreFormServer 의존.
+> 재부팅 시 자동 시작되는 것: `cloudflared` (Cloudflare 터널) / `OrinuMain` (NSSM) / `PreFormServer` (시작 프로그램) / `file_receiver.py` / `AnyDesk` / `MariaDB`. 전원 ON 후 약 55초 내 전체 복구.
 
 ### 접속
 
 | 환경 | URL |
 |------|-----|
+| **Cloudflare Tunnel (운영)** | **https://factory.flickdone.com/** ✅ |
 | 카카오 VM | http://61.109.239.142:8085/ |
 | 6000 서버 | http://106.244.6.242:8085/ |
 | 로컬 개발 | http://localhost:8085/ (또는 5173 — Vite dev) |
-| Cloudflare Tunnel (예정) | https://factory.flickdone.com/ |
 
 ### 빈피킹 데모 실행 (Mac / 공장 PC)
 
@@ -530,7 +626,8 @@ sudo .venv/binpick/bin/python bin_picking/scripts/demo_live_recognition.py --bas
 | 2026-04-16 | 한솔 머지 2차 (`e68c2b1`) — 이예승 사원 프린터 할당 + 카카오 VM 이전 |
 | 2026-04-21 | 도메인 확정 (`factory.flickdone.com`) + Basler 설치 자동화 + 레진 프리셋 SSOT |
 | 2026-04-22 | 데모 리허설 피드백 6건 반영 (synthetic 9.7s → 1.5s) |
-| **2026-04-23** | **Basler 입고 + 예승님 sequence_service 배포 미팅** |
+| 2026-04-23 | **Basler + IPC-510 입고** + 예승님 3자 회의 (옵션 2c 합의, 한솔 머지 3차 경화기 축소) |
+| **2026-04-24** | **Cloudflare Tunnel 완성 + NSSM 자동 시작 + 자동 복구 검증 + Formlabs Secret Rotate + MariaDB 11.3 실체 확인** |
 
 ---
 
