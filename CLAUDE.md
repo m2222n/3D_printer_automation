@@ -2,6 +2,62 @@
 
 > **새 세션 시작 시**: CLAUDE.md, CLAUDE.local.md 읽은 후 `~/.claude/projects/-home-jtm/memory/MEMORY.md`도 반드시 읽을 것
 
+---
+
+## 🔒 보안 원칙 — 모든 외부 유출 가능 출력물에 적용 (최우선 필독)
+
+> **⚠️ 이 항목은 README 한정이 아님.** 외부로 나갈 수 있는 **모든 출력물**에 적용된다. 작업 전에 "이게 외부에 보일 수 있나?"를 먼저 물어볼 것.
+
+### 적용 범위 (외부 유출 가능 출력물)
+- **GitHub 리포 전체** — README, 소스코드 주석, 커밋 메시지, PR/이슈 본문, 릴리즈 노트, public/private 무관 (Private도 한솔 미러로 공유됨)
+- **공유 문서** — 배포용 PDF, PPT, docx, Google Docs, Notion, 회의자료
+- **외부 메시지** — 카톡, 이메일, Slack, 문자 (한솔·대표·파트너·지원사업 담당자 등)
+- **스크린샷·동영상** — 데모 녹화, 버그 리포트 캡처, 발표 슬라이드 이미지
+- **로그·리포트** — IRIS 연구노트, 사업보고서, 외부 제출 파일
+- **채팅 히스토리** — 외부 Claude 세션(웹 Claude 포함), 공유된 대화
+
+### 절대 포함 금지 항목
+
+| 카테고리 | 금지 항목 |
+|---------|----------|
+| Credentials | Basic Auth 비번, OAuth Client ID/Secret, API 키, Service Token, DB 비번, SSH 키, 2FA Backup Codes |
+| 네트워크 | 공인 IP, VPN IP, 내부 IP (192.168.*, 10.*), 도메인(`factory.flickdone.com` 등), SSH 포트/커맨드 |
+| 인프라 식별자 | Cloudflare Tunnel ID, Windows 서비스명, NSSM 경로, 공장 PC 디렉토리 경로, AnyDesk ID, 프린터 시리얼 |
+| 개인정보 | 개인 이메일, 담당자 실명(예승/파트장/기원 등), 회사 내부 호칭("대표님"), 전화번호 |
+| 내부 운영 | 장비 입고일, 수리 이력, 교육 이력, 마일스톤 일자별, 회의 안건/발언, 머지 커밋 해시 |
+| 사업정보 | 사업비, 계약 조건, 협업 구조 상세, 타 업체 가격 |
+| 분쟁 가능 발언 | 특정 직원·업체에 대한 부정적 평가, 내부 갈등 관련 코멘트 |
+
+### 예외 — 내부 문서는 상세히 OK
+- `CLAUDE.md`, `CLAUDE.local.md`, `~/.claude/projects/-home-jtm/memory/*.md`
+- 태민님 개인 로컬 메모 (Mac 노트 앱 등)
+
+이 파일들은 git 추적되어도 **공개되지 않는 본인 개발 문서**이므로 상세할수록 좋다. 위 규칙은 **외부 유출 가능성이 조금이라도 있는 출력물**에만 적용.
+
+### 작업 프로토콜 (반드시 준수)
+
+1. **작업 시작 전 자문**: "이 결과물이 어디까지 보일 수 있나?"
+   - 내부 메모리·CLAUDE.md → 상세 OK
+   - 그 외 전부 → 민감 정보 제거 모드
+2. **작성 중**: credentials·IP·도메인·실명·경로는 **플레이스홀더**로 (`your_password`, `<SERVER_IP>`, `<담당자>`)
+3. **저장/커밋 전 self-check**:
+   ```bash
+   grep -niE "orinu2026|jtm@|61\.109|106\.244|10\.145|192\.168|b939f49b|이예승|김주엽|김기원|대표님|factory\.flickdone|D:\\\\3D_printer|admin.*password|Bearer " <대상파일>
+   ```
+   하나라도 걸리면 push/전송 중단하고 정리
+4. **스크린샷 공유 전**: URL 바, 터미널 prompt, 파일 경로, `.env` 내용 마스킹 확인
+5. **의심스러우면 멈추고 태민님 확인 요청** — push/전송 먼저 하지 말 것
+
+### 2026-04-24 사고 (실제 있었던 일, 반복 금지)
+
+README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin + personal(한솔 미러) 양쪽 push. Basic Auth 비번 `orinu2026!`, Cloudflare Tunnel ID, 공인 IP 2개, 공장 PC 경로, 담당자 실명 3명, 개인 이메일까지. 태민님 직접 지적 후 `1272ddb`로 정리.
+
+**원인**: "내부 문서처럼 상세할수록 좋다"는 기준을 **공개 범주 문서에 잘못 적용**. 외부 노출 가능성 판단을 생략한 것이 근본 실수.
+
+**상세**: `memory/feedback_readme_public_security.md`
+
+---
+
 ## 프로젝트 개요
 
 ### 기본 정보
@@ -783,7 +839,16 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-24 (금, 오전→점심→오후 공장 방문까지 전부 완료)
+- **날짜**: 2026-04-29 (수, 휴가 후 출근 — KAIST 부트캠프 검토 + 한솔 프리셋 API 500 대응)
+
+### 4/29 — 🔥 공장 PC 프리셋 API 500 → 원격(AnyDesk)으로 완전 해결
+- **진짜 원인 (오전 추정과 다름)**: 공장 PC origin이 `justkiwon/3D_printer_automation` (퇴사자 fork) 가리킴 → 회사 `orinu-ai/3D_printer_automation` main과 **100커밋 차이** + git pull 후 새 의존성 `aiomqtt` 미설치로 web-api 부팅 실패
+- **조치**: PAT로 origin URL 정정 → fast-forward pull (`1104a06` → `1272ddb`) → `pip install -r requirements.txt` → frontend rebuild → NSSM 재시작 (좀비 정리 포함)
+- **검증**: 프리셋 API → HTTP 200 + JSON 정상 반환
+- **함정 7가지**: AnyDesk 한국어 cmd 인코딩, Git for Windows CRLF phantom 13,682개, Hansol 작품 untracked, NSSM Services 좀비 vs Console 사용자 세션 구분, `nssm` PATH 미등록, NSSM이 자식 프로세스 stderr 못 잡는 문제, `requirements.txt` 어긋남
+- **상세**: `memory/project_factory_pc_remote_recovery_0429.md`
+
+### 4/24 주요 완료 항목 (이전 업데이트)
 
 ### 4/24 오전 완료 (Cloudflare Tunnel 기본 세팅)
 1. **한솔 머지 3차 잔존 이슈 수정 ✅** — `bcb8e29` 커밋 (runtime.py:121 하드코딩 제거), origin + personal push 완료
