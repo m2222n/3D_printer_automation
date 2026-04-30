@@ -839,7 +839,13 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-29 (수, 휴가 후 출근 — KAIST 부트캠프 검토 + 한솔 프리셋 API 500 대응)
+- **날짜**: 2026-04-30 (목, KAIST 부트캠프 1일차 새벽 — 재부팅 자동복구 검증 + deploy.bat 도입)
+
+### 4/30 새벽 — 재부팅 자동복구 검증 + 공장 PC 배포 단순화
+- **재부팅 자동복구 검증 ✅** — 사용자가 공장 PC 물리 재부팅 → 외부 curl 검증. cloudflared + NSSM(OrinuMain) + web-api(8085) + PreFormServer(44388) + Cloud API 폴링 전체 자동 복구. 4/24 NSSM 등록 후 4/29 git pull로 추가된 의존성(aiomqtt) 포함 전체 스택 정상 부팅 확인
+- **예승님 4/30 답변 정리** — 프리셋 생성/제거 + 자동화 탭 OK. 소스 수정 위치 질문 → 로컬 → hansol-dev push 흐름 안내 예정. **현재 `SIMUL_MODE=true`는 예승님이 디버깅용으로 설정한 상태**(git pull은 .env 안 건드림). 다음주 방문 시 실제 출력/로봇 E2E 테스트 예정
+- **`deploy.bat` 도입** ⭐ — 4/29 수동 9단계 → 1줄. `git pull --ff-only` + `pip install` + `npm build` + `nssm restart` + health check. 각 단계 abort로 라이브 보존. 한솔 머지 정착 대비 (상세: `memory/project_deploy_bat.md`)
+- 사전 조건: 공장 PC `git remote` 영구 인증 (Git Credential Manager) — 다음 AnyDesk 작업 시 1회 설정
 
 ### 4/29 — 🔥 공장 PC 프리셋 API 500 → 원격(AnyDesk)으로 완전 해결
 - **진짜 원인 (오전 추정과 다름)**: 공장 PC origin이 `justkiwon/3D_printer_automation` (퇴사자 fork) 가리킴 → 회사 `orinu-ai/3D_printer_automation` main과 **100커밋 차이** + git pull 후 새 의존성 `aiomqtt` 미설치로 web-api 부팅 실패
