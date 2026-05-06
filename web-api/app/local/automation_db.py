@@ -357,7 +357,8 @@ def set_cell_state(action: str) -> dict[str, bool]:
 
 def set_simul_mode(mode: bool) -> dict[str, bool]:
     now = datetime.now()
-    with engine.begin() as conn:
+    _ensure_cell_state_columns()  # 컬럼 유무 확인
+    with _get_engine().begin() as conn:
         conn.execute(
             text(
                 """
@@ -377,10 +378,18 @@ def set_simul_mode(mode: bool) -> dict[str, bool]:
 
 
 def get_cell_state() -> dict[str, bool]:
+    _ensure_cell_state_columns()
     with _get_engine().begin() as conn:
-        row = conn.execute(
-            text("SELECT running, paused, simul_mode FROM cell_state WHERE id = 1 LIMIT 1")
-        ).mappings().first()
+        try:
+            row = conn.execute(
+                text("SELECT running, paused, simul_mode FROM cell_state WHERE id = 1 LIMIT 1")
+            ).mappings().first()
+        except Exception:
+            # 컬럼이 없는 등의 이유로 에러 발생 시 재시도 또는 기본값 반환
+            row = conn.execute(
+                text("SELECT running, paused FROM cell_state WHERE id = 1 LIMIT 1")
+            ).mappings().first()
+
     if not row:
         return {"running": False, "paused": False, "simul_mode": False}
     return {
@@ -388,6 +397,21 @@ def get_cell_state() -> dict[str, bool]:
         "paused": bool(row["paused"]),
         "simul_mode": bool(row.get("simul_mode", 0))
     }
+
+
+def _ensure_cell_state_columns() -> None:
+    """cell_state 테이블에 필요한 컬럼(simul_mode 등)이 있는지 확인하고 없으면 추가합니다."""
+    with _get_engine().begin() as conn:
+        # simul_mode 컬럼 존재 여부 확인
+        columns = conn.execute(text("SHOW COLUMNS FROM cell_state")).mappings().all()
+        existing_cols = [c['Field'].lower() for c in columns]
+        
+        if 'simul_mode' not in existing_cols:
+            try:
+                conn.execute(text("ALTER TABLE cell_state ADD COLUMN simul_mode INT DEFAULT 0 AFTER paused"))
+                add_log(log_type=10, source="program", message="DB Migration: Added 'simul_mode' column to cell_state")
+            except Exception as e:
+                print(f"Failed to add simul_mode column: {e}")
 
 
 def get_queue_state() -> dict[str, Any]:
