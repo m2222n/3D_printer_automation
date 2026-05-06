@@ -54,6 +54,7 @@ class RuntimeCtx:
     repo: Any
     running: bool = False
     paused: bool = False
+    simul_mode: bool = False
 
     # All active jobs currently managed in-memory by sequence runtime
     active_jobs: dict[str, JobCtx] = field(default_factory=dict)

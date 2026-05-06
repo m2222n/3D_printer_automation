@@ -37,6 +37,7 @@ from app.local.automation_db import (
     set_commands_use_yn as set_sequence_commands_use_yn,
     set_cell_state as set_sequence_cell_state,
     get_cell_state as get_sequence_cell_state,
+    set_simul_mode as set_sequence_simul_mode,
     get_queue_state as get_sequence_queue_state,
     probe_tcp,
     send_st_framed,
@@ -1260,6 +1261,20 @@ async def control_automation(action: str):
         return {"ok": True, "state": state}
     except Exception as e:
         logger.error(f"automation control failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/automation/simul",
+    tags=["Automation"],
+    summary="Toggle SIMUL_MODE"
+)
+async def set_automation_simul(mode: bool):
+    try:
+        state = set_sequence_simul_mode(mode)
+        return {"ok": True, "state": state}
+    except Exception as e:
+        logger.error(f"automation simul toggle failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
