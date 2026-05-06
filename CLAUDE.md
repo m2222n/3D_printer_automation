@@ -932,9 +932,15 @@ JWT_ABSOLUTE_MAX_DAYS=30
 - `.env.example`도 가짜 값 → 빈 값 + 사고 이력 주석 (`f3738c1`)
 - 6000 + 카카오 VM은 이미 알림 주석 처리 상태 → 추가 작업 불필요
 
-**커밋 9개**: `81033a6`(JWT) + `87bc587`/`d729868`(reqs/인코딩 fix) + `7a818a7`(deploy script) + `0a2d52e`(launcher) + `349f141`(seq) + `b9164d9`(머지 4차) + `08bf91d`(docs) + `f3738c1`(env.example) + `7807cff`(docs 마무리)
+**6. 한솔 머지 5차** (`9fd365a`, 저녁 추가):
+- 예승님 추가 커밋 `670da65` — 시뮬 토글 머지 4차에서 누락된 `cell_state.simul_mode` 컬럼 자동 마이그레이션
+- `_ensure_cell_state_columns()` 신규 함수 + `get_cell_state()` try/except fallback
+- 변경: `web-api/app/local/automation_db.py` 1 file, +28/-4
+- 3개 서버 배포 완료 (외부 401 + 0.2~0.4초)
 
-상세: `memory/project_web_auth_security.md`, CLAUDE.local.md W19 섹션
+**커밋 11개**: `81033a6`(JWT) + `87bc587`/`d729868`(reqs/인코딩 fix) + `7a818a7`(deploy script) + `0a2d52e`(launcher) + `349f141`(seq) + `b9164d9`(머지 4차) + `08bf91d`(docs) + `f3738c1`(env.example) + `7807cff`/`fa5c1da`(docs 마무리) + `9fd365a`(머지 5차)
+
+상세: `memory/project_web_auth_security.md`, `memory/project_hansol_merge_issues.md`, CLAUDE.local.md W19 섹션
 
 ---
 
