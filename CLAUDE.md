@@ -896,9 +896,38 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-05-06 (수, JWT 로그인 시스템 도입 + 공장 PC SSH key 전환 + 자동 배포 스크립트)
+- **날짜**: 2026-05-06 (수, JWT 로그인 도입 + 공장 PC SSH key 전환 + 한솔 머지 4차)
 
-### 5/6 — 🔥 JWT 로그인 시스템 도입 + 공장 PC SSH key 전환
+### 5/6 오후 — 한솔 머지 4차 + 공장 PC 응답 일관성 디버깅
+
+**한솔 머지 4차** (`b9164d9`):
+- 예승님 커밋 `0083ec4` (시뮬레이션 토글 버튼) + `8242c50` (프린터 별명 매핑)
+- 12 files, +130/-38, 인코딩 깨짐 없음 (BOM 제거 깨끗)
+- TS 타입 체크 + Vite 빌드 PASS
+- 6000 + 카카오 VM 자동 배포 PASS (`scripts/deploy_servers.sh`)
+- 공장 PC `deploy.bat` 완료
+- **다음주 실 출력 + 로봇 E2E 테스트 대비 작업** (시뮬 토글로 SIMUL_MODE 전환 가능)
+
+**공장 PC 응답 일관성 문제** (영구 fix는 다음 작업):
+- 증상: `factory.flickdone.com` 1회차 빠르고 이후 timeout 패턴
+- 진단 결과:
+  - **이중 web-api spawn 발견**: launcher + sequence_service가 둘 다 web-api 띄우려 시도 → 좀비 누적
+  - launcher fix (`0a2d52e`): `resolve_web_api_python()`에 `.venv` candidate 추가
+  - sequence_service fix (`349f141`): 동일 helper 사용으로 일관성
+  - deploy.bat 좀비 자동 정리 추가 (`0a2d52e`)
+- **진짜 원인**: 가짜 알림 자격증명(SMTP/Slack/FCM)이 매 폴링마다 5초 timeout 누적
+- 임시 조치: .env 알림 자격증명 비우기 → 일부 개선 (1회차는 빠름)
+- 영구 fix는 다음 작업으로 미룸 (오늘 5시간+ 디버깅, 사용자 1~2번 새로고침 OK 수준)
+- 6000 + 카카오 VM은 완전 정상 (대안 사용 가능)
+
+**커밋 추가 3개**:
+- `0a2d52e` fix(launcher): 글로벌 Python 좀비 방지 + deploy.bat 좀비 자동 정리
+- `349f141` fix(sequence_service): .venv 찾도록 web-api spawn 수정
+- `b9164d9` Merge hansol-merge-4
+
+---
+
+### 5/6 오전 — 🔥 JWT 로그인 시스템 도입 + 공장 PC SSH key 전환
 
 **배경**: 4/24 Cloudflare Tunnel 활성 후 `factory.flickdone.com`이 **외부 인증 없는 상태로 운영 중**이었던 사고 발견 (공장 PC `.env`에 BASIC_AUTH_* 변수 누락). 이번 작업으로 Basic Auth → JWT 로그인 전면 교체 + 3개 서버 통일.
 
