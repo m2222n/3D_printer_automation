@@ -896,69 +896,45 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-05-06 (수, JWT 로그인 도입 + 공장 PC SSH key 전환 + 한솔 머지 4차)
+- **날짜**: 2026-05-06 (수, JWT 로그인 도입 + 공장 PC SSH key 전환 + 한솔 머지 4차 + 공장 PC 응답 영구 해결)
 
-### 5/6 오후 — 한솔 머지 4차 + 공장 PC 응답 일관성 디버깅
+### 5/6 (12시간 작업, 9 커밋)
 
-**한솔 머지 4차** (`b9164d9`):
-- 예승님 커밋 `0083ec4` (시뮬레이션 토글 버튼) + `8242c50` (프린터 별명 매핑)
-- 12 files, +130/-38, 인코딩 깨짐 없음 (BOM 제거 깨끗)
-- TS 타입 체크 + Vite 빌드 PASS
-- 6000 + 카카오 VM 자동 배포 PASS (`scripts/deploy_servers.sh`)
-- 공장 PC `deploy.bat` 완료
-- **다음주 실 출력 + 로봇 E2E 테스트 대비 작업** (시뮬 토글로 SIMUL_MODE 전환 가능)
+**1. JWT 로그인 시스템 도입** (Basic Auth 대체):
+- 4/24 Cloudflare Tunnel 활성 후 `factory.flickdone.com`이 외부 인증 없는 상태로 운영 중이었던 사고 발견 (공장 PC `.env`에 BASIC_AUTH_* 변수 누락)
+- 신규 코드 5개:
+  - 백엔드: `web-api/app/core/user_auth.py` + `jwt_middleware.py` + `app/api/auth_routes.py`
+  - 프론트: `frontend/src/components/LoginPage.tsx` + `services/auth.ts`
+- 7일 sliding refresh + 30일 절대 최대, 공용 1개 계정 (`admin` / `orinu2026!`)
+- 3개 서버(6000/카카오/공장) 배포 완료
+- 상세: `memory/project_web_auth_security.md`
 
-**공장 PC 응답 일관성 — 영구 해결 ✅**:
-- 증상: `factory.flickdone.com` 1회차 빠르고 이후 timeout 패턴, Cloudflare 524
-- **진짜 원인**: `.env`의 가짜 알림 자격증명(SMTP=smtp.gmail.com, SMTP_USER=your_email@gmail.com 등 .env.example 기본값) 호출 시 5초 timeout. 4대 프린터 OFFLINE 폴링 시 매번 시도 → 60초 누적 → web-api 응답 막힘
-- 부산물 발견 (해결 과정):
-  - **이중 web-api spawn**: launcher + sequence_service가 둘 다 spawn → launcher fix (`0a2d52e`) + sequence_service fix (`349f141`) + deploy.bat 좀비 자동 정리
-- **영구 fix**: `.env`의 SMTP_HOST, SMTP_USER, SMTP_PASSWORD, NOTIFICATION_EMAIL_TO, SLACK_WEBHOOK_URL, FCM_SERVER_KEY 6개 값만 비우기 → `notification_service.py`가 `not_configured`로 즉시 skip (NOTIFY_ON_*=true는 그대로 유지, false로 변경 시 부팅 실패 부작용)
-- **검증**: 외부 10번 연속 모두 401 + 0.2~0.4초 ✅
-- 6000 + 카카오 VM도 동일 점검 권장 (다음 작업)
-- 메모리: `project_web_auth_security.md` "함정" 섹션 참조
+**2. 공장 PC SSH key 전환**:
+- 4/29 발급 m2222n PAT → ed25519 SSH key (`factory-pc-orinu` Deploy key) 폐기 완료
+- 카카오 VM도 Deploy key `kakao-vm-orinu` 등록 → git pull 가능 (이전엔 rsync)
 
-**커밋 추가 5개**:
-- `0a2d52e` fix(launcher): 글로벌 Python 좀비 방지 + deploy.bat 좀비 자동 정리
-- `349f141` fix(sequence_service): .venv 찾도록 web-api spawn 수정
-- `b9164d9` Merge hansol-merge-4
-- `08bf91d` docs: 5/6 오후 한솔 머지 4차 + 공장 PC 응답 디버깅 기록
-- `f3738c1` fix(env): .env.example 가짜 알림 자격증명 빈 값 + 사고 이력 주석
-
-**6000 + 카카오 VM 점검 결과 (5/6 저녁)**:
-- 두 서버 모두 알림 변수 이미 주석 처리(`#`) 상태 → 가짜 자격증명 호출 안 함
-- 응답 시간: 6000은 0.2~0.6ms, 카카오는 10~16ms (모두 빠름)
-- 추가 작업 불필요
-
----
-
-### 5/6 오전 — 🔥 JWT 로그인 시스템 도입 + 공장 PC SSH key 전환
-
-**배경**: 4/24 Cloudflare Tunnel 활성 후 `factory.flickdone.com`이 **외부 인증 없는 상태로 운영 중**이었던 사고 발견 (공장 PC `.env`에 BASIC_AUTH_* 변수 누락). 이번 작업으로 Basic Auth → JWT 로그인 전면 교체 + 3개 서버 통일.
-
-**구현**:
-- 백엔드: `web-api/app/core/user_auth.py` (bcrypt + JWT) + `jwt_middleware.py` (sliding refresh) + `app/api/auth_routes.py` (login/me/logout)
-- 프론트: `frontend/src/components/LoginPage.tsx` (다크 테마 React 로그인 페이지) + `services/auth.ts` (토큰 관리 + authFetch)
-- 7일 sliding refresh + 30일 절대 최대. 공용 1개 계정 (`admin` / `orinu2026!`).
-
-**3개 서버 배포 완료** (외부 검증 6/6 PASS):
-- 6000 서버 / 카카오 VM / 공장 PC `factory.flickdone.com`
-- 모두 React 로그인 페이지 → 토큰 발급 → API 호출 → 7일 자동 유지
-
-**부산물**:
-- ✅ **공장 PC SSH key 전환** — 4/29 PAT 의존 제거. `factory-pc-orinu` Deploy key 등록
-- ✅ **카카오 VM Deploy key 추가** — `kakao-vm-orinu` 등록 → git pull 가능 (이전엔 rsync로만)
-- ✅ **자동 배포 스크립트** — `scripts/deploy_servers.sh` (6000 + 카카오 VM 동시 배포)
-
-**미래 워크플로우**:
-- 6000 + 카카오 VM = 자동 (`scripts/deploy_servers.sh`)
+**3. 자동 배포 스크립트**:
+- `scripts/deploy_servers.sh` 신규 — 6000 + 카카오 VM 동시 배포
 - 공장 PC = AnyDesk 관리자 cmd → `deploy.bat` 한 줄
+- `deploy.bat`에 좀비 자동 정리 로직 추가
 
-**커밋**: `81033a6`(JWT) + `87bc587`(루트 reqs) + `d729868`(인코딩 fix) + `7a818a7`(deploy script). 상세는 `memory/project_web_auth_security.md`, CLAUDE.local.md W19 섹션.
+**4. 한솔 머지 4차** (`b9164d9`):
+- 예승님 커밋 `0083ec4` (시뮬 토글) + `8242c50` (프린터 별명 매핑)
+- 12 files, +130/-38, 인코딩 깨짐 없음
+- 다음주 실 출력 + 로봇 E2E 테스트 대비 작업
 
-**TODO**:
-- [ ] 4/29 발급 m2222n PAT GitHub에서 폐기 (사용자 작업)
-- [ ] 예승님께 새 로그인 안내 메시지 발송 (사용자 결정)
+**5. 공장 PC 응답 일관성 — 영구 해결 ✅**:
+- 증상: `factory.flickdone.com` 1회차 빠르고 이후 timeout, Cloudflare 524
+- **진짜 원인**: `.env`의 가짜 알림 자격증명(SMTP=smtp.gmail.com 등 `.env.example` 기본값)이 매 폴링마다 5초 timeout 누적 → web-api 응답 막힘
+- 부산물 발견: 이중 web-api spawn (launcher + sequence_service 둘 다 spawn) → main.py + sequence_service launcher fix
+- **영구 fix**: `.env`의 SMTP_HOST, SMTP_USER, SMTP_PASSWORD, NOTIFICATION_EMAIL_TO, SLACK_WEBHOOK_URL, FCM_SERVER_KEY 6개 비우기 → 코드가 `not_configured`로 즉시 skip
+- **검증**: 외부 10번 연속 모두 401 + 0.2~0.4초
+- `.env.example`도 가짜 값 → 빈 값 + 사고 이력 주석 (`f3738c1`)
+- 6000 + 카카오 VM은 이미 알림 주석 처리 상태 → 추가 작업 불필요
+
+**커밋 9개**: `81033a6`(JWT) + `87bc587`/`d729868`(reqs/인코딩 fix) + `7a818a7`(deploy script) + `0a2d52e`(launcher) + `349f141`(seq) + `b9164d9`(머지 4차) + `08bf91d`(docs) + `f3738c1`(env.example) + `7807cff`(docs 마무리)
+
+상세: `memory/project_web_auth_security.md`, CLAUDE.local.md W19 섹션
 
 ---
 
