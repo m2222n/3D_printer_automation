@@ -908,17 +908,15 @@ JWT_ABSOLUTE_MAX_DAYS=30
 - 공장 PC `deploy.bat` 완료
 - **다음주 실 출력 + 로봇 E2E 테스트 대비 작업** (시뮬 토글로 SIMUL_MODE 전환 가능)
 
-**공장 PC 응답 일관성 문제** (영구 fix는 다음 작업):
-- 증상: `factory.flickdone.com` 1회차 빠르고 이후 timeout 패턴
-- 진단 결과:
-  - **이중 web-api spawn 발견**: launcher + sequence_service가 둘 다 web-api 띄우려 시도 → 좀비 누적
-  - launcher fix (`0a2d52e`): `resolve_web_api_python()`에 `.venv` candidate 추가
-  - sequence_service fix (`349f141`): 동일 helper 사용으로 일관성
-  - deploy.bat 좀비 자동 정리 추가 (`0a2d52e`)
-- **진짜 원인**: 가짜 알림 자격증명(SMTP/Slack/FCM)이 매 폴링마다 5초 timeout 누적
-- 임시 조치: .env 알림 자격증명 비우기 → 일부 개선 (1회차는 빠름)
-- 영구 fix는 다음 작업으로 미룸 (오늘 5시간+ 디버깅, 사용자 1~2번 새로고침 OK 수준)
-- 6000 + 카카오 VM은 완전 정상 (대안 사용 가능)
+**공장 PC 응답 일관성 — 영구 해결 ✅**:
+- 증상: `factory.flickdone.com` 1회차 빠르고 이후 timeout 패턴, Cloudflare 524
+- **진짜 원인**: `.env`의 가짜 알림 자격증명(SMTP=smtp.gmail.com, SMTP_USER=your_email@gmail.com 등 .env.example 기본값) 호출 시 5초 timeout. 4대 프린터 OFFLINE 폴링 시 매번 시도 → 60초 누적 → web-api 응답 막힘
+- 부산물 발견 (해결 과정):
+  - **이중 web-api spawn**: launcher + sequence_service가 둘 다 spawn → launcher fix (`0a2d52e`) + sequence_service fix (`349f141`) + deploy.bat 좀비 자동 정리
+- **영구 fix**: `.env`의 SMTP_HOST, SMTP_USER, SMTP_PASSWORD, NOTIFICATION_EMAIL_TO, SLACK_WEBHOOK_URL, FCM_SERVER_KEY 6개 값만 비우기 → `notification_service.py`가 `not_configured`로 즉시 skip (NOTIFY_ON_*=true는 그대로 유지, false로 변경 시 부팅 실패 부작용)
+- **검증**: 외부 10번 연속 모두 401 + 0.2~0.4초 ✅
+- 6000 + 카카오 VM도 동일 점검 권장 (다음 작업)
+- 메모리: `project_web_auth_security.md` "함정" 섹션 참조
 
 **커밋 추가 3개**:
 - `0a2d52e` fix(launcher): 글로벌 Python 좀비 방지 + deploy.bat 좀비 자동 정리
