@@ -729,10 +729,10 @@ export function AutomationPage() {
                     onChange={(e) => setForm((p) => ({ ...p, target_printer: e.target.value === '' ? '' : Number(e.target.value) }))}
                   >
                     <option value="">Any Printer (공용/아무 프린터나)</option>
-                    <option value="1">Printer 1 전용</option>
-                    <option value="2">Printer 2 전용</option>
-                    <option value="3">Printer 3 전용</option>
-                    <option value="4">Printer 4 전용</option>
+                    <option value="1">Printer 1 (ShrewdStork)전용</option>
+                    <option value="2">Printer 2 (CorrectPelican)전용</option>
+                    <option value="3">Printer 3 (HeavenlyTuna)전용</option>
+                    <option value="4">Printer 4 (CapableGecko)전용</option>
                   </select>
                 </div>
               </div>
