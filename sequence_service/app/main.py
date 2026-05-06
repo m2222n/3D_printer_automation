@@ -20,6 +20,24 @@ def configure_logging() -> None:
     )
 
 
+def _resolve_web_api_python(web_api_dir: Path) -> str:
+    """
+    Find usable python.exe for web-api in priority order:
+      1) web-api/venv/Scripts/python.exe  (legacy layout)
+      2) repo_root/.venv/Scripts/python.exe  (current layout)
+      3) sys.executable  (last resort — may be global python without web-api deps)
+    """
+    repo_root = web_api_dir.parent
+    candidates = [
+        web_api_dir / 'venv' / 'Scripts' / 'python.exe',
+        repo_root / '.venv' / 'Scripts' / 'python.exe',
+    ]
+    for py in candidates:
+        if py.exists():
+            return str(py)
+    return sys.executable
+
+
 def start_web_server(logger: logging.Logger) -> subprocess.Popen | None:
     """
     Start web-api server as a child process.
@@ -27,13 +45,12 @@ def start_web_server(logger: logging.Logger) -> subprocess.Popen | None:
     """
     project_root = Path(__file__).resolve().parents[2]
     web_api_dir = project_root / 'web-api'
-    web_api_venv_python = web_api_dir / 'venv' / 'Scripts' / 'python.exe'
 
     if not web_api_dir.exists():
         logger.warning('web-api directory not found. skip web server start.')
         return None
 
-    python_exec = str(web_api_venv_python) if web_api_venv_python.exists() else sys.executable
+    python_exec = _resolve_web_api_python(web_api_dir)
 
     cmd = [
         python_exec,
