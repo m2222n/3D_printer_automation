@@ -34,6 +34,10 @@ websockets>=12.0
 # 환경변수
 python-dotenv>=1.0.0
 
+# 인증 (JWT + bcrypt)
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.0
+
 # 로깅
 python-json-logger>=2.0.7
 

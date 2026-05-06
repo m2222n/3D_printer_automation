@@ -7,9 +7,13 @@ import { StatisticsPage } from './components/StatisticsPage';
 import { AutomationPage } from './components/AutomationPage';
 import { AutomationManualPage } from './components/AutomationManualPage';
 import { PrinterInfoModal } from './components/PrinterInfoModal';
+import { LoginPage } from './components/LoginPage';
 import { getNotifications, markNotificationsRead } from './services/localApi';
 import type { NotificationEventItem } from './services/localApi';
+import { isAuthenticated, verifyToken, logout, getUsername } from './services/auth';
 import './App.css';
+
+type AuthState = 'checking' | 'authenticated' | 'guest';
 
 type TabType = 'monitoring' | 'print' | 'queue' | 'history' | 'statistics' | 'automation' | 'automation_manual';
 
@@ -29,6 +33,7 @@ const TABS: TabConfig[] = [
 ];
 
 function App() {
+  const [authState, setAuthState] = useState<AuthState>('checking');
   const [activeTab, setActiveTab] = useState<TabType>('monitoring');
   const [tabResetKey, setTabResetKey] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -38,6 +43,33 @@ function App() {
 
   const [notifError, setNotifError] = useState(false);
   const [modalPrinterSerial, setModalPrinterSerial] = useState<string | null>(null);
+
+  // 시작 시 토큰 검증
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!isAuthenticated()) {
+        if (!cancelled) setAuthState('guest');
+        return;
+      }
+      const ok = await verifyToken();
+      if (!cancelled) setAuthState(ok ? 'authenticated' : 'guest');
+    };
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
+  // authFetch가 401 받으면 디스패치하는 이벤트 → 로그아웃 처리
+  useEffect(() => {
+    const handler = () => setAuthState('guest');
+    window.addEventListener('auth:expired', handler);
+    return () => window.removeEventListener('auth:expired', handler);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    setAuthState('guest');
+  };
 
   // 알림 로드
   const loadNotifications = useCallback(async () => {
@@ -51,12 +83,13 @@ function App() {
     }
   }, []);
 
-  // 30초마다 알림 폴링
+  // 30초마다 알림 폴링 (인증된 상태에서만)
   useEffect(() => {
+    if (authState !== 'authenticated') return;
     loadNotifications();
     const interval = setInterval(loadNotifications, 30000);
     return () => clearInterval(interval);
-  }, [loadNotifications]);
+  }, [loadNotifications, authState]);
 
   // 패널 외부 클릭 시 닫기
   useEffect(() => {
@@ -100,6 +133,20 @@ function App() {
         return <AutomationManualPage key={tabResetKey} />;
     }
   };
+
+  // 인증 체크 중 — 빈 화면 (깜빡임 방지)
+  if (authState === 'checking') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-gray-400 text-sm">로딩 중...</div>
+      </div>
+    );
+  }
+
+  // 비로그인 상태 — 로그인 페이지
+  if (authState === 'guest') {
+    return <LoginPage onLoginSuccess={() => setAuthState('authenticated')} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -171,6 +218,22 @@ function App() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* 사용자 + 로그아웃 */}
+              <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+                <span className="text-xs text-gray-500 hidden sm:block">
+                  {getUsername() ?? ''}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  title="로그아웃"
+                  className="p-2 text-gray-500 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>

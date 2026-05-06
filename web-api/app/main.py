@@ -13,10 +13,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from app.core.config import get_settings
-from app.core.basic_auth import BasicAuthMiddleware
+from app.core.jwt_middleware import JWTAuthMiddleware
 from app.services.polling_service import start_polling_service, stop_polling_service, get_polling_service
 from app.services.notification_service import notification_handler
 from app.api.routes import router as api_router
+from app.api.auth_routes import router as auth_router
 from app.local.routes import router as local_router
 from app.local.database import init_local_db
 from app.vision.routes import router as vision_router
@@ -164,16 +165,27 @@ Web API 기반 모니터링 시스템
         allow_headers=["*"],
     )
 
-    # Basic Auth (CORS 뒤에 추가 → 요청 시 auth가 먼저 실행됨)
-    if settings.BASIC_AUTH_USERNAME and settings.BASIC_AUTH_PASSWORD:
+    # JWT 인증 (CORS 뒤에 추가 → 요청 시 auth가 먼저 실행됨)
+    # AUTH_USERNAME, AUTH_PASSWORD_HASH, JWT_SECRET 셋 다 설정돼야 활성화 (로컬 개발 편의)
+    if settings.AUTH_USERNAME and settings.AUTH_PASSWORD_HASH and settings.JWT_SECRET:
         app.add_middleware(
-            BasicAuthMiddleware,
-            username=settings.BASIC_AUTH_USERNAME,
-            password=settings.BASIC_AUTH_PASSWORD,
+            JWTAuthMiddleware,
+            username=settings.AUTH_USERNAME,
+            password_hash=settings.AUTH_PASSWORD_HASH,
+            jwt_secret=settings.JWT_SECRET,
+            jwt_algorithm=settings.JWT_ALGORITHM,
+            expire_days=settings.JWT_EXPIRE_DAYS,
+            absolute_max_days=settings.JWT_ABSOLUTE_MAX_DAYS,
         )
-        logger.info("🔒 Basic Auth 활성화")
-    
+        logger.info(
+            f"🔒 JWT 인증 활성화 (sliding {settings.JWT_EXPIRE_DAYS}d / "
+            f"absolute max {settings.JWT_ABSOLUTE_MAX_DAYS}d)"
+        )
+    else:
+        logger.warning("⚠️  인증 미설정 — 모든 요청이 인증 없이 통과됨 (로컬 개발 모드)")
+
     # API 라우터 등록
+    app.include_router(auth_router, prefix="/api/v1")  # /api/v1/auth/login 등
     app.include_router(api_router, prefix="/api/v1")
     app.include_router(local_router, prefix="/api/v1/local")
     app.include_router(vision_router, prefix="/api/v1")

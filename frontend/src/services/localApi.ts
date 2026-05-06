@@ -18,6 +18,7 @@ import type {
   ScenePrepareRequest,
   DuplicateResult,
 } from '../types/local';
+import { authFetch } from './auth';
 
 const LOCAL_API_BASE = '/api/v1/local';
 
@@ -34,7 +35,7 @@ async function fetchLocalApi<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
-  const response = await fetch(`${LOCAL_API_BASE}${endpoint}`, {
+  const response = await authFetch(`${LOCAL_API_BASE}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -120,7 +121,7 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${LOCAL_API_BASE}/upload`, {
+  const response = await authFetch(`${LOCAL_API_BASE}/upload`, {
     method: 'POST',
     body: formData,
     // Content-Type은 자동 설정됨 (multipart/form-data)

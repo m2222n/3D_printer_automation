@@ -143,8 +143,23 @@ class Settings(BaseSettings):
     MANUAL_TCP_TIMEOUT_SECONDS: float = 5.0
 
     # ===========================================
-    # Basic Auth (웹 접근 보호)
+    # 인증 (JWT 기반 로그인)
     # ===========================================
+    # 사용자명 + bcrypt 해시. 둘 다 비면 인증 OFF (로컬 개발용).
+    AUTH_USERNAME: str = ""
+    AUTH_PASSWORD_HASH: str = ""
+
+    # JWT 서명 키 (서버별 랜덤 32바이트 권장)
+    # 생성: python -c "import secrets; print(secrets.token_urlsafe(32))"
+    JWT_SECRET: str = ""
+    JWT_ALGORITHM: str = "HS256"
+
+    # 만료: 7일 (sliding refresh로 사용 시 자동 연장)
+    JWT_EXPIRE_DAYS: int = 7
+    # 절대 최대: 30일 (이 기간 지나면 무조건 재로그인)
+    JWT_ABSOLUTE_MAX_DAYS: int = 30
+
+    # 레거시 (호환성, 사용 안 함 - 추후 삭제)
     BASIC_AUTH_USERNAME: str = ""
     BASIC_AUTH_PASSWORD: str = ""
 

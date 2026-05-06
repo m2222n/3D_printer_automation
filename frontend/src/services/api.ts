@@ -4,6 +4,7 @@
  */
 
 import type { DashboardData, Printer, PrinterSummary, PrintHistoryResponse } from '../types/printer';
+import { authFetch } from './auth';
 
 const API_BASE = '/api/v1';
 
@@ -16,7 +17,7 @@ function createApiError(status: number, message: string): Error {
 }
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const response = await authFetch(`${API_BASE}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
