@@ -809,7 +809,64 @@ FILE_RECEIVER_PORT=8089
 
 # 폴링
 POLLING_INTERVAL_SECONDS=15
+
+# 사용자 로그인 (JWT) — 셋 다 비면 인증 OFF (로컬 개발용)
+AUTH_USERNAME=admin
+AUTH_PASSWORD_HASH=  # bcrypt 해시 (평문 X). 생성: python -c "import bcrypt; print(bcrypt.hashpw(b'pw', bcrypt.gensalt(rounds=12)).decode())"
+JWT_SECRET=          # 서버별 랜덤 32바이트. 생성: python -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_EXPIRE_DAYS=7
+JWT_ABSOLUTE_MAX_DAYS=30
 ```
+
+---
+
+## 사용자 인증 (JWT 로그인)
+
+5/6부터 JWT 기반 로그인 시스템 운영. **공통 1개 계정 + 7일 sliding refresh + 30일 절대 최대**.
+
+| 항목 | 값 |
+|------|-----|
+| 사용자명 | `admin` |
+| 비번 | macOS 키체인 "안전한 메모" `orinu Web Login 2026-05` 참조 |
+| 토큰 만료 | 7일 (사용 시 자동 연장) |
+| 절대 최대 | 30일 (이후 강제 재로그인) |
+
+### 코드 구조
+- `web-api/app/core/user_auth.py` — bcrypt + JWT 핵심 로직
+- `web-api/app/core/jwt_middleware.py` — ASGI 미들웨어, `X-New-Token` 헤더로 sliding refresh
+- `web-api/app/api/auth_routes.py` — `POST /api/v1/auth/login`, `GET /api/v1/auth/me`, `POST /api/v1/auth/logout`
+- `frontend/src/components/LoginPage.tsx` — 다크 테마 로그인 페이지
+- `frontend/src/services/auth.ts` — 토큰 관리 + `authFetch` (모든 API 호출 통과)
+
+### 로컬 개발
+`.env`에 `AUTH_USERNAME` 또는 `AUTH_PASSWORD_HASH` 또는 `JWT_SECRET` 셋 중 하나라도 비면 **인증 자동 OFF**. 로컬 새로고침 자유.
+
+### 회전 정책
+- 분기별 (3/6/9/12월 1일)
+- 즉시 회전 트리거: 직원 퇴사 / 노트북 분실 / 누출 의심
+- 3개 서버 동기화 필수
+- 상세: `memory/project_web_auth_security.md`
+
+---
+
+## 자동 배포 워크플로우 (5/6~)
+
+태민님이 코드 변경 + git push 후:
+
+```
+태민님: "배포해줘"
+저: scripts/deploy_servers.sh 실행
+   → 6000 서버 (로컬) + 카카오 VM (SSH) 동시 배포
+   → 부팅 검증 + 외부 접속 검증 (HTTP 401 expected)
+태민님: 공장 PC AnyDesk → 관리자 cmd
+   → cd /d D:\3D_printer_automation_0305\3D_printer_automation
+   → deploy.bat
+```
+
+**옵션** (`scripts/deploy_servers.sh`):
+- `--skip-deps` — 의존성 변경 없을 때
+- `--skip-build` — 백엔드만 변경 시
+- `--6000-only` / `--kakao-only` — 한 서버만
 
 ---
 
@@ -839,13 +896,43 @@ POLLING_INTERVAL_SECONDS=15
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-04-30 (목, KAIST 부트캠프 1일차 새벽 — 재부팅 자동복구 검증 + deploy.bat 도입)
+- **날짜**: 2026-05-06 (수, JWT 로그인 시스템 도입 + 공장 PC SSH key 전환 + 자동 배포 스크립트)
 
-### 4/30 새벽 — 재부팅 자동복구 검증 + 공장 PC 배포 단순화
-- **재부팅 자동복구 검증 ✅** — 사용자가 공장 PC 물리 재부팅 → 외부 curl 검증. cloudflared + NSSM(OrinuMain) + web-api(8085) + PreFormServer(44388) + Cloud API 폴링 전체 자동 복구. 4/24 NSSM 등록 후 4/29 git pull로 추가된 의존성(aiomqtt) 포함 전체 스택 정상 부팅 확인
-- **예승님 4/30 답변 정리** — 프리셋 생성/제거 + 자동화 탭 OK. 소스 수정 위치 질문 → 로컬 → hansol-dev push 흐름 안내 예정. **현재 `SIMUL_MODE=true`는 예승님이 디버깅용으로 설정한 상태**(git pull은 .env 안 건드림). 다음주 방문 시 실제 출력/로봇 E2E 테스트 예정
-- **`deploy.bat` 도입** ⭐ — 4/29 수동 9단계 → 1줄. `git pull --ff-only` + `pip install` + `npm build` + `nssm restart` + health check. 각 단계 abort로 라이브 보존. 한솔 머지 정착 대비 (상세: `memory/project_deploy_bat.md`)
-- 사전 조건: 공장 PC `git remote` 영구 인증 (Git Credential Manager) — 다음 AnyDesk 작업 시 1회 설정
+### 5/6 — 🔥 JWT 로그인 시스템 도입 + 공장 PC SSH key 전환
+
+**배경**: 4/24 Cloudflare Tunnel 활성 후 `factory.flickdone.com`이 **외부 인증 없는 상태로 운영 중**이었던 사고 발견 (공장 PC `.env`에 BASIC_AUTH_* 변수 누락). 이번 작업으로 Basic Auth → JWT 로그인 전면 교체 + 3개 서버 통일.
+
+**구현**:
+- 백엔드: `web-api/app/core/user_auth.py` (bcrypt + JWT) + `jwt_middleware.py` (sliding refresh) + `app/api/auth_routes.py` (login/me/logout)
+- 프론트: `frontend/src/components/LoginPage.tsx` (다크 테마 React 로그인 페이지) + `services/auth.ts` (토큰 관리 + authFetch)
+- 7일 sliding refresh + 30일 절대 최대. 공용 1개 계정 (`admin` / `orinu2026!`).
+
+**3개 서버 배포 완료** (외부 검증 6/6 PASS):
+- 6000 서버 / 카카오 VM / 공장 PC `factory.flickdone.com`
+- 모두 React 로그인 페이지 → 토큰 발급 → API 호출 → 7일 자동 유지
+
+**부산물**:
+- ✅ **공장 PC SSH key 전환** — 4/29 PAT 의존 제거. `factory-pc-orinu` Deploy key 등록
+- ✅ **카카오 VM Deploy key 추가** — `kakao-vm-orinu` 등록 → git pull 가능 (이전엔 rsync로만)
+- ✅ **자동 배포 스크립트** — `scripts/deploy_servers.sh` (6000 + 카카오 VM 동시 배포)
+
+**미래 워크플로우**:
+- 6000 + 카카오 VM = 자동 (`scripts/deploy_servers.sh`)
+- 공장 PC = AnyDesk 관리자 cmd → `deploy.bat` 한 줄
+
+**커밋**: `81033a6`(JWT) + `87bc587`(루트 reqs) + `d729868`(인코딩 fix) + `7a818a7`(deploy script). 상세는 `memory/project_web_auth_security.md`, CLAUDE.local.md W19 섹션.
+
+**TODO**:
+- [ ] 4/29 발급 m2222n PAT GitHub에서 폐기 (사용자 작업)
+- [ ] 예승님께 새 로그인 안내 메시지 발송 (사용자 결정)
+
+---
+
+### 4/30 새벽 — 재부팅 자동복구 검증 + 공장 PC 배포 단순화 (deploy.bat smoke test 완료)
+- **재부팅 자동복구 검증 ✅** — 공장 PC 물리 재부팅 → 외부 curl 검증. cloudflared + NSSM(OrinuMain) + web-api(8085) + PreFormServer(44388) + Cloud API 폴링 전체 자동 복구. 4/24 NSSM 등록 후 4/29 git pull로 추가된 의존성(aiomqtt) 포함 전체 스택 정상 부팅 확인
+- **예승님 4/30 답변 정리** — 프리셋 생성/제거 + 자동화 탭 OK. 소스 수정 흐름은 로컬 → hansol-dev push로 안내. 현재 `SIMUL_MODE=true`는 예승님이 디버깅용으로 설정한 상태(git pull은 .env 안 건드림). 다음주 방문 시 실제 출력/로봇 E2E 테스트 예정
+- **`deploy.bat` 도입 + smoke test 완료** ⭐ — 4/29 수동 9단계 → 1줄(`deploy.bat`). 5단계(git pull --ff-only / pip / npm build / nssm restart / health check) 각각 errorlevel abort로 라이브 보존. 공장 PC AnyDesk에서 GCM helper 설정 + Fast-forward pull + 관리자 cmd로 실행 → vite build + NSSM stop/start + HTTP 200 검증 + 외부 `factory.flickdone.com` 200 OK 검증 완료
+- **⚠️ 미해결**: `git fetch` 시 인증창이 안 뜬 이유 미확정 (4/29 PAT 캐시 추정, 5월 말 만료 시 재검증 예정). 상세: `memory/project_deploy_bat.md` 미해결 의문 섹션
 
 ### 4/29 — 🔥 공장 PC 프리셋 API 500 → 원격(AnyDesk)으로 완전 해결
 - **진짜 원인 (오전 추정과 다름)**: 공장 PC origin이 `justkiwon/3D_printer_automation` (퇴사자 fork) 가리킴 → 회사 `orinu-ai/3D_printer_automation` main과 **100커밋 차이** + git pull 후 새 의존성 `aiomqtt` 미설치로 web-api 부팅 실패
