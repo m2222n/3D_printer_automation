@@ -62,10 +62,28 @@ if errorlevel 1 (
 popd
 
 echo.
-echo === [4/5] NSSM restart OrinuMain ===
-"%NSSM%" restart OrinuMain
+echo === [4/5] NSSM restart OrinuMain (with zombie cleanup) ===
+echo Stopping OrinuMain...
+"%NSSM%" stop OrinuMain
+timeout /t 3 /nobreak >nul
+
+REM ===== 좀비 정리 =====
+REM NSSM stop 후 남는 Python 좀비 처리. file_receiver.py(8089)와 sequence_service
+REM 자식 process는 NSSM이 다시 띄워주므로 모두 종료해도 안전.
+REM 단, Console session(태민님 직접 띄운 것) 세션은 보존.
+echo Cleaning Python zombies (Services session only)...
+for /f "tokens=2,4" %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO TABLE /NH 2^>nul') do (
+    if "%%b"=="Services" (
+        echo   - taskkill PID %%a
+        taskkill /F /PID %%a >nul 2>&1
+    )
+)
+timeout /t 2 /nobreak >nul
+
+echo Starting OrinuMain...
+"%NSSM%" start OrinuMain
 if errorlevel 1 (
-    echo [WARN] NSSM restart returned non-zero. Check service state manually.
+    echo [WARN] NSSM start returned non-zero. Check service state manually.
 )
 
 echo Waiting 20 seconds for service to initialize...
@@ -75,6 +93,13 @@ echo.
 echo === [5/5] health check ===
 curl -s -o nul -w "HTTP %%{http_code}\n" "%HEALTH_URL%"
 sc query OrinuMain | findstr STATE
+
+REM 8085 LISTEN PID가 .venv python인지 검증
+echo.
+echo === venv check (PID using port 8085) ===
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr LISTENING ^| findstr ":8085"') do (
+    wmic process where "ProcessId=%%p" get ExecutablePath /value 2>nul | findstr "ExecutablePath"
+)
 
 echo.
 echo === DEPLOY DONE ===

@@ -23,26 +23,44 @@ def configure_logging() -> logging.Logger:
 
 def resolve_web_api_python(cwd: Path) -> str:
     """
-    Prefer web-api venv python only when it is usable.
-    If the venv base interpreter is missing, fall back to current Python.
-    """
-    py = cwd / "venv" / "Scripts" / "python.exe"
-    cfg = cwd / "venv" / "pyvenv.cfg"
-    if not py.exists():
-        return sys.executable
+    Resolve which python to use for web-api uvicorn process.
 
-    if cfg.exists():
-        try:
-            for line in cfg.read_text(encoding="utf-8", errors="ignore").splitlines():
-                if line.lower().startswith("home"):
-                    _, home = line.split("=", 1)
-                    base_python = Path(home.strip()) / "python.exe"
-                    if not base_python.exists():
-                        return sys.executable
-                    break
-        except Exception:
-            return sys.executable
-    return str(py)
+    Search order:
+      1) web-api/venv/Scripts/python.exe  (legacy layout)
+      2) repo_root/.venv/Scripts/python.exe  (current layout, 공장 PC 5/6 기준)
+      3) sys.executable  (last resort — launcher가 떠있는 python 그대로)
+
+    Each candidate is validated:
+      - python.exe must exist
+      - pyvenv.cfg's `home` python.exe must also exist (broken venv 회피)
+    """
+    repo_root = cwd.parent  # web-api 디렉토리의 parent = repo root
+
+    candidates = [
+        cwd / "venv" / "Scripts" / "python.exe",       # 1) web-api/venv
+        repo_root / ".venv" / "Scripts" / "python.exe",  # 2) repo_root/.venv ⭐
+    ]
+
+    for py in candidates:
+        if not py.exists():
+            continue
+        cfg = py.parent.parent / "pyvenv.cfg"
+        if cfg.exists():
+            try:
+                for line in cfg.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    if line.lower().startswith("home"):
+                        _, home = line.split("=", 1)
+                        base_python = Path(home.strip()) / "python.exe"
+                        if not base_python.exists():
+                            break  # 다음 candidate 시도
+                        return str(py)
+            except Exception:
+                continue
+        else:
+            return str(py)  # cfg 없어도 python.exe만 있으면 사용
+
+    # 모든 venv 후보 실패 — launcher python 사용 (전역 python일 수 있음)
+    return sys.executable
 
 
 def build_web_api_cmd(root: Path) -> tuple[list[str], Path, dict[str, str]]:
@@ -65,7 +83,9 @@ def build_web_api_cmd(root: Path) -> tuple[list[str], Path, dict[str, str]]:
 
 def build_sequence_cmd(root: Path) -> tuple[list[str], Path, dict[str, str]]:
     cwd = root / "sequence_service"
-    cmd = [sys.executable, "-m", "app.main"]
+    # web-api와 동일한 venv 해석 — 글로벌 python 좀비 방지
+    python_exec = resolve_web_api_python(root / "web-api")
+    cmd = [python_exec, "-m", "app.main"]
     env = os.environ.copy()
     # prevent duplicate web-api startup from sequence process
     env["START_WEB"] = "false"
