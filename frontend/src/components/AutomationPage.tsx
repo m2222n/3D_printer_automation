@@ -7,6 +7,7 @@ import {
   getAutomationLogs,
   getAutomationQueues,
   getAutomationState,
+  setAutomationSimul,
   updateAutomationCommandsUseYn,
   uploadFile,
   type AutomationCommandItem,
@@ -106,7 +107,11 @@ export function AutomationPage() {
   });
   const [presets, setPresets] = useState<Preset[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [state, setState] = useState<{ running: boolean; paused: boolean }>({ running: false, paused: false });
+  const [state, setState] = useState<{ running: boolean; paused: boolean; simul_mode: boolean }>({
+    running: false,
+    paused: false,
+    simul_mode: false,
+  });
   const [items, setItems] = useState<AutomationCommandItem[]>([]);
   const [selectedCmdIds, setSelectedCmdIds] = useState<string[]>([]);
   const [queues, setQueues] = useState<AutomationQueues>({});
@@ -231,6 +236,19 @@ export function AutomationPage() {
     }
   };
 
+  const toggleSimul = async () => {
+    setIsBusy(true);
+    setMessage('');
+    try {
+      await setAutomationSimul(!state.simul_mode);
+      await loadAll();
+    } catch (e) {
+      setMessage(`Simul toggle failed: ${String(e)}`);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   const stateText = useMemo(() => {
     if (!state.running) return 'STOPPED';
     if (state.paused) return 'PAUSED';
@@ -282,6 +300,21 @@ export function AutomationPage() {
         <div className="w-full px-[10%] py-2">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Automation</h2>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Simulation</span>
+                <div
+                  onClick={toggleSimul}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${state.simul_mode ? 'bg-indigo-600' : 'bg-gray-200'
+                    }`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${state.simul_mode ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                  />
+                </div>
+              </label>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowCreateModal(true)}
@@ -696,10 +729,10 @@ export function AutomationPage() {
                     onChange={(e) => setForm((p) => ({ ...p, target_printer: e.target.value === '' ? '' : Number(e.target.value) }))}
                   >
                     <option value="">Any Printer (공용/아무 프린터나)</option>
-                    <option value="1">Printer 1 전용</option>
-                    <option value="2">Printer 2 전용</option>
-                    <option value="3">Printer 3 전용</option>
-                    <option value="4">Printer 4 전용</option>
+                    <option value="1">Printer 1 (ShrewdStork)전용</option>
+                    <option value="2">Printer 2 (CorrectPelican)전용</option>
+                    <option value="3">Printer 3 (HeavenlyTuna)전용</option>
+                    <option value="4">Printer 4 (CapableGecko)전용</option>
                   </select>
                 </div>
               </div>

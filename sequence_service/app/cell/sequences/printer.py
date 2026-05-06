@@ -124,7 +124,7 @@ class PrinterSequence(Sequence):
                 self.now_step = self.STEP10000
                 return
 
-            if self._settings.SIMUL_MODE or self._printer_server_simul:
+            if self.ctx.simul_mode or self._printer_server_simul:
                 # In simulation modes, skip upload/start entirely and move directly
                 # to the print-complete wait phase with a short timer.
                 job.cmd_status = CmdStatus.PRINTING
@@ -133,7 +133,7 @@ class PrinterSequence(Sequence):
                 job.allocated_data['printer_id'] = self.printer_id
                 job.allocated_data['plate_state'] = 'ON_PRINTER'
                 job.allocated_data['plate_in_printer'] = True
-                job.allocated_data['simul_mode'] = bool(self._settings.SIMUL_MODE)
+                job.allocated_data['simul_mode'] = bool(self.ctx.simul_mode)
                 job.allocated_data['printer_server_simul'] = bool(self._printer_server_simul)
                 # In simulation modes, never call the real printer API.
                 # We mark PRINTING first, then finish after a short fixed timer.
@@ -145,7 +145,7 @@ class PrinterSequence(Sequence):
                     progress=job.progress,
                     allocated_data=job.allocated_data,
                     message=(
-                        f'PRINTING({"full-sim" if self._settings.SIMUL_MODE else "printer-server-sim"} '
+                        f'PRINTING({"full-sim" if self.ctx.simul_mode else "printer-server-sim"} '
                         f'{self._sim_wait_seconds}s) on printer-{self.printer_id}'
                     ),
                 )
@@ -268,7 +268,7 @@ class PrinterSequence(Sequence):
                 self.now_step = self.STEP10000
                 return
 
-            if self._settings.SIMUL_MODE or self._printer_server_simul:
+            if self.ctx.simul_mode or self._printer_server_simul:
                 if time.time() < self._sim_finish_ts:
                     return
                 job.cmd_status = CmdStatus.PRINT_FINISHED
@@ -280,7 +280,7 @@ class PrinterSequence(Sequence):
                     progress=job.progress,
                     allocated_data=job.allocated_data,
                     message=(
-                        f'PRINT_FINISHED({"full-sim" if self._settings.SIMUL_MODE else "printer-server-sim"}) '
+                        f'PRINT_FINISHED({"full-sim" if self.ctx.simul_mode else "printer-server-sim"}) '
                         f'on printer-{self.printer_id}'
                     ),
                 )
@@ -539,7 +539,7 @@ class PrinterSequence(Sequence):
             print_resp = self._client.start_print(
                 stl_file=uploaded_filename,
                 printer_serial=serial,
-                simul_mode=bool(self._settings.SIMUL_MODE),
+                simul_mode=bool(self.ctx.simul_mode),
                 preset_id=preset_id,
                 settings=print_settings,
             )
