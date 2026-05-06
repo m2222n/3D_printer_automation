@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import queue
 import threading
@@ -164,7 +164,7 @@ class SequenceThread(threading.Thread):
 
         if self.enable_cell_state:
             # Optional DB-backed run/pause state synchronization
-            running, paused = self.repo.get_cell_state()
+            running, paused, simul_mode = self.repo.get_cell_state()
             # If DB-driven control changed RUNNING -> STOPPED, enforce same cleanup as STOP command.
             if self._last_synced_running and not running:
                 self._write_robot_stop_registers()
@@ -178,6 +178,7 @@ class SequenceThread(threading.Thread):
                 self._publish_queue_state(force=True)
             self.ctx.running = running
             self.ctx.paused = paused
+            self.ctx.simul_mode = simul_mode
             self._last_synced_running = running
 
     def _cleanup_canceled_jobs(self) -> None:
@@ -285,7 +286,7 @@ class SequenceThread(threading.Thread):
         - full cell simulation is enabled, or
         - only printer server simulation is enabled.
         """
-        if self._settings.SIMUL_MODE or self._settings.PRINTER_SERVER_SIMUL:
+        if self.ctx.simul_mode or self._settings.PRINTER_SERVER_SIMUL:
             return
         now = time.time()
         if now < self._next_printer_health_sync_ts:

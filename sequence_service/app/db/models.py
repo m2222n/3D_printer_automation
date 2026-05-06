@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String, JSON, Index, BigInteger
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -46,6 +46,7 @@ class CellState(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     running: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     paused: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    simul_mode: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     queue_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 

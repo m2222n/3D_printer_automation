@@ -386,6 +386,7 @@ export interface AutomationCommandItem {
 export interface AutomationState {
   running: boolean;
   paused: boolean;
+  simul_mode: boolean;
 }
 
 export interface AutomationQueues {
@@ -459,6 +460,12 @@ export async function updateAutomationCommandsUseYn(
 
 export async function getAutomationState(): Promise<AutomationState> {
   return fetchLocalApi<AutomationState>('/automation/state');
+}
+
+export async function setAutomationSimul(mode: boolean): Promise<{ ok: boolean; state: AutomationState }> {
+  return fetchLocalApi<{ ok: boolean; state: AutomationState }>(`/automation/simul?mode=${mode}`, {
+    method: 'POST',
+  });
 }
 
 export async function controlAutomation(action: 'start' | 'stop' | 'pause' | 'resume'): Promise<{ ok: boolean; state: AutomationState }> {

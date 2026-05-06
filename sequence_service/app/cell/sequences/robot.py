@@ -45,6 +45,10 @@ class RobotSequence(Sequence):
             slave_id=self._settings.ROBOT_MODBUS_SLAVE_ID,
         )
 
+    @property
+    def _use_real_io(self) -> bool:
+        return bool(self._settings.ENABLE_TCP_IO) and not self.ctx.simul_mode
+
     def _log_job(self, cmd_id: str, msg: str, allocated_data: dict | None = None) -> None:
         # Keep robot-origin logs grouped in the common command log table.
         fields: dict = {
@@ -369,7 +373,7 @@ class RobotSequence(Sequence):
     def _reset_idle_registers(self) -> bool:
         # When robot sequence is idle at STEP0000, keep the command-facing registers
         # in the same safe state used by STOP.
-        if not self._settings.ENABLE_TCP_IO:
+        if not self._use_real_io:
             return True
         if time.time() < self._next_tcp_retry_ts:
             return False
@@ -437,7 +441,7 @@ class RobotSequence(Sequence):
                 self.now_step = self.STEP10000
                 return
 
-            if self._settings.ENABLE_TCP_IO:
+            if self._use_real_io:
                 if time.time() < self._next_tcp_retry_ts:
                     return
                 reg = int(self._settings.ROBOT_MODBUS_ROBOT_READY_REG)

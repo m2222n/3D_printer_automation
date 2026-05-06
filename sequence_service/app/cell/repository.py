@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 """
 DB access layer for sequence service.
@@ -70,10 +70,18 @@ class PrintCommandRepository:
 
     def ensure_cell_state(self) -> None:
         # Ensure singleton row(id=1) for run/pause state.
+        settings = get_settings()
         with self.session_factory() as s:
             row = s.execute(select(CellState).where(CellState.id == 1)).scalar_one_or_none()
             if row is None:
-                s.add(CellState(id=1, running=0, paused=0, queue_state=None, updated_at=datetime.now()))
+                s.add(CellState(
+                    id=1,
+                    running=0,
+                    paused=0,
+                    simul_mode=1 if settings.SIMUL_MODE else 0,
+                    queue_state=None,
+                    updated_at=datetime.now()
+                ))
                 s.commit()
 
     def ensure_cell_state_columns(self) -> None:
@@ -83,6 +91,12 @@ class PrintCommandRepository:
                 text(
                     "ALTER TABLE cell_state "
                     "ADD COLUMN IF NOT EXISTS queue_state JSON NULL"
+                )
+            )
+            conn.execute(
+                text(
+                    "ALTER TABLE cell_state "
+                    "ADD COLUMN IF NOT EXISTS simul_mode INT NOT NULL DEFAULT 0"
                 )
             )
 
@@ -166,19 +180,21 @@ class PrintCommandRepository:
             }
         return dict(row)
 
-    def get_cell_state(self) -> tuple[bool, bool]:
+    def get_cell_state(self) -> tuple[bool, bool, bool]:
         with self.session_factory() as s:
             row = s.execute(select(CellState).where(CellState.id == 1)).scalar_one_or_none()
             if row is None:
-                return False, False
-            return bool(row.running), bool(row.paused)
+                return False, False, False
+            return bool(row.running), bool(row.paused), bool(row.simul_mode)
 
-    def set_cell_state(self, running: bool | None = None, paused: bool | None = None) -> None:
+    def set_cell_state(self, running: bool | None = None, paused: bool | None = None, simul_mode: bool | None = None) -> None:
         values = {'updated_at': datetime.now()}
         if running is not None:
             values['running'] = 1 if running else 0
         if paused is not None:
             values['paused'] = 1 if paused else 0
+        if simul_mode is not None:
+            values['simul_mode'] = 1 if simul_mode else 0
         with self.session_factory() as s:
             s.execute(update(CellState).where(CellState.id == 1).values(**values))
             s.commit()

@@ -355,14 +355,39 @@ def set_cell_state(action: str) -> dict[str, bool]:
     return get_cell_state()
 
 
+def set_simul_mode(mode: bool) -> dict[str, bool]:
+    now = datetime.now()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE cell_state
+                SET simul_mode = :simul_mode,
+                    updated_at = :updated_at
+                WHERE id = 1
+                """
+            ),
+            {
+                "simul_mode": 1 if mode else 0,
+                "updated_at": now,
+            },
+        )
+    add_log(log_type=10, source="program", message=f"SIMUL_MODE toggled: {mode}")
+    return get_cell_state()
+
+
 def get_cell_state() -> dict[str, bool]:
     with _get_engine().begin() as conn:
         row = conn.execute(
-            text("SELECT running, paused FROM cell_state WHERE id = 1 LIMIT 1")
+            text("SELECT running, paused, simul_mode FROM cell_state WHERE id = 1 LIMIT 1")
         ).mappings().first()
     if not row:
-        return {"running": False, "paused": False}
-    return {"running": bool(row["running"]), "paused": bool(row["paused"])}
+        return {"running": False, "paused": False, "simul_mode": False}
+    return {
+        "running": bool(row["running"]),
+        "paused": bool(row["paused"]),
+        "simul_mode": bool(row.get("simul_mode", 0))
+    }
 
 
 def get_queue_state() -> dict[str, Any]:
