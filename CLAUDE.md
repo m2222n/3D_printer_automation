@@ -918,10 +918,17 @@ JWT_ABSOLUTE_MAX_DAYS=30
 - 6000 + 카카오 VM도 동일 점검 권장 (다음 작업)
 - 메모리: `project_web_auth_security.md` "함정" 섹션 참조
 
-**커밋 추가 3개**:
+**커밋 추가 5개**:
 - `0a2d52e` fix(launcher): 글로벌 Python 좀비 방지 + deploy.bat 좀비 자동 정리
 - `349f141` fix(sequence_service): .venv 찾도록 web-api spawn 수정
 - `b9164d9` Merge hansol-merge-4
+- `08bf91d` docs: 5/6 오후 한솔 머지 4차 + 공장 PC 응답 디버깅 기록
+- `f3738c1` fix(env): .env.example 가짜 알림 자격증명 빈 값 + 사고 이력 주석
+
+**6000 + 카카오 VM 점검 결과 (5/6 저녁)**:
+- 두 서버 모두 알림 변수 이미 주석 처리(`#`) 상태 → 가짜 자격증명 호출 안 함
+- 응답 시간: 6000은 0.2~0.6ms, 카카오는 10~16ms (모두 빠름)
+- 추가 작업 불필요
 
 ---
 
