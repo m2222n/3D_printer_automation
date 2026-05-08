@@ -81,199 +81,122 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ## 대표님 피드백 (핵심 결정사항)
 
-### 2025.01.28~01.30
-- 자체 개발 병행 (한솔 못 믿으니 우리도 따로 개발)
-- Web API 방식 선호, 모바일 모니터링 중요
-- 목표: 설 전 API 구축 완료
+> 시간 순이 아닌 **주제별 결정 흐름**으로 정리. 구식 결정도 "왜 정하고 왜 바뀌었는지" 보존.
 
-### 2026.02.04
-- 공장 PC 설치 확정 (Linux), SaaS 플랫폼 구축 예정
-- 세척기/경화기 완료 감지: OpenMV 카메라로 해결 (02-06 확정)
+### 1. 개발 방향성 (2025.01~2026.02)
 
-### 2026.02.12 (데모 후)
-- PreForm 대시보드 기능 동등 구현 지시 (슬라이스, 예열, 시간, 일시정지)
-- 프린터 4대 각각 독립 컨테이너, 탭 구분, 히스토리/대기 페이지 추가
-- 서버 구성: 5090=운영(폐기예정), **8085=개발(현재 운영 중, systemd 자동시작)**
+**자체 개발 병행 결정 (2025.01.28~30)**
+- 한솔 의존도 낮추기 위해 자체 Web API 방식 병행 개발 + 모바일 모니터링 강조
+- 목표: 설 전 API 구축 완료 → ✅ Phase 1 완료
 
-### 2026.02.24 (한솔코에버 미팅)
-- ~~소스코드 공유 X, 가이드라인만~~ → **2/26 변경: 소스코드 공유 결정**
-- 한솔코에버 작업 서버: Faridh님과 세팅
-- ~~협업 담당자: 김기원 주임 (한솔, GitHub: `justkiwon`), 이나라 주임 (한솔)~~ → 기원님 퇴사 (4/3)
-- **현재 협업 담당자: 이예승 사원 (한솔코에버, GitHub: `eseung97@gmail.com`, 연락처: 010-4946-3610)**
-- **3/3(화) 공장 방문**: Faridh님 + 정태민 → 한솔코에버 현장 협업
+**공장 PC 설치 + SaaS 방향 (2026.02.04)**
+- 공장 PC 설치 확정 (Linux 의도였으나 실제는 Windows로 진행됨)
+- SaaS 플랫폼 구축 예정
+- 세척기/경화기 완료 감지 = OpenMV 카메라 (02-06 확정) → **2026.04.14에 MaixCAM으로 전환** (마일스톤 표 참조)
 
-### 2026.02.26
-- **소스코드 공유 결정** + **Phase 전환 지시**: 인수인계 후 → OpenMV 개발
-- 운영 서버: 5090 VM 폐기 → **카카오 클라우드로 이전 예정**
-- AICA A100: 한솔에서 3월간 1대 필요 → 근형님께 전달 완료
+**2/12 데모 후 PreForm 동등 구현 지시**
+- 슬라이스 미리보기 / 예열 / 프린트 시간 / 일시정지 + 4대 독립 컨테이너 + 탭 구분
+- 결과: ✅ Phase 2 5탭 UI 완성 (2/27 기준)
+- 서버: 5090 운영(폐기 예정) + 8085 개발 → 5090 폐기 후 카카오 VM으로 이전 (2/26 결정)
 
-### 2026.03.24~26 (한솔코에버 PR → 브랜치 전환)
-- 김기원 주임(`justkiwon`)이 개인 리포(`m2222n`)에 **PR #3** 제출 (3/24)
-- 내용: 자동화 프론트엔드(`AutomationPage`, `AutomationManualPage`) + 시퀀스 서비스 오케스트레이터(`main.py`) + 배포 가이드
-- **PR 취소 → `hansol-dev` 브랜치에 재업로드** (3/25, 커밋 `591b95a`)
-- ✅ **머지 완료 (4/3)** — `hansol-merge` 브랜치에서 cherry-pick + 수동 수정 후 main 머지 (`9c161dc`)
-  - 인코딩 깨짐 복원 (routes.py, auth.py, config.py, requirements.txt, App.tsx)
-  - 프린터 시리얼 하드코딩 → 환경변수 복원, MQTT 설정 유지
-  - 기존 코드 보존 (OpenMV, bin_picking, vision, docs, mosquitto)
-  - 기원님 코드: sequence_service/, AutomationPage, AutomationManualPage, automation_db.py 등 추가
-  - origin + personal 양쪽 push 완료
-- **3/27 한솔코에버 최종 시연** (한솔 자체 진행, 정태민은 Azure 교육 중)
-- **4/3 김기원 주임 퇴사 확인** — 한솔코에버 퇴사. 직접 지원 불가, 구조/플로우 문의는 가능. 코드 docs 폴더에 역할별 요약 있다고 함
+### 2. 한솔코에버 협업 구조 변경
 
-### 2026.05.06 (한솔 3자 회의 — 김주엽 과장 작성 회의록)
-구본경 대표 + 한솔 김주엽 과장 + 이예승 사원. 회의록 PDF 5/7 수령.
+**소스코드 공유 결정 (2026.02.26)**
+- 원래 2/24 미팅에서 "소스코드 공유 X, 가이드라인만"으로 결정 → **2/26 변경: 소스코드 공유**
+- 이유: 한솔 작업 효율 + Phase 전환(인수인계 후 OpenMV 개발) 일정 단축
+- AICA A100: 한솔 3월간 1대 필요 → 근형님 전달 완료
 
-**핵심 결정사항**:
-- **빈피킹 좌표 = X, Y, Z + Theta (4DoF)** — 이전 6DoF 오일러 ZYX 가정 대비 단순화. 다면 처리는 좌표 차원이 아닌 자세 분리로 해결
-- **다면 인식 정식 안건화** — (a) 리그립 스테이션 도입 (b) 시퀀스 분할(A자세/B자세) 검토
-- **한화 로보틱스 별도 라이브러리/패키지** — 이예승 ASAP 확인. 답 받기 전 우리 빈피킹 좌표 출력 코드 확정 금지
-- **빈피킹 카메라 브라켓** — 코에버 설계(이예승 ASAP) → 오리누 3D 출력 → 검증 후 철제 가공 (4/23 합의 그대로)
-- **빈피킹 컨셉 확정 = 오리누 책임** — 쌓아놓는 형태/위치 대표님 결정 사항 (4/23 미확정 → 5/6도 미확정)
-- **Formlabs API 무인 운전 불가 — 공식 확인 (5/6)** — 출력 종료 후 수동 터치 체크리스트 필수, API 우회 불가
-- **그리퍼 교체 요청** (한솔) — 잔여 레진 제거 어려움, 경사각 유지 공정 최적화 필요
-- **3D 프린터 하단 파손 270만원** (대당 90만 × 3) — 코에버 내부 방침상 지원 어려울 가능성, 김주엽 과장 금주 내 재확인
-- **삼성전자 ~2억 규모 하반기 지원사업** 참여 준비
-- **카카오톡 단톡방 즉시 개설** — 실시간 실무 소통
+**협업 담당자 변경 흐름**
+- ~~김기원 주임 (`justkiwon`) + 이나라 주임~~ — 김기원 PR #3 제출(3/24) 후 `hansol-dev` 브랜치 전환(3/25, `591b95a`)
+- **2026-04-03 김기원 주임 퇴사** — 코드 docs 폴더 역할별 요약 보유. 직접 지원 불가, 구조/플로우 문의는 가능
+- **2026-04-29 사고**: 공장 PC origin이 `justkiwon/3D_printer_automation` (퇴사자 fork) 가리켜 100커밋 차이 발생 → 원격 복구 진행
+- **현재 협업 담당자**: 이예승 사원 (한솔코에버, GitHub: `eseung97@gmail.com`, 연락처: 010-4946-3610)
 
-**액션 아이템**:
-| 담당 | 과업 | 기한 |
-|------|------|------|
-| 김주엽 | 구글 시트 트러블슈팅 + 병목 관리 | 상시 |
-| 김주엽 | 하단 파손 비용 분담 내부 협의 | 금주 내 |
-| 구본경 | 3D 프린팅 최적 공정(변경안) 정리 + 전달 | 금주 내 |
-| 이예승 | 한화 로봇-비전 통신 패키지 확인 | ASAP |
-| 이예승 | 빈피킹 카메라 브라켓 설계 요청 | ASAP |
-| 공통 | 카카오톡 단톡방 개설 | 즉시 |
+**한솔 머지 이력** (전체: `memory/project_hansol_merge_issues.md`)
+| 회차 | 일자 | 커밋 | 내용 | 비고 |
+|------|------|------|------|------|
+| 1차 | 4/3 | `9c161dc` | 김기원 주임 코드 (sequence_service / AutomationPage / automation_db.py) | 인코딩 깨짐 복원 |
+| 2차 | 4/16 | `e68c2b1` | 자동화 CMD 프린터 할당 콤보박스 + 공용 큐 버그 수정 | App.tsx mojibake 차단 |
+| 3차 | 4/23 | `9f97f1e` | 경화기 2→1대 축소 (Cure 2 비활성화) | 인코딩 깨끗 / `runtime.py:121` 후속 패치 미커밋 |
+| 4차 | 5/6 | `b9164d9` | 시뮬 토글 + 프린터 별명 매핑 | — |
+| 5차 | 5/6 | `9fd365a` | `cell_state.simul_mode` 컬럼 자동 마이그레이션 (4차 누락분 보강) | 3개 서버 배포 완료 |
 
-상세: `memory/project_meeting_0506_hansol.md`
+### 3. 빈피킹 (Phase 5) 방향 결정
 
-### 2026.05.06 (대표님 — 빈피킹 방향 개인 지시)
-**로봇 장착은 추후로 미루더라도 인식 자체를 먼저 확실히** 하라는 방향. 4가지 지시:
+**3D+RGB 카메라 조합 결정 (2026.04.03)**
+- Blaze-112(ToF) 단독 vs ace2(RGB) 조합 → **조합** 결정
+- STL 수집 결과 (4/6): 55개 다운 → 중복 제거 → bbox 분석 → **29종** 확정 (목록 자체는 미확정, 킵고잉)
 
-1. **Basler 카메라 로컬 테스트 우선** — 4/23 입고분을 로컬에서 동작 확인 (IPC-510/로봇 셋업 기다리지 말 것)
-2. **공장 실물 부품 다각도 촬영 + 학습** ⭐ — 부품마다 각도 sweep으로 데이터셋 구축. 대표님 강조: "비전 + 빈피킹 하려면 **실제 데이터로 사진도 많이 찍고 학습이 중요**" (CAD-only FPFH/ICP만으로 부족, 실데이터 학습 파이프라인 필요)
-3. **X, Y 각도(뒤집기) 데이터 고민 ⭐** — "물체가 누워있거나 각도가 다르면 어떻게 뒤집는지? X/Y 각도가 중요한데 이에 필요한 데이터가 무엇인지 잘 고민할 것"
-   - 안정 자세 enumeration (CAD bbox + COM 기반)
+**카메라 배치 — 4/10 1차 결정 → 4/23 한솔 회의 재합의**
+- 4/10 대표님 피드백: "1대 고정(eye-to-hand) + 1대 로봇암(eye-in-hand)" + 시각화 요청 (실패 케이스 이미지 첨부)
+- 4/23 한솔 3자 회의 (김주엽 파트장 + 이예승): **eye-in-hand에 Blaze + ace2 2대 동시 마운트**로 합의 (대표님과 일치)
+- 5/6 회의에서 카메라 브라켓 확정: 코에버 설계 → 오리누 3D 출력 → 검증 후 철제 가공
+
+**빈피킹 좌표 — 6DoF → 4DoF 단순화 (2026.05.06 한솔 회의)**
+- 이전: 6DoF 오일러 ZYX 가정으로 다면 처리하려고 했음
+- 변경: **X, Y, Z, Theta (4DoF)** + 다면은 자세 분리(A자세/B자세) + 리그립으로 해결
+- 블로커: 한화 로보틱스 별도 라이브러리/패키지 = 한솔 이예승 ASAP 확인. 답 받기 전 좌표 출력 코드 확정 금지
+
+**대표님 5/6 빈피킹 개인 지시 4가지** ⭐ — `memory/project_binpicking_ceo_directive_0506.md`
+> 로봇 장착은 추후로 미루더라도 인식 자체를 먼저 확실히
+
+1. **Basler 카메라 로컬 테스트 우선** — IPC-510/로봇 셋업 기다리지 말 것 → 5/8 진행 중 (어댑터 도착 대기)
+2. **공장 실물 부품 다각도 촬영 + 학습** — CAD-only FPFH/ICP 한계, 실데이터 학습 필요. 부품 1종당 수백 장
+3. **X, Y 각도(뒤집기) 데이터 고민** ⭐
+   - 안정 자세 enumeration (CAD bbox + COM)
    - 자세별 그래스프 가능 여부 → grasp_database.yaml 자세별 확장
-   - regrasp 시퀀스 정의 (어떤 자세→어떤 자세)
-   - 학습 데이터 라벨링 형식 (부품 ID + 자세 클래스 + 6DoF pose)
-   - **코드 짜기 전 데이터 명세 초안 → 대표님 align**
-4. **예승님 연락** — (a) 빈피킹 좌표 데이터 명세 (좌표계/단위/회전/그리퍼/시퀀스) (b) 바텀비전 홀 검출 소스코드 받기 + 반영
+   - regrasp 시퀀스 정의
+   - 학습 라벨링 형식 (부품 ID + 자세 클래스 + 6DoF pose)
+   - **코드 짜기 전 명세 초안 → 대표님 align**
+4. **예승님 연락** — (a) 빈피킹 좌표 명세 (좌표계/단위/회전/그리퍼/시퀀스) (b) 바텀비전 홀 검출 소스코드
 
-상세: `memory/project_binpicking_ceo_directive_0506.md`
+**5/6 한솔 3자 회의 추가 안건** — 상세: `memory/project_meeting_0506_hansol.md`
+- 다면 인식 정식 안건화 (리그립 스테이션 vs 시퀀스 분할 A/B자세)
+- Formlabs API 무인 운전 불가 — 공식 확인. 출력 종료 후 수동 터치 체크리스트 필수
+- 그리퍼 교체 요청 (한솔) — 잔여 레진 제거 어려움
+- 3D 프린터 하단 파손 270만원 분담 협의 중
+- 삼성전자 ~2억 규모 하반기 지원사업 참여 준비
+- 카카오톡 단톡방 운영 (5/7 입장 완료)
 
-### 2026.04.23 (한솔코에버 이예승 사원 — 경화기 2대 → 1대 축소)
-- 예승님이 `hansol-dev` 브랜치에 커밋 `52a1c8f` 업로드 (4/23 14:02)
-- **내용**: sequence_service + AutomationPage UI에서 Cure 2 비활성화. `cureKeys`, `cure_active_cmd`, `CuringSequence(2)` 주석 처리
-- **변경 파일 3개**: `AutomationPage.tsx`(+1/-1), `ctx.py`(+2/-2, BOM 제거 포함), `mainSequence.py`(+2/-2)
-- ✅ **머지 완료 (4/23 저녁)** — `hansol-merge-3` 브랜치에서 cherry-pick(`47873fe`) → main 머지(`9f97f1e`)
-  - **인코딩 깨짐 없음** — 1·2차와 달리 예승님이 BOM까지 제거해서 깨끗함
-  - TypeScript + Python + Vite 빌드 전부 PASS
-  - origin + personal 양쪽 push 완료
-- **⚠️ 예승님 패치 불완전 → 오리누 측 후속 패치 완료 (4/24)**: `sequence_service/app/cell/runtime.py:121` `{1: None, 2: None}` → `{1: None}`으로 수정. ctx.py 기본값과 정합. (미커밋)
+### 4. HCR-10L 로봇 연동 (2026.04.14 교육 1회차)
 
-### 2026.04.16 (한솔코에버 이예승 사원 — 프린터 할당 기능)
-- 이예승 사원이 `hansol-dev` 브랜치에 커밋 `74584fb` 업로드 (4/16)
-- **내용**: 자동화 CMD 생성 시 특정 프린터 할당 콤보박스 연동 (기존: 랜덤 → 1~4번 지정 가능) + 공용 큐 버그 수정
-- **추가 파일**: `sequence_service/.env.copy` — Modbus 레지스터 매핑 환경변수 템플릿
-- ✅ **머지 완료 (4/16)** — `hansol-merge-2` 브랜치에서 cherry-pick + 검토 후 main 머지 (`e68c2b1`)
-  - 머지 커밋(`34507f0`)의 인코딩 깨짐 차단 — App.tsx mojibake, auth.py 한글 주석 파괴 방지
-  - localApi.ts 불필요한 포매팅 변경 되돌림
-  - TypeScript 타입 체크 + Vite 빌드 PASS 확인
-  - origin + personal 양쪽 push 완료
-- **예승님 질문**: 공장 PC 배포 디렉토리 → 답변 대기 중
-
-### 2026.04.10 (산업용 PC 카메라 구성 + 로봇 교육)
-- **산업용 PC 카메라 구성**: Bottom Vision 1대 + 빈피킹 2대(Blaze-112+ace2) + 3D프린터/경화기 모니터링 1~2대 + 양손 로봇(추후) 1대 = **최대 6대**
-- **산업용 PC 스펙 우려**: 5060, RAM 8GB — 카메라 6대 버거울 수 있음 → **젯슨 나노로 분산** 가능성
-
-### 2026.04.14 (HCR-10L 로봇 교육 1회차)
-- ✅ **교육 완료**: 펜던트 기본 기능 + Modbus TCP 통신 + 자동화 시스템 기본 개념
-- **교육 자료 수령**: `PLC_Cobot_Modbus_Guide.pdf` (34페이지) — PLC↔Robot Modbus TCP/IP 가이드 (예제 3건)
-- **한화 HCR 개발 특성**: 두산/현대와 달리 **펜던트(Rodi)로 개발**해야 함. 외부 PC는 Modbus 레지스터 간접 제어
-  - 비전PC가 Modbus 레지스터에 피킹 좌표 쓰기 → 펜던트 프로그램이 읽어서 모션 실행
+- **한화 HCR 개발 특성**: 두산/현대와 달리 **펜던트(Rodi) 중심 개발**. 외부 PC는 Modbus 레지스터 간접 제어
+- 비전PC가 Modbus 레지스터에 피킹 좌표 쓰기 → 펜던트 프로그램이 읽어서 모션 실행
 - **사용자 사용 가능 레지스터: 130~255** (문서상 128~이나 실사용 130번부터)
-- **좌표계**: Base(로봇 바닥 고정부 기준) vs TCP(Tool Center Point, 그리퍼 끝단 기준)
+- **좌표계**: Base(로봇 바닥 기준) vs TCP(그리퍼 끝단 기준)
 - **TCP 좌표 Modbus 읽기**: Register 400~405 (1/10mm, 1/10deg, 16bit 정수)
-- **티칭(교시) 교육은 별도 스케줄로 추후 진행**
-- **TBD 항목은 그리퍼 장착 + 빈 배치 후 실측** (TCP 오프셋, 작업 영역, 오일러 컨벤션)
+- **TBD**: TCP 오프셋, 작업 영역, 오일러 컨벤션 (그리퍼 장착 + 빈 배치 후 실측)
+- 자료: `PLC_Cobot_Modbus_Guide.pdf` (34p, 예제 3건)
+- 4/15 Modbus 재설계: FLOAT32(40001~) → **INT16(130~140 비전PC→로봇 / 150~151 로봇→비전PC)** (`a13b5ce`)
+- 상세: `memory/reference_hcr_user_education.md`
 
-### 2026.04.14 (대표님 지시 — MaixCAM 장비 모니터링)
-- **Sipeed MaixCAM으로 프린터/세척기/경화기 전용 모니터링 연구**
-- **OpenMV AE3 대체** — MaixCAM이 성능 우위 (RISC-V + 0.5TOPS NPU, 400만 화소)
-- **Cloud 없이 온디바이스 AI로 진행** (엣지 AI, 현장 독립 동작)
-- 보유 장비: MaixCAM 1대 + LicheeRV Nano 2대 (4/6 수령)
-- **우선순위**: 빈피킹(Phase 5) 우선, MaixCAM은 여유 시 착수
+### 5. 산업용 PC (IPC-510) 카메라 구성 (2026.04.10 / 4/23 입고)
 
-### 2026.04.14 (웹 서비스 인프라 정비)
-- **웹 서비스 접속 불가 원인**: uvicorn 수동 실행 방식이라 프로세스 종료 후 재시작 안 됨
-- ✅ **systemd user service 등록**: `~/.config/systemd/user/formlabs-web.service` (포트 8085)
-  - `Restart=always` (크래시 시 5초 후 자동 재시작)
-  - `loginctl enable-linger jtm` (로그아웃 후에도 유지)
-  - `systemctl --user enable formlabs-web` (서버 재부팅 시 자동 시작)
-- ✅ **한솔 머지 코드 Linux 호환 수정**:
-  - `automation_db.py`: MySQL engine lazy 초기화 (MySQL 없어도 앱 시작 가능)
-  - `ajin_io.py`: `WinDLL` import를 Windows에서만 (Linux에서 import 에러 해결)
-  - `pymysql` 패키지 설치
-- ✅ **WireGuard VPN 복구**: `sudo wg-quick up wg0` + `systemctl enable wg-quick@wg0` (재부팅 시 자동)
-- ✅ **PreFormServer(44388) + file_receiver(8089) 정상 연결 확인**
-- **외부 접속**: `http://106.244.6.242:8085/` (ipTIME 포트포워딩 8085→8085)
-- **관리 명령어**: `systemctl --user status/restart/stop formlabs-web`, `journalctl --user -u formlabs-web -f`
+- **카메라 최대 6대 구성**: Bottom Vision 1대 + 빈피킹 2대(Blaze-112+ace2) + 3D프린터/경화기 모니터링 1~2대 + 양손 로봇(추후) 1대
+- **스펙 우려**: GPU 5060 + RAM 8GB → 6대 동시 처리 버거울 수 있음
+- **대안**: 젯슨 나노로 분산 가능성
+- **현재 (5/8)**: 4/23 입고 완료, 셋업 미시작. HCR-10L 빈피킹 전용 (4/29 합의). HCR-12는 공장 PC 잔류
+- 상세: `memory/project_robot_pc_assignment.md`
 
-### 2026.04.10 오후 (빈피킹 보고 피드백 — 카메라 배치 + 시각화 요청)
-- **카메라 배치 변경**: 1대 고정(eye-to-hand, 오버헤드) + **1대 로봇암 장착(eye-in-hand)**
-  - 인식 실패 시 로봇암이 다른 각도에서 재촬영 → 가시성 보완으로 인식률 향상 기대
-  - 캘리브레이션 2세트 필요: eye-to-hand(고정) + eye-in-hand(로봇암)
-  - 고정 카메라 후보: Blaze-112 ToF (넓은 FOV, 빈 전체 촬영), 로봇암 카메라 후보: ace2 5MP RGB (디테일)
-- **보고 시 시각화 요청**: 안 되는 케이스에 대해 **스크린샷/이미지 첨부**하여 왜 안 되는지 시각적으로 설명해달라
-  - → E2E 테스트에 실패 케이스 시각화 기능 구현 필요 (매칭 결과 오버레이, 오매칭 비교 이미지 자동 저장)
+### 6. Phase 4 — OpenMV → MaixCAM 전환 (2026.04.14)
 
-### 2026.04.15 (카메라 입고 전 SW 마무리)
-- ✅ **Modbus 레지스터 맵 HCR-10L 실제 스펙으로 재설계** (`a13b5ce`)
-  - 레지스터 주소 40001~ → HCR-10L 사용자 영역 130~140 (비전PC→로봇), 150~151 (로봇→비전PC)
-  - 인코딩 FLOAT32(2레지스터) → INT16(1레지스터, 1/10mm, 1/10deg) — 펜던트와 동일
-  - 로봇 내장 레지스터 매핑: 400~405(TCP 좌표), 600(상태), 700~702(명령)
-  - 시퀀스 번호 동기화 + 쓰기 순서 보장 (좌표→CMD)
-- ✅ **Colored ICP 파이프라인 추가** (`b33547b`)
-  - `use_colored_icp=True` 기본: 양쪽 컬러 있으면 자동 활성화, 없으면 Point-to-Plane 폴백
-  - multi-scale Colored ICP (4mm→2mm→1mm coarse-to-fine)
-  - hard 난이도 60% → 개선 기대 (좌우 대칭 부품 변별력 향상)
-- ✅ **Basler Blaze-112 + ace2 듀얼 캡처 모듈** (`6ad4668`)
-  - `basler_capture.py`: pypylon 기반, RealSenseCapture와 동일 인터페이스
-  - Blaze-112(ToF depth) + ace2(RGB 5MP) 듀얼 캡처
-  - save/load 라운드트립, 시뮬 프레임, CLI(--list, --test)
-  - main_pipeline.py에 `--basler` 옵션 추가
-
-### 2026.04.03 (빈피킹 지시)
-- **3D+RGB 카메라 확인**: Blaze-112(ToF) 단독인지, ace2(RGB)와 조합해서 포인트 잡는지 확인
-- **STL 수집+정리+중복제거 완료 (4/6)**: 55개 다운 → 중복 제거 → 46개 → bbox 동일 분석 → **29종** (17개 `_duplicates/`). STL 최종 목록은 아직 미확정 (대표님도 확정 전, 킵고잉)
-- **L1~L6 전체 파이프라인 SW 완성 (4/6~10)**: cad_library + E2E 테스트 + main_pipeline + L5 그래스프 + L6 Modbus TCP. OBB SizeFilter + 포인트 비율 필터 (4/8). 그래스프 DB 29종 완성 + E2E 시나리오 확장 + multi-res ICP (4/10). **인식률 100%(easy), crowded 90%, hard 60%. RMSE 1.0~1.5mm, 매칭 0.4~0.6s/부품**
-- **RealSense D435**: ✅ **라이브 연동 성공 (4/13)** — USB 3.2(5Gbps), S/N `420122070194`, FW `5.17.0.10`. macOS에서 sudo 필요 (`sudo .venv/binpick/bin/python`). pyrealsense2 v2.57.7 소스빌드 완료
-  - **프레임 저장/로드 (4/13)**: `--live --save`로 영구 저장 → `--load`로 카메라 없이 테스트. 유효 depth 91%(278K/307K), range 156~4349mm, 파일 1.5MB
-  - 서버 로드 검증 PASS (numpy only, Open3D 불필요)
-  - **실데이터 L1~L3 테스트 PASS (4/13)**: 책상 위 일반 사물 촬영 → 11 클러스터 검출, 바닥면 정상 분리, 파이프라인 0.29s. 빈피킹 환경에서 더 좋은 결과 기대
-  - **Full Pipeline L1~L5 테스트 PASS (4/14)**: 2회 실행 모두 ACCEPT 0. ①d435_frames 8클러스터 WARN 3/REJECT 5, 1.83s ②d435_realworld 6클러스터 WARN 4/REJECT 2, 0.89s. CAD 미등록 물체 오탐 없음. RMSE 3mm 임계값이 핵심 안전장치 (fitness 0.47도 차단)
-  - **다음**: 공장에서 실물 SLA 부품 3~5개 가져와서 D435로 촬영 → CAD 매칭 ACCEPT 검증 (미등록 REJECT은 확인됨, 등록 부품 ACCEPT 미검증)
-
-### 2026.03.27 (공장 PC 장애 복구)
-- 공장 PC 재부팅 후 `file_receiver.py`(8089) 자동 시작 안 됨 → 미리보기 "모델 임포트 실패"
-- file_receiver 위치: `C:\Users\devfl\file_receiver.py`, 수동 실행하여 복구
-- Windows cmd QuickEdit 모드 때문에 file_receiver 반복 멈춤 → QuickEdit 해제로 해결
-- 출력 전송 후 프린터 미동작: PreFormServer 재시작 시 빌드플랫폼 상태 MISSING 리셋 → 프린터 터치스크린 확인 필요
-- ✅ file_receiver 시작 프로그램 등록 완료
-- ✅ **웹 UI readiness 체크 구현 완료** (`0e3451e`): 프린트 전 6가지 검증 + 경고 배너 + 버튼 비활성화
+- 원래 OpenMV AE3로 세척기/경화기 완료 감지 (2026.02.06 확정)
+- 4/14 대표님 지시로 MaixCAM 전환 — RISC-V + 1 TOPS NPU + 4MP, Cloud 없이 온디바이스 AI
+- 보유 장비: MaixCAM 1대 + LicheeRV Nano 2대
+- 우선순위: 빈피킹 우선, MaixCAM은 여유 시 PoC
+- 역사: `memory/project_openmv_image_capture.md` (3/16 시도 → 4/14 전환)
 
 ---
 
 ## Phase별 개발 계획 (확정)
 
-| Phase | 항목 | 우선순위 | 기간 | 상태 |
-|-------|------|----------|------|------|
-| **Phase 1** | Web API 모니터링 | 🔴 URGENT | 2주 | ✅ 완료 |
-| **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | 3주 | ✅ 완료 (UI 개선 완료, 운영 전환 대기) |
-| **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | 4주 | ✅ 한솔코에버 코드 머지 3차 완료 (4/3 기원님, 4/16 예승님 프린터 할당, 4/23 예승님 경화기 1대 축소). 시퀀스 서비스 + 자동화 프론트엔드 통합. 3/27 최종 시연 완료 (한솔 자체) |
-| **Phase 4** | ~~OpenMV~~ → **MaixCAM** 장비 모니터링 | 🟡 HIGH | 6주 | 🔄 OpenMV 제외, **MaixCAM으로 전환** (4/14 대표님 지시). 리서치 완료 — 1 TOPS NPU, find_blobs()/YOLO, MQTT/Modbus 내장. 빈피킹 우선, 여유 시 PoC |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 11주 | 🔄 W5 — **Modbus INT16 재설계 + Colored ICP 파이프라인 + Basler 듀얼 캡처 모듈** 추가. L1~L6 SW 완성 + 그래스프 DB 29종 + D435 Full Pipeline PASS. 인식률 100%(easy), crowded 90%, hard 60%. **다음: 실물 SLA 부품 ACCEPT 검증 → 카메라 입고(5월) → 실제 캘리브레이션** |
+| Phase | 항목 | 우선순위 | 상태 (2026-05-08) |
+|-------|------|----------|------|
+| **Phase 1** | Web API 모니터링 | 🔴 URGENT | ✅ 완료 |
+| **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | ✅ 완료 (5탭 UI + JWT 인증 + 3개 서버 운영) |
+| **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | ✅ 한솔 머지 5차 완료. 다음주 예승님 방문 시 실 출력 + 로봇 E2E 테스트 |
+| **Phase 4** | MaixCAM 장비 모니터링 | 🟡 HIGH | ⬜ 빈피킹 후순위. 보유 장비(MaixCAM 1대 + LicheeRV Nano 2대) PoC 대기 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 SW 완성 + Basler 입고 + 5/8 사무실 라이브 시도. 어댑터(ipTIME U1G-C) 토요일 도착 후 진행 |
 
 ---
 
@@ -551,217 +474,170 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 ### TODO (미완료)
 - [ ] 실제 프린터 프린트 전송 테스트 (레진 탱크 장착 필요)
 
-### 인프라
-| 구분 | 서버 | 외부 포트 | 용도 | 상태 |
-|------|------|----------|------|------|
-| 6000 서버 | 192.168.100.29:8085 (VPN: 10.145.113.8) | 8085 | **개발용** (이전 후 git 저장소만) | ✅ 동작 중 |
-| 카카오 클라우드 | 61.109.239.142:8085 | 8085 | **운영용** (웹 서비스) | ✅ 외부 접속 정상 |
+### 운영 인프라 (현재 = 2026-05-08)
 
-### 네트워크 구조
-```
-[기존/6000] 브라우저 → 106.244.6.242:8085 → 6000서버 → WireGuard → 공장PC → 프린터
-[이전/카카오] 브라우저 → 61.109.239.142:8085 → 카카오VM → (TBD) → 공장PC → 프린터
-```
-- **6000 서버 WireGuard 클라이언트 설치 완료 (3/26)**: Method B 적용 — 파리드님 conf 파일 제공, VPN IP `10.145.113.8/24`
-- ~~Method A (공유기 라우팅)~~ 실패 → Method B (서버에 WG 직접 설치)로 해결
-- WireGuard 서버: 사무실 ipTIME 공유기 (192.168.100.1 / 10.145.113.1), Endpoint: `orinu.iptime.org:56461`
-- conf 파일: `/etc/wireguard/wg0.conf` (키 정보 포함, 커밋 금지)
-- ⚠️ `systemctl`은 inactive — 서버 재부팅 시 `sudo systemctl enable --now wg-quick@wg0` 필요
-> ✅ VPN-로봇 충돌 해결 (3/18): WireGuard `AllowedIPs`에서 `192.168.100.0/24` 제거 → VPN + 로봇 동시 운용 가능
-> 🔄 중기: 카카오 클라우드 + Cloudflare Tunnel로 전환 예정 (대표님 도메인 답변 대기)
+| 서버 | URL | 인증 | 역할 | 상태 |
+|------|-----|------|------|------|
+| **공장 PC** | `https://factory.flickdone.com/` (Cloudflare Tunnel) | JWT | 운영 (실제 프린터 제어 + sequence_service + frontend) | ✅ NSSM OrinuMain 자동 시작 |
+| **카카오 VM** | `http://61.109.239.142:8085/` | JWT | 운영 (모니터링 / SaaS) | ✅ systemd 자동 시작 |
+| **6000 서버** | `http://106.244.6.242:8085/` | JWT | 개발 + 모니터링 병행 (개발 환경 본진) | ✅ systemd 자동 시작 |
 
-### 카카오 클라우드 전환 계획 (파리드님 제안, 3/16)
-```
-브라우저 → 도메인(orinumonitoringfactory.com 등) → Cloudflare → 카카오 클라우드(Public IP) → Cloudflare Tunnel → 공장 PC → 프린터/로봇/카메라
-```
-- **배경**: 대표님 2/26 지시 (5090 VM 폐기 → 카카오 클라우드 이전) + VPN-로봇 충돌 문제
-- **장점**: VPN 제거 → 로봇 네트워크 충돌 해결, outbound 터널이라 방화벽/포트포워딩 불필요, 도메인+HTTPS 자동
-- **도메인 확정 (3/18)**: `lab.flickdone.com` (flickdone.com 서브도메인, 대표님 지시). 향후 flickdone.com을 제조공정 자동화 브랜드로 사용 예정
-- **필요 사항**: Cloudflare 설정 (파리드님), 공장 PC에 Tunnel 설치, 백엔드 마이그레이션
-- ~~**미해결**: 공장 PC가 프린터(219.x)와 로봇(100.x) 양쪽 네트워크 동시 접근~~ → ✅ WireGuard AllowedIPs 수정으로 해결 (3/18)
-- ~~**주의**: 데모 시연 3/27~31~~ → **데모 시연 3/20 완료**
+**로그인 (모든 서버 공통)**: `admin` / `orinu2026!` (분기별 회전, 다음 2026-09-01)
 
-### 6000 서버 WireGuard 정보
+**진화 흐름**:
+- ~~5090 VM 운영~~ (2/12) → ~~카카오 VM 외부 접속 + Basic Auth~~ (4/16) → 카카오 + 공장 PC Cloudflare Tunnel + JWT (현재)
+- ~~3/26 6000 서버 WireGuard Method B 설치~~ → ~~4/24 Cloudflare Tunnel 도입~~ → 현재 VPN은 백업 경로로만 유지
+- 도메인 변경: ~~`lab.flickdone.com`~~ (3/18) → **`factory.flickdone.com`** (4/21 확정)
+
+### 6000 서버 VPN 정보 (백업 경로, 현재 운영 의존도 낮음)
+
 | 항목 | 값 |
 |------|-----|
 | VPN IP | 10.145.113.8/24 |
 | 인터페이스 | wg0 |
-| conf 파일 | `/etc/wireguard/wg0.conf` |
+| conf 파일 | `/etc/wireguard/wg0.conf` (키 정보, 커밋 금지) |
 | Peer Endpoint | 106.244.6.242:56461 (= orinu.iptime.org) |
-| AllowedIPs | 10.145.113.0/24, 192.168.100.0/24 |
-| PersistentKeepalive | 25 |
-| DNS | 203.248.252.2 |
+| AllowedIPs | 10.145.113.0/24 (192.168.100.0/24는 3/18 제거 — 로봇 충돌 해결) |
+| 자동 시작 | `sudo systemctl enable --now wg-quick@wg0` |
 
-### 공장 PC 정보
+> Method B 채택 (서버에 WG 직접 설치). Method A(공유기 라우팅)는 실패.
+
+### 공장 PC 정보 (운영 본진)
+
 | 항목 | 값 |
 |------|-----|
 | Windows 사용자 | `devfl` |
-| VPN IP | 10.145.113.3 |
-| PreFormServer | `C:\PreFormServer\PreFormServer.exe -p 44388` (v3.55.0.606) |
-| file_receiver | 포트 8089 → `C:\STL_Files` |
-| AnyDesk ID | 1 382 237 708 |
-| 자동 시작 | WireGuard + PreFormServer + file_receiver + AnyDesk |
-| PreForm 앱 | `C:\Program Files\Formlabs\PreForm\3.57.0.622\PreForm.exe` (별도, 서버 아님) |
+| 외부 접속 | `https://factory.flickdone.com/` (Cloudflare Tunnel `orinu-factory`) |
+| VPN IP | 10.145.113.3 (백업) |
+| AnyDesk | 원격 접속용 |
+| 배포 경로 | `D:\3D_printer_automation_0305\3D_printer_automation` |
+| Python | 3.14.3 / Node v24 |
+| 배포 방법 | `deploy.bat` (관리자 cmd, 4/30 도입) |
+| PreFormServer | `C:\PreFormServer\PreFormServer.exe -p 44388` (v3.55.0.606, 시작 프로그램 등록) |
+| PreForm 앱 | `C:\Program Files\Formlabs\PreForm\3.57.0.622\PreForm.exe` (별도) |
+| file_receiver | 포트 8089 → `C:\STL_Files` (시작 프로그램) |
+| MariaDB | 11.3 (port 3306, 자동 시작) |
+| NSSM 경로 | `C:\nssm\nssm-2.24\win64\nssm.exe` (PATH 미등록, 전체 경로 사용) |
 
 > ⚠️ PreFormServer는 `-p 44388` 옵션 필수. 옵션 없이 실행하면 바로 종료됨.
-> 시작 프로그램 바로가기: `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PreFormServer.lnk`
+> 자동 시작 체계 / 재부팅 후 체크 / NSSM 명령은 "마지막 업데이트 → 운영 인프라 핵심 정보" 섹션 참조.
 
 ---
 
-## Phase 3: HCR 로봇 연동 🔄 한솔코에버 진행 중
+## Phase 3: HCR 로봇 연동 ✅ 머지 5차 완료, 다음주 E2E 테스트 예정
 
-- **프로토콜**: ~~TCP/IP Socket~~ → **Modbus TCP** 전환 완료 (포트 502), pymodbus
-- **로봇**: HCR-12 (빌드플레이트 교체, 세척기 투입) + HCR-10L (후가공, 제품 이송)
-- **한솔코에버 협업**: `hansol-dev` 브랜치에서 작업
-- **현재 상태 (3/23 한솔 김기원 주임)**:
-  - 프린터 1대 시나리오까지 원활하게 동작
-  - 자동화 부분 = Python 단일 thread로 구현
-  - 수주 단위 장기 운영 테스트는 아직 (자동화 라인 특성상 수주 돌려봐야 이슈 파악)
-  - 3/27 최종 시연 예정
-
----
-
-## Phase 4: 비전 검사 (YOLO + OpenMV) ⬜ 대기
-
-### 용도 (3가지)
-1. **부품 식별** — YOLO + Intel RealSense
-2. **세척기/경화기 완료 감지** — OpenMV 카메라 (02-06 확정)
-3. **불량 검출** — YOLO + RealSense
-
-### OpenMV 카메라 배치 (4대)
-| 카메라 | 설치 위치 | 감지 내용 |
-|--------|----------|----------|
-| #1, #2 | 세척기 1, 2번 전면 | 세척 중/완료 |
-| #3, #4 | 경화기 1, 2번 전면 | 경화 중/완료 |
-
-### 통신 아키텍처
-```
-[OpenMV #1~#4] → WiFi → MQTT → [Mosquitto] → [FastAPI] → [HCR 로봇 (Modbus)]
-```
-
-### 기술 스택
-- **YOLO**: YOLOv8s/v11s, Intel RealSense D457
-- **OpenMV**: AE3 ($85), Edge Impulse (Classification)
-- **학습**: 최소 400장+ (상태별 100장)
-- **설계 문서**: `리서치문서6_OpenMV카메라_리서치.pdf`, `OpenMV_개발설계서.pdf`
+- **프로토콜**: Modbus TCP (포트 502), pymodbus 3.x
+- **로봇**:
+  - HCR-12 (빌드플레이트 교체, 세척기 투입) — 공장 PC 연결 (현재)
+  - HCR-10L (후가공, 제품 이송, 빈피킹) — IPC-510 이전 예정 (4/29 합의)
+- **한솔코에버 협업**: `hansol-dev` 브랜치 → 머지 5차까지 완료 (`9c161dc` / `e68c2b1` / `9f97f1e` / `b9164d9` / `9fd365a`)
+- **3/27 한솔 자체 최종 시연 완료**
+- **다음주 예승님 방문**: 실 출력 + 로봇 E2E 테스트 (시뮬 토글로 SIMUL_MODE=false)
+- **HCR-10L Modbus 레지스터** (4/15 INT16 재설계, `a13b5ce`):
+  - 비전PC → 로봇: 130~140
+  - 로봇 → 비전PC: 150~151
+  - 로봇 내장: 400~405(TCP 좌표) / 600(상태) / 700~702(명령)
+  - 인코딩: INT16 (1/10mm, 1/10deg, 16bit 정수)
 
 ---
 
-## Phase 5: 3D 빈피킹 비전 시스템 🔄 W3+ 완료 → 카메라 입고 대기
+## Phase 4: 장비 모니터링 (MaixCAM, ~~OpenMV~~ 대체) ⬜ 빈피킹 후순위
 
-> **문서**: ORINU-DEV-2026-002 (구본경 대표, 2026-03-18) — PDF로 재수령 (4/1), docx는 헤더 깨짐
-> **개발**: Mac (Intel) + venv binpick (Python 3.12 + Open3D 0.19.0) — 6000 서버 Open3D 불가 (AVX2 미지원)
+> 4/14 대표님 지시로 OpenMV → MaixCAM 전환. 이전 OpenMV 설계는 `memory/project_openmv_image_capture.md`에 역사로 보존.
+
+### 용도
+- **세척기/경화기 완료 감지** — Form Wash/Cure는 API 미지원이라 카메라 기반 감지 필요 (2026.02.06 확정)
+- **부품 식별 + 불량 검출** — Phase 5 빈피킹 카메라(Basler)와 별도, 추후 검토
+
+### 카메라 배치 (4대 예정)
+| 위치 | 감지 내용 |
+|------|----------|
+| 세척기 1, 2번 전면 | 세척 중/완료 |
+| 경화기 1, 2번 전면 | 경화 중/완료 |
+
+### 기술 스택 (2026.04.14 이후)
+- **Sipeed MaixCAM**: RISC-V SG2002 + 1 TOPS NPU + 4MP 터치 스크린
+- **온디바이스 AI**: Cloud 없이 현장 독립 동작 (find_blobs() / YOLO)
+- **통신**: WiFi 6 → MQTT (paho-mqtt 내장) + Modbus TCP/RTU 내장
+- **학습**: MaixHub (무료 사진→학습→QR 배포)
+- **보유 장비**: MaixCAM 1대 + LicheeRV Nano 2대 (4/6 수령)
+
+> 통신 아키텍처는 OpenMV 시기와 동일: `카메라 → MQTT → Mosquitto → FastAPI → HCR 로봇(Modbus)`. MQTT E2E는 3/12 검증 완료.
+
+상세: `memory/project_maixcam_monitoring.md`
+
+---
+
+## Phase 5: 3D 빈피킹 비전 시스템 🔄 SW 완성 → 5/8 카메라 라이브 진행 중
+
+> **문서**: ORINU-DEV-2026-002 (구본경 대표, 2026-03-18)
+> **개발 환경**: Mac (Intel) + venv binpick (Python 3.12 + Open3D 0.19.0). 6000 서버는 Open3D 불가 (AVX2 미지원)
 > **파이프라인**: L1 영상취득 → L2 전처리 → L3 DBSCAN분할 → L4 FPFH+RANSAC+ICP → L5 그래스프 → L6 Modbus
-> **대표님 지시 (4/1)**: ① 문서 이해 ② 7.1 튜토리얼 ③ 논문 참고 ④ Basler 기반 개발 ⑤ 보고. **카메라 입고 전 SW 완성 필수**, OpenMV보다 우선순위 높음
 
-### W0 학습 현황 (2026-03-23 완료)
+### 현재 진행 상태 (2026-05-08)
 
-| 구분 | 파일 수 | 줄 수 | 상태 |
-|------|--------|-------|------|
-| 논문 리뷰 | 3편 (FPFH, ICP, Open3D) | — | ✅ 완료 |
-| 튜토리얼 (`tutorials/01~11`) | 11개 | 4,247줄 | ✅ 전체 PASS |
-| 실전 코드 (`src/`) | 3개 | 1,902줄 | ✅ 전체 PASS |
-| **합계** | **14개** | **6,149줄** | **✅** |
+| 단계 | 상태 |
+|------|------|
+| W0~W2 학습 (논문 3편 + 튜토리얼 11개 + 실전 코드 3개, 6,149줄) | ✅ 완료 (3/23) |
+| W3+ L1~L6 파이프라인 + 그래스프 DB 29종 + E2E 시나리오 | ✅ 완료 (4/6~10) |
+| Modbus INT16 재설계 + Colored ICP + Basler 듀얼 캡처 모듈 | ✅ 완료 (4/15) |
+| RealSense D435 라이브 + Full Pipeline PASS | ✅ 완료 (4/13~14) |
+| 카메라 입고 (Blaze-112 + ace2) | ✅ 4/23 입고 / 5/8 사무실 운반 |
+| Mac 라이브 검증 (어댑터 도착 후) | 🔄 진행 중 (블로커: 어댑터 토요일 도착) |
+| 코드 수정 (BLAZE_112 fx/fy + ACE2 모델명) | ⏳ 라이브 검증 후 |
+| eye-in-hand 캘리브레이션 (2세트) + Colored ICP 실연동 | ⏳ 카메라 검증 후 |
+| 실물 부품 다각도 학습 데이터셋 (대표님 5/6 지시 2번) | ⏳ 카메라 검증 후 |
+| X/Y 각도 데이터 명세 초안 (대표님 5/6 지시 3번) | ⏳ **코드 짜기 전 align 필요** ⭐ |
 
 ### 핵심 성과 수치
 
-**W0~W2 (더미 데이터 시뮬)**:
-| 지표 | 결과 | 목표 | 판정 |
-|------|------|------|------|
-| 부품당 매칭 시간 | **0.33초** | 2.0초 | ✅ 6배 여유 |
-| 인식률 | **100%** (더미 3종 자기매칭) | 85% | ✅ |
-| SizeFilter 효과 | 5종→2.2종 (56% 절감) | — | ✅ |
-
-**W3+ (실제 STL 29종 기반 E2E, 4/6~4/10)**:
+**W3+ 실제 STL 29종 기반 E2E** (4/6~10, Mac):
 | 지표 | 결과 | 목표 | 판정 |
 |------|------|------|------|
 | 인식률 (easy, 5종) | **100%** (5/5) | 85% | ✅ |
 | 인식률 (crowded, 10종) | **90%** (9/10) | 80% | ✅ |
-| 인식률 (hard, 5종) | **60%** (3/5) | 85% | ⚠️ FPFH 한계, Colored ICP 필요 |
-| RMSE | **1.0~1.5mm** | 3mm | ✅ 우수 |
+| 인식률 (hard, 5종) | **60%** (3/5) | 85% | ⚠️ FPFH 한계 → Colored ICP 도입 |
+| RMSE | **1.0~1.5mm** | 3mm | ✅ |
 | 매칭 시간 (OBB SizeFilter) | **0.4~0.6초** | 2.0초 | ✅ 3~5배 여유 |
-| L1~L6 파이프라인 | **전체 구현 완료** | 카메라 전 SW 완성 | ✅ |
+| L1~L6 파이프라인 | **전체 구현 완료** | — | ✅ |
 | L5 그래스프 DB | **29종 완성** | 29종 | ✅ |
-| L6 Modbus TCP | 서버 동작 확인 | 로봇 실전 | 🔄 입고 후 |
+| 4/22 데모 리허설 synthetic | **9.7s → 1.5s** (8배 단축) | — | ✅ |
 
-### 레진별 파라미터 추천
+### 레진별 파라미터 (참고)
 
 | 레진 | voxel | Robust kernel | 비고 |
 |------|-------|--------------|------|
-| Grey/White | 2mm | Tukey 1mm | 표준 파라미터 |
+| Grey/White | 2mm | Tukey 1mm | 표준 |
 | Clear | 3~4mm | SOR + 멀티스케일 | 반투명 → ToF 노이즈 큼 |
 | Flexible | 2mm | Huber 1.5mm | 변형 허용 |
 
-### 구현 코드 목록
+### 코드 위치 (구현 완료)
 
-| 파일 | 줄 | 역할 |
-|------|-----|------|
-| `tutorials/01_registration_pipeline.py` | 321 | FPFH+RANSAC+ICP 기본 |
-| `tutorials/02_stl_to_reference.py` | 223 | STL→레퍼런스+FPFH 캐싱 |
-| `tutorials/03_dbscan_segmentation.py` | 273 | DBSCAN 분할 |
-| `tutorials/04_fgr_fast_global_registration.py` | 385 | FGR vs RANSAC |
-| `tutorials/05_multiscale_icp.py` | 438 | 다중 스케일 ICP |
-| `tutorials/06_registration_confidence.py` | 476 | 신뢰도 평가 |
-| `tutorials/07_full_binpicking_simulation.py` | 599 | 전체 파이프라인 시뮬 |
-| `tutorials/08_colored_icp.py` | 337 | Colored ICP |
-| `tutorials/09_noise_robustness.py` | 481 | 노이즈 강건성 |
-| `tutorials/10_pypylon_api_study.py` | 714 | pypylon API + Blaze-112 스펙 |
-| `tutorials/11_noise_robustness_advanced.py` | 590 | 노이즈 심화 (Clear 대응) |
-| `src/recognition/cad_library.py` | 430 | STL→레퍼런스 클라우드+FPFH 캐시 (빌드/로드/변경감지) |
-| `src/recognition/size_filter.py` | 441 | 크기 사전 필터 (30→2.2종) |
-| `src/recognition/pose_estimator.py` | 776 | 1:N 매칭 루프 + multi-res ICP + top-K 리파인 |
-| `src/grasping/grasp_planner.py` | 250 | L5 그래스프 자세 계산 (grasp_database.yaml 기반) |
-| `src/communication/modbus_server.py` | 250 | L6 Modbus TCP 서버 (pymodbus 3.x, FLOAT32) |
-| `src/main_pipeline.py` | 350 | L1~L6 통합 파이프라인 (BinPickingPipeline) |
-| `src/acquisition/hand_eye_calibration.py` | 842 | 핸드-아이 캘리브레이션 |
-| `src/acquisition/depth_to_pointcloud.py` | 155 | depth map → Open3D PointCloud 변환 |
-| `src/preprocessing/cloud_filter.py` | 236 | L2 전처리 파이프라인 (레진별 프리셋) |
-| `src/segmentation/dbscan_segmenter.py` | 208 | L3 DBSCAN 분할 + Cluster 클래스 |
-| `config/grasp_database.yaml` | 307 | 29종 부품별 그래스프 파라미터 정의 |
-| `tests/test_e2e_redwood.py` | 240 | Redwood RGB-D E2E 5단계 테스트 |
-| `tests/test_e2e_cad_matching.py` | 700 | 실제 STL 29종 기반 합성 씬 E2E (easy/medium/hard + crowded/mixed-size/stress 시나리오) |
+`bin_picking/` 하위:
+- `tutorials/01~11` (4,247줄, ✅ 전체 PASS)
+- `src/recognition/` — cad_library / size_filter / pose_estimator
+- `src/preprocessing/cloud_filter.py` — L2 전처리 (레진별 프리셋)
+- `src/segmentation/dbscan_segmenter.py` — L3
+- `src/grasping/` — grasp_planner + `grasp_database.yaml` (29종)
+- `src/communication/modbus_server.py` — L6 (pymodbus 3.x, INT16)
+- `src/acquisition/` — depth_to_pointcloud / realsense_capture / **basler_capture** / hand_eye_calibration
+- `src/main_pipeline.py` — L1~L6 통합
+- `tests/test_e2e_redwood.py` + `tests/test_e2e_cad_matching.py`
 
-### 7.1 필수 학습 체크리스트
-
-| # | 항목 | 상태 |
-|---|------|------|
-| 1 | Open3D 공식 튜토리얼 (Registration 섹션) | ✅ tutorials 01~11 |
-| 2 | pypylon 공식 예제 | ✅ tutorials/10 + 6000서버 pypylon 26.3.1 설치 (4/1) |
-| 3 | Basler Blaze-112 Application Note | ⬜ pylon 설치 후 문서 폴더, 또는 웹 다운로드 필요 |
-
-### 카메라 입고 전 할 일 (문서 4.1절)
-
-| # | 항목 | 상태 |
-|---|------|------|
-| 1 | Redwood RGB-D 데이터셋으로 E2E 파이프라인 테스트 | ✅ Mac 실행 완료 (4/3) — 전체 PASS, 2.2s, fitness=1.0 |
-| 2 | depth_to_pointcloud() 변환 함수 작성/검증 | ✅ 완료 (4/3) — confidence map 필터링, colored PC 지원 |
-| 3 | pypylon 설치 + API 숙지 | ✅ pypylon 26.3.1 (pylon 런타임 번들 포함) |
-| 4 | pylon Camera Software Suite 8.x 시스템 설치 | ➡️ 비전 PC 입고 후 |
-| 5 | Blaze-112 Supplementary Package 설치 | ➡️ 비전 PC 입고 후 |
+상세 파일 목록 / 줄 수 / 역할: `memory/project_binpicking.md` + `memory/project_binpicking_e2e_history.md`
 
 ### 남은 개발 작업
 
-| 작업 | 산출물 | 블로커 | 예상 시점 |
-|------|--------|--------|----------|
-| ~~공장 PC STL 25종 가져오기~~ | ~~models/cad/~~ | — | ✅ 완료 (4/6) — Google Drive 55개 → 29종 |
-| ~~STL→레퍼런스 + FPFH 캐싱~~ | ~~cad_library.py~~ | — | ✅ 완료 (4/6, `b111192`) |
-| ~~폴더 구조 리팩토링~~ | ~~문서 섹션 6 구조로 전환~~ | — | ✅ 완료 (4/3, `99b02fe`) |
-| ~~depth_to_pointcloud + Redwood E2E~~ | ~~blaze_camera.py 스켈레톤~~ | — | ✅ 완료 (4/3, `d977890`) |
-| ~~L2 전처리 모듈화~~ | ~~src/preprocessing/cloud_filter.py~~ | — | ✅ 완료 (4/3, `9517987`) |
-| ~~L3 분할 모듈화~~ | ~~src/segmentation/dbscan_segmenter.py~~ | — | ✅ 완료 (4/3, `9517987`) |
-| ~~L5 그래스프 계획~~ | ~~grasp_planner.py, grasp_database.yaml~~ | — | ✅ 완료 (4/6, `8c6629b`) — 17종 |
-| ~~L6 로봇 통신~~ | ~~modbus_server.py~~ | — | ✅ 완료 (4/6, `8c6629b`) |
-| ~~L1~L6 통합~~ | ~~main_pipeline.py~~ | — | ✅ 완료 (4/6, `8c6629b`) |
-| ~~OBB SizeFilter + 포인트 비율 필터~~ | ~~size_filter.py, pose_estimator.py~~ | — | ✅ 완료 (4/8, `9cce5de`) — medium 100%, 0.5s |
-| ~~E2E 난이도 테스트 (medium/hard)~~ | ~~테스트 결과 분석~~ | — | ✅ 완료 (4/8) — easy/medium 100%, hard 60% |
-| ~~그래스프 DB 29종 완성~~ | ~~grasp_database.yaml~~ | — | ✅ 완료 (4/10, `2c27a9f`) — STL bbox 기반 추정 |
-| ~~E2E 시나리오 확장~~ | ~~crowded/mixed-size/stress~~ | — | ✅ 완료 (4/10, `2c27a9f`) — crowded 90%, multi-res ICP |
-| E2E 실패 케이스 시각화 | 매칭 결과 오버레이 PNG 자동 저장 | — | 4월 중 |
-| eye-in-hand 캘리브레이션 설계 | hand_eye_calibration.py 확장 | 카메라 5월 초 | 카메라 입고 후 |
-| multi-view 재촬영 파이프라인 | 로봇암 카메라 재촬영 로직 | 카메라+로봇 | 카메라 입고 후 |
-| W7: 카메라 입고 + 실제 연동 | calibration.py (eye-to-hand + eye-in-hand 2세트) | 카메라 5월 초 | 5/5~5/9 |
-| Colored ICP 적용 | pose_estimator.py 확장 | 카메라 입고 (RGB 필요) | 카메라 입고 후 |
-| 대표님 보고 | 진행 보고서 + **실패 케이스 이미지 첨부** | — | 수시 |
+| 작업 | 블로커 | 예상 시점 |
+|------|--------|----------|
+| Mac 라이브 검증 (Blaze 부팅 OK / pylon 설치 / depth 스트림) | 어댑터 도착 (5/9 토요일) | 5/10~5/12 |
+| 코드 수정 (BLAZE_112 fx/fy 460→416/188, ACE2 모델명 a2A2448) | 라이브 검증 | 5/10~ |
+| 실물 SLA 부품 ACCEPT 검증 | 라이브 + 부품 | 5월 중 |
+| X/Y 각도 데이터 명세 초안 ⭐ | 없음 (지금 가능) | 다음주 align 전 |
+| 실물 부품 다각도 촬영 데이터셋 | 라이브 + 명세 align | 5월 중~후반 |
+| eye-in-hand 캘리브레이션 (2세트) | 카메라 + 로봇 | 카메라 입고 후 |
+| Colored ICP 실연동 | RGB 데이터 | 라이브 + ace2 |
+| multi-view 재촬영 파이프라인 | 카메라 + 로봇 | 6~7월 |
 
 ---
 
@@ -918,8 +794,14 @@ JWT_ABSOLUTE_MAX_DAYS=30
 - ✅ SW 개발 (02-26~03-19): API 분석, 로봇/비전/3D프린팅 연동, 시퀀스 개발 — 김기원(퇴사), 이나라, 이예승
 - ✅ 데모 시연 (03-20): 경기ITP-코에버 3자 최종 확인 완료
 - ✅ 한솔 최종 시연 (03-27): 한솔 자체 진행
-- ✅ 코드 머지 1차 (04-03): `hansol-dev` → main (`9c161dc`) — 김기원 주임 코드
-- ✅ 코드 머지 2차 (04-16): `hansol-dev` → main (`e68c2b1`) — 이예승 사원, 프린터 할당 기능
+- ✅ 머지 1차 (04-03, `9c161dc`): 김기원 주임 코드 통합 (sequence_service / AutomationPage / automation_db.py)
+- ✅ 머지 2차 (04-16, `e68c2b1`): 이예승 사원 — 자동화 CMD 프린터 할당
+- ✅ 머지 3차 (04-23, `9f97f1e`): 이예승 사원 — 경화기 2→1대 축소 (Cure 2 비활성화)
+- ✅ 머지 4차 (05-06, `b9164d9`): 이예승 사원 — 시뮬 토글 + 프린터 별명 매핑
+- ✅ 머지 5차 (05-06, `9fd365a`): 이예승 사원 — `cell_state.simul_mode` 컬럼 자동 마이그레이션 (4차 누락분)
+- ⏳ 다음주 예승님 방문: 실 출력 + 로봇 E2E 테스트 (시뮬 토글 OFF)
+
+상세: `memory/project_hansol_merge_issues.md`, `memory/project_meeting_0423_hansol.md`, `memory/project_meeting_0506_hansol.md`
 
 ---
 
@@ -938,222 +820,198 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-05-08 (금, 공장 출근 + Basler Blaze-112 박스 개봉 + 사무실 Mac 셋업 시도 + AMCA017 어댑터 사양 사기 발견)
+> 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 5/8 오후 (사무실 — 카메라 부팅 OK, AMCA017 어댑터 블로킹)
+### 마지막 업데이트 일자: 2026-05-08
 
-**5/6 대표님 빈피킹 지시 1번** 후속, 사무실 Mac으로 라이브 검증 시도.
+### 마일스톤 (시간 순)
 
-**케이블 재고 확인** (5/8 공장 정답 3종 + 예비 1종 모두 사무실 보유):
-- ✅ `GigE-Cable-10M-R` (데이터, M12 X-coded ↔ RJ45)
-- ✅ `M12-8P-PWR-Supply-10M` (전원, M12 A-coded ↔ DC 잭) — 처음에 봉투에서 못 찾았다가 재확인 시 발견
-- ✅ `M12-8P-RJ45-10M-R` (예비 데이터, M12 ↔ RJ45 양옆 나사락)
-- ✅ DS240020 어댑터 (24V/2A)
+| 시기 | 마일스톤 | 결과 / 메모리 참조 |
+|------|---------|-------------------|
+| 2026-01 | Phase 1 Web API 모니터링 착수 | ✅ 완료 |
+| 2026-02 | Phase 2 Local API + 프론트 UI / 5090 VM 운영 | ✅ 완료 (5090은 폐기, 카카오로 전환) |
+| 2026-02-12 | 대표님 데모 성공 → PreForm 동등 구현 지시 | ✅ 5탭 UI + 알림벨 완료 |
+| 2026-02-26 | 소스코드 공유 결정 + Phase 전환 | 🔄 한솔 협업 시작 |
+| 2026-03 (W11~W13) | Phase 4 (OpenMV→MaixCAM) + 한솔 PR + WireGuard | 🔄 MaixCAM 후순위 |
+| 2026-03-27 | 한솔코에버 최종 시연 | ✅ 한솔 자체 진행 |
+| 2026-04-03 | 한솔 머지 1차 (`9c161dc`) — 김기원 코드 통합 | ✅ — `memory/project_hansol_merge_issues.md` |
+| 2026-04-06~10 | 빈피킹 W3+ 파이프라인 완성 (L1~L6 + 그래스프 DB 29종) | ✅ — `memory/project_binpicking.md` + `memory/project_binpicking_e2e_history.md` |
+| 2026-04-13~14 | RealSense D435 라이브 연동 + Full Pipeline PASS | ✅ — `memory/project_realsense_d435.md` |
+| 2026-04-14 | HCR-10L 로봇 교육 1회차 (펜던트 + Modbus TCP) | ✅ — `memory/reference_hcr_user_education.md` |
+| 2026-04-15 | Modbus INT16 재설계 + Colored ICP + Basler 듀얼 캡처 모듈 | ✅ — 카메라 입고 전 SW 마무리 |
+| 2026-04-16 | 한솔 머지 2차 (`e68c2b1`) + 카카오 VM 외부 접속 + Basic Auth | ✅ — `memory/project_kakao_vm_migration.md` |
+| 2026-04-21 | 도메인 확정 `factory.flickdone.com` | ✅ |
+| 2026-04-22 | 데모 리허설 피드백 반영 (synthetic 9.7s→1.5s, 크래시 방어) | ✅ 커밋 6건 |
+| 2026-04-23 | Basler 입고 + IPC-510 입고 + 한솔 3자 회의 + 머지 3차 (`9f97f1e`) | ✅ — `memory/project_meeting_0423_hansol.md` |
+| 2026-04-24 | Cloudflare Tunnel 구축 + NSSM OrinuMain 등록 + DB(MariaDB) 재조사 + Formlabs Secret Rotate | ✅ — `memory/project_cloudflare_tunnel.md` |
+| 2026-04-29 | 🔥 공장 PC 원격 복구 (origin URL 정정 + aiomqtt 누락) | ✅ — `memory/project_factory_pc_remote_recovery_0429.md` |
+| 2026-04-29 | KAIST 부트캠프 합격 (4/30~7/9) | ✅ — `memory/project_kaist_bootcamp.md` |
+| 2026-04-30 | `deploy.bat` 도입 + smoke test + 재부팅 자동복구 검증 | ✅ — `memory/project_deploy_bat.md` |
+| 2026-05-06 | JWT 로그인 도입 + 한솔 머지 4·5차 + 공장 PC 응답 영구 해결 (12시간, 11커밋) | ✅ — `memory/project_web_auth_security.md` |
+| 2026-05-06 | 한솔 3자 회의 (4DoF / 다면 인식 / 한화 패키지) + 대표님 빈피킹 개인 지시 4가지 | ✅ — `memory/project_meeting_0506_hansol.md` + `memory/project_binpicking_ceo_directive_0506.md` |
+| 2026-05-08 | Basler 박스 개봉 + Mac 사무실 셋업 + 어댑터 발주 결정 (ipTIME U1G-C) | 🔄 진행 중 — 토요일 어댑터 도착 대기 |
 
-**연결 결과**:
-- 데이터: GigE-Cable-10M-R → Blaze 오른쪽 ETHERNET 포트 / RJ45 → AMCA017 → Mac
-- 전원: M12-PWR → Blaze 왼쪽 / 반대쪽 → DS240020 → 콘센트
-- ✅ **카메라 부팅 성공** — STATUS LED 녹색 깜빡 + ETHERNET LED 빨강 (매뉴얼 정상 패턴)
+### 핵심 의사결정 (이유 + 결과 보존)
 
-**ace2 추가 발견**: 본체에 RJ45 직결 박혀있음 → M12 변환 불필요 (5/8 공장 메모상 "ace2 케이블 미해결" 사실상 해결)
+#### 운영 서버 — 5090 폐기 → 카카오 VM 이전 (2026-02-26)
+- **배경**: 5090 VM 한계 + VPN-로봇 네트워크 충돌
+- **결정**: 운영을 카카오 클라우드로 이전 (대표님 지시)
+- **결과**: 4/16 카카오 VM 외부 접속 정상, Basic Auth 적용. 4/24 Cloudflare Tunnel 도입으로 공장 PC가 외부 접속 단일 진입점이 됨
 
-**🔴 AMCA017 USB-C 허브 = 사양 사기 확정**:
+#### 프린터 제어 경로 — VPN(Method B) → Cloudflare Tunnel
+- **배경**: WireGuard VPN으로 6000↔공장 연결 → 도메인 확정 + 상용화 대비 + VPN 의존도 감소 필요
+- **결정**: 4/21 도메인 `factory.flickdone.com` 확정 → 4/24 Cloudflare Tunnel `orinu-factory` 구축 → 공장 PC NSSM OrinuMain 자동 시작 등록
+- **결과**: 외부 HTTPS 200 운영, 재부팅/정전 자동 복구. VPN은 개발/백업용으로 유지 (6000 서버 `10.145.113.8`)
+- 상세: `memory/project_cloudflare_tunnel.md`, `memory/reference_factory_pc_deployment_guide.md`
 
-```bash
-# Mac 시스템 환경설정: USB 10/100 LAN (자체 할당 IP 169.254.1.90)
-# ifconfig en6
-media: autoselect (100baseTX <full-duplex>)   ← 100Mbps 한계
+#### 인증 방식 — Basic Auth → JWT 로그인 (2026-05-06)
+- **배경**: 4/24 Cloudflare Tunnel 활성화 후 공장 PC `.env`에 BASIC_AUTH_* 변수 누락 사고 (외부 인증 없는 상태로 운영)
+- **결정**: JWT 토큰 + React 로그인 페이지 + 7일 sliding refresh + 30일 절대 최대
+- **결과**: 3개 서버(6000/카카오/공장) 동기화. `admin` / `orinu2026!`. 분기별 회전 (다음 2026-09-01)
+- 상세: `memory/project_web_auth_security.md`
 
-# system_profiler SPUSBDataType
-USB2.0 HUB (Vendor: wch.cn, Speed: 480 Mb/s)
-└── USB 10/100 LAN (Vendor: wch.cn, Speed: 480 Mb/s)
-```
+#### 공장 PC 응답 일관성 — `.env` 가짜 알림 자격증명 영구 fix (2026-05-06)
+- **증상**: `factory.flickdone.com` 1회차 빠르고 이후 timeout, Cloudflare 524
+- **진짜 원인**: `.env`의 가짜 알림 자격증명(SMTP/Slack/FCM 6개)이 매 폴링마다 5초 timeout 누적 → web-api 응답 막힘
+- **결정**: `.env` 6개 비우기 → 코드가 `not_configured`로 즉시 skip, `.env.example`도 빈 값 + 사고 이력 주석
+- **결과**: 외부 10번 연속 401+0.2초
 
-**3중 사양 사기**:
-1. 박스 표기 "5Gbps SuperSpeed USB" → 실제 USB 2.0 (480Mbps)
-2. 박스 표기 "10/100/1000mbps Adaptive" → 실제 칩셋 "USB 10/100 LAN"
-3. KC 인증(R-R-amR-AMCA017)에도 허위 명시
+#### 공장 PC 배포 — 수동 9단계 → `deploy.bat` 1줄 (2026-04-30)
+- **배경**: 4/29 원격 복구 시 수동 9단계 절차 + 인코딩 깨진 머지가 라이브 직행할 위험
+- **결정**: `deploy.bat` 5단계(git pull / pip / npm build / nssm restart / health check) 각 errorlevel abort. GitHub Actions runner는 라이브 직행 위험으로 기각
+- **결과**: 4/30 smoke test 완료 (vite build + NSSM 재시작 + HTTP 200). 5/6에 좀비 정리 로직 추가
+- 상세: `memory/project_deploy_bat.md`
 
-USB 2.0 자체가 Gigabit Ethernet 협상 불가 + 칩셋도 100Mbps 한계. Blaze-112 GigE Vision 표준 요구치(1000Mbps) 미달.
+#### DB 아키텍처 — MariaDB 11.3 (공장 PC) + SQLite (web-api)
+- **배경**: 4/24 오전 "MySQL 미설치" 잘못 판단 → 오후 재조사 시 MariaDB 11.3이 자동시작 중이고 `automation` DB가 sequence_service 로그 적재 중
+- **현재**: 공장 PC = MariaDB 11.3(port 3306, 자동화 로그) + SQLite(web-api 프리셋/알림). 6000/카카오 = SQLite 모니터링 전용
+- **올바른 확인 방법**: `netstat :3306` → `tasklist` PID → `mysqld.exe` 확인
+- **옵션 2c (원격 DB 접근)**: Cloudflare Tunnel TCP ingress + 카카오 VM cloudflared 프록시 + Access Service Token. 5월 후반 구현 예정. 실시간 제어는 절대 터널 경유 금지
+- 상세: `memory/project_sequence_service_deployment.md`
 
-**다음 단계**:
-1. **식사 후 (5/8 저녁)**: Mac USB-C 포트 4개 모두 시도 + `ifconfig en6 | grep media` 결과 기록 (예상: 모두 100baseTX)
-2. **쿠팡 로켓배송 즉시 주문**: TP-Link UE300C / Anker A83410 / Apple USB-C → Gigabit (RTL8153 또는 AX88179A 칩셋, 토요일 도착)
-3. **대기 동안**: pylon Software Suite + Blaze Supplementary Package 사전 다운로드
-4. **토요일 도착 후**: Mac IP 192.168.10.1/24 고정 → pylon 설치 → IP Configurator → pylon Viewer 라이브 depth → `basler_capture.py` 실연동 → BLAZE_112_SPEC fx/fy + ACE2_5MP_SPEC 모델명 수정
+#### Phase 4 — OpenMV → MaixCAM 전환 (2026-04-14)
+- **배경**: OpenMV AE3로 세척기/경화기 완료 감지 검토 중 → MaixCAM이 성능 우위 (RISC-V + 1 TOPS NPU, 4MP)
+- **결정**: 대표님 지시로 OpenMV 제외, MaixCAM으로 전환. Cloud 없이 온디바이스 AI
+- **현재**: 빈피킹(Phase 5) 우선, MaixCAM은 여유 시 PoC. 보유 장비 = MaixCAM 1대 + LicheeRV Nano 2대
+- 상세: `memory/project_maixcam_monitoring.md`, `memory/project_openmv_image_capture.md` (역사)
 
-**AMCA017 처분**: 박스/영수증 보관 → 사양 허위 환불 클레임 근거 (KC 인증번호로 신고 가능)
+#### 빈피킹 카메라 배치 — eye-in-hand 2대 동시 마운트 (2026-04-23 한솔 회의)
+- **배경**: 4/10 대표님 피드백 = "1대 고정 + 1대 로봇암(eye-in-hand)" 검토
+- **결정**: 4/23 한솔 회의에서 **eye-in-hand + Blaze-112(ToF) + ace2(RGB) 2대 동시 마운트** 합의 (한솔 김주엽 파트장 + 대표님 일치)
+- **브라켓**: 코에버 설계 → 오리누 3D 출력 → 검증 후 철제 가공 (5/6 회의 재확인)
 
-**참고 문서**:
-- `memory/project_basler_office_setup_0508.md` ⭐ NEW (사무실 셋업 + 어댑터 진단 + 4개 포트 계획 + 구매 가이드)
-- `memory/project_basler_unboxing_0508.md` (5/8 공장 박스 개봉 + ace2 RJ45 직결 정정)
+#### 빈피킹 좌표 — 6DoF Euler ZYX → 4DoF X,Y,Z,Theta (2026-05-06 한솔 회의)
+- **배경**: 빈 안 부품의 다면 처리를 좌표 차원으로 풀려고 하니 복잡
+- **결정**: 좌표는 4DoF(X,Y,Z,Theta)로 단순화. 다면 처리는 **자세 분리(A자세/B자세) + 리그립**으로 해결
+- **블로커**: 한화 로보틱스 별도 라이브러리/패키지 = 한솔 이예승 ASAP 확인 (답 받기 전 좌표 출력 코드 확정 금지)
+
+#### 한솔 협업 담당자 변경
+- **2/24~3/24**: 김기원 주임(`justkiwon`) — PR #3 제출 후 `hansol-dev` 브랜치 전환
+- **4/3 퇴사 확인**: 김기원 주임 한솔코에버 퇴사. 직접 지원 불가, 구조/플로우 문의는 가능. **공장 PC origin이 퇴사자 fork 가리켜 4/29 원격 복구 사고로 이어짐**
+- **현재**: 이예승 사원 (한솔코에버, GitHub: `eseung97@gmail.com`) — 4/16 머지 2차, 4/23 머지 3차, 5/6 머지 4·5차
 
 ---
 
-### 5/8 오전 (Basler 박스 개봉)
+### 5/8 진행 상세 (현재 진행 중인 작업)
 
-**5/6 대표님 빈피킹 지시 1번** ("Basler 카메라 로컬 테스트 우선") **착수**.
+#### 1. Basler 박스 개봉 + 부품 식별 (오전, 공장)
 
-**카메라 박스 개봉 + 식별**:
-- Blaze-112 (S/N 40737830, 2025-11 독일 제조) + ace2 a2A2448-23gcBAS (S/N 41881328, mounting bracket 결합 상태)
-- ⚠️ ace2 실모델은 **a2A2448-23gcBAS** (우리 코드 가정 a2A2590-22gcPRO와 다름) → `basler_capture.py` 수정 필요
+- **카메라 본체 식별 + S/N**:
+  - Blaze-112 (ToF, depth): S/N 40737830, MAC 00:30:53:37:BB:6E, 2025-11 독일 제조
+  - ace2 (RGB): **a2A2448-23gcBAS** (우리 코드 가정 a2A2590-22gcPRO와 다름!), S/N 41881328, mounting bracket 결합
+- **매뉴얼 7장 핵심**:
+  - Blaze-112 24VDC 고정 (PoE 아님, 21V 미만 손상 위험)
+  - FOV 75°×104° → 코드 fx=fy=460 가정 잘못, 정정 fx≈416/fy≈188
+  - mounting bracket 통합 174 × 80.6 × 73mm (코에버 브래킷 설계 치수)
+- **케이블 정답 4종** (라벨 인쇄 모델명 우선 신뢰): DS240020(24V/2A) + M12-8P-PWR-Supply-10M + GigE-Cable-10M-R + M12-8P-FJ45-10M-R(예비)
+- **사용 분류**: 12V 세트(LOADUS EQ-4212Fctc + M8/6P-PWR)는 5/8 오전엔 NG로 분류됐으나 **저녁에 ace2 전용 전원으로 정정**
+- 상세: `memory/project_basler_unboxing_0508.md`, `memory/reference_basler_blaze_112.md`
 
-**매뉴얼 7장 판독 핵심**:
-- Blaze-112은 **24VDC 고정** (PoE 아님, 21V 미만 손상)
-- FOV **75°×104°** (수평×수직, 수직이 더 넓음) → 우리 코드 fx=fy=460 가정 잘못
-- 광학 중심 offset이 카메라 하우징 앞면 기준 아님 → hand-eye 캘리브레이션 영향
-- mounting bracket 조립 후 **174 × 80.6 × 73mm** (코에버 브래킷 설계 치수)
+#### 2. 사무실 Mac 셋업 + AMCA017 어댑터 사양 미달 발견 (오후)
 
-**케이블/어댑터 정답 4종 (라벨 인쇄 모델명)**:
-- DS240020 (MH AC/DC, 24V/2A) — Blaze-112 전원 어댑터
-- M12-8P-PWR-Supply-10M — 전원 케이블 (DS240020과 한 세트)
-- GigE-Cable-10M-R — 데이터 케이블 (M12 X-coded ↔ RJ45)
-- M12-8P-FJ45-10M-R — 예비 데이터 케이블
+- **카메라 부팅 성공 ✅**: STATUS LED 녹색 깜빡 + ETHERNET LED 빨강 (매뉴얼 정상 패턴)
+- **ace2 추가 발견**: 본체에 RJ45 직결 박혀있음 → M12 변환 불필요 (일반 LAN 케이블 OK)
+- **AMCA017 USB-C 허브 사양 미달 확인**:
+  - `system_profiler` → USB 2.0 HUB (480Mbps, Vendor wch.cn)
+  - `ifconfig en6` → `media: 100baseTX <full-duplex>` (100Mbps 한계)
+  - 박스 표기(USB 3.0 + 10/100/1000) vs 실제(USB 2.0 + 10/100) 불일치
+  - Blaze GigE Vision은 1Gbps 필수 → 어댑터 신규 구매 필요
 
-**사용 금지 (12V 세트)**:
-- LOADUS EQ-4212Fctc (DC 12V/3.5A) — Blaze는 24V 전용
-- M8/6P-PWR (12V용 페어 케이블)
-- 박스에 매직 표기 "(Blaze-101)"은 사람 오기 가능, **라벨 인쇄 모델명 우선 신뢰**
+#### 3. ace2 12V 부품 운반 + 한솔 답변 + 어댑터 발주 결정 (저녁)
 
-**공장→사무실 운반**: 카메라 1세트 + 정답 3종(DS240020, M12-PWR, GigE-Cable-10M-R) 챙김. 12V 세트 + 예비 GigE는 공장 보관.
+- **ace2 12V 전원 부품**: 5/8 오전 NG로 분류했던 `LOADUS EQ-4212Fctc` + `M8/6P-PWR` = **ace2 전용 전원**으로 정정. 공장 재방문 운반 완료
+- **한솔 단톡 답변** (김주엽 과장):
+  - ace2 C-mount 렌즈 + 이더넷 케이블 = 한솔 측 보유 (추가 구매 불필요, 인수 예정)
+  - "렌즈 2개" 의미 추가 확인 필요 (ace2 1대 vs 2대)
+- **어댑터 발주 결정**: **ipTIME U1G-C × 1개** (USB 3.0 5Gbps + Realtek RTL8153, EFM 정품, 약 1.5~2만원)
+  - 탈락: TP-Link UE300C(Sonoma 미지원 보고) / Belkin F2CU040(2019 MBP 크래시 사례) / Anker A83410(Sonoma drop 사례) / Sonnet Solo2.5G(직구 1주일+) / UGREEN CM275(오버엔지니어링)
+  - 1개만 발주 이유: ace2 부품 한솔 보유 → 추가 어댑터는 ace2 셋업 시점 별도 발주
+- **결제 요청 메시지 작성 완료** (팀장님 제출용)
 
-**ace2 미해결**: ace2용 케이블 + C-mount 렌즈가 박스에서 안 보임 → 한솔 예승님께 확인 요청 필요. 일단 Blaze-112 단독 셋업 진행.
+#### ⭐ 어댑터 도착 후 검증/셋업 절차 (8단계, 반드시 순서대로)
 
-**다음 단계 (사무실 도착 후)**:
-1. USB-C ↔ Gigabit Ethernet 어댑터 확인 (Mac Intel, RJ45 없음, 100Mbps NG)
-2. pylon Software Suite + Blaze Supplementary Package 설치 (macOS dmg)
-3. pypylon 설치 + Mac 이더넷 IP 고정 (192.168.10.1/24)
-4. pylon Viewer로 Blaze 라이브 depth 스트림 확인
-5. `basler_capture.py` 실연동 + 코드 수정 (fx/fy/모델명)
+| # | 행동 | 검증 명령 / 기대 결과 |
+|---|------|---------------------|
+| 1 | 박스 개봉 + Mac에 꽂기 | `system_profiler SPUSBDataType \| grep -B 2 -A 8 "RTL\|U1G\|Realtek"` → `Speed: Up to 5 Gb/s` |
+| 2 | 이더넷 link 확인 | `ifconfig en6 \| grep media` → `1000baseT <full-duplex>` |
+| 2-1 | (link 안 잡힘 시) 드라이버 설치 | iptime.com → U1G-C macOS 드라이버 → 시스템 환경설정 보안 허용 → 재부팅 |
+| 3 | 카메라 데이터 케이블 연결 | Blaze ETHERNET → GigE-Cable-10M-R → 어댑터 RJ45 → Mac USB-C |
+| 4 | link 재확인 | `ifconfig en6 \| grep media` → 1000baseT 유지 |
+| 5 | Mac 이더넷 IP 고정 | 시스템환경설정 → 네트워크 → IPv4 수동 → 192.168.10.1 / 255.255.255.0 |
+| 6 | pylon 설치 | Basler 사이트 → pylon Camera Software Suite (macOS Intel) + Blaze Supplementary Package, `pip install pypylon` |
+| 7 | 카메라 검색 | pylon IP Configurator → Blaze-112 (S/N 40737830, MAC 00:30:53:37:BB:6E) 자동 검색 → IP 192.168.10.10 할당 |
+| 8 | 라이브 depth | pylon Viewer 또는 blaze Viewer → Blaze 선택 → 스트림 시작 → depth 영상 확인 |
 
-**참고 문서**:
+검증 실패 시:
+- `Up to 480 Mb/s` 또는 `100baseTX` → 쿠팡 즉시 환불 → UGREEN CM275(RTL8156) 등 재검토
+- 인터페이스 안 잡힘 → ipTIME 사이트 macOS 드라이버 설치
+
+#### 코드 수정 항목 (라이브 검증 후)
+
+`bin_picking/src/acquisition/basler_capture.py`:
+- `BLAZE_112_SPEC` fx/fy: 현재 fx=fy=460 → 정정 fx≈416, fy≈188 (FOV 75°×104° 기준)
+- `ACE2_5MP_SPEC` 모델명: a2A2590-22gcPRO → **a2A2448-23gcBAS**
+
+#### 5/8 마무리 시점 상태
+
+- ✅ 카메라 2대 보유, 케이블 4종 + 12V 부품 모두 사무실 보관
+- ✅ Blaze 부팅 검증 / ace2 RJ45 직결 확인
+- ✅ 한솔 단톡 답변 수신 (ace2 부품 보유)
+- 🔴 BLOCKER: 어댑터 도착 대기 (토요일 예정)
+- ⏳ 다음주 월요일: 어댑터 도착 검증 → pylon 설치 → 라이브 depth → 코드 수정
+
+#### 참고 메모리
+- `memory/project_basler_office_setup_0508.md` ⭐ (어댑터 결정 + 도착 후 8단계 검증/셋업 절차)
+- `memory/project_basler_unboxing_0508.md` (ace2 12V 정정 + 한솔 보유 확정)
 - `memory/reference_basler_blaze_112.md` (하드웨어 레퍼런스)
-- `memory/project_basler_unboxing_0508.md` (5/8 박스 개봉 결과)
 - `memory/project_binpicking_ceo_directive_0506.md` (5/6 대표님 지시)
 
 ---
 
-### 5/6 (JWT 도입 + 공장 PC SSH key 전환 + 한솔 머지 4차 + 공장 PC 응답 영구 해결)
+### 운영 인프라 핵심 정보 (재확인용)
 
-### 5/6 (12시간 작업, 9 커밋)
+#### 공장 PC 자동 시작 체계 (4/24 완성)
 
-**1. JWT 로그인 시스템 도입** (Basic Auth 대체):
-- 4/24 Cloudflare Tunnel 활성 후 `factory.flickdone.com`이 외부 인증 없는 상태로 운영 중이었던 사고 발견 (공장 PC `.env`에 BASIC_AUTH_* 변수 누락)
-- 신규 코드 5개:
-  - 백엔드: `web-api/app/core/user_auth.py` + `jwt_middleware.py` + `app/api/auth_routes.py`
-  - 프론트: `frontend/src/components/LoginPage.tsx` + `services/auth.ts`
-- 7일 sliding refresh + 30일 절대 최대, 공용 1개 계정 (`admin` / `orinu2026!`)
-- 3개 서버(6000/카카오/공장) 배포 완료
-- 상세: `memory/project_web_auth_security.md`
+> 공장 PC 재부팅/정전 시 전원 ON만으로 운영 시스템 자동 복구.
 
-**2. 공장 PC SSH key 전환**:
-- 4/29 발급 m2222n PAT → ed25519 SSH key (`factory-pc-orinu` Deploy key) 폐기 완료
-- 카카오 VM도 Deploy key `kakao-vm-orinu` 등록 → git pull 가능 (이전엔 rsync)
+| # | 이름 | 종류 | 포트 | 역할 |
+|---|------|------|------|------|
+| 1 | **cloudflared** | Windows 서비스 | - | Cloudflare Tunnel (`factory.flickdone.com`) |
+| 2 | **OrinuMain** ⭐ | Windows 서비스 (NSSM) | 8085 | `python main.py` (web-api + sequence_service + frontend) |
+| 3 | **PreFormServer** | 시작 프로그램 | 44388 | Formlabs Local API |
+| +a | file_receiver.py | 시작 프로그램 | 8089 | STL 파일 수신 |
+| +a | AnyDesk | Windows 서비스 | - | 원격 접속 |
 
-**3. 자동 배포 스크립트**:
-- `scripts/deploy_servers.sh` 신규 — 6000 + 카카오 VM 동시 배포
-- 공장 PC = AnyDesk 관리자 cmd → `deploy.bat` 한 줄
-- `deploy.bat`에 좀비 자동 정리 로직 추가
-
-**4. 한솔 머지 4차** (`b9164d9`):
-- 예승님 커밋 `0083ec4` (시뮬 토글) + `8242c50` (프린터 별명 매핑)
-- 12 files, +130/-38, 인코딩 깨짐 없음
-- 다음주 실 출력 + 로봇 E2E 테스트 대비 작업
-
-**5. 공장 PC 응답 일관성 — 영구 해결 ✅**:
-- 증상: `factory.flickdone.com` 1회차 빠르고 이후 timeout, Cloudflare 524
-- **진짜 원인**: `.env`의 가짜 알림 자격증명(SMTP=smtp.gmail.com 등 `.env.example` 기본값)이 매 폴링마다 5초 timeout 누적 → web-api 응답 막힘
-- 부산물 발견: 이중 web-api spawn (launcher + sequence_service 둘 다 spawn) → main.py + sequence_service launcher fix
-- **영구 fix**: `.env`의 SMTP_HOST, SMTP_USER, SMTP_PASSWORD, NOTIFICATION_EMAIL_TO, SLACK_WEBHOOK_URL, FCM_SERVER_KEY 6개 비우기 → 코드가 `not_configured`로 즉시 skip
-- **검증**: 외부 10번 연속 모두 401 + 0.2~0.4초
-- `.env.example`도 가짜 값 → 빈 값 + 사고 이력 주석 (`f3738c1`)
-- 6000 + 카카오 VM은 이미 알림 주석 처리 상태 → 추가 작업 불필요
-
-**6. 한솔 머지 5차** (`9fd365a`, 저녁 추가):
-- 예승님 추가 커밋 `670da65` — 시뮬 토글 머지 4차에서 누락된 `cell_state.simul_mode` 컬럼 자동 마이그레이션
-- `_ensure_cell_state_columns()` 신규 함수 + `get_cell_state()` try/except fallback
-- 변경: `web-api/app/local/automation_db.py` 1 file, +28/-4
-- 3개 서버 배포 완료 (외부 401 + 0.2~0.4초)
-
-**커밋 11개**: `81033a6`(JWT) + `87bc587`/`d729868`(reqs/인코딩 fix) + `7a818a7`(deploy script) + `0a2d52e`(launcher) + `349f141`(seq) + `b9164d9`(머지 4차) + `08bf91d`(docs) + `f3738c1`(env.example) + `7807cff`/`fa5c1da`(docs 마무리) + `9fd365a`(머지 5차)
-
-상세: `memory/project_web_auth_security.md`, `memory/project_hansol_merge_issues.md`, CLAUDE.local.md W19 섹션
-
----
-
-### 4/30 새벽 — 재부팅 자동복구 검증 + 공장 PC 배포 단순화 (deploy.bat smoke test 완료)
-- **재부팅 자동복구 검증 ✅** — 공장 PC 물리 재부팅 → 외부 curl 검증. cloudflared + NSSM(OrinuMain) + web-api(8085) + PreFormServer(44388) + Cloud API 폴링 전체 자동 복구. 4/24 NSSM 등록 후 4/29 git pull로 추가된 의존성(aiomqtt) 포함 전체 스택 정상 부팅 확인
-- **예승님 4/30 답변 정리** — 프리셋 생성/제거 + 자동화 탭 OK. 소스 수정 흐름은 로컬 → hansol-dev push로 안내. 현재 `SIMUL_MODE=true`는 예승님이 디버깅용으로 설정한 상태(git pull은 .env 안 건드림). 다음주 방문 시 실제 출력/로봇 E2E 테스트 예정
-- **`deploy.bat` 도입 + smoke test 완료** ⭐ — 4/29 수동 9단계 → 1줄(`deploy.bat`). 5단계(git pull --ff-only / pip / npm build / nssm restart / health check) 각각 errorlevel abort로 라이브 보존. 공장 PC AnyDesk에서 GCM helper 설정 + Fast-forward pull + 관리자 cmd로 실행 → vite build + NSSM stop/start + HTTP 200 검증 + 외부 `factory.flickdone.com` 200 OK 검증 완료
-- **⚠️ 미해결**: `git fetch` 시 인증창이 안 뜬 이유 미확정 (4/29 PAT 캐시 추정, 5월 말 만료 시 재검증 예정). 상세: `memory/project_deploy_bat.md` 미해결 의문 섹션
-
-### 4/29 — 🔥 공장 PC 프리셋 API 500 → 원격(AnyDesk)으로 완전 해결
-- **진짜 원인 (오전 추정과 다름)**: 공장 PC origin이 `justkiwon/3D_printer_automation` (퇴사자 fork) 가리킴 → 회사 `orinu-ai/3D_printer_automation` main과 **100커밋 차이** + git pull 후 새 의존성 `aiomqtt` 미설치로 web-api 부팅 실패
-- **조치**: PAT로 origin URL 정정 → fast-forward pull (`1104a06` → `1272ddb`) → `pip install -r requirements.txt` → frontend rebuild → NSSM 재시작 (좀비 정리 포함)
-- **검증**: 프리셋 API → HTTP 200 + JSON 정상 반환
-- **함정 7가지**: AnyDesk 한국어 cmd 인코딩, Git for Windows CRLF phantom 13,682개, Hansol 작품 untracked, NSSM Services 좀비 vs Console 사용자 세션 구분, `nssm` PATH 미등록, NSSM이 자식 프로세스 stderr 못 잡는 문제, `requirements.txt` 어긋남
-- **상세**: `memory/project_factory_pc_remote_recovery_0429.md`
-
-### 4/24 주요 완료 항목 (이전 업데이트)
-
-### 4/24 오전 완료 (Cloudflare Tunnel 기본 세팅)
-1. **한솔 머지 3차 잔존 이슈 수정 ✅** — `bcb8e29` 커밋 (runtime.py:121 하드코딩 제거), origin + personal push 완료
-2. **Cloudflare Tunnel `orinu-factory` 생성 ✅** — 터널 ID `b939f49b-e265-407d-b83f-247f7b4cb82c`
-3. **공장 PC cloudflared 설치 + 서비스 RUNNING ✅** — Active replicas 1, Edge Location 서울(ICN)
-4. **DNS CNAME 활성 ✅** — `factory.flickdone.com` → `b939f49b-...cfargotunnel.com`
-5. **Route 매핑 ✅** — Service URL `http://localhost:8085` (초기 `https://` 입력 후 `http://`로 수정)
-
-### 4/24 점심 전후 (`python main.py` 기동 + Page Rule 해결)
-- 공장 PC 배포 경로 식별: **`D:\3D_printer_automation_0305\3D_printer_automation`** (예승님 답변)
-- 환경 점검: Python 3.14.3, Node v24, **MariaDB 11.3 설치·자동시작 중** (4/24 오후 재조사에서 확인, 오전 "MySQL 미설치" 기록은 오해였음), `.venv` 이미 생성, `.env` 존재
-- **`python main.py` 수동 기동 성공** — web-api 8085 LISTENING, sequence_service active (automation DB에 이력 정상 적재)
-- 공장 PC 로컬: `curl http://127.0.0.1:8085/` → `<title>3D 프린터 자동화 시스템</title>` ✅
-- **Cloudflare Page Rules 충돌 발견 + 해결 ✅**:
-  - Rule #1 `*flickdone.com/*` → `orinu.org/$1` (301 Permanent Redirect) 발견
-  - 누가 언제 왜 만들었는지 불명 → **Disable 처리** (Delete는 안전상 지양)
-  - 검증: 6000 서버 `curl -I https://factory.flickdone.com/` → HTTP 200 + React HTML ✅
-
-### 4/24 점심 후 일시 장애 (자연 복구)
-- Mac 캐시 삭제 중 **AnyDesk + Cloudflare Tunnel 530 동시 끊김**
-- 공장 PC 공인 IP ping 4/4 성공 → 공장 PC 자체 의심하고 공장 방문
-- 공장 도착 시점에는 **이미 자연 복구** (AnyDesk 정상, 외부 접속 200 OK)
-- 원인 특정 불가, 일시 장애로 결론
-
-### 4/24 오후 공장 방문 완료 (NSSM 자동 시작 등록) ⭐
-**목표**: `python main.py` 수동 실행 → Windows 서비스로 승격해서 재부팅/크래시 자동 복구 보장
-
-1. **NSSM 2.24 다운로드 + 설치 ✅**
-   - 공장 PC 브라우저 `https://nssm.cc/release/nssm-2.24.zip` → **503 Service Temporarily Unavailable**
-   - **우회법**: cmd에서 `curl -L -o ...` 직접 다운로드 성공 (공장 ISP의 브라우저 경로 이슈 추정)
-   - 최종 경로: `C:\nssm\nssm-2.24\win64\nssm.exe` (공식 빌드 331,264 bytes)
-
-2. **OrinuMain Windows 서비스 등록 ✅**
-   - `C:\nssm\nssm-2.24\win64\nssm.exe install OrinuMain` (관리자 cmd)
-   - Path: `D:\3D_printer_automation_0305\3D_printer_automation\.venv\Scripts\python.exe`
-   - Startup directory: `D:\3D_printer_automation_0305\3D_printer_automation`
-   - Arguments: `main.py`
-   - Startup type: Automatic
-   - 로그: `D:\3D_printer_automation_0305\logs\orinu_stdout.log` / `orinu_stderr.log`
-
-3. **자동 복구 검증 ✅**
-   - `taskkill /F /PID <web-api_pid>` → 서비스 자동 재시작 → 새 PID로 8085 LISTENING 재확인
-   - 외부 `curl https://factory.flickdone.com/` → HTTP 200 ✅
-   - 결론: 공장 PC 재부팅/정전/크래시에도 휴가 중 자동 복구 보장
-
-### NSSM 운영 노트 (트러블슈팅 중 배운 것)
-- **`nssm` 명령은 PATH 미등록** → 항상 전체 경로 `C:\nssm\nssm-2.24\win64\nssm.exe` 사용
-- **로그는 런처만 캡처** — `orinu_stderr.log`엔 `Starting web-api`, `All services started` 등 런처 출력만. web-api subprocess의 uvicorn 로그는 캡처 안 됨
-- **재시작 후 초기화 15~20초** — uvicorn + sequence_service + DB + 프린터 Modbus 시도 때문에 즉시 netstat 찍으면 LISTENING 안 보임 → `timeout /t 20` 필수
-- **python 좀비 처리** — 기동 실패 반복 시 python.exe 5~6개 떠있음. `taskkill /F /IM python.exe`로 싹 정리 후 재시작하면 해결
-- **Frontend skip 정상** — `START_FRONTEND` 환경변수 없어서 Vite dev 안 띄움. web-api가 `frontend/dist/` 정적 서빙하므로 영향 없음
-
-### 공장 PC 운영 명령어 (관리자 cmd)
+**재부팅 후 체크 (관리자 cmd)**:
 ```cmd
-# 상태 확인
-sc query OrinuMain                                  # STATE : 4 RUNNING 기대
-sc query cloudflared                                # Tunnel 서비스 상태
-netstat -ano | findstr LISTENING | findstr 8085    # 0.0.0.0:8085 LISTENING
+sc query cloudflared
+sc query OrinuMain
+netstat -ano | findstr LISTENING | findstr "8085 44388 8089"
+curl http://127.0.0.1:8085/
+```
 
+**NSSM 운영 명령** (전체 경로 `C:\nssm\nssm-2.24\win64\nssm.exe` 사용, PATH 미등록):
+```cmd
 # 재시작
 C:\nssm\nssm-2.24\win64\nssm.exe restart OrinuMain
 
@@ -1162,253 +1020,36 @@ C:\nssm\nssm-2.24\win64\nssm.exe stop OrinuMain
 taskkill /F /IM python.exe
 timeout /t 5
 C:\nssm\nssm-2.24\win64\nssm.exe start OrinuMain
-timeout /t 20
+timeout /t 20  # 초기화 15~20초 필수
 ```
 
-### 오늘 남은 작업 (4/24 퇴근 전)
-- [x] 🚨 **Formlabs Client Secret Rotate** — Developer Portal Rotate 완료, 3곳 전부 반영 ✅
-  - [x] 6000 서버 `~/3D_printer_automation/web-api/.env` — `api.formlabs.com HTTP/1.1 200 OK` 검증
-  - [x] 카카오 VM `/home/ubuntu/3D_printer_automation/web-api/.env` — SSH `~/.ssh/kakao_key`로 접속, `systemctl --user restart formlabs-web` 후 `📊 4대 프린터 상태 조회 완료` 검증
-  - [x] 공장 PC `D:\3D_printer_automation_0305\3D_printer_automation\web-api\.env` — AnyDesk notepad 편집 + `nssm restart OrinuMain` → RUNNING + 8085 LISTENING(PID 17276) + 외부 HTML 200
-- [ ] 예승님께 최종 안내 메시지 (URL + 4/28 테스트 가능 범위)
-- [ ] Cloudflare Backup Codes 생성 (여유되면)
+**참고**: `memory/project_cloudflare_tunnel.md`, `memory/reference_factory_pc_deployment_guide.md`, `memory/project_deploy_bat.md`
 
-### 공장 PC 재부팅 시 자동 시작되는 것 (4/24 완성 체계)
-> 휴가 중 정전/재부팅에도 전원 ON만으로 운영 시스템 전체가 자동 복구됨.
+#### DB 아키텍처 (4/24 확정)
 
-| # | 이름 | 종류 | 포트 | 역할 |
-|---|------|------|------|------|
-| 1 | **cloudflared** | Windows 서비스 | - | Cloudflare Tunnel (`factory.flickdone.com` 외부 접속) |
-| 2 | **OrinuMain** ⭐ | Windows 서비스 (NSSM) | 8085 | `python main.py` (web-api + sequence_service + frontend 정적 서빙) |
-| 3 | **PreFormServer** | 시작 프로그램 바로가기 | 44388 | Formlabs Local API (프린트 작업 전송) |
-| +a | file_receiver.py | 시작 프로그램 | 8089 | STL 파일 수신 |
-| +a | AnyDesk | Windows 서비스 | - | 원격 접속 |
+| 서버 | DB | 용도 |
+|------|-----|------|
+| 공장 PC | **MariaDB 11.3** (port 3306, AUTO_START) | sequence_service `automation` DB |
+| 공장 PC | SQLite (`web-api/data/local.db`) | web-api 프리셋/알림/업로드 |
+| 6000 / 카카오 VM | SQLite | web-api 모니터링 전용 |
 
-**NSSM (Non-Sucking Service Manager)**: `python main.py` 같은 일반 프로그램을 Windows 서비스로 포장해주는 오픈소스 도구. 재부팅 자동 시작 + 크래시 자동 재시작 + 로그 파일 저장. 설치 경로 `C:\nssm\nssm-2.24\win64\nssm.exe` (PATH 미등록, 항상 전체 경로 사용).
+**MariaDB 위치**: `C:\Program Files\MariaDB 11.3\` / 설정 `data\my.ini` / Windows 서비스 이름 `MariaDB`. 5월 후반 옵션 2c(원격 조회) 구현 시 `bind-address=127.0.0.1` + `remote_readonly` 계정 분리 예정.
 
-**재부팅 후 체크 (cmd)**:
-```cmd
-sc query cloudflared
-sc query OrinuMain
-netstat -ano | findstr LISTENING | findstr "8085 44388 8089"
-curl http://127.0.0.1:8085/
-```
+**🔒 절대 금지**:
+- MariaDB 3306을 공유기 포트포워딩으로 인터넷 직접 노출
+- Cloudflare Tunnel TCP ingress + Access 미적용 방치
+- sequence_service가 터널 경유 DB로 변경 (인터넷 장애 시 로봇 정지)
 
-**상세 복구 가이드**: `~/.claude/projects/-home-jtm/memory/reference_factory_pc_deployment_guide.md`의 "재부팅 후 자동 시작 체계" 섹션
+#### Formlabs Credentials Rotate 주의 (4/24 학습)
 
----
+- "Rotate Client Secret" 시 **Client ID도 같이 바뀜** → 두 줄 모두 교체
+- 반영 누락 시 해당 서버 Formlabs 401 → 폴링 전체 멈춤
+- 스크린샷/문서 공유 시 `.env` 모자이크 필수
 
-## DB 아키텍처 현황 (4/24 확정)
+#### 한솔 협업 — 미해결/대기
 
-### 서버별 DB 구성
-
-| 서버 | DB | 용도 | 상태 |
-|------|-----|------|------|
-| **공장 PC** | **MariaDB 11.3** (port 3306) | sequence_service 자동화 로그 (`automation` DB) | ✅ 서비스 AUTO_START, 실행 중 |
-| **공장 PC** | SQLite (`web-api/data/local.db`) | web-api 프리셋/알림/업로드 이력 | ✅ 동작 중 |
-| **6000 서버** | SQLite | web-api 모니터링 전용 | ✅ |
-| **카카오 VM** | SQLite | web-api 모니터링 전용 | ✅ |
-
-### MariaDB (공장 PC) 상세
-
-| 항목 | 값 |
-|------|-----|
-| 설치 경로 | `C:\Program Files\MariaDB 11.3\` |
-| 설정 파일 | `C:\Program Files\MariaDB 11.3\data\my.ini` |
-| Windows 서비스 | `MariaDB` (AUTO_START, NT SERVICE\MariaDB 계정) |
-| 포트 | 3306 (`0.0.0.0:3306` LISTENING — 4/28에 `127.0.0.1`로 제한 예정) |
-| 업무 DB | `automation` (한솔 sequence_service가 연결) |
-| 시스템 DB | information_schema, mysql, performance_schema, sys |
-
-### ⚠️ 문서 오류 정정
-- 4/24 **오전 기록의 "MySQL 미설치"는 오해**. 실제는 MariaDB가 설치되어 있었으나 `where mysql`·`sc query MySQL80`만 확인하고 놓친 것
-- 오해 이유: MariaDB 클라이언트(`mysql.exe`)가 PATH에 없었고, Windows 서비스 이름이 `MariaDB`로 등록 (MySQL/MySQL80 아님)
-- 올바른 확인 방법: `netstat -ano | findstr :3306` → LISTENING PID 확인 → `tasklist /FI "PID eq <pid>"` → `mysqld.exe` 나오면 DB 있음
-
-### 원격 DB 접근 (옵션 2c — 4/28 구현 예정)
-
-**배경**: 4/23 회의에서 "설비제어 로컬 유지 + 원격 UI는 Cloudflare Tunnel 경유"로 합의 (옵션 2c). 예승님 4/24 질문 "클라우드에서 공장 DB 읽을 수 있냐?" 요구사항 충족 목적.
-
-**기술적 가능성**: ✅ **가능**. Cloudflare Tunnel은 HTTP뿐 아니라 임의 TCP(MySQL wire protocol 포함) 운반 가능. 기존 `orinu-factory` 터널에 ingress 규칙 추가만 하면 됨.
-
-**구조**:
-```
-카카오 VM ── cloudflared(127.0.0.1:3307) ──→ CF Edge(ICN) ──→ 공장 PC cloudflared ──→ MariaDB(127.0.0.1:3306)
-```
-- 카카오 VM에 cloudflared 프록시 추가 설치 필요 (HTTP과 달리 TCP는 Edge가 공개 포트 안 열어줌)
-- Cloudflare Access Service Token으로 인증 (서버-서버 자동화용)
-- MariaDB에 `remote_readonly` 계정 분리 + SELECT만 허용
-- 실시간 제어(sequence_service)는 터널 경유 **절대 금지** — 공장 로컬 직결 유지, 터널은 **원격 조회/분석 전용**
-
-**4/28 작업**: `memory/project_sequence_service_deployment.md`의 "옵션 2c 구체 구현 가이드" 참조. 예상 1.5~2시간.
-
-**대표님 논의 필요**: 범위(읽기 전용만 vs 쓰기 권한도) + 보안 강화 수준 + Cloudflare Access 비용 (Free 플랜 Service Token 25개까지 무료)
-
-### 🔒 보안 원칙 (절대 금지)
-
-- ❌ MariaDB 3306을 공유기 포트포워딩으로 인터넷에 직접 노출
-- ❌ Cloudflare Tunnel에 TCP ingress만 추가하고 Access 없이 방치
-- ❌ sequence_service 같은 실시간 제어 서비스가 터널 경유 DB로 변경 (인터넷 장애 시 로봇 정지)
-
-### Formlabs Credentials 관리 메모 (4/24 배운 것)
-- Formlabs Developer Portal의 "Rotate Client Secret" 작업은 **Client ID도 같이 바뀜** (기존 ID는 즉시 무효화)
-- 반영 장소: 서버별 `.env`의 **`FORMLABS_CLIENT_ID`, `FORMLABS_CLIENT_SECRET` 두 줄 모두** 교체
-- 반영 누락 시 해당 서버는 Formlabs API 호출이 401로 실패하며 폴링 전체가 멈춤 — journalctl로 즉시 확인 가능
-- 스크린샷/문서 공유 시 `.env` 파일은 모자이크 처리 필수 (공개 채널 절대 금지)
-
-### 4/28 예승님 방문 시 / 이후
-- ~~MySQL 설치~~ **✅ 이미 MariaDB 11.3 설치·실행 중 (4/24 확인)**. DB Back260305.sql 복원 여부는 `automation` DB 현재 데이터 검토 후 판단
-- **옵션 2c 완성 — Cloudflare Tunnel TCP ingress 추가 (`factory-db.flickdone.com` → `tcp://localhost:3306`)** + Access Service Token 발급 + 카카오 VM에 cloudflared 프록시 설치 (상세: `memory/project_sequence_service_deployment.md` "옵션 2c 구체 구현 가이드")
-- MariaDB 보안 강화: `my.ini`에 `bind-address=127.0.0.1` 추가 + 원격 조회 전용 계정(`remote_readonly`) 분리
-- `git pull`로 소스 최신화 (예승님 공조, 공장 PC는 3/5 스냅샷 박제 상태)
-- Basic Auth 또는 Cloudflare Zero Trust Access 추가
-- 카카오 VM `.env` 호스트 변경 (`PREFORM_SERVER_HOST=factory.flickdone.com`)
-- 6000 서버 웹 서비스 중지 여부 결정
-- `orinu.org` 도메인 소유자/용도 대표님께 확인 (Page Rule #1 존재 이유)
-
-### 상세 운영/트러블슈팅 레퍼런스
-- [Cloudflare Tunnel 전체 설정 + NSSM 운영 명령어](../.claude/projects/-home-jtm/memory/project_cloudflare_tunnel.md)
-- [공장 PC 배포 가이드](../.claude/projects/-home-jtm/memory/reference_factory_pc_deployment_guide.md)
-
-## ⏰ 태민 휴가
-- 4/27(월)~28(화) 휴가. 4/28 당일 예승님 현장 방문 예정.
-- ✅ **NSSM 등록 + 자동 복구 검증 완료** — 휴가 중 공장 PC 재부팅/정전에도 안정 운용 가능
-
----
-
-### 4/23 저녁 작업 요약 (이전 업데이트)
-
-- **날짜**: 2026-04-23 (목, 공장 방문 + 저녁 작업 완료)
-- **오늘 완료 작업 (4/23)**:
-  1. **하드웨어 입고 3건 확인 ✅** — Basler 카메라(Blaze-112 + ace2), 산업용 PC(IPC-510), Cloudflare 권한 활성
-  2. **예승+파트장(김주엽) 3자 회의 완료** — 14개 안건 논의, CLAUDE.local.md 상세 기록
-  3. **한솔 머지 3차 완료** — `9f97f1e` (경화기 2→1대 축소, origin+personal push 완료)
-  4. **4/24 대표님 회의자료 2종 작성** — [meeting_0424_ceo.md](docs/meeting_0424_ceo.md) 내부용 + [meeting_0424_ceo_pdf.md](docs/meeting_0424_ceo_pdf.md) 웹 Claude PDF 업로드용
-  5. **Cloudflare Tunnel 실행 가이드 준비** — 내일(4/24) 마감 목표, 단계별 체크리스트
-- **현재 상태 요약**:
-  - **빈피킹 컨셉 미확정 — 대표님 4/24 논의**: 펼쳐서(A) / 차곡차곡(B) / 무작위 힙(C) 중 결정 필요
-  - **Cloudflare Tunnel 방향 확정 (현장 합의)**: 설비제어는 로컬 유지 + 원격 UI는 Tunnel 경유 = 옵션 2c. 예승님 동의 ("안 되면 로컬로 내려도 OK")
-  - **카메라 설치 방식 합의**: 로봇 암 장착(eye-in-hand) + Blaze-112 + ace2 동시 마운트. 브라켓은 3D 프린팅 vs 외부 가공 결정 필요
-  - **이관 대기 항목** (한솔이 가이드/소스 제공):
-    - 빈피킹 좌표 → 로봇 전송 인터페이스 (현재 Modbus 구조 유지 가능성 크나 확정 대기)
-    - 바텀 비전 홀 검출 소스코드 (한솔 공유 예정)
-  - **관찰 이슈**:
-    - 스핀 3개 중 2개 ON/OFF 동시 작동 (하드웨어 제어 계통 공유 의심)
-    - `runtime.py:121` cure_active_cmd 리셋 하드코딩 잔존 (예승님 패치 불완전, 후속 논의 필요)
-
-- **내일(4/24) 일정**:
-  - 오전: 대표님 논의 — 빈피킹 컨셉 + Cloudflare Tunnel 범위 + 브라켓 제작 방식 + sequence_service 배포 정책 + 경화기 축소 보고 범위 + IPC-510 스펙 + 스핀 이슈
-  - 오후: **Cloudflare Tunnel 설정 마감** (대표님 범위 결정 직후 착수, 공장 PC cloudflared 설치)
-
-### 4/22 오후 — 데모 리허설 피드백 반영 (서버↔Mac 양방향 작업)
-- **Mac 리허설에서 크래시 2건 방어** (`ac0f283`, Mac 커밋)
-  - `cloud_filter.remove_plane`: 포인트 < `plane_ransac_n`일 때 segment_plane() 크래시 → 원본 반환 + stats `plane_skipped` 마킹
-  - `demo_live_recognition` capture 핸들러: 파이프라인 크래시 시 GUI 전체 종료 → try/except로 WARN 로그만
-- **[B] ROI/depth 기본값 3개 정합성 이슈 → 옵션 1(Basler 기준) 채택** (`c3a8477`)
-  - 기존: `DEFAULT_ROI z=0.005~0.20` / `depth_to_pointcloud depth_min=0.3` / `SyntheticSource depth=0.55~0.80` 세 값이 서로 다른 세팅 기준 → --synthetic은 ROI crop 후 포인트 0으로 RANSAC 크래시, --realsense도 ACCEPT 0 빈번
-  - 해결: Basler 오버헤드(40~80cm) 기준으로 `DEFAULT_ROI z=0.30~1.00` 통일, `SyntheticSource`/`depth_to_pointcloud` 기본값 유지 → 3값 정합
-  - D435 근접 테스트용 CLI 오버라이드 4개 추가: `--roi-z-min/-max`, `--depth-min/-max` (main_pipeline.py + demo_live_recognition.py 양쪽)
-- **[C] 데모 UI 3건 개선** (`696860f`)
-  - ACCEPT 뱃지: 좌상단 → 우상단, 폰트 0.9/th2 → 0.6/th1 (좌하 CAD 오버레이 가림 해소)
-  - 셀 타이틀 폰트 0.55/th1 → 0.8/th2, title_h 32 → 38px (시연 중 포인터 가독성)
-  - Filtered 라인에 kept% 병기 (예: `10,115 (3.3% kept, 23.4 ms)`)
-- **[추가] synthetic 매칭 9.7s → 1.5s + Matches 테이블 재작성** (`b63f4bf`)
-  - SyntheticSource noise σ 3 → 1: DBSCAN eps 8mm 안에서 노이즈가 별도 클러스터로 튀던 문제 → 36 클러스터 → 3 클러스터, L4 Matching 9240ms → 1158ms (8배 단축)
-  - Matches 테이블을 고정 x 좌표 5컬럼(#, Part, Fit, RMSE(mm), Dec)로 재작성 (단일 f-string mono-font 가정 제거)
-  - RMSE 단위 버그 수정: 값은 mm인데 표시는 "1.23m"로 오독되던 문제 → 헤더에 `(mm)` 명시, 값은 단위 기호 제거
-- **Mac 검증 결과**: Clusters 3개, L4 1158ms, Total 1.5s, 테이블 정렬/RMSE 단위/3상태 색상 코딩 모두 정상 — 시연 준비 완료
-- **6000 서버는 AVX2 미지원으로 Open3D 실행 불가** — 렌더 검증은 Mac에서만
-- **커밋 요약 (오늘 총 6건)**:
-  - `eb730ba` D435 버그 3개 (빈 pcd 법선, ROI 바닥 휴리스틱, top-K) — Mac 오전
-  - `36469aa` D435 진단 헬퍼 스크립트 3종 — Mac 오전
-  - `ac0f283` 리허설 크래시 방어 2건 (RANSAC/GUI) — Mac 리허설
-  - `c3a8477` [B] ROI/depth 기본값 Basler 기준 통일 + CLI 오버라이드 — 서버
-  - `696860f` [C] 뱃지·타이틀·Filtered% UI 개선 3건 — 서버
-  - `b63f4bf` synthetic 9.7s→1.5s + Matches 테이블 재작성 — 서버
-
-### 4/22 — D435 실물 브래킷 CAD 매칭 시도 + 버그 수정
-- ✅ **실물 SLA 부품 2개 수령** (공장, 서포트 제거됨, H자 브래킷 형상, bracket_sen_1 추정)
-- ✅ **Mac D435 full pipeline 실데이터 완주** — 이전까지는 Redwood/합성/일반사물만
-- ✅ **버그 3개 발견 + 수정** (Mac, 커밋/푸시 필요):
-  - `cloud_filter.py`: 빈 pcd 법선 추정 크래시 방어
-  - `test_d435_full_pipeline.py`:
-    - PointCloud 0-pts 가드 + depth 범위 진단 로그
-    - `compute_auto_roi` 바닥 휴리스틱이 **탑다운 뷰에서 브래킷 상면을 잘라내는 버그** 수정 (z=카메라거리 혼동)
-    - top-K 전체 표시 (기존은 rank==0만)
-    - `--only` 키워드 옵션 — SizeFilter 우회, 카테고리 집중 매칭
-- ✅ **진단 헬퍼 스크립트 3종 추가**: `run_bracket_retry.sh`, `check_saved_frame.sh`, `identify_bracket_live.py`
-- ⚠️ **CAD 확정 불가 — 하드웨어 제약이 근본 원인**:
-  - USB 짧음 → 카메라 20cm 고정이 한계
-  - D435 640×480 최적 거리 28cm 미달 → depth unique 값 13개 (정상 30~50)
-  - Z축 두께 50% 오차 (16mm → 7mm)
-  - SizeFilter 탈락 + 3회 실행 3개 결과 (FGR/RANSAC seed 미고정)
-  - bracket_sen_1 fitness 0.00~0.16 (FPFH 대응점 부족)
-- 📝 **결론**: D435는 어차피 Basler 오기 전 임시 검증용 → 깊게 파지 않음. **파이프라인 버그 3개 + 진단 인프라**는 Basler 넘어가도 그대로 자산
-
-### 4/21 — 도메인 확정 + D435 USB 케이블 테스트
-- ✅ **도메인 확정**: `factory.flickdone.com` (대표님 flickdone.com 서브도메인 사용 승인)
-  - 향후 flickdone.com을 제조공정 자동화 브랜드로 사용 예정
-  - Cloudflare 계정 초대 대표님께 요청 완료 → 권한 대기 중
-  - 파리드님 Cloudflare 권한 없음 → **태민님이 직접 진행** 예정
-- ✅ **카카오 클라우드 IAM Admin 권한 확보** — VM/보안 그룹 직접 관리 가능
-- ✅ **D435 USB 3.2 20Gbps 케이블 테스트** — 정상 인식 (S/N 420122070194, USB 3.2)
-  - 대표님 구매, D435 자체 Gen 1(5Gbps) 한계이나 신호 품질 향상
-  - RealSense Viewer (brew librealsense 2.57.7) — RGB+Depth+IR 4스트림 정상 확인
-
-### 4/16 — 카카오 클라우드 VM 이전 + 한솔 머지 2차
-- ✅ **한솔 머지 2차 완료** (`e68c2b1`) — 이예승 사원 `74584fb` cherry-pick. 자동화 CMD 프린터 할당 + .env.copy 추가
-- ✅ **카카오 VM 세팅 완료** (내부 동작 확인):
-  - rsync로 소스 전송 (.git 포함, 최신 `e68c2b1`)
-  - Python 3.12.3 venv + 의존성 설치 완료
-  - Node.js 18 설치, frontend dist 전송
-  - systemd user service 등록 + enable + linger (자동 시작)
-  - **localhost:8085 API 정상** — 프린터 4대 Cloud API 폴링 동작, 프론트엔드 HTML 서빙 확인
-- ✅ **카카오 VM 외부 접속 성공** — `http://61.109.239.142:8085/` 정상 동작
-  - 보안 그룹 서브넷 마스크 오류 → 파리드님 수정 후 해결
-  - Cloud API 폴링 + 프론트엔드 서빙 + 프린터 4대 데이터 모두 정상
-  - ufw inactive (방화벽 비활성), systemd 자동 시작 설정 완료
-- ✅ **Basic Auth 구현** — 공인 IP 노출로 인한 보안 조치
-  - Raw ASGI 미들웨어 (`basic_auth.py`): HTTP + WebSocket 모두 보호
-  - `.env`에서 `BASIC_AUTH_USERNAME` / `BASIC_AUTH_PASSWORD` 설정 (비우면 비활성화)
-  - 6000 서버 + 카카오 VM 양쪽 적용 완료, 테스트 PASS
-  - TODO: 로그인 페이지 + JWT 토큰 방식으로 업그레이드 (나중에)
-- **공장 PC 연결 방침 (4/17 결정)**: 도메인 확정 후 **Cloudflare Tunnel**로 연결. 임시 포트포워딩은 안 함.
-  - 상용화 목표 + 현장 관리자 채용 예정 → 확장 가능한 방식 채택
-  - 도메인 대기 중 (대표님이 새 도메인 구매 후 알려주실 예정)
-  - 그 사이 프린터 제어가 필요하면 6000 서버(VPN 경유)로 사용
-- **한솔 예승님 확인**: sequence_service는 공장 PC(현장)에서 실행 — 로컬 MySQL로 자동화 시퀀스 로그 관리
-
-### 4/14 — HCR-10L 로봇 코드 정비 + D435 Full Pipeline PASS
-- ✅ `grasp_database.yaml`에 HCR-10L 로봇 스펙 섹션 추가 (TCP 오프셋, 관절 제한, 작업 영역, 안전 파라미터)
-- ✅ `grasp_planner.py`에 `validate_pick()` 안전 검증 로직 추가 (작업 영역/Z충돌/힘 제한)
-- ✅ `modbus_server.py`에 오일러 컨벤션(ZYX) 명시 + 피킹 사이클 문서화 + `wait_for_done()` 추가
-- ✅ `hand_eye_calibration.py`에 `set_tcp_offset()` + `load_tcp_offset_from_yaml()` 추가
-- ✅ **D435 Full Pipeline (L1~L5) 테스트 2회 PASS** — 일반 사물, 2회 모두 ACCEPT 0 (오탐 없음). RMSE 3mm 임계값이 핵심 안전장치
-- ⚠️ TCP 오프셋, 작업 영역, 오일러 컨벤션 = TBD (그리퍼 장착 + 빈 배치 후 설정)
-
-### 4/13 완료
-- ✅ D435 라이브 연동 — USB 3.2, pyrealsense2 v2.57.7 소스빌드, 프레임 저장/로드
-- ✅ D435 실데이터 L1~L3 — 일반 사물로 파이프라인 검증 (11클러스터, 0.29s)
-- ✅ E2E 실패 케이스 시각화 — `--save-viz` PNG 자동 저장 (대표님 요청)
-- ✅ eye-in-hand 캘리브레이션 — 시뮬 PASS (회전 0.28°, 이동 0.57mm)
-
-### 다음 작업
-- 🟡 **Cloudflare Tunnel 설정** — 계정 초대 받으면 즉시 진행 (`factory.flickdone.com`)
-- 🟡 **실물 SLA 부품 확보** → D435로 오버헤드(~50cm) 촬영 → CAD 매칭 ACCEPT 검증
-- 🟡 **[한솔 협업]** 이예승 사원 — sequence_service 공장 PC 배포
-- 🔄 **카메라 입고 대기 (5월)** → Colored ICP + 실제 핸드-아이 캘리브레이션 (2세트) + multi-view 재촬영
-
-### 대기 중
-- ⏳ **Cloudflare 계정 초대** (대표님) → Tunnel 설정 → 공장 PC 연결 + 6000 서버 웹 서비스 중지
-- ⬜ Basic Auth → 로그인 페이지 + JWT 업그레이드 (나중에)
-- ⬜ MaixCAM 장비 모니터링 PoC (빈피킹 우선, 여유 시)
-- ⬜ GitHub deploy key 등록 — 카카오 VM에서 직접 git pull 가능하도록
-
-### 서버 운영 현황 (4/21)
-| 서버 | URL | 역할 | 상태 |
-|------|-----|------|------|
-| **카카오 VM** | `http://61.109.239.142:8085/` | 모니터링 (Cloud API) | ✅ 운영 중 (Basic Auth) |
-| **6000 서버** | `http://106.244.6.242:8085/` | 모니터링 + 프린터 제어 (VPN) | ✅ 병행 운영 |
-| **6000 서버** | SSH | 개발 환경 (Claude Code, git) | ✅ |
-| **Mac** | 로컬 | 빈피킹 개발 (Open3D) | ✅ |
-| **공장 PC** | AnyDesk | PreFormServer + file_receiver + sequence_service | ✅ |
+- ⚠️ `runtime.py:121` 4/24 후속 패치 (`{1: None, 2: None}` → `{1: None}`) 미커밋 상태
+- ⏳ 4/30 미해결 의문: `git fetch` 인증창 안 뜬 이유 (PAT 캐시 추정, 5월 말 PAT 만료 시 재검증) — `memory/project_deploy_bat.md`
+- ⏳ "렌즈 2개" 의미 한솔 추가 확인 (5/8 단톡)
+- ⏳ 한화 로보틱스 별도 라이브러리/패키지 확인 (5/6 회의 액션, 한솔 이예승 ASAP)
+- ⏳ 빈피킹 카메라 브라켓 설계 (5/6 회의 액션, 한솔 이예승 ASAP)
