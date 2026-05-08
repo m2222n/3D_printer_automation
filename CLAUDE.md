@@ -120,6 +120,48 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 - **3/27 한솔코에버 최종 시연** (한솔 자체 진행, 정태민은 Azure 교육 중)
 - **4/3 김기원 주임 퇴사 확인** — 한솔코에버 퇴사. 직접 지원 불가, 구조/플로우 문의는 가능. 코드 docs 폴더에 역할별 요약 있다고 함
 
+### 2026.05.06 (한솔 3자 회의 — 김주엽 과장 작성 회의록)
+구본경 대표 + 한솔 김주엽 과장 + 이예승 사원. 회의록 PDF 5/7 수령.
+
+**핵심 결정사항**:
+- **빈피킹 좌표 = X, Y, Z + Theta (4DoF)** — 이전 6DoF 오일러 ZYX 가정 대비 단순화. 다면 처리는 좌표 차원이 아닌 자세 분리로 해결
+- **다면 인식 정식 안건화** — (a) 리그립 스테이션 도입 (b) 시퀀스 분할(A자세/B자세) 검토
+- **한화 로보틱스 별도 라이브러리/패키지** — 이예승 ASAP 확인. 답 받기 전 우리 빈피킹 좌표 출력 코드 확정 금지
+- **빈피킹 카메라 브라켓** — 코에버 설계(이예승 ASAP) → 오리누 3D 출력 → 검증 후 철제 가공 (4/23 합의 그대로)
+- **빈피킹 컨셉 확정 = 오리누 책임** — 쌓아놓는 형태/위치 대표님 결정 사항 (4/23 미확정 → 5/6도 미확정)
+- **Formlabs API 무인 운전 불가 — 공식 확인 (5/6)** — 출력 종료 후 수동 터치 체크리스트 필수, API 우회 불가
+- **그리퍼 교체 요청** (한솔) — 잔여 레진 제거 어려움, 경사각 유지 공정 최적화 필요
+- **3D 프린터 하단 파손 270만원** (대당 90만 × 3) — 코에버 내부 방침상 지원 어려울 가능성, 김주엽 과장 금주 내 재확인
+- **삼성전자 ~2억 규모 하반기 지원사업** 참여 준비
+- **카카오톡 단톡방 즉시 개설** — 실시간 실무 소통
+
+**액션 아이템**:
+| 담당 | 과업 | 기한 |
+|------|------|------|
+| 김주엽 | 구글 시트 트러블슈팅 + 병목 관리 | 상시 |
+| 김주엽 | 하단 파손 비용 분담 내부 협의 | 금주 내 |
+| 구본경 | 3D 프린팅 최적 공정(변경안) 정리 + 전달 | 금주 내 |
+| 이예승 | 한화 로봇-비전 통신 패키지 확인 | ASAP |
+| 이예승 | 빈피킹 카메라 브라켓 설계 요청 | ASAP |
+| 공통 | 카카오톡 단톡방 개설 | 즉시 |
+
+상세: `memory/project_meeting_0506_hansol.md`
+
+### 2026.05.06 (대표님 — 빈피킹 방향 개인 지시)
+**로봇 장착은 추후로 미루더라도 인식 자체를 먼저 확실히** 하라는 방향. 4가지 지시:
+
+1. **Basler 카메라 로컬 테스트 우선** — 4/23 입고분을 로컬에서 동작 확인 (IPC-510/로봇 셋업 기다리지 말 것)
+2. **공장 실물 부품 다각도 촬영 + 학습** ⭐ — 부품마다 각도 sweep으로 데이터셋 구축. 대표님 강조: "비전 + 빈피킹 하려면 **실제 데이터로 사진도 많이 찍고 학습이 중요**" (CAD-only FPFH/ICP만으로 부족, 실데이터 학습 파이프라인 필요)
+3. **X, Y 각도(뒤집기) 데이터 고민 ⭐** — "물체가 누워있거나 각도가 다르면 어떻게 뒤집는지? X/Y 각도가 중요한데 이에 필요한 데이터가 무엇인지 잘 고민할 것"
+   - 안정 자세 enumeration (CAD bbox + COM 기반)
+   - 자세별 그래스프 가능 여부 → grasp_database.yaml 자세별 확장
+   - regrasp 시퀀스 정의 (어떤 자세→어떤 자세)
+   - 학습 데이터 라벨링 형식 (부품 ID + 자세 클래스 + 6DoF pose)
+   - **코드 짜기 전 데이터 명세 초안 → 대표님 align**
+4. **예승님 연락** — (a) 빈피킹 좌표 데이터 명세 (좌표계/단위/회전/그리퍼/시퀀스) (b) 바텀비전 홀 검출 소스코드 받기 + 반영
+
+상세: `memory/project_binpicking_ceo_directive_0506.md`
+
 ### 2026.04.23 (한솔코에버 이예승 사원 — 경화기 2대 → 1대 축소)
 - 예승님이 `hansol-dev` 브랜치에 커밋 `52a1c8f` 업로드 (4/23 14:02)
 - **내용**: sequence_service + AutomationPage UI에서 Cure 2 비활성화. `cureKeys`, `cure_active_cmd`, `CuringSequence(2)` 주석 처리
@@ -896,7 +938,102 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 ## 마지막 업데이트
 
-- **날짜**: 2026-05-06 (수, JWT 로그인 도입 + 공장 PC SSH key 전환 + 한솔 머지 4차 + 공장 PC 응답 영구 해결)
+- **날짜**: 2026-05-08 (금, 공장 출근 + Basler Blaze-112 박스 개봉 + 사무실 Mac 셋업 시도 + AMCA017 어댑터 사양 사기 발견)
+
+### 5/8 오후 (사무실 — 카메라 부팅 OK, AMCA017 어댑터 블로킹)
+
+**5/6 대표님 빈피킹 지시 1번** 후속, 사무실 Mac으로 라이브 검증 시도.
+
+**케이블 재고 확인** (5/8 공장 정답 3종 + 예비 1종 모두 사무실 보유):
+- ✅ `GigE-Cable-10M-R` (데이터, M12 X-coded ↔ RJ45)
+- ✅ `M12-8P-PWR-Supply-10M` (전원, M12 A-coded ↔ DC 잭) — 처음에 봉투에서 못 찾았다가 재확인 시 발견
+- ✅ `M12-8P-RJ45-10M-R` (예비 데이터, M12 ↔ RJ45 양옆 나사락)
+- ✅ DS240020 어댑터 (24V/2A)
+
+**연결 결과**:
+- 데이터: GigE-Cable-10M-R → Blaze 오른쪽 ETHERNET 포트 / RJ45 → AMCA017 → Mac
+- 전원: M12-PWR → Blaze 왼쪽 / 반대쪽 → DS240020 → 콘센트
+- ✅ **카메라 부팅 성공** — STATUS LED 녹색 깜빡 + ETHERNET LED 빨강 (매뉴얼 정상 패턴)
+
+**ace2 추가 발견**: 본체에 RJ45 직결 박혀있음 → M12 변환 불필요 (5/8 공장 메모상 "ace2 케이블 미해결" 사실상 해결)
+
+**🔴 AMCA017 USB-C 허브 = 사양 사기 확정**:
+
+```bash
+# Mac 시스템 환경설정: USB 10/100 LAN (자체 할당 IP 169.254.1.90)
+# ifconfig en6
+media: autoselect (100baseTX <full-duplex>)   ← 100Mbps 한계
+
+# system_profiler SPUSBDataType
+USB2.0 HUB (Vendor: wch.cn, Speed: 480 Mb/s)
+└── USB 10/100 LAN (Vendor: wch.cn, Speed: 480 Mb/s)
+```
+
+**3중 사양 사기**:
+1. 박스 표기 "5Gbps SuperSpeed USB" → 실제 USB 2.0 (480Mbps)
+2. 박스 표기 "10/100/1000mbps Adaptive" → 실제 칩셋 "USB 10/100 LAN"
+3. KC 인증(R-R-amR-AMCA017)에도 허위 명시
+
+USB 2.0 자체가 Gigabit Ethernet 협상 불가 + 칩셋도 100Mbps 한계. Blaze-112 GigE Vision 표준 요구치(1000Mbps) 미달.
+
+**다음 단계**:
+1. **식사 후 (5/8 저녁)**: Mac USB-C 포트 4개 모두 시도 + `ifconfig en6 | grep media` 결과 기록 (예상: 모두 100baseTX)
+2. **쿠팡 로켓배송 즉시 주문**: TP-Link UE300C / Anker A83410 / Apple USB-C → Gigabit (RTL8153 또는 AX88179A 칩셋, 토요일 도착)
+3. **대기 동안**: pylon Software Suite + Blaze Supplementary Package 사전 다운로드
+4. **토요일 도착 후**: Mac IP 192.168.10.1/24 고정 → pylon 설치 → IP Configurator → pylon Viewer 라이브 depth → `basler_capture.py` 실연동 → BLAZE_112_SPEC fx/fy + ACE2_5MP_SPEC 모델명 수정
+
+**AMCA017 처분**: 박스/영수증 보관 → 사양 허위 환불 클레임 근거 (KC 인증번호로 신고 가능)
+
+**참고 문서**:
+- `memory/project_basler_office_setup_0508.md` ⭐ NEW (사무실 셋업 + 어댑터 진단 + 4개 포트 계획 + 구매 가이드)
+- `memory/project_basler_unboxing_0508.md` (5/8 공장 박스 개봉 + ace2 RJ45 직결 정정)
+
+---
+
+### 5/8 오전 (Basler 박스 개봉)
+
+**5/6 대표님 빈피킹 지시 1번** ("Basler 카메라 로컬 테스트 우선") **착수**.
+
+**카메라 박스 개봉 + 식별**:
+- Blaze-112 (S/N 40737830, 2025-11 독일 제조) + ace2 a2A2448-23gcBAS (S/N 41881328, mounting bracket 결합 상태)
+- ⚠️ ace2 실모델은 **a2A2448-23gcBAS** (우리 코드 가정 a2A2590-22gcPRO와 다름) → `basler_capture.py` 수정 필요
+
+**매뉴얼 7장 판독 핵심**:
+- Blaze-112은 **24VDC 고정** (PoE 아님, 21V 미만 손상)
+- FOV **75°×104°** (수평×수직, 수직이 더 넓음) → 우리 코드 fx=fy=460 가정 잘못
+- 광학 중심 offset이 카메라 하우징 앞면 기준 아님 → hand-eye 캘리브레이션 영향
+- mounting bracket 조립 후 **174 × 80.6 × 73mm** (코에버 브래킷 설계 치수)
+
+**케이블/어댑터 정답 4종 (라벨 인쇄 모델명)**:
+- DS240020 (MH AC/DC, 24V/2A) — Blaze-112 전원 어댑터
+- M12-8P-PWR-Supply-10M — 전원 케이블 (DS240020과 한 세트)
+- GigE-Cable-10M-R — 데이터 케이블 (M12 X-coded ↔ RJ45)
+- M12-8P-FJ45-10M-R — 예비 데이터 케이블
+
+**사용 금지 (12V 세트)**:
+- LOADUS EQ-4212Fctc (DC 12V/3.5A) — Blaze는 24V 전용
+- M8/6P-PWR (12V용 페어 케이블)
+- 박스에 매직 표기 "(Blaze-101)"은 사람 오기 가능, **라벨 인쇄 모델명 우선 신뢰**
+
+**공장→사무실 운반**: 카메라 1세트 + 정답 3종(DS240020, M12-PWR, GigE-Cable-10M-R) 챙김. 12V 세트 + 예비 GigE는 공장 보관.
+
+**ace2 미해결**: ace2용 케이블 + C-mount 렌즈가 박스에서 안 보임 → 한솔 예승님께 확인 요청 필요. 일단 Blaze-112 단독 셋업 진행.
+
+**다음 단계 (사무실 도착 후)**:
+1. USB-C ↔ Gigabit Ethernet 어댑터 확인 (Mac Intel, RJ45 없음, 100Mbps NG)
+2. pylon Software Suite + Blaze Supplementary Package 설치 (macOS dmg)
+3. pypylon 설치 + Mac 이더넷 IP 고정 (192.168.10.1/24)
+4. pylon Viewer로 Blaze 라이브 depth 스트림 확인
+5. `basler_capture.py` 실연동 + 코드 수정 (fx/fy/모델명)
+
+**참고 문서**:
+- `memory/reference_basler_blaze_112.md` (하드웨어 레퍼런스)
+- `memory/project_basler_unboxing_0508.md` (5/8 박스 개봉 결과)
+- `memory/project_binpicking_ceo_directive_0506.md` (5/6 대표님 지시)
+
+---
+
+### 5/6 (JWT 도입 + 공장 PC SSH key 전환 + 한솔 머지 4차 + 공장 PC 응답 영구 해결)
 
 ### 5/6 (12시간 작업, 9 커밋)
 
