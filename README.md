@@ -34,7 +34,7 @@
 | 협동로봇 | HCR-12 | 1대 | 빌드플레이트 교체, 세척기 투입 |
 | 협동로봇 | HCR-10L | 1대 | 후가공 탭, 제품 이송 |
 | 세척기 | Form Wash | 2대 | 레진 세척 |
-| 경화기 | Form Cure | 1~2대 | UV 경화 |
+| 경화기 | Form Cure | 1대 | UV 경화 |
 | 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 |
 | 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 |
 | 깊이 카메라 | Intel RealSense D435 | 1대 | 빈피킹 임시 검증 |
@@ -50,14 +50,16 @@
 | **Phase 2** | Local API 원격 프린트 제어 + 프론트엔드 UI | ✅ 완료 |
 | **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 | ✅ 통합 |
 | **Phase 4** | 장비 모니터링 (엣지 AI 카메라) | 🔄 리서치 완료, PoC 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 L1~L6 SW 완성, 실기 검증 진행 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 L1~L6 SW 완성 + Basler 카메라 입고, 라이브 검증 진행 |
 
 ### 빈피킹 파이프라인 현황
 - L1~L6 Python 단독 구현 (CAD 기반 29종 인식)
-- 인식률: easy 100%, crowded 90%, hard 60% (Colored ICP 확장 준비)
-- 매칭 시간 0.4~0.6s/부품
+- 인식률: easy 100%, crowded 90%, hard 60% (Colored ICP로 hard 개선 진행)
+- 매칭 시간 0.4~0.6s/부품, RMSE 1.0~1.5mm
 - 레진별 프리셋 4종 (grey/white/clear/flexible) 일관 적용
-- 데모 시각화: 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT)
+- 데모 시각화: 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT) + 실패 케이스 자동 PNG 저장
+- 로봇 좌표 출력: **X, Y, Z, Theta (4DoF)** + 자세 분리(A자세/B자세) + 리그립으로 다면 처리
+- 카메라: Basler Blaze-112 (ToF depth) + Basler ace2 (RGB 5MP) eye-in-hand 동시 마운트
 
 ---
 
@@ -142,7 +144,7 @@ flowchart LR
 
 ### 웹앱 인프라
 - systemd user service로 자동 시작 + 크래시 재시작
-- Raw ASGI Basic Auth 미들웨어 (HTTP + WebSocket)
+- JWT 토큰 기반 인증 + React 로그인 페이지 + sliding refresh (HTTP + WebSocket 모두 보호)
 - Cloudflare Tunnel을 통한 외부 접속 (내부 네트워크 비노출)
 
 ---
@@ -177,7 +179,7 @@ flowchart LR
 | ⑧ | 경화기 투입 | HCR-12 |
 | ⑨ | 경화 완료 감지 | 엣지 AI 카메라 |
 | ⑩~⑫ | 픽업 → 서포트 제거 → 후가공 | HCR-10L |
-| ⑬ | 3D 빈피킹 + 비전 검사 | Basler Blaze-112 + ace2 |
+| ⑬ | 3D 빈피킹 + 비전 검사 (eye-in-hand 동시 마운트) | Basler Blaze-112 + ace2 |
 | ⑭~⑮ | 양품/불량 분류 → 적재 | HCR-10L |
 | ⑯ | 완료 보고 | 백엔드 (알림) |
 
@@ -227,9 +229,9 @@ GET    /api/v1/local/notifications
 ├── web-api/                       # 백엔드 (FastAPI, Phase 1+2)
 │   ├── app/
 │   │   ├── main.py
-│   │   ├── core/                  # 설정, OAuth2, Basic Auth 미들웨어
+│   │   ├── core/                  # 설정, Formlabs OAuth2, JWT 미들웨어
 │   │   ├── services/              # Formlabs 클라이언트, 폴링, 알림
-│   │   ├── api/routes.py          # Phase 1 REST + WebSocket
+│   │   ├── api/                   # Phase 1 REST + WebSocket + auth_routes (로그인)
 │   │   ├── local/                 # Phase 2 로컬 API
 │   │   └── schemas/
 │   ├── data/                      # SQLite
@@ -266,7 +268,7 @@ GET    /api/v1/local/notifications
 │   ├── tests/
 │   └── tutorials/                 # Open3D 학습
 │
-└── OpenMV/                        # 참고자료 (MaixCAM으로 전환)
+└── OpenMV/                        # 참고자료 (Phase 4 = MaixCAM 온디바이스 AI로 전환)
 ```
 
 ---
@@ -282,15 +284,16 @@ GET    /api/v1/local/notifications
 | httpx | Formlabs API 호출 |
 | pydantic-settings | 환경변수 로드 |
 | SQLAlchemy + SQLite | 로컬 DB (web-api) |
-| PyMySQL | MySQL/MariaDB (sequence_service) |
-| pymodbus 3.x | Modbus TCP |
+| PyMySQL + MariaDB 11.3 | 자동화 시퀀스 로그 (sequence_service, 공장 PC) |
+| pymodbus 3.x | Modbus TCP (HCR 로봇 INT16 매핑) |
 | aiomqtt | MQTT 비동기 클라이언트 |
+| bcrypt + python-jose | JWT 로그인 + 비밀번호 해시 |
 
 ### Frontend
 React 18 · TypeScript 5 · Vite 5 · Tailwind CSS 4 · WebSocket
 
 ### 빈피킹 비전 (Phase 5)
-Open3D 0.19 · NumPy · OpenCV · trimesh · pypylon · pyrealsense2 · SciPy
+Open3D 0.19 · NumPy · OpenCV · trimesh · pypylon (Basler Blaze-112 + ace2) · pyrealsense2 (RealSense D435) · SciPy
 
 ### Infrastructure
 Docker · systemd --user · Cloudflare Tunnel · MQTT (Mosquitto)
@@ -324,9 +327,12 @@ FILE_RECEIVER_PORT=8089
 # Formlabs Cloud API 폴링 주기 (초)
 POLLING_INTERVAL_SECONDS=15
 
-# Basic Auth (공개 배포 시 필수)
-BASIC_AUTH_USERNAME=your_username
-BASIC_AUTH_PASSWORD=your_password
+# 사용자 로그인 (JWT) — 공개 배포 시 필수, 셋 다 비면 인증 OFF (로컬 개발용)
+AUTH_USERNAME=your_username
+AUTH_PASSWORD_HASH=  # bcrypt 해시 (평문 X). python -c "import bcrypt; print(bcrypt.hashpw(b'pw', bcrypt.gensalt(rounds=12)).decode())"
+JWT_SECRET=          # 서버별 랜덤 32바이트. python -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_EXPIRE_DAYS=7
+JWT_ABSOLUTE_MAX_DAYS=30
 ```
 
 `sequence_service/.env` (공장 PC 전용):
@@ -397,3 +403,7 @@ python bin_picking/scripts/demo_live_recognition.py --basler
 ## 라이선스
 
 내부 프로젝트 (Private)
+
+---
+
+_Last updated: 2026-05-08_
