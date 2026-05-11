@@ -11,6 +11,21 @@
 - § 10 의사결정 기록에 5/11 후반 (코드 작업, ace2 모델명 정정 등) 추가
 - 신규 § 11 산출물 인벤토리 (코드 5종 + 문서 3종)
 
+**v2.1 → v2.2 변경사항 (5/11 오후, 어댑터 도착 후 검증 중 추가 보강)**:
+- § 6 실험 계획: 5/15 → 5/11 단축 반영 (어댑터 조기 도착)
+- § 8 리스크: ACE2 렌즈 초점거리 미확정 항목 추가 (한솔 보유, 8/12/16mm 분기)
+- § 10 의사결정 기록: 5/11 오후 (어댑터 도착, 검증 Step 1~3 PASS, sudo 정정, 양식 합의)
+- § 12 신규: Mac ↔ 6000 환경 분담 (5/11 명확화)
+- 운영 주의 (신규 sub-section): Basler GigE = sudo 불필요 (RealSense D435 USB 패턴 적용 금지)
+
+**v2.2 → v2.3 변경사항 (5/12, Mac Blaze 풀 작동 검증 완료)**:
+- § 2 BLAZE 사양 정정: width 640→**848 (실측)**, fx 417→**553** (재계산), cx 320→**424** (width/2)
+- § 8 리스크 #15 신규: macOS Blaze Supplementary 미지원 → ✅ 해소 (pypylon 단독으로 풀 작동 확인)
+- § 8 리스크 #16 신규: EnumerateDevices 미동작 → IP 직접 fallback 워크어라운드
+- § 10 의사결정 5/12 추가: Blaze 풀 작동 / 192.168.20/24 영구 분리 / Push 정책 명확화 (모든 commit dual)
+- § 12 환경 분담: IPC-510 우선순위 ↓ (Mac 단독 데이터 수집 진입 가능 확정)
+- § 13 신규: Mac Basler 운영 환경 (BASLER_BLAZE_IP 환경변수 / 192.168.20.x / dual push 정책)
+
 ---
 
 ## 1. 배경
@@ -278,11 +293,15 @@ label = {
 | 5 | 대표님 align 어긋남 | 중 | 본 1pager로 align. 출장 복귀 시 즉시 전송 |
 | 6 | 실 부품 CAD 불일치 | 저 | 4/22 발견 패턴 (SizeFilter Z 50% 오차) — 실측으로 검증 |
 | 7 | KAIST + 빈피킹 동시 진행 시간 부족 | 중 | 5월 SOP 확립 후 6월 KAIST 3단계 프로젝트로 통합 |
-| 8 | **BLAZE/ACE2 intrinsics 추정값 부정확** | 중 | 카메라 입고 후 ChAruco 보드로 정식 캘리브 (5/15 ~). 현재 BLAZE fx=417/fy=188 (FOV 75°×104° 기반), ACE2 fx=3478 (12mm 렌즈 가정) |
+| 8 | **BLAZE/ACE2 intrinsics 추정값 부정확** | 중 | 카메라 도착 후 ChAruco 보드로 정식 캘리브. 현재 **BLAZE fx=553/fy=188 (5/12 실측 정정: width 848 기반)**, ACE2 fx=3478 (12mm 렌즈 가정) |
 | 9 | **① main_body 180° 대칭** | 저 | 학습 라벨 A·B 통합 처리. 자세 4개 → 실질 3개 취급 |
 | ~~10~~ | ~~④ bracket_case 단위 의심 (10×5×6mm)~~ | ✅ **해소 (5/11)** | P3 캘리퍼스 실측 56mm → bracket_case가 아니라 **bracket_sen_1 (15×56×53mm) 확정**. STL 단위 mm 신뢰. grasp_database 재생성 불필요 |
 | 11 | P2/P4 STL 미확정 (2개 후보) | 저 | L4 매칭 시 자동 확정 (RMSE/fitness로 1개 결정) |
 | 12 | 4/22 D435 매칭 실패 부품 재출현 가능성 | 저 | P3 = bracket_sen_1 → 4/22 매칭 실패 부품과 같음. Basler 60~80cm로 재시도 시 인식 가능 예상 |
+| 13 | **ACE2 렌즈 초점거리 미확정** (한솔 보유) | 중 | 현재 코드 12mm 렌즈 가정 (fx=3478). 한솔 단톡 답 받으면 정정: 8mm → 2319 / 16mm → 4638. 답 대기 중 Blaze 단독 (--no-ace2)으로 데이터 수집 가능 |
+| 14 | Basler GigE에 sudo 잘못 사용 시 권한 혼선 | 저 | RealSense D435 (USB raw) 패턴 잘못 적용 위험. SOP/test_basler_live 모두 sudo 없이 (5/11 정정) |
+| ~~15~~ | ~~macOS Blaze Supplementary 미지원 → Mac에서 못 씀 가설~~ | ✅ **해소 (5/12)** | pypylon만으로 Blaze-112 풀 작동 확인. ProducerGEV.cti + BaslerGigE TL 사용 + Range component만 enable + Mono16 raw로 깨끗한 848×480 uint16 mm depth. IPC-510 대기 불필요 |
+| 16 | macOS EnumerateDevices() Blaze 미동작 | 저 | 워크어라운드 적용됨 (commit 7e28df9): 환경변수 BASLER_BLAZE_IP 또는 인자로 IP 직접 fallback. 시리얼/모델 매칭 인터페이스 보존 |
 
 ---
 
@@ -317,6 +336,14 @@ label = {
 | 5/11 (오후) | **P3 캘리퍼스 실측 56mm** | bracket_case 단위 의심 해소 → bracket_sen_1 확정. STL 모든 단위 mm 신뢰 |
 | 5/11 (오후) | **레진 Grey 통일 + 무광 표면 확정** | 조명 변형 우선순위 ↓, ToF 반사 노이즈 우려 ↓, 데이터 수집 SOP 단순화 |
 | 5/11 (오후) | **회전대 자작 vs 다이소 → 사용자 결정 보류** | SOP § 1.2에 옵션 A(없이) + B(다이소) 둘 다 기록. auto_label.py가 yaw 자동 산출하므로 필수 아님 |
+| 5/11 (오후) | **🎉 어댑터 ipTIME U1G-C 조기 도착** (예상 5/15 → 5/11, 4일 빠름) | Mac 검증 Step 1~3 즉시 PASS (USB 5Gb/s + 1000baseT + IP 192.168.10.1). 데이터 수집 진입 4일 빠름 |
+| 5/11 (오후) | **Basler GigE = sudo 불필요 정정** | 메모리 § 4/13 D435 (USB raw access 차단) 패턴을 Basler에 적용하면 안 됨. test_basler_live.py + SOP 모두 sudo 없이 |
+| 5/11 (오후) | **Mac ↔ 6000 Claude 릴레이 양식 정식 채택** | `feedback_mac_6000_relay.md` (6000) + `feedback_server_relay_messages.md` (Mac). 환경 전환 시 동기화 메시지 필수 |
+| 5/11 (오후) | **commit 9a2fafd push origin main only** (personal/한솔 미러 제외) | 1pager § 7 셀프 판단 영역 + § 10 의사결정 = 내부 자료. 한솔 미러 노출 부적절. orinu-ai Private repo만 OK |
+| 5/12 | **🎉 Mac Blaze 풀 작동 검증 (옵션 1 성공)** | pypylon 단독으로 Blaze-112 풀 작동 (Supplementary 없이). IP fallback + Range component + Mono16. test_basler_live.py --live --save PASS (480×848 uint16, 유니크 382). IPC-510 대기 3주 불필요 |
+| 5/12 | **BLAZE 실측 정정: 848×480 (매뉴얼 640 오류)** | 5/8 박스 매뉴얼 640×480 가정이 사실은 native 848×480. fx 417 → **553** 재계산. cx 320 → 424. 향후 정식 캘리브 시 추가 정정 가능 |
+| 5/12 | **Mac 네트워크 영구 분리: 192.168.20/24** | 사무실 Wi-Fi (192.168.10/24)와 충돌 회피. 어댑터 en8 + Blaze 전용 서브넷. ping 11~76ms → 1.6~2.7ms (6~30배 빠름). Wi-Fi 켠 채 카메라 작업 가능 |
+| 5/12 | **Push 정책 명확화 — 모든 commit dual push (origin + personal)** | 사용자 기존 운영 방식 = 모든 파일 dual. 5/11 commit 9a2fafd "personal 제외"는 예외였고 정상 패턴 X. 정책: 모든 push = orinu-ai (origin) + m2222n (personal) 동시. 보안은 외부 유출 시점(스크린샷/카톡/PDF)에서 CLAUDE.md § 보안 원칙 적용. credentials/.env는 .gitignore로 보호 |
 
 ---
 
@@ -351,6 +378,33 @@ label = {
 | `memory/project_binpicking_predev_codes_0511.md` | 사전 디벨롭 작업 기록 |
 | `memory/project_week_plan_0511.md` | 이번주 일정 |
 | `memory/project_bottom_vision_handover_done.md` | 바텀비전 인수 완료 |
+
+---
+
+## 12. Mac ↔ 6000 환경 분담 (5/11 확정)
+
+| 환경 | 역할 | 의존성 |
+|------|------|------|
+| **Mac 로컬** | 카메라 데이터 수집 + Open3D 파이프라인 실행 + pylon GUI + 어댑터 검증 | Open3D ✅ (AVX2), pypylon 26.4.1, 카메라 직접 |
+| **6000 서버** | 코드 저장소 + git push/pull + sandbox + 메모리 관리 + 문서 | Open3D ❌ (AVX2 미지원), pypylon 26.03.1 (smoke만), 카메라 X |
+| **비전 PC (IPC-510)** | 본 운영 (5월 후반 ~) | Linux, pylon Suite 필요, 한솔 바텀비전 동거 |
+
+### 운영 주의 (5/11 정정)
+
+- **Basler GigE = sudo 불필요** (이더넷 통신, USB raw access 제약 없음)
+- RealSense D435 (USB)의 sudo 패턴을 Basler에 적용 X
+- `test_basler_live.py`, `auto_label.py` 모두 `python ...` (sudo 없이) 실행
+
+### 환경 전환 시 절차
+
+1. **6000 → Mac**: 새 코드 commit + push (orinu-ai만, personal/한솔 미러 보안 검토 후)
+2. **Mac**: `git pull origin main` + venv 확인 + 작업
+3. **Mac → 6000**: 카메라 실험 결과/메모리 갱신 필요 시 릴레이 메시지로 알림
+
+### 릴레이 메시지 양식
+
+`memory/feedback_mac_6000_relay.md` (6000) / `feedback_server_relay_messages.md` (Mac) — 5/11 합의:
+- 환경 / 검증 / 다음 단계 / 상대 측 영향 / 룰
 
 ---
 

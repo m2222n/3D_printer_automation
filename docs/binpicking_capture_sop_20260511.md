@@ -114,13 +114,36 @@
 
 ## 2. 수집 절차 (부품 1종당, 1~2시간)
 
+> 💡 **권한 주의 (5/11 정정)**: Basler GigE Vision = 이더넷 통신. macOS USB raw access 제약 없음.
+> **sudo 없이 실행**. RealSense D435(USB)의 sudo 패턴 (4/13 메모리)을 Basler에 적용하면 안 됨.
+> 권한 에러 발생 시에만 추가 검토 (드물게 pypylon 설치 권한 문제 시).
+
+> 🔧 **macOS Blaze 운영 (5/12 검증)**:
+> - Blaze Supplementary macOS 미지원 → pypylon 단독으로 작동 가능 (검증 완료, commit 7e28df9)
+> - EnumerateDevices() Blaze 미발견 → **IP 직접 fallback 필수**:
+>   ```bash
+>   export BASLER_BLAZE_IP=192.168.20.10   # ⭐ Mac에서 필수
+>   # 또는 BaslerCapture(blaze_ip="192.168.20.10") 인자
+>   ```
+> - 네트워크: Mac en8 (192.168.20.1/24, ipTIME U1G-C) ↔ Blaze (192.168.20.10/24, Static)
+>   - 192.168.20/24 = 사무실 Wi-Fi (192.168.10/24)와 영구 분리 → Wi-Fi 켠 채 작업 가능
+> - Blaze 실 해상도: **848×480** (매뉴얼 640 가정 오류, 5/12 실측)
+
 ### 2.1 사전 준비 (5분)
 
 ```bash
-# 1. 카메라 인식 확인
-cd ~/3D_printer_automation
-.venv/binpick/bin/python bin_picking/tests/test_basler_live.py --discover
-# → Blaze 발견 + ace2 발견 확인
+# 1. 환경 활성화
+cd ~/Work/Orinu.ai/3D_printer_automation/3D_printer_automation   # Mac 작업 경로
+source .venv/binpick/bin/activate
+
+# 2. Blaze IP 환경변수 (macOS 필수, EnumerateDevices fallback)
+export BASLER_BLAZE_IP=192.168.20.10
+# (선택) ace2 IP — 한솔에서 부품 인수 + IP 할당 후
+# export BASLER_ACE2_IP=192.168.20.11
+
+# 3. 카메라 인식 확인 — sudo 불필요 (Basler GigE)
+python bin_picking/tests/test_basler_live.py --discover
+# → Blaze 발견 확인 (ace2는 아직 한솔 보유 중이라 --no-ace2 사용)
 
 # 2. 캡처 저장 디렉토리 준비
 PART="plate_e"      # 부품 ID (stable_poses.yaml 키와 일치)
@@ -133,6 +156,18 @@ CAPTURE_DIR="bin_picking/models/captures/${DATE}_${PART}_pose${POSE}_${LIGHT}_${
 mkdir -p "$CAPTURE_DIR"
 
 # 3. 부품을 자세 A로 회전대에 놓고 → 카메라 광축 중심에 오도록 조정
+```
+
+**5/12 검증된 실행 예시** (사무실 천장/벽, 부품 미배치, --no-ace2):
+```bash
+BASLER_BLAZE_IP=192.168.20.10 python bin_picking/tests/test_basler_live.py \
+  --live --save --no-ace2
+
+# 기대 출력:
+# - Warmup 10/10 PASS
+# - shape (480, 848) uint16, 유효 픽셀 % 50~90 (부품 거리/시야 의존)
+# - depth 범위 (mm), 중앙값, unique 값 > 300 (양자화 OK)
+# - 캡처 시간 ~0.05s, 저장 ~800KB, 라운드트립 PASS
 ```
 
 ### 2.2 yaw sweep 촬영 (15° × 24 = 360°, 30분)
@@ -274,6 +309,10 @@ done
 | pose_id가 자세별로 안 맞음 | stable_poses.yaml 회전 매핑 | yaml 재생성 (`pose_enumerator.py`) 또는 수동 보정 |
 | 한 yaw에서 cluster 0개 | 부품이 카메라 시야 밖 | 부품 위치 조정, ROI 확장 |
 | 시간 너무 오래 걸림 | yaw 24개 × 자세 N × 조명 3 × 배경 3 | 차원 축소 (조명만 normal로, 배경만 white로) |
+| **macOS** `--discover` 0개 (5/12 워크어라운드) | EnumerateDevices Blaze 미동작 | `BASLER_BLAZE_IP=192.168.20.10` 환경변수 export 후 재실행. IP fallback으로 우회 |
+| **macOS** "Coord3D_C16 사용 불가" / "Blaze Supplementary 필요" | macOS Blaze SDK 미지원 | basler_capture.py가 자동 처리 (Range component + Mono16 raw로 동일 mm depth). 별도 조치 불필요 |
+| ping 192.168.10.x 시 카메라 통신 안 됨 | Wi-Fi (192.168.10/24)와 어댑터 IP 충돌 | 어댑터+카메라를 **192.168.20/24**로 이동 (`memory/project_basler_office_setup_0508.md` § 5/12 영구 분리 참조) |
+| Blaze 해상도 (480, 640) 기대했는데 (480, 848) | 매뉴얼 가정 오류 | **848×480이 native 해상도** (5/12 실측). 코드는 정상 (`BLAZE_112_SPEC.width=848`). meta.json에 width 848로 저장됨 |
 
 ---
 
