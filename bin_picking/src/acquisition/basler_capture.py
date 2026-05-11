@@ -7,15 +7,19 @@ ace2 a2A2448-23gcBAS RGB 카메라에서 color 프레임을 취득한다.
 두 카메라 데이터를 합쳐 Colored Point Cloud를 생성한다.
 
 카메라 조합:
-  - Blaze-112: 640×480, ToF(depth+confidence), GigE, 0.3~10m
-                FOV 75°(H) × 104°(V) → fx≈417, fy≈188 (5/11 정정)
+  - Blaze-112: 848×480, ToF(depth+intensity multipart), GigE, 0.3~10m
+                FOV 75°(H) × 104°(V) → fx≈553, fy≈188 (5/12 실측 정정)
   - ace2 a2A2448-23gcBAS: 2448×2048 (5MP), RGB, GigE
                 Sony IMX392, 픽셀 피치 3.45µm, C-mount 렌즈 별매 (한솔 보유)
 
 이력:
   - 5/8 박스 개봉 시 ace2 실제 모델 a2A2448-23gcBAS 확인 (코드 가정 a2A2590-22gcPRO와 다름)
-  - 5/11 BLAZE fx/fy 460→417/188 정정 (FOV 75°×104° 기반 재계산)
+  - 5/11 BLAZE fx/fy 460→417/188 정정 (FOV 75°×104° 기반, width 640 가정)
   - 5/11 ACE2 모델명 + 해상도 (2592×1944 → 2448×2048) 정정
+  - 5/12 실측: Blaze 실 해상도 848×480 확인 (매뉴얼 640×480 가정 오류). fx 417→553 재계산
+  - 5/12 macOS Blaze 풀 작동 검증 — Blaze Supplementary 없이 pypylon만으로 OK
+  - 5/12 IP 직접 fallback 추가 (EnumerateDevices 미동작 → BASLER_BLAZE_IP / BASLER_ACE2_IP 환경변수)
+  - 5/12 Coord3D_C16 사용 불가 (Supplementary 필요) → Range component만 enable, Mono16 mm depth로 사용
   - fx/fy 추정값은 카메라 입고 후 ChAruco 보드로 정식 캘리브 예정
 
 사용법 (카메라 연결 시):
@@ -40,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -58,14 +63,15 @@ except ImportError:
 
 # Basler Blaze-112 ToF (depth)
 # 5/8 박스 개봉 시 실 사양 확인 (S/N 40737830, MAC 00:30:53:37:BB:6E)
-# FOV 75°(H) × 104°(V) → fx/fy 5/11 정정
-#   fx = 640 / (2 × tan(75°/2)) = 640 / (2 × 0.7673) ≈ 417
+# 5/12 라이브 검증 시 실 해상도 848×480 확인 (매뉴얼 640×480 가정 오류)
+# FOV 75°(H) × 104°(V) → fx/fy 재계산
+#   fx = 848 / (2 × tan(75°/2)) = 848 / (2 × 0.7673) ≈ 553
 #   fy = 480 / (2 × tan(104°/2)) = 480 / (2 × 1.2799) ≈ 188
 # ⚠️ 추정값. 카메라 입고 후 ChAruco 보드로 정식 캘리브레이션 필요
 BLAZE_112_SPEC = {
     "model": "Basler Blaze-112",
     "type": "ToF",
-    "width": 640,
+    "width": 848,            # 5/12 실측 (매뉴얼 640 가정 오류)
     "height": 480,
     "fps": 30,
     "depth_min_m": 0.3,
@@ -74,10 +80,10 @@ BLAZE_112_SPEC = {
     "fov_h_deg": 75.0,
     "fov_v_deg": 104.0,
     "voltage_v": 24.0,       # 24VDC 고정 (PoE 아님, 21V 미만 손상)
-    # 내부 파라미터 — FOV 기반 추정 (5/11 정정: 460/460 → 417/188)
-    "fx": 417.0,
+    # 내부 파라미터 — FOV 기반 추정 (5/12: 417/188 → 553/188, width 정정 반영)
+    "fx": 553.0,
     "fy": 188.0,
-    "cx": 320.0,
+    "cx": 424.0,             # width/2
     "cy": 240.0,
 }
 
@@ -187,7 +193,9 @@ class BaslerCapture:
         self,
         blaze_serial: Optional[str] = None,
         ace2_serial: Optional[str] = None,
-        depth_width: int = 640,
+        blaze_ip: Optional[str] = None,
+        ace2_ip: Optional[str] = None,
+        depth_width: int = 848,    # 5/12 실측 정정 (640 → 848)
         depth_height: int = 480,
         color_width: int = 2448,    # 5/11 정정: a2A2448-23gcBAS 실 해상도
         color_height: int = 2048,
@@ -200,7 +208,10 @@ class BaslerCapture:
         Args:
             blaze_serial: Blaze-112 시리얼 번호 (None=자동 검색)
             ace2_serial: ace2 시리얼 번호 (None=자동 검색, ace2 없으면 depth만)
-            depth_width, depth_height: Blaze-112 해상도 (기본 640x480)
+            blaze_ip: Blaze 직접 IP 주소 (None이면 환경변수 BASLER_BLAZE_IP 시도).
+                      macOS pypylon EnumerateDevices가 Blaze 미발견 시 fallback 필수
+            ace2_ip: ace2 직접 IP 주소 (None이면 환경변수 BASLER_ACE2_IP 시도)
+            depth_width, depth_height: Blaze-112 해상도 (5/12 실측 848x480)
             color_width, color_height: ace2 해상도 (a2A2448-23gcBAS 기본 2448x2048)
             depth_min, depth_max: 유효 depth 범위 (m)
             confidence_threshold: Blaze-112 confidence 필터링 임계값
@@ -214,6 +225,8 @@ class BaslerCapture:
 
         self.blaze_serial = blaze_serial
         self.ace2_serial = ace2_serial
+        self.blaze_ip = blaze_ip or os.environ.get("BASLER_BLAZE_IP")
+        self.ace2_ip = ace2_ip or os.environ.get("BASLER_ACE2_IP")
         self.depth_width = depth_width
         self.depth_height = depth_height
         self.color_width = color_width
@@ -245,8 +258,18 @@ class BaslerCapture:
             })
         return result
 
-    def _find_camera(self, model_keyword: str, serial: Optional[str] = None):
-        """모델명 키워드 + 시리얼로 카메라를 찾아 InstantCamera를 반환."""
+    def _find_camera(
+        self,
+        model_keyword: str,
+        serial: Optional[str] = None,
+        ip: Optional[str] = None,
+    ):
+        """모델명 키워드 + 시리얼로 카메라를 찾아 InstantCamera를 반환.
+
+        1) EnumerateDevices로 검색
+        2) 실패 시 ip 인자로 직접 CreateDevice fallback
+        macOS는 Blaze에 대해 broadcast discovery가 동작하지 않아 IP fallback 필수.
+        """
         tlf = pylon.TlFactory.GetInstance()
         devices = tlf.EnumerateDevices()
 
@@ -260,6 +283,17 @@ class BaslerCapture:
                 cam = pylon.InstantCamera(tlf.CreateDevice(dev))
                 return cam
 
+        # Fallback: IP 직접 지정 (macOS Blaze 브로드캐스트 미동작 회피)
+        if ip:
+            try:
+                info = pylon.DeviceInfo()
+                info.SetIpAddress(ip)
+                info.SetDeviceClass("BaslerGigE")
+                cam = pylon.InstantCamera(tlf.CreateDevice(info))
+                return cam
+            except Exception:
+                return None
+
         return None
 
     def start(self) -> dict:
@@ -271,7 +305,7 @@ class BaslerCapture:
         result = {"blaze": False, "ace2": False}
 
         # Blaze-112 연결
-        self._blaze_cam = self._find_camera("blaze", self.blaze_serial)
+        self._blaze_cam = self._find_camera("blaze", self.blaze_serial, self.blaze_ip)
         if self._blaze_cam is not None:
             self._blaze_cam.Open()
             # Blaze-112 설정 (pypylon GenICam 노드)
@@ -285,7 +319,7 @@ class BaslerCapture:
             result["blaze"] = True
 
         # ace2 연결
-        self._ace2_cam = self._find_camera("a2A", self.ace2_serial)
+        self._ace2_cam = self._find_camera("a2A", self.ace2_serial, self.ace2_ip)
         if self._ace2_cam is not None:
             self._ace2_cam.Open()
             try:
@@ -305,13 +339,32 @@ class BaslerCapture:
         return result
 
     def _setup_blaze(self, nodemap) -> None:
-        """Blaze-112 GenICam 노드 설정."""
-        # Blaze-112은 depth + confidence를 멀티파트로 전송
-        # 구체적인 노드명은 카메라 입고 후 확인 필요
+        """Blaze-112 GenICam 노드 설정.
+
+        Blaze는 ComponentSelector(Intensity/Range/Confidence)로 출력 컴포넌트를 선택한다.
+        기본 상태에서는 Intensity + Range 둘 다 enabled → multipart 848×960 raw frame.
+        Range만 enable하면 깨끗한 단일 컴포넌트 848×480 uint16 (mm 단위 depth) 출력.
+
+        5/12 검증: Coord3D_C16 PixelFormat은 Blaze Supplementary 필요 → 사용 불가.
+        Mono16 raw + Range single component로 mm depth uint16 직접 수신.
+        """
+        # 1) Intensity component 끄기
         try:
-            # 노출 시간 (ToF integration time)
+            cs = nodemap.GetNode("ComponentSelector")
+            ce = nodemap.GetNode("ComponentEnable")
+            if cs is not None and ce is not None:
+                cs.FromString("Intensity")
+                ce.SetValue(False)
+                # 2) Range component 켜기 (depth)
+                cs.FromString("Range")
+                ce.SetValue(True)
+        except Exception:
+            pass  # 노드 없으면 기본 multipart 모드 유지
+
+        # 3) 노출 시간 (ToF integration time, µs 단위)
+        try:
             if nodemap.GetNode("ExposureTime") is not None:
-                nodemap.GetNode("ExposureTime").SetValue(5000)  # 5ms 기본
+                nodemap.GetNode("ExposureTime").SetValue(1000)  # 1ms (Blaze 기본값)
         except Exception:
             pass
 
