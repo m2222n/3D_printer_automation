@@ -857,6 +857,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-05-12 | **🎉 Mac Blaze 풀 작동 검증 완료** — pylon Suite 26.04 설치 → IP Configurator 발견 → Wi-Fi 충돌 발견 → 192.168.20/24 영구 분리 → pylon Viewer 미지원 발견 → **pypylon 단독 풀 작동 워크어라운드** (Range component + Mono16). commit 7e28df9 (basler_capture.py +73/-20) push. 핵심 발견: ① Blaze 실 해상도 848×480 (매뉴얼 640 오류) ② macOS Blaze Supplementary 불필요 (pypylon으로 OK) ③ EnumerateDevices 미동작 → BASLER_BLAZE_IP fallback ④ Wi-Fi 충돌 192.168.20/24 분리. test_basler_live.py --live --save --pipeline 풀 PASS. **IPC-510 대기 3주 불필요** | ✅ — `memory/project_basler_office_setup_0508.md` § 5/12 |
 | 2026-05-12 | **문서 동기화 commit 3fa9e10** (origin + personal dual push, +98/-5) — 1pager v2.3 (BLAZE 848 + 리스크 #15/#16 + 5/12 의사결정) + SOP (macOS 운영 노트 + BASLER_BLAZE_IP + 트러블슈팅 4개) + Push 정책 단순화 (모든 commit dual = 사용자 기존 패턴) | ✅ — Mac/6000 양쪽 최신 동기화 |
 | 2026-05-12 (저녁) | **🎉 라이브 뷰어 commit 0a34b72** (Mac, live_viewer_basler.py +179줄) — pylon Viewer macOS Blaze 미지원 회피용 cv2 + pypylon 단독 인터랙티브 뷰어. 키: ESC/q/s/c/r/+/-. FPS 20.1, depth median 835mm, JET 컬러맵 정상. 사용자 시각 확인 "오 잘되네". **5/12 인프라 단계 완전 종료** — 빈피킹 워크플로우 100% Mac 단독 가능 확정. 이제부터 사용자 부품 배치 + 본 캡처 페이스 | ✅ |
+| 2026-05-12 (퇴근 전) | **일정 결정 — 카메라 사무실 보관, 5/15 금 본 작업 시작** — 2.5kg 이동 부담 + 카메라 충격 위험 회피. 수 5/13 재택은 가벼운 작업만 (ACE2 단톡, 예승님 카톡, 1pager align 메시지 초안). 5/15 금 사무실 종일 P5 main_body 첫 시범 + auto_label 실 데이터 검증 | ✅ |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 
