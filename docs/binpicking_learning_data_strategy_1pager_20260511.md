@@ -347,16 +347,17 @@ label = {
 
 ---
 
-## 11. 산출물 인벤토리 (5/11 사전 디벨롭 완성)
+## 11. 산출물 인벤토리 (5/11 사전 디벨롭 + 5/12 인프라 완성)
 
-### 코드 (5개)
+### 코드 (6개 — 5/12 라이브 뷰어 추가)
 | 파일 | 줄수 | 역할 |
 |------|------|------|
-| `bin_picking/tests/test_basler_live.py` | 678 | 어댑터 도착 후 카메라 검증 (--discover/--live/--save/--load/--pipeline) |
-| `bin_picking/src/recognition/pose_enumerator.py` | 412 | STL → 안정 자세 yaml 자동 생성 (5종 + 29종 검증) |
-| `bin_picking/src/labeling/auto_label.py` | 815 | 자동 라벨링 (L1~L4 + stable_pose 매핑 + 품질 게이트, 시뮬 검증 PASS) |
-| `bin_picking/src/acquisition/basler_capture.py` | 600 (수정) | BLAZE 417/188, ACE2 a2A2448-23gcBAS 2448×2048 3478 정정 |
-| `bin_picking/src/acquisition/{depth_to_pointcloud, hand_eye_calibration}.py` 등 | - | BLAZE intrinsics 일관성 업데이트 (5/11) |
+| `bin_picking/tests/test_basler_live.py` | 678 | 어댑터 검증 (--discover/--live/--save/--load/--pipeline) |
+| `bin_picking/tests/live_viewer_basler.py` ⭐ 신규 (5/12) | 179 | Mac 인터랙티브 라이브 뷰어 (cv2 + pypylon, pylon Viewer 미지원 회피). 키: ESC/q/s/c/r/+/-. 시야 확인 + 부품 배치 조절 |
+| `bin_picking/src/recognition/pose_enumerator.py` | 412 | STL → 안정 자세 yaml 자동 생성 (5종 + 29종) |
+| `bin_picking/src/labeling/auto_label.py` | 815 | 자동 라벨링 (L1~L4 + stable_pose 매핑 + 품질 게이트, 시뮬 PASS) |
+| `bin_picking/src/acquisition/basler_capture.py` | 600+ (5/11+5/12 수정) | BLAZE 정정 (width 848 + fx 553 + cx 424) + IP fallback + Range/Mono16 |
+| `bin_picking/src/acquisition/{depth_to_pointcloud, hand_eye_calibration}.py` 등 | - | BLAZE intrinsics 일관성 (5/11 + 5/12) |
 
 ### 설정 (2개)
 | 파일 | 크기 | 역할 |

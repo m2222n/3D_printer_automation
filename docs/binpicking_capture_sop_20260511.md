@@ -145,6 +145,13 @@ export BASLER_BLAZE_IP=192.168.20.10
 python bin_picking/tests/test_basler_live.py --discover
 # → Blaze 발견 확인 (ace2는 아직 한솔 보유 중이라 --no-ace2 사용)
 
+# 4. (권장) 라이브 뷰어로 카메라 시야 + 부품 배치 시각 확인 — 5/12 추가
+#    pylon Viewer macOS Blaze 미지원 회피 (cv2 + pypylon 단독)
+python bin_picking/tests/live_viewer_basler.py
+# → 키: ESC/q 종료, s 스냅샷, c 컬러맵 토글, r 자동 범위, +/- 범위 조절
+# → 오버레이: FPS / valid % / median(mm) / depth 범위 / 컬러맵
+# → 사용 목적: 부품 위치/거리 조정 + valid % 70%+ 확인 후 본 캡처 진입
+
 # 2. 캡처 저장 디렉토리 준비
 PART="plate_e"      # 부품 ID (stable_poses.yaml 키와 일치)
 POSE="A"            # 안정 자세 ID (stable_poses.yaml 참조)
