@@ -822,7 +822,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-05-11
+### 마지막 업데이트 일자: 2026-05-12
 
 ### 마일스톤 (시간 순)
 
@@ -853,7 +853,9 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-05-11 | 바텀비전 인수 완료 (Flicdern_v3) + 인터페이스 명세 추출 + 5종 깊게 모드 결정 + 어댑터 도착 전 사전 디벨롭 계획 | ✅ 완료 — `memory/project_bottom_vision_handover_done.md`, `project_binpicking_5parts_strategy.md`, `project_week_plan_0511.md` |
 | 2026-05-11 | **사전 디벨롭 전략 A (코드 몰빵) 완료** — 코드 신규 3 (test_basler_live 678 + pose_enumerator 412 + auto_label 815) + 코드 수정 5 (ACE2 a2A2448-23gcBAS / BLAZE fx 417 fy 188) + 문서 3 (1pager v2 + SOP + 바텀비전 인터페이스) + 설정 2 (5종/29종 yaml) + 메모리 4. 5종 실측 발견 (② 단순/① 대칭/④ 단위 의심) | ✅ 완료 — `memory/project_binpicking_predev_codes_0511.md` |
 | 2026-05-11 (오후) | **부품 5종 사진 + 실측 + 1pager v2.1** — 핸드폰 사진 15장 + **P3 캘리퍼스 56mm = bracket_sen_1 확정** (단위 의심 해소). 레진 Grey 통일 + 무광 표면 확인. P5 main_body 거의 확정 | ✅ 완료 |
-| 2026-05-11 (오후) | **🎉 어댑터 ipTIME U1G-C 조기 도착** (예상 5/15 → 5/11, 4일 빠름). 박스 사양 OK (USB 3.0 + 기가비트 + macOS 10.6+). 즉시 8단계 검증 + Basler 라이브 진입 | 🔄 진행 중 |
+| 2026-05-11 (오후) | **🎉 어댑터 ipTIME U1G-C 조기 도착** (예상 5/15 → 5/11, 4일 빠름). 박스 사양 OK (USB 3.0 + 기가비트 + macOS 10.6+). 즉시 Step 1~3 검증 PASS (USB 5Gb/s + en8 1000baseT + IP 고정) | ✅ |
+| 2026-05-12 | **🎉 Mac Blaze 풀 작동 검증 완료** — pylon Suite 26.04 설치 → IP Configurator 발견 → Wi-Fi 충돌 발견 → 192.168.20/24 영구 분리 → pylon Viewer 미지원 발견 → **pypylon 단독 풀 작동 워크어라운드** (Range component + Mono16). commit 7e28df9 (basler_capture.py +73/-20) push. 핵심 발견: ① Blaze 실 해상도 848×480 (매뉴얼 640 오류) ② macOS Blaze Supplementary 불필요 (pypylon으로 OK) ③ EnumerateDevices 미동작 → BASLER_BLAZE_IP fallback ④ Wi-Fi 충돌 192.168.20/24 분리. test_basler_live.py --live --save --pipeline 풀 PASS. **IPC-510 대기 3주 불필요** | ✅ — `memory/project_basler_office_setup_0508.md` § 5/12 |
+| 2026-05-12 | **문서 동기화 commit 3fa9e10** (origin + personal dual push, +98/-5) — 1pager v2.3 (BLAZE 848 + 리스크 #15/#16 + 5/12 의사결정) + SOP (macOS 운영 노트 + BASLER_BLAZE_IP + 트러블슈팅 4개) + Push 정책 단순화 (모든 commit dual = 사용자 기존 패턴) | ✅ — Mac/6000 양쪽 최신 동기화 |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 
