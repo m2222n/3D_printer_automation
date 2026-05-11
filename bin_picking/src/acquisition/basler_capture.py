@@ -3,12 +3,20 @@ Basler 카메라 캡처 모듈 — Blaze-112 (ToF) + ace2 (RGB 5MP)
 ============================================================
 
 Basler Blaze-112 ToF 카메라에서 depth + confidence 프레임을 취득하고,
-ace2 a2A2590-22gcPRO RGB 카메라에서 color 프레임을 취득한다.
+ace2 a2A2448-23gcBAS RGB 카메라에서 color 프레임을 취득한다.
 두 카메라 데이터를 합쳐 Colored Point Cloud를 생성한다.
 
 카메라 조합:
-  - Blaze-112: 640x480, ToF(depth+confidence), GigE, 0.3~10m
-  - ace2 a2A2590-22gcPRO: 2592x1944 (5MP), RGB, GigE
+  - Blaze-112: 640×480, ToF(depth+confidence), GigE, 0.3~10m
+                FOV 75°(H) × 104°(V) → fx≈417, fy≈188 (5/11 정정)
+  - ace2 a2A2448-23gcBAS: 2448×2048 (5MP), RGB, GigE
+                Sony IMX392, 픽셀 피치 3.45µm, C-mount 렌즈 별매 (한솔 보유)
+
+이력:
+  - 5/8 박스 개봉 시 ace2 실제 모델 a2A2448-23gcBAS 확인 (코드 가정 a2A2590-22gcPRO와 다름)
+  - 5/11 BLAZE fx/fy 460→417/188 정정 (FOV 75°×104° 기반 재계산)
+  - 5/11 ACE2 모델명 + 해상도 (2592×1944 → 2448×2048) 정정
+  - fx/fy 추정값은 카메라 입고 후 ChAruco 보드로 정식 캘리브 예정
 
 사용법 (카메라 연결 시):
     from bin_picking.src.acquisition.basler_capture import BaslerCapture
@@ -49,6 +57,11 @@ except ImportError:
 # ============================================================
 
 # Basler Blaze-112 ToF (depth)
+# 5/8 박스 개봉 시 실 사양 확인 (S/N 40737830, MAC 00:30:53:37:BB:6E)
+# FOV 75°(H) × 104°(V) → fx/fy 5/11 정정
+#   fx = 640 / (2 × tan(75°/2)) = 640 / (2 × 0.7673) ≈ 417
+#   fy = 480 / (2 × tan(104°/2)) = 480 / (2 × 1.2799) ≈ 188
+# ⚠️ 추정값. 카메라 입고 후 ChAruco 보드로 정식 캘리브레이션 필요
 BLAZE_112_SPEC = {
     "model": "Basler Blaze-112",
     "type": "ToF",
@@ -58,27 +71,40 @@ BLAZE_112_SPEC = {
     "depth_min_m": 0.3,
     "depth_max_m": 10.0,     # 카탈로그 최대, 실용 ~1.5m
     "interface": "GigE",
-    # 내부 파라미터 추정값 — 카메라 입고 후 캘리브레이션 필요
-    "fx": 460.0,
-    "fy": 460.0,
+    "fov_h_deg": 75.0,
+    "fov_v_deg": 104.0,
+    "voltage_v": 24.0,       # 24VDC 고정 (PoE 아님, 21V 미만 손상)
+    # 내부 파라미터 — FOV 기반 추정 (5/11 정정: 460/460 → 417/188)
+    "fx": 417.0,
+    "fy": 188.0,
     "cx": 320.0,
     "cy": 240.0,
 }
 
-# Basler ace2 a2A2590-22gcPRO (RGB 5MP)
+# Basler ace2 a2A2448-23gcBAS (RGB 5MP)
+# 5/8 박스 개봉 시 실 모델명 확인 (S/N 41881328) — 코드 가정과 다름
+# Sony IMX392 센서, 픽셀 피치 3.45µm, C-mount 렌즈 별매 (한솔 보유)
+# fx/fy는 렌즈 초점거리에 따라 가변:
+#   12mm 렌즈: fx = fy = 12 / 3.45e-3 ≈ 3478 px
+#   8mm 렌즈:  fx = fy = 8 / 3.45e-3 ≈ 2319 px
+#   16mm 렌즈: fx = fy = 16 / 3.45e-3 ≈ 4638 px
+# ⚠️ 일단 12mm 가정. 한솔 렌즈 인수 + 캘리브 후 정확값으로 교체
 ACE2_5MP_SPEC = {
-    "model": "Basler ace2 a2A2590-22gcPRO",
+    "model": "Basler ace2 a2A2448-23gcBAS",
     "type": "RGB",
-    "width": 2592,
-    "height": 1944,
-    "fps": 22,
+    "width": 2448,
+    "height": 2048,
+    "fps": 23,
     "interface": "GigE",
-    "sensor": "Sony IMX334",
-    # 내부 파라미터 추정값 — 카메라 입고 후 캘리브레이션 필요
-    "fx": 2400.0,
-    "fy": 2400.0,
-    "cx": 1296.0,
-    "cy": 972.0,
+    "sensor": "Sony IMX392",
+    "pixel_pitch_um": 3.45,
+    "lens": "C-mount, 별매 (한솔 보유)",
+    "lens_focal_mm_assumed": 12.0,
+    # 내부 파라미터 — 12mm 렌즈 가정 (5/11 정정: 2400 → 3478)
+    "fx": 3478.0,
+    "fy": 3478.0,
+    "cx": 1224.0,
+    "cy": 1024.0,
 }
 
 
@@ -163,8 +189,8 @@ class BaslerCapture:
         ace2_serial: Optional[str] = None,
         depth_width: int = 640,
         depth_height: int = 480,
-        color_width: int = 2592,
-        color_height: int = 1944,
+        color_width: int = 2448,    # 5/11 정정: a2A2448-23gcBAS 실 해상도
+        color_height: int = 2048,
         depth_min: float = 0.3,
         depth_max: float = 1.5,
         confidence_threshold: int = 100,
@@ -175,11 +201,11 @@ class BaslerCapture:
             blaze_serial: Blaze-112 시리얼 번호 (None=자동 검색)
             ace2_serial: ace2 시리얼 번호 (None=자동 검색, ace2 없으면 depth만)
             depth_width, depth_height: Blaze-112 해상도 (기본 640x480)
-            color_width, color_height: ace2 해상도 (기본 2592x1944)
+            color_width, color_height: ace2 해상도 (a2A2448-23gcBAS 기본 2448x2048)
             depth_min, depth_max: 유효 depth 범위 (m)
             confidence_threshold: Blaze-112 confidence 필터링 임계값
             color_downscale: color를 depth 해상도에 맞추기 위한 다운스케일 팩터
-                            (None=원본 유지, 4=2592→648 근사)
+                            (None=원본 유지, 4=2448→612 근사)
         """
         if pylon is None:
             raise ImportError(

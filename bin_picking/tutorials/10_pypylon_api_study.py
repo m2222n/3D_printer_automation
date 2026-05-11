@@ -2,9 +2,10 @@
 pypylon API 학습 — 빈피킹용 카메라 제어 패턴 정리
 ===================================================
 
-Basler 카메라 2대 사용 예정:
+Basler 카메라 2대 사용 (5/8 박스 개봉 시 실 모델 확인):
   - Blaze-112 ToF: depth map (640×480, 16bit) → 포인트 클라우드
-  - ace2 5MP (a2A2590-22gcPRO): RGB 이미지 (2592×1944) → 색상 매핑
+  - ace2 5MP (a2A2448-23gcBAS): RGB 이미지 (2448×2048) → 색상 매핑
+  ⚠️ 이전 가정 (a2A2590-22gcPRO, 2592×1944)은 5/11에 실 모델로 정정됨
 
 pypylon은 pylon SDK의 Python 래퍼. GenICam 기반으로 모든 Basler 카메라 동일 API.
 

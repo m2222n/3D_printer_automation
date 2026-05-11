@@ -822,7 +822,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-05-08
+### 마지막 업데이트 일자: 2026-05-11
 
 ### 마일스톤 (시간 순)
 
@@ -849,7 +849,11 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-04-30 | `deploy.bat` 도입 + smoke test + 재부팅 자동복구 검증 | ✅ — `memory/project_deploy_bat.md` |
 | 2026-05-06 | JWT 로그인 도입 + 한솔 머지 4·5차 + 공장 PC 응답 영구 해결 (12시간, 11커밋) | ✅ — `memory/project_web_auth_security.md` |
 | 2026-05-06 | 한솔 3자 회의 (4DoF / 다면 인식 / 한화 패키지) + 대표님 빈피킹 개인 지시 4가지 | ✅ — `memory/project_meeting_0506_hansol.md` + `memory/project_binpicking_ceo_directive_0506.md` |
-| 2026-05-08 | Basler 박스 개봉 + Mac 사무실 셋업 + 어댑터 발주 결정 (ipTIME U1G-C) | 🔄 진행 중 — 토요일 어댑터 도착 대기 |
+| 2026-05-08 | Basler 박스 개봉 + Mac 사무실 셋업 + 어댑터 발주 결정 (ipTIME U1G-C) | ✅ 5/11 — 어댑터 화요일 도착 예정이나 수요일 재택 → 금요일 수령으로 수렴 |
+| 2026-05-11 | 바텀비전 인수 완료 (Flicdern_v3) + 인터페이스 명세 추출 + 5종 깊게 모드 결정 + 어댑터 도착 전 사전 디벨롭 계획 | ✅ 완료 — `memory/project_bottom_vision_handover_done.md`, `project_binpicking_5parts_strategy.md`, `project_week_plan_0511.md` |
+| 2026-05-11 | **사전 디벨롭 전략 A (코드 몰빵) 완료** — 코드 신규 3 (test_basler_live 678 + pose_enumerator 412 + auto_label 815) + 코드 수정 5 (ACE2 a2A2448-23gcBAS / BLAZE fx 417 fy 188) + 문서 3 (1pager v2 + SOP + 바텀비전 인터페이스) + 설정 2 (5종/29종 yaml) + 메모리 4. 5종 실측 발견 (② 단순/① 대칭/④ 단위 의심) | ✅ 완료 — `memory/project_binpicking_predev_codes_0511.md` |
+| 2026-05-11 (오후) | **부품 5종 사진 + 실측 + 1pager v2.1** — 핸드폰 사진 15장 + **P3 캘리퍼스 56mm = bracket_sen_1 확정** (단위 의심 해소). 레진 Grey 통일 + 무광 표면 확인. P5 main_body 거의 확정 | ✅ 완료 |
+| 2026-05-11 (오후) | **🎉 어댑터 ipTIME U1G-C 조기 도착** (예상 5/15 → 5/11, 4일 빠름). 박스 사양 OK (USB 3.0 + 기가비트 + macOS 10.6+). 즉시 8단계 검증 + Basler 라이브 진입 | 🔄 진행 중 |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 

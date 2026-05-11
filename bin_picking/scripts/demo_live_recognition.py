@@ -232,7 +232,8 @@ class SyntheticSource(FrameSource):
         return FrameBundle(
             rgb=color,
             depth=depth,
-            fx=460.0, fy=460.0, cx=320.0, cy=240.0,
+            # 5/11 정정: BLAZE_112 FOV 75°×104° 기반 (460→417/188)
+            fx=417.0, fy=188.0, cx=320.0, cy=240.0,
             depth_scale=1000.0,
         )
 

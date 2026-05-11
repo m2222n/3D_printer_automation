@@ -88,14 +88,16 @@ CALIBRATION_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "ca
 # 카메라 프리셋 (카메라 입고 후 실측값으로 교체)
 CAMERA_PRESETS = {
     "blaze-112": {
+        # 5/11 정정: FOV 75°×104° 기반 fx/fy 재계산 (460/460 → 417/188)
         "width": 640, "height": 480,
-        "fx": 460.0, "fy": 460.0, "cx": 320.0, "cy": 240.0,
+        "fx": 417.0, "fy": 188.0, "cx": 320.0, "cy": 240.0,
         "dist_coeffs": [0, 0, 0, 0, 0],
         "description": "Basler Blaze-112 ToF (eye-to-hand, overhead)",
     },
     "ace2-5mp": {
+        # 5/11 정정: a2A2448-23gcBAS 12mm 렌즈 가정 (3000 → 3478, IMX392 3.45µm 기반)
         "width": 2448, "height": 2048,
-        "fx": 3000.0, "fy": 3000.0, "cx": 1224.0, "cy": 1024.0,
+        "fx": 3478.0, "fy": 3478.0, "cx": 1224.0, "cy": 1024.0,
         "dist_coeffs": [0, 0, 0, 0, 0],
         "description": "Basler ace2 5MP RGB (eye-in-hand, arm-mounted)",
     },

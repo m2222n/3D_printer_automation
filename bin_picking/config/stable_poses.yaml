@@ -1,0 +1,598 @@
+_meta:
+  tool: pose_enumerator.py
+  version: '1.0'
+  generated: '2026-05-11T03:44:02'
+  description: 'STL → 안정 자세 enumeration (trimesh.poses.compute_stable_poses 기반). 대표님
+    5/6 지시 #3 X/Y 각도 데이터 명세 도구.'
+  note: pickable / regrasp_to는 사람 판단 + 그래스프 시뮬 후 채워야 함. 본 도구는 자세 후보 + 확률만 생성.
+parts:
+  plate_e:
+    part_id: plate_e
+    stl_path: bin_picking/models/cad/plate_e.stl
+    extents_mm:
+    - 45.0
+    - 56.0
+    - 20.0
+    is_watertight: true
+    com_mm:
+    - -158.22
+    - 39.3
+    - -38.08
+    n_stable_poses_total: 7
+    top_pose_coverage: 0.8967
+    threshold_used: 0.05
+    sigma_used: 0.0
+    timestamp: '2026-05-11T03:44:02'
+    stable_poses:
+    - id: A
+      probability: 0.4186
+      rotation_xyz_deg:
+      - 0.0
+      - 0.0
+      - 0.0
+      transform_4x4:
+      - - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 1.0
+        - -0.0
+        - 0.0
+      - - -0.0
+        - 0.0
+        - 1.0
+        - 43.200001
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: B
+      probability: 0.3491
+      rotation_xyz_deg:
+      - 180.0
+      - -28.84
+      - 90.0
+      transform_4x4:
+      - - -0.0
+        - 1.0
+        - 0.0
+        - 0.0
+      - - 0.875955
+        - 0.0
+        - 0.482393
+        - 0.0
+      - - 0.482393
+        - 0.0
+        - -0.875955
+        - 56.022348
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: C
+      probability: 0.1289
+      rotation_xyz_deg:
+      - -90.0
+      - 90.0
+      - 0.0
+      transform_4x4:
+      - - -0.0
+        - -1.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 1.0
+        - 0.0
+      - - -1.0
+        - 0.0
+        - 0.0
+        - -140.5
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+  bracket_case:
+    part_id: bracket_case
+    stl_path: bin_picking/models/cad/bracket_case.stl
+    extents_mm:
+    - 10.0
+    - 4.8
+    - 5.5
+    is_watertight: true
+    com_mm:
+    - 0.0
+    - -0.6
+    - -0.35
+    n_stable_poses_total: 6
+    top_pose_coverage: 0.8076
+    threshold_used: 0.05
+    sigma_used: 0.0
+    timestamp: '2026-05-11T03:44:02'
+    stable_poses:
+    - id: A
+      probability: 0.3143
+      rotation_xyz_deg:
+      - -64.65
+      - 0.0
+      - 0.0
+      transform_4x4:
+      - - 1.0
+        - -0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.428086
+        - 0.903738
+        - 0.0
+      - - -0.0
+        - -0.903738
+        - 0.428086
+        - 1.498302
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: B
+      probability: 0.3049
+      rotation_xyz_deg:
+      - 100.3
+      - -0.0
+      - 180.0
+      transform_4x4:
+      - - -1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.178885
+        - 0.98387
+        - 0.0
+      - - 0.0
+        - 0.98387
+        - -0.178885
+        - 2.325511
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: C
+      probability: 0.1884
+      rotation_xyz_deg:
+      - -180.0
+      - 0.0
+      - 0.0
+      transform_4x4:
+      - - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - -1.0
+        - 0.0
+        - 0.0
+      - - -0.0
+        - -0.0
+        - -1.0
+        - 2.0
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: D
+      probability: 0.1066
+      rotation_xyz_deg:
+      - -0.0
+      - 0.0
+      - -0.0
+      transform_4x4:
+      - - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - -0.0
+        - 1.0
+        - 0.0
+        - 0.0
+      - - -0.0
+        - -0.0
+        - 1.0
+        - 3.5
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+  main_body:
+    part_id: main_body
+    stl_path: bin_picking/models/cad/main_body.stl
+    extents_mm:
+    - 25.0
+    - 32.0
+    - 6.0
+    is_watertight: true
+    com_mm:
+    - 1008.97
+    - 5.84
+    - 3.0
+    n_stable_poses_total: 8
+    top_pose_coverage: 0.8657
+    threshold_used: 0.05
+    sigma_used: 0.0
+    timestamp: '2026-05-11T03:44:02'
+    stable_poses:
+    - id: A
+      probability: 0.4025
+      rotation_xyz_deg:
+      - 0.0
+      - 0.0
+      - 0.0
+      transform_4x4:
+      - - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 1.0
+        - -0.0
+        - 0.0
+      - - -0.0
+        - 0.0
+        - 1.0
+        - -0.0
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: B
+      probability: 0.4025
+      rotation_xyz_deg:
+      - -180.0
+      - -0.0
+      - 0.0
+      transform_4x4:
+      - - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - -1.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - -0.0
+        - -1.0
+        - 6.0
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: C
+      probability: 0.0606
+      rotation_xyz_deg:
+      - -90.0
+      - -90.0
+      - 0.0
+      transform_4x4:
+      - - -0.0
+        - 1.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 1.0
+        - 0.0
+      - - 1.0
+        - 0.0
+        - -0.0
+        - -996.471863
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: D
+      probability: 0.0606
+      rotation_xyz_deg:
+      - -90.0
+      - 90.0
+      - 0.0
+      transform_4x4:
+      - - 0.0
+        - -1.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 1.0
+        - 0.0
+      - - -1.0
+        - -0.0
+        - 0.0
+        - 1021.46875
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+  16_cam_f_bracket:
+    part_id: 16_cam_f_bracket
+    stl_path: bin_picking/models/cad/16_cam_f_bracket.stl
+    extents_mm:
+    - 38.0
+    - 20.0
+    - 28.0
+    is_watertight: true
+    com_mm:
+    - -152.14
+    - 70.45
+    - -53.31
+    n_stable_poses_total: 5
+    top_pose_coverage: 0.715
+    threshold_used: 0.05
+    sigma_used: 0.0
+    timestamp: '2026-05-11T03:44:02'
+    stable_poses:
+    - id: A
+      probability: 0.2829
+      rotation_xyz_deg:
+      - 90.0
+      - -0.0
+      - 180.0
+      transform_4x4:
+      - - -1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 1.0
+        - 0.0
+      - - 0.0
+        - 1.0
+        - -0.0
+        - -63.299999
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: B
+      probability: 0.2525
+      rotation_xyz_deg:
+      - -108.81
+      - -0.0
+      - 0.0
+      transform_4x4:
+      - - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - -0.322393
+        - 0.946606
+        - 0.0
+      - - 0.0
+        - -0.946606
+        - -0.322393
+        - 57.766694
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: C
+      probability: 0.1796
+      rotation_xyz_deg:
+      - 180.0
+      - -0.0
+      - 0.0
+      transform_4x4:
+      - - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - -1.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - -1.0
+        - -44.849998
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: D
+      probability: 0.1477
+      rotation_xyz_deg:
+      - -0.0
+      - -33.69
+      - -90.0
+      transform_4x4:
+      - - 0.0
+        - 1.0
+        - 0.0
+        - 0.0
+      - - -0.83205
+        - 0.0
+        - 0.5547
+        - 0.0
+      - - 0.5547
+        - -0.0
+        - 0.83205
+        - 141.323741
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: E
+      probability: 0.1373
+      rotation_xyz_deg:
+      - -90.0
+      - 90.0
+      - 0.0
+      transform_4x4:
+      - - 0.0
+        - -1.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 1.0
+        - 0.0
+      - - -1.0
+        - -0.0
+        - 0.0
+        - -140.5
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+  guide_paper_roll_cover_left:
+    part_id: guide_paper_roll_cover_left
+    stl_path: bin_picking/models/cad/guide_paper_roll_cover_left.stl
+    extents_mm:
+    - 28.0
+    - 47.99
+    - 59.23
+    is_watertight: true
+    com_mm:
+    - -106.75
+    - 19.02
+    - 31.22
+    n_stable_poses_total: 5
+    top_pose_coverage: 0.8449
+    threshold_used: 0.05
+    sigma_used: 0.0
+    timestamp: '2026-05-11T03:44:02'
+    stable_poses:
+    - id: A
+      probability: 0.4314
+      rotation_xyz_deg:
+      - 56.23
+      - -1.21
+      - -179.19
+      transform_4x4:
+      - - -0.99968
+        - 0.025309
+        - 0.0
+        - 0.0
+      - - -0.014065
+        - -0.555541
+        - 0.83137
+        - 0.0
+      - - 0.021042
+        - 0.831104
+        - 0.555719
+        - -23.371164
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: B
+      probability: 0.2561
+      rotation_xyz_deg:
+      - -128.75
+      - -0.0
+      - 0.0
+      transform_4x4:
+      - - 1.0
+        - 0.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - -0.62588
+        - 0.779919
+        - 0.0
+      - - 0.0
+        - -0.779919
+        - -0.62588
+        - 46.850779
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: C
+      probability: 0.1574
+      rotation_xyz_deg:
+      - -90.0
+      - -90.0
+      - 0.0
+      transform_4x4:
+      - - 0.0
+        - 1.0
+        - 0.0
+        - 0.0
+      - - -0.0
+        - 0.0
+        - 1.0
+        - 0.0
+      - - 1.0
+        - -0.0
+        - 0.0
+        - 121.0
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
+    - id: D
+      probability: 0.1549
+      rotation_xyz_deg:
+      - -90.0
+      - 90.0
+      - 0.0
+      transform_4x4:
+      - - -0.0
+        - -1.0
+        - 0.0
+        - 0.0
+      - - 0.0
+        - 0.0
+        - 1.0
+        - 0.0
+      - - -1.0
+        - 0.0
+        - 0.0
+        - -93.0
+      - - 0.0
+        - 0.0
+        - 0.0
+        - 1.0
+      pickable: null
+      regrasp_to: null
