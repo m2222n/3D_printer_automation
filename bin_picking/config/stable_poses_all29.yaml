@@ -1,10 +1,12 @@
 _meta:
   tool: pose_enumerator.py
-  version: '1.0'
-  generated: '2026-05-11T03:45:28'
+  version: '1.1'
+  generated: '2026-05-12T06:18:14'
   description: 'STL → 안정 자세 enumeration (trimesh.poses.compute_stable_poses 기반). 대표님
     5/6 지시 #3 X/Y 각도 데이터 명세 도구.'
-  note: pickable / regrasp_to는 사람 판단 + 그래스프 시뮬 후 채워야 함. 본 도구는 자세 후보 + 확률만 생성.
+  note: 'pickable / regrasp_to / human_label / symmetry_groups 는 사람 판단 + 부품 던지기 검증
+    후 채움. 본 도구는 자세 후보 + 확률만 생성. 검증 절차: docs/binpicking_pose_validation_protocol.md
+    (5/15 사무실 도착 후 30분).'
 parts:
   01_sol_block_a:
     part_id: 01_sol_block_a
@@ -22,7 +24,9 @@ parts:
     top_pose_coverage: 0.8574
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4163
@@ -49,6 +53,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.3729
       rotation_xyz_deg:
@@ -74,6 +79,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.0682
       rotation_xyz_deg:
@@ -99,6 +105,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0629
       rotation_xyz_deg:
@@ -124,6 +131,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   02_sol_block_b:
     part_id: 02_sol_block_b
     stl_path: bin_picking/models/cad/02_sol_block_b.stl
@@ -140,7 +148,9 @@ parts:
     top_pose_coverage: 0.9089
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4402
@@ -167,6 +177,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.4247
       rotation_xyz_deg:
@@ -192,6 +203,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   03_sol_block_front:
     part_id: 03_sol_block_front
     stl_path: bin_picking/models/cad/03_sol_block_front.stl
@@ -208,7 +220,9 @@ parts:
     top_pose_coverage: 0.6685
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.355
@@ -235,6 +249,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.1826
       rotation_xyz_deg:
@@ -260,6 +275,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.131
       rotation_xyz_deg:
@@ -285,6 +301,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1047
       rotation_xyz_deg:
@@ -310,6 +327,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.0967
       rotation_xyz_deg:
@@ -335,6 +353,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: F
       probability: 0.0668
       rotation_xyz_deg:
@@ -360,6 +379,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: G
       probability: 0.0524
       rotation_xyz_deg:
@@ -385,6 +405,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   06_sol_block_back:
     part_id: 06_sol_block_back
     stl_path: bin_picking/models/cad/06_sol_block_back.stl
@@ -401,7 +422,9 @@ parts:
     top_pose_coverage: 0.5923
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3511
@@ -428,6 +451,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.1216
       rotation_xyz_deg:
@@ -453,6 +477,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1195
       rotation_xyz_deg:
@@ -478,6 +503,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.103
       rotation_xyz_deg:
@@ -503,6 +529,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.0737
       rotation_xyz_deg:
@@ -528,6 +555,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: F
       probability: 0.0668
       rotation_xyz_deg:
@@ -553,6 +581,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: G
       probability: 0.0528
       rotation_xyz_deg:
@@ -578,6 +607,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   07_guide_paper_l:
     part_id: 07_guide_paper_l
     stl_path: bin_picking/models/cad/07_guide_paper_l.stl
@@ -594,7 +624,9 @@ parts:
     top_pose_coverage: 0.8741
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3949
@@ -621,6 +653,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.3906
       rotation_xyz_deg:
@@ -646,6 +679,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.0886
       rotation_xyz_deg:
@@ -671,6 +705,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0848
       rotation_xyz_deg:
@@ -696,6 +731,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   08_r_guide_a:
     part_id: 08_r_guide_a
     stl_path: bin_picking/models/cad/08_r_guide_a.stl
@@ -712,7 +748,9 @@ parts:
     top_pose_coverage: 0.7833
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3374
@@ -739,6 +777,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.2247
       rotation_xyz_deg:
@@ -764,6 +803,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.2211
       rotation_xyz_deg:
@@ -789,6 +829,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.2167
       rotation_xyz_deg:
@@ -814,6 +855,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   09_guide_paper_r:
     part_id: 09_guide_paper_r
     stl_path: bin_picking/models/cad/09_guide_paper_r.stl
@@ -830,7 +872,9 @@ parts:
     top_pose_coverage: 0.7053
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3464
@@ -857,6 +901,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.1931
       rotation_xyz_deg:
@@ -882,6 +927,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1658
       rotation_xyz_deg:
@@ -907,6 +953,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1369
       rotation_xyz_deg:
@@ -932,6 +979,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.1199
       rotation_xyz_deg:
@@ -957,6 +1005,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   10_guide_paper_roll_l:
     part_id: 10_guide_paper_roll_l
     stl_path: bin_picking/models/cad/10_guide_paper_roll_l.stl
@@ -973,7 +1022,9 @@ parts:
     top_pose_coverage: 0.9776
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4141
@@ -1000,6 +1051,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.4018
       rotation_xyz_deg:
@@ -1025,6 +1077,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1617
       rotation_xyz_deg:
@@ -1050,6 +1103,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   11_sw_block:
     part_id: 11_sw_block
     stl_path: bin_picking/models/cad/11_sw_block.stl
@@ -1066,7 +1120,9 @@ parts:
     top_pose_coverage: 0.7099
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.2374
@@ -1093,6 +1149,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.2374
       rotation_xyz_deg:
@@ -1118,6 +1175,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.2351
       rotation_xyz_deg:
@@ -1143,6 +1201,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.2307
       rotation_xyz_deg:
@@ -1168,6 +1227,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   13_variant:
     part_id: 13_variant
     stl_path: bin_picking/models/cad/13_variant.stl
@@ -1184,7 +1244,9 @@ parts:
     top_pose_coverage: 0.9122
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4288
@@ -1211,6 +1273,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.4274
       rotation_xyz_deg:
@@ -1236,6 +1299,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.056
       rotation_xyz_deg:
@@ -1261,6 +1325,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0558
       rotation_xyz_deg:
@@ -1286,6 +1351,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   13_x2_bcf8ccb4:
     part_id: 13_x2_bcf8ccb4
     stl_path: bin_picking/models/cad/13_x2_bcf8ccb4.stl
@@ -1302,7 +1368,9 @@ parts:
     top_pose_coverage: 0.79
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:11'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3699
@@ -1329,6 +1397,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.2967
       rotation_xyz_deg:
@@ -1354,6 +1423,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1234
       rotation_xyz_deg:
@@ -1379,6 +1449,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0857
       rotation_xyz_deg:
@@ -1404,6 +1475,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.0622
       rotation_xyz_deg:
@@ -1429,6 +1501,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   '14_13':
     part_id: '14_13'
     stl_path: bin_picking/models/cad/14_13.stl
@@ -1445,7 +1518,9 @@ parts:
     top_pose_coverage: 0.8998
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:12'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4195
@@ -1472,6 +1547,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.4182
       rotation_xyz_deg:
@@ -1497,6 +1573,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.062
       rotation_xyz_deg:
@@ -1522,6 +1599,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0506
       rotation_xyz_deg:
@@ -1547,6 +1625,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   15_roller_bracket:
     part_id: 15_roller_bracket
     stl_path: bin_picking/models/cad/15_roller_bracket.stl
@@ -1563,7 +1642,9 @@ parts:
     top_pose_coverage: 0.8088
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:12'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3157
@@ -1590,6 +1671,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.3058
       rotation_xyz_deg:
@@ -1615,6 +1697,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1873
       rotation_xyz_deg:
@@ -1640,6 +1723,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0855
       rotation_xyz_deg:
@@ -1665,6 +1749,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.0529
       rotation_xyz_deg:
@@ -1690,6 +1775,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: F
       probability: 0.0529
       rotation_xyz_deg:
@@ -1715,6 +1801,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   16_cam_f_bracket:
     part_id: 16_cam_f_bracket
     stl_path: bin_picking/models/cad/16_cam_f_bracket.stl
@@ -1731,7 +1818,9 @@ parts:
     top_pose_coverage: 0.715
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:12'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.2829
@@ -1758,6 +1847,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.2525
       rotation_xyz_deg:
@@ -1783,6 +1873,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1796
       rotation_xyz_deg:
@@ -1808,6 +1899,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1477
       rotation_xyz_deg:
@@ -1833,6 +1925,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.1373
       rotation_xyz_deg:
@@ -1858,6 +1951,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   17_mks_holder:
     part_id: 17_mks_holder
     stl_path: bin_picking/models/cad/17_mks_holder.stl
@@ -1874,7 +1968,9 @@ parts:
     top_pose_coverage: 0.9887
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:26'
+    timestamp: '2026-05-12T06:18:12'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.5199
@@ -1901,6 +1997,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.465
       rotation_xyz_deg:
@@ -1926,6 +2023,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   18_button_function_niro:
     part_id: 18_button_function_niro
     stl_path: bin_picking/models/cad/18_button_function_niro.stl
@@ -1942,7 +2040,9 @@ parts:
     top_pose_coverage: 0.9247
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:27'
+    timestamp: '2026-05-12T06:18:12'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4915
@@ -1969,6 +2069,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.3703
       rotation_xyz_deg:
@@ -1994,6 +2095,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.0628
       rotation_xyz_deg:
@@ -2019,6 +2121,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0626
       rotation_xyz_deg:
@@ -2044,6 +2147,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   bracket_case:
     part_id: bracket_case
     stl_path: bin_picking/models/cad/bracket_case.stl
@@ -2060,7 +2164,9 @@ parts:
     top_pose_coverage: 0.8076
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:27'
+    timestamp: '2026-05-12T06:18:12'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3143
@@ -2087,6 +2193,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.3049
       rotation_xyz_deg:
@@ -2112,6 +2219,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1884
       rotation_xyz_deg:
@@ -2137,6 +2245,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1066
       rotation_xyz_deg:
@@ -2162,6 +2271,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   bracket_sen_1:
     part_id: bracket_sen_1
     stl_path: bin_picking/models/cad/bracket_sen_1.stl
@@ -2178,7 +2288,9 @@ parts:
     top_pose_coverage: 0.7887
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:27'
+    timestamp: '2026-05-12T06:18:12'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3799
@@ -2205,6 +2317,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.3351
       rotation_xyz_deg:
@@ -2230,6 +2343,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.0736
       rotation_xyz_deg:
@@ -2255,6 +2369,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0554
       rotation_xyz_deg:
@@ -2280,6 +2395,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   bracket_sensor1:
     part_id: bracket_sensor1
     stl_path: bin_picking/models/cad/bracket_sensor1.stl
@@ -2296,7 +2412,9 @@ parts:
     top_pose_coverage: 0.8197
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:27'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3037
@@ -2323,6 +2441,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.279
       rotation_xyz_deg:
@@ -2348,6 +2467,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.237
       rotation_xyz_deg:
@@ -2373,6 +2493,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1311
       rotation_xyz_deg:
@@ -2398,6 +2519,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   bracket_sensor2:
     part_id: bracket_sensor2
     stl_path: bin_picking/models/cad/bracket_sensor2.stl
@@ -2414,7 +2536,9 @@ parts:
     top_pose_coverage: 0.8707
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4252
@@ -2441,6 +2565,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.3179
       rotation_xyz_deg:
@@ -2466,6 +2591,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1275
       rotation_xyz_deg:
@@ -2491,6 +2617,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1275
       rotation_xyz_deg:
@@ -2516,6 +2643,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   brkt_switch:
     part_id: brkt_switch
     stl_path: bin_picking/models/cad/brkt_switch.stl
@@ -2532,7 +2660,9 @@ parts:
     top_pose_coverage: 0.7801
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3043
@@ -2559,6 +2689,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.275
       rotation_xyz_deg:
@@ -2584,6 +2715,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.2008
       rotation_xyz_deg:
@@ -2609,6 +2741,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1078
       rotation_xyz_deg:
@@ -2634,6 +2767,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.1074
       rotation_xyz_deg:
@@ -2659,6 +2793,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   guide_paper_roll_cover_left:
     part_id: guide_paper_roll_cover_left
     stl_path: bin_picking/models/cad/guide_paper_roll_cover_left.stl
@@ -2675,7 +2810,9 @@ parts:
     top_pose_coverage: 0.8449
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4314
@@ -2702,6 +2839,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.2561
       rotation_xyz_deg:
@@ -2727,6 +2865,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1574
       rotation_xyz_deg:
@@ -2752,6 +2891,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1549
       rotation_xyz_deg:
@@ -2777,6 +2917,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   guide_paper_roll_cover_right:
     part_id: guide_paper_roll_cover_right
     stl_path: bin_picking/models/cad/guide_paper_roll_cover_right.stl
@@ -2793,7 +2934,9 @@ parts:
     top_pose_coverage: 0.8041
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3863
@@ -2820,6 +2963,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.2204
       rotation_xyz_deg:
@@ -2845,6 +2989,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1974
       rotation_xyz_deg:
@@ -2870,6 +3015,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1959
       rotation_xyz_deg:
@@ -2895,6 +3041,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   main_body:
     part_id: main_body
     stl_path: bin_picking/models/cad/main_body.stl
@@ -2911,7 +3058,9 @@ parts:
     top_pose_coverage: 0.8657
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4025
@@ -2938,6 +3087,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.4025
       rotation_xyz_deg:
@@ -2963,6 +3113,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.0606
       rotation_xyz_deg:
@@ -2988,6 +3139,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.0606
       rotation_xyz_deg:
@@ -3013,6 +3165,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   plate_e:
     part_id: plate_e
     stl_path: bin_picking/models/cad/plate_e.stl
@@ -3029,7 +3182,9 @@ parts:
     top_pose_coverage: 0.8967
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4186
@@ -3056,6 +3211,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.3491
       rotation_xyz_deg:
@@ -3081,6 +3237,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1289
       rotation_xyz_deg:
@@ -3106,6 +3263,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   r_guide_a_l:
     part_id: r_guide_a_l
     stl_path: bin_picking/models/cad/r_guide_a_l.stl
@@ -3122,7 +3280,9 @@ parts:
     top_pose_coverage: 0.6992
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.3532
@@ -3149,6 +3309,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.1733
       rotation_xyz_deg:
@@ -3174,6 +3335,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1728
       rotation_xyz_deg:
@@ -3199,6 +3361,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1295
       rotation_xyz_deg:
@@ -3224,6 +3387,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.0826
       rotation_xyz_deg:
@@ -3249,6 +3413,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: F
       probability: 0.0763
       rotation_xyz_deg:
@@ -3274,6 +3439,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   r_guide_a_r:
     part_id: r_guide_a_r
     stl_path: bin_picking/models/cad/r_guide_a_r.stl
@@ -3290,7 +3456,9 @@ parts:
     top_pose_coverage: 0.6874
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:13'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.329
@@ -3317,6 +3485,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.192
       rotation_xyz_deg:
@@ -3342,6 +3511,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: C
       probability: 0.1664
       rotation_xyz_deg:
@@ -3367,6 +3537,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: D
       probability: 0.1228
       rotation_xyz_deg:
@@ -3392,6 +3563,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: E
       probability: 0.0884
       rotation_xyz_deg:
@@ -3417,6 +3589,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: F
       probability: 0.0778
       rotation_xyz_deg:
@@ -3442,6 +3615,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   top_inner_sheet:
     part_id: top_inner_sheet
     stl_path: bin_picking/models/cad/top_inner_sheet.stl
@@ -3458,7 +3632,9 @@ parts:
     top_pose_coverage: 0.9482
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:14'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4737
@@ -3485,6 +3661,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.4737
       rotation_xyz_deg:
@@ -3510,6 +3687,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
   top_inner_sheet004:
     part_id: top_inner_sheet004
     stl_path: bin_picking/models/cad/top_inner_sheet004.stl
@@ -3526,7 +3704,9 @@ parts:
     top_pose_coverage: 0.996
     threshold_used: 0.05
     sigma_used: 0.0
-    timestamp: '2026-05-11T03:45:28'
+    timestamp: '2026-05-12T06:18:14'
+    human_label: null
+    symmetry_groups: null
     stable_poses:
     - id: A
       probability: 0.4963
@@ -3553,6 +3733,7 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null
     - id: B
       probability: 0.4963
       rotation_xyz_deg:
@@ -3578,3 +3759,4 @@ parts:
         - 1.0
       pickable: null
       regrasp_to: null
+      human_label: null

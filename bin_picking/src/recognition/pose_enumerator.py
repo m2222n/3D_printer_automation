@@ -29,6 +29,8 @@
       plate_e:
         extents_mm: [45.0, 56.0, 20.0]
         is_watertight: true
+        human_label: null          # 부품 외관 설명 (5/15 사람 채움)
+        symmetry_groups: null      # 회전 대칭 그룹 (예: [["A","B"]] = A·B 동일 자세)
         stable_poses:
           - id: A
             probability: 0.419
@@ -36,6 +38,7 @@
             transform_4x4: [[...], [...], [...], [...]]
             pickable: null         # 그리퍼/마운팅 검토 후 결정 (TBD)
             regrasp_to: null       # 픽 불가 시 어느 자세로 (TBD)
+            human_label: null      # 자세 설명 (예: "윙 위로", 5/15 사람 채움)
 
 학습 데이터 라벨링과의 연결:
     label = {
@@ -111,6 +114,7 @@ class StablePose:
     # 사람 / 후속 작업 검증 필요 (이 도구는 None 출력)
     pickable: Optional[bool] = None       # 픽 가능 여부 (그리퍼/마운팅 시뮬 후)
     regrasp_to: Optional[str] = None      # 픽 불가 시 어느 자세로 뒤집을지
+    human_label: Optional[str] = None     # 사람이 부여한 자세 설명 (예: "윙 위로", "슬롯 측면")
 
     def to_dict(self) -> dict:
         d = {
@@ -120,6 +124,7 @@ class StablePose:
             "transform_4x4": [[round(float(v), 6) for v in row] for row in self.transform_4x4],
             "pickable": self.pickable,
             "regrasp_to": self.regrasp_to,
+            "human_label": self.human_label,
         }
         return d
 
@@ -141,6 +146,10 @@ class PartPoses:
     sigma_used: float = 0.0
     timestamp: str = ""
 
+    # 부품 레벨 사람 라벨 (5/15 부품 던지기 검증 시 채움)
+    human_label: Optional[str] = None              # 부품 외관 설명 (예: "베이스 + 양쪽 윙 + 다공")
+    symmetry_groups: Optional[list[list[str]]] = None  # 회전 대칭 그룹 (예: [["A","B"]] = A·B는 동일 자세 취급)
+
     def to_dict(self) -> dict:
         return {
             "part_id": self.part_id,
@@ -153,6 +162,8 @@ class PartPoses:
             "threshold_used": self.threshold_used,
             "sigma_used": self.sigma_used,
             "timestamp": self.timestamp,
+            "human_label": self.human_label,
+            "symmetry_groups": self.symmetry_groups,
             "stable_poses": [p.to_dict() for p in self.stable_poses],
         }
 
@@ -347,15 +358,16 @@ def save_yaml(results: dict[str, PartPoses], output_path: Path) -> None:
     data = {
         "_meta": {
             "tool": "pose_enumerator.py",
-            "version": "1.0",
+            "version": "1.1",
             "generated": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "description": (
                 "STL → 안정 자세 enumeration (trimesh.poses.compute_stable_poses 기반). "
                 "대표님 5/6 지시 #3 X/Y 각도 데이터 명세 도구."
             ),
             "note": (
-                "pickable / regrasp_to는 사람 판단 + 그래스프 시뮬 후 채워야 함. "
-                "본 도구는 자세 후보 + 확률만 생성."
+                "pickable / regrasp_to / human_label / symmetry_groups 는 사람 판단 + 부품 던지기 검증 후 채움. "
+                "본 도구는 자세 후보 + 확률만 생성. "
+                "검증 절차: docs/binpicking_pose_validation_protocol.md (5/15 사무실 도착 후 30분)."
             ),
         },
         "parts": {pid: p.to_dict() for pid, p in results.items()},

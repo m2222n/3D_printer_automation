@@ -138,6 +138,20 @@ def rotation_distance(R1: np.ndarray, R2: np.ndarray) -> float:
     return float(np.arccos(cos_theta))
 
 
+def canonicalize_pose_id(pose_id: str, symmetry_groups: Optional[list]) -> str:
+    """대칭 그룹 처리: group 내 자세는 group의 첫 id로 통일.
+
+    예: symmetry_groups=[["A","B"]] 이고 pose_id="B" → "A" 반환.
+    그룹에 없으면 원래 id 그대로.
+    """
+    if not symmetry_groups:
+        return pose_id
+    for group in symmetry_groups:
+        if pose_id in group:
+            return group[0]  # canonical = group의 첫 id
+    return pose_id
+
+
 def find_closest_stable_pose(
     T_world: np.ndarray, part_yaml: dict
 ) -> tuple[Optional[str], float]:
@@ -150,10 +164,16 @@ def find_closest_stable_pose(
     Returns:
         (stable_pose_id, match_score)
         match_score = 1 - (angular_distance / π), 1.0 = 완전 일치
+
+    대칭 처리: part_yaml에 symmetry_groups가 있으면 group 내 자세는
+    canonical id로 통일. 예: P5 main_body A·B 180° 대칭 → 둘 다 "A" 라벨.
+    이 경우 match_score는 group 내 최소 거리로 계산 (대칭 자세 둘 다와 가까운 쪽).
     """
     stable_poses = part_yaml.get("stable_poses", [])
     if not stable_poses:
         return None, 0.0
+
+    symmetry_groups = part_yaml.get("symmetry_groups")
 
     R_target = T_world[:3, :3]
     best_id = None
@@ -167,9 +187,12 @@ def find_closest_stable_pose(
             best_dist_rad = dist
             best_id = sp["id"]
 
+    # 대칭 그룹이 있으면 canonical id로 통일
+    canonical_id = canonicalize_pose_id(best_id, symmetry_groups) if best_id else None
+
     # match_score: 0(180° 차이) ~ 1(완전 일치)
     score = 1.0 - (best_dist_rad / np.pi)
-    return best_id, float(score)
+    return canonical_id, float(score)
 
 
 # ============================================================
@@ -792,6 +815,39 @@ def simulate_mode() -> int:
     sid3, score3 = find_closest_stable_pose(T_5deg, fake_yaml)
     print(f"  5°z → {sid3} (score {score3:.3f}) — 기대 A, score > 0.97")
     assert sid3 == "A" and score3 > 0.97
+
+    # 대칭 그룹 검증 (P5 main_body A·B 180° 통합 케이스)
+    print("\n[symmetry_groups (대칭 통합)]")
+    sym_yaml = {
+        "stable_poses": [
+            {"id": "A", "transform_4x4": np.eye(4).tolist()},
+            {"id": "B", "transform_4x4": np.diag([-1, -1, 1, 1]).tolist()},  # 180°z (A와 대칭)
+            {"id": "C", "transform_4x4": [
+                [1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]  # 90°x (별개)
+            ]},
+        ],
+        "symmetry_groups": [["A", "B"]],
+    }
+    # B에 매칭돼야 정상이지만, 대칭 그룹 처리로 canonical A 반환
+    T_b = np.diag([-1, -1, 1, 1]).astype(float)
+    sid_b, score_b = find_closest_stable_pose(T_b, sym_yaml)
+    print(f"  B 입력 + sym=[A,B] → {sid_b} (score {score_b:.3f}) — 기대 A (canonical), score 1.0")
+    assert sid_b == "A" and score_b > 0.99
+
+    # C는 그룹 밖이라 그대로
+    T_c = np.array([
+        [1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]
+    ], dtype=float)
+    sid_c, score_c = find_closest_stable_pose(T_c, sym_yaml)
+    print(f"  C 입력 + sym=[A,B] → {sid_c} (score {score_c:.3f}) — 기대 C, score 1.0")
+    assert sid_c == "C" and score_c > 0.99
+
+    # canonicalize_pose_id 단위 테스트
+    assert canonicalize_pose_id("A", [["A", "B"]]) == "A"
+    assert canonicalize_pose_id("B", [["A", "B"]]) == "A"
+    assert canonicalize_pose_id("C", [["A", "B"]]) == "C"
+    assert canonicalize_pose_id("A", None) == "A"
+    print("  ✅ canonicalize_pose_id 단위 테스트 PASS")
 
     print("\n✅ 모든 시뮬 검증 PASS")
     return 0
