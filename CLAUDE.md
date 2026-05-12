@@ -568,13 +568,14 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ---
 
-## Phase 5: 3D 빈피킹 비전 시스템 🔄 SW 완성 → 5/8 카메라 라이브 진행 중
+## Phase 5: 3D 빈피킹 비전 시스템 🔄 인프라 완성 → 5/15 본 캡처 진입
 
 > **문서**: ORINU-DEV-2026-002 (구본경 대표, 2026-03-18)
 > **개발 환경**: Mac (Intel) + venv binpick (Python 3.12 + Open3D 0.19.0). 6000 서버는 Open3D 불가 (AVX2 미지원)
 > **파이프라인**: L1 영상취득 → L2 전처리 → L3 DBSCAN분할 → L4 FPFH+RANSAC+ICP → L5 그래스프 → L6 Modbus
+> **🎯 6/2 마감**: KAIST 3단계 부트캠프 회사 데이터 프로젝트 시작 — 그 전까지 학습 데이터셋 v1 (~1,200~2,400장) 확보
 
-### 현재 진행 상태 (2026-05-08)
+### 현재 진행 상태 (2026-05-13)
 
 | 단계 | 상태 |
 |------|------|
@@ -583,11 +584,14 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | Modbus INT16 재설계 + Colored ICP + Basler 듀얼 캡처 모듈 | ✅ 완료 (4/15) |
 | RealSense D435 라이브 + Full Pipeline PASS | ✅ 완료 (4/13~14) |
 | 카메라 입고 (Blaze-112 + ace2) | ✅ 4/23 입고 / 5/8 사무실 운반 |
-| Mac 라이브 검증 (어댑터 도착 후) | 🔄 진행 중 (블로커: 어댑터 토요일 도착) |
-| 코드 수정 (BLAZE_112 fx/fy + ACE2 모델명) | ⏳ 라이브 검증 후 |
-| eye-in-hand 캘리브레이션 (2세트) + Colored ICP 실연동 | ⏳ 카메라 검증 후 |
-| 실물 부품 다각도 학습 데이터셋 (대표님 5/6 지시 2번) | ⏳ 카메라 검증 후 |
-| X/Y 각도 데이터 명세 초안 (대표님 5/6 지시 3번) | ⏳ **코드 짜기 전 align 필요** ⭐ |
+| **Mac Blaze 풀 작동** (pypylon 단독, IPC-510 대기 불필요) | ✅ 5/12 (commit 7e28df9 외 5건) |
+| **사전 디벨롭 코드** (test_basler_live + pose_enumerator + auto_label) | ✅ 5/11 (~1,900줄) |
+| **학습 데이터 라벨 신뢰도 인프라** (스키마 확장 + 대칭 그룹 + 검증 매뉴얼 + SOP 보강) | ✅ 5/13 (commit f9ec525 + dc8d0bf) |
+| intrinsics sanity + capture wrapper + 1pager v2.4 | ⏳ 5/14 오전 (목, KAIST 전) |
+| **5/15 본 캡처** — P5 자세 던지기 검증 + 자세 A 풀 캡처 + auto_label 첫 실 데이터 | ⏳ 5/15 종일 |
+| 5종 풀 데이터셋 (~1,200~2,400장) | ⏳ 5/18~6/1 (사무실 가용 4~5일) |
+| eye-in-hand 캘리브레이션 (2세트) + Colored ICP 실연동 | ⏳ 6월 이후 (그리퍼 장착 후) |
+| X/Y 각도 데이터 명세 (대표님 5/6 지시 3번) | ✅ **1pager + pose_validation_protocol + stable_poses.yaml 검증 매뉴얼 완성** (align 대기) |
 
 ### 핵심 성과 수치
 
@@ -822,7 +826,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-05-12
+### 마지막 업데이트 일자: 2026-05-13
 
 ### 마일스톤 (시간 순)
 
@@ -858,6 +862,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-05-12 | **문서 동기화 commit 3fa9e10** (origin + personal dual push, +98/-5) — 1pager v2.3 (BLAZE 848 + 리스크 #15/#16 + 5/12 의사결정) + SOP (macOS 운영 노트 + BASLER_BLAZE_IP + 트러블슈팅 4개) + Push 정책 단순화 (모든 commit dual = 사용자 기존 패턴) | ✅ — Mac/6000 양쪽 최신 동기화 |
 | 2026-05-12 (저녁) | **🎉 라이브 뷰어 commit 0a34b72** (Mac, live_viewer_basler.py +179줄) — pylon Viewer macOS Blaze 미지원 회피용 cv2 + pypylon 단독 인터랙티브 뷰어. 키: ESC/q/s/c/r/+/-. FPS 20.1, depth median 835mm, JET 컬러맵 정상. 사용자 시각 확인 "오 잘되네". **5/12 인프라 단계 완전 종료** — 빈피킹 워크플로우 100% Mac 단독 가능 확정. 이제부터 사용자 부품 배치 + 본 캡처 페이스 | ✅ |
 | 2026-05-12 (퇴근 전) | **일정 결정 — 카메라 사무실 보관, 5/15 금 본 작업 시작** — 2.5kg 이동 부담 + 카메라 충격 위험 회피. 수 5/13 재택은 가벼운 작업만 (ACE2 단톡, 예승님 카톡, 1pager align 메시지 초안). 5/15 금 사무실 종일 P5 main_body 첫 시범 + auto_label 실 데이터 검증 | ✅ |
+| 2026-05-13 (수, 재택) | **학습 데이터 라벨 신뢰도 인프라** — 외부 커뮤니케이션 3건 발송 보류 (사용자 결정). commit 2개 dual push: `f9ec525` (pose_enumerator v1.1 / stable_poses 5종+29종 재생성 / auto_label 대칭 그룹 + canonicalize_pose_id + simulate PASS) + `dc8d0bf` (pose_validation_protocol.md 신규 = 5/15 첫 30분 부품 던지기 매뉴얼 / SOP v1→v1.1 = § 1.3 조명 valid % + § 2.1 L4 강제 + § 4.1 흔들림 + § 5.1 REVIEW 큐 처리). **6/2 KAIST 3단계 부트캠프 회사 데이터 프로젝트 마감 도입** (W22, 사무실 가용 4~5일 = 5/15·5/18·5/22·5/25·5/29·6/1) — 5종 ~1,200~2,400장 목표, 주제 결정 W21 (5/25~) | ✅ — `docs/binpicking_pose_validation_protocol.md` + SOP v1.1 + `project_week_plan_0511.md` 재조정 |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 
