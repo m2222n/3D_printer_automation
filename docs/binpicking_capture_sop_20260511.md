@@ -98,6 +98,27 @@
 
 → Layer 2 데이터셋 다양성 확보. 학습 모델 강건화.
 
+#### ⚠️ 조명별 valid % 사전 점검 (5/13 추가)
+
+**ToF (Blaze) 는 그림자에 약하다**. 반사광이 없는 영역은 depth invalid 픽셀로 빠짐.
+
+**룰**:
+- 각 조명 변형마다 본 캡처 전에 **라이브 뷰어로 valid % 확인**:
+  ```bash
+  python bin_picking/tests/live_viewer_basler.py
+  # 오버레이의 'valid %' 표시 확인
+  ```
+- **valid % < 70%면 그 조명 변형은 스킵** (해당 부품, 해당 자세에서)
+- 특히 `side` 조명은 long shadow 생기기 쉬움 → 검증 필수
+- 스킵한 변형은 `auto_label.py` 라벨에 기록되지 않음. SOP 진행 메모에 사유 적기 ("P5/A/side: valid 62% → 스킵")
+
+**왜 valid % 70%인가**:
+- 70% 미만이면 [auto_label.py:290](../bin_picking/src/labeling/auto_label.py#L290) 의 `if len(pcd.points) < 1000` 체크에서 `too_few_points` 로 빠질 위험
+- L4 매칭이 부족한 점군으로 ICP 돌리면 RMSE 부풀어남 → REVIEW 큐 폭증
+- 학습 데이터로도 노이즈 비율 ↑
+
+→ 조명 변형은 데이터 다양성 vs 라벨 신뢰도의 트레이드오프. **valid % 가 가드레일**.
+
 ### 1.4 배경
 
 **기본 3가지 변형**:
@@ -164,6 +185,36 @@ mkdir -p "$CAPTURE_DIR"
 
 # 3. 부품을 자세 A로 회전대에 놓고 → 카메라 광축 중심에 오도록 조정
 ```
+
+#### ⚠️ 자동 라벨링 시 `--part` 강제 룰 (5/13 추가)
+
+**첫 캡처(또는 부품 미확정 케이스)는 `--part <부품명>` 으로 강제할 것**.
+
+```bash
+# ✅ 권장 (P5 main_body 첫 캡처)
+python bin_picking/src/labeling/auto_label.py \
+  --capture-dir "$CAPTURE_DIR" \
+  --part main_body \
+  --camera blaze-112 \
+  --output bin_picking/models/dataset_v1/
+
+# ❌ 위험 (전체 CAD 후보로 매칭)
+python bin_picking/src/labeling/auto_label.py \
+  --capture-dir "$CAPTURE_DIR" \
+  ...  # --part 없음
+```
+
+**왜**:
+- [auto_label.py:326-334](../bin_picking/src/labeling/auto_label.py#L326-L334) `candidate_names=None` 이면 전체 CAD 29종 매칭
+- fitness 비슷한 후보가 둘 이상이면 잘못된 부품 id가 박힘 → 데이터셋 라벨 손상
+- 특히 P1/P2/P4 (5종 깊게 모드에서 STL 미확정 부품) 는 형상 유사 STL이 있어 위험
+- 첫 캡처에서 한 번 잘못 박히면 그 자세 폴더 전체 재라벨 필요
+
+**예외**:
+- 5/15 본 캡처 이후 SOP 안정화 + ACCEPT 80%+ 검증 완료된 부품은 `--part` 생략 가능 (L4 신뢰도 확보 후)
+- 단 P2/P4 처럼 미확정 부품은 항상 `--part` 강제
+
+---
 
 **5/12 검증된 실행 예시** (사무실 천장/벽, 부품 미배치, --no-ace2):
 ```bash
@@ -290,7 +341,12 @@ done
 - [ ] depth 유효 픽셀 비율 > 70% (`test_basler_live.py` 통계)
 - [ ] depth 유니크 값 > 30 (4/22 D435 케이스 재현 X)
 - [ ] color 노출 적정 (너무 어둡거나 밝지 않음)
-- [ ] 카메라 흔들림 없음 (yaw=0 ↔ yaw=360 거의 동일해야)
+- [ ] **카메라 흔들림 없음** — 검증 절차 (5/13 갱신):
+  - **회전대 사용 시**: yaw=0 ↔ yaw=360 캡처 비교 → 동일한 위치/회전이므로 depth 차이 평균 < 1mm
+  - **회전대 미사용 시** (옵션 A, 손으로 자세 다양화): yaw 검증 불가 → 대신 **부품 없이 책상 평면만 5장 캡처** → 5장 depth median 표준편차 < 0.5mm
+  - 어느 쪽이든 어긋나면 카메라 고정 재점검 (책장/모니터 진동, 삼각대 헐거움)
+
+> 회전대 옵션 A에서 "yaw=0 ↔ yaw=360" 룰을 그대로 적용하면 안 됨 — 사람이 회전한 yaw 값은 추정이라 신뢰도 낮음. 카메라 흔들림과 사람 회전 오차가 섞임. 부품 없이 검증하는 게 분리 가능.
 
 ### 4.2 라벨링 품질
 - [ ] ACCEPT 비율 ≥ 80%
@@ -320,6 +376,53 @@ done
 | **macOS** "Coord3D_C16 사용 불가" / "Blaze Supplementary 필요" | macOS Blaze SDK 미지원 | basler_capture.py가 자동 처리 (Range component + Mono16 raw로 동일 mm depth). 별도 조치 불필요 |
 | ping 192.168.10.x 시 카메라 통신 안 됨 | Wi-Fi (192.168.10/24)와 어댑터 IP 충돌 | 어댑터+카메라를 **192.168.20/24**로 이동 (`memory/project_basler_office_setup_0508.md` § 5/12 영구 분리 참조) |
 | Blaze 해상도 (480, 640) 기대했는데 (480, 848) | 매뉴얼 가정 오류 | **848×480이 native 해상도** (5/12 실측). 코드는 정상 (`BLAZE_112_SPEC.width=848`). meta.json에 width 848로 저장됨 |
+
+### 5.1 REVIEW 큐 처리 (5/13 신규)
+
+**REVIEW 폴더는 버리는 데가 아니라 사람 검수 큐**. `auto_label.py` 가 품질 게이트를 통과 못 한 프레임을 모아둔 것.
+
+자동 라벨 ACCEPT 만 학습 데이터로 쓰면 **silent bias** 위험:
+- L4 (FPFH+ICP) 가 어려워하는 자세는 REVIEW 로 빠짐
+- 그 자세는 ACCEPT 데이터셋에서 underrepresented → 학습 모델도 그 자세를 못 풀게 됨
+- "ACCEPT 80%" 라는 지표가 거꾸로 위험 신호일 수 있음 (예: 어려운 자세 데이터가 0개)
+
+#### 사유별 대응
+
+`auto_label.py` 가 `review_reason` 필드에 사유를 기록한다 ([auto_label.py:_evaluate_gate](../bin_picking/src/labeling/auto_label.py)):
+
+| 사유 | 의미 | 대응 |
+|---|---|---|
+| `rmse_high` | RMSE > 1.5mm | (a) intrinsics 미캘리브 가능성 → `check_intrinsics_planar.py` 재확인 / (b) CAD 단위 의심 → 부품 캘리퍼스 실측 vs STL bbox 비교 / (c) 정말 어려운 자세면 게이트 완화 (`--max-rmse-mm 3.0`) 로 재실행 |
+| `low_fitness` | ICP fitness < 0.3 | (a) DBSCAN 클러스터가 부품이 아닐 가능성 → `--part` 강제 / (b) 부품이 시야 안에 작게 보임 → 거리 조정 |
+| `cluster_small` | cluster < 200 pts | 부품이 카메라 시야 밖 또는 너무 작음. yaw/거리/ROI 조정 후 재캡처 |
+| `cluster_large` | cluster > 50,000 pts | DBSCAN 이 부품 + 배경을 하나로 합침. 배경 변경 (검정 천) 또는 ROI 좁히기 |
+| `pose_mismatch` | match_score < 0.85 | (a) `stable_poses.yaml` 자세 후보 부족 → `pose_enumerator.py --threshold 0.02` 로 재생성 (자세 더 많이) / (b) 대칭 부품인데 `symmetry_groups` 미설정 → yaml 채우기 (pose_validation_protocol) |
+| `no_clusters` / `no_matches` | DBSCAN/L4 실패 | 셋업 근본 문제. 라이브 뷰어로 가시화 후 재검토 |
+| `frame_load_failed` | meta.json 누락 등 | 캡처 시 `test_basler_live.py --save` 정상 실행 확인. 디스크 용량 / 권한 점검 |
+
+#### REVIEW 비율별 액션
+
+- **REVIEW < 20%**: 정상 범위. ACCEPT 데이터만 학습 사용해도 OK. REVIEW 는 폴더에 보관만
+- **REVIEW 20~40%**: 사람 검수 큐 발동. 사유 분포 확인 후 위 표대로 대응. **자세별 분포 체크**: 특정 자세에 REVIEW 가 몰려있으면 그 자세는 데이터 부족 → 수동 GT 라벨 입력 또는 자세 폐기 결정
+- **REVIEW > 40%**: 셋업 근본 문제. 본 캡처 중단하고 디버깅 (intrinsics / CAD / 거리 / 부품 식별 순)
+
+#### 자세 분포 균형 검증
+
+`auto_label.py` 의 `print_summary` 출력에서 "자세 분포 (top 10)" 확인:
+
+```
+자세 분포 (top 10):
+  main_body / pose_A: 18    ← yaml probability 0.40 → 18/24 = 75% ⚠️ 편향
+  main_body / pose_B: 4     ← yaml probability 0.40 → 4/24 = 17% ⚠️ 편향
+  main_body / pose_C: 2
+```
+
+**yaml `probability` 와 ACCEPT 자세 분포가 ±20% 이상 어긋나면**:
+- (a) 캡처 시 사람이 특정 자세에만 놓음 → 의도적 균형 캡처 필요
+- (b) L4 가 한 자세를 다른 자세로 잘못 매핑 → `pose_validation_protocol.md` 의 자세 던지기 검증 결과와 비교
+- (c) 대칭 그룹 미설정 → yaml `symmetry_groups` 채우기
+
+→ 균형 안 맞으면 **학습 데이터 편향**. 부트캠프 모델이 흔한 자세만 잘 풀고 드문 자세 못 푸는 결과.
 
 ---
 
@@ -358,6 +461,12 @@ done
 ## 8. 이력
 
 - v1 (2026-05-11): 초안 작성. 어댑터 도착 전 예측 기반. 실 촬영 시 실측 반영해 v2 작성 예정.
+- v1.1 (2026-05-13, 재택 사전 디벨롭):
+  - § 1.3 조명 valid % 룰 추가 (< 70%면 조명 변형 스킵)
+  - § 2.1 자동 라벨링 `--part` 강제 룰 추가 (P1/P2/P4 미확정 부품 안전)
+  - § 4.1 카메라 흔들림 검증 절차 갱신 (회전대 옵션 A/B 분기)
+  - § 5.1 REVIEW 큐 처리 신규 (사유별 대응 + 비율별 액션 + 자세 분포 균형 검증)
+  - 6/2 KAIST 3단계 부트캠프 마감 도입 (~3주 사무실 가용 4~5일)
 
 ---
 
