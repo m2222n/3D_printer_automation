@@ -79,23 +79,40 @@ def colorize(depth_mm: np.ndarray, dmin_mm: int, dmax_mm: int, cmap_idx: int) ->
 
 def overlay_stats(img: np.ndarray, depth_mm: np.ndarray, fps: float,
                   dmin_mm: int, dmax_mm: int, cmap_idx: int) -> None:
-    """좌상단에 통계 텍스트 그리기 (in-place)."""
+    """좌상단에 통계 텍스트 그리기 (in-place).
+
+    valid % 가드 (SOP v1.1 § 1.3): 70%+ = 본 캡처 OK, 50~70% = 조정 권장, < 50% = 셋업 재점검.
+    가드 색상: 녹색 (≥70) / 노랑 (50~70) / 빨강 (<50). 5/15 본 캡처 직관 판정용.
+    """
     valid = (depth_mm > 0) & (depth_mm >= dmin_mm) & (depth_mm <= dmax_mm)
     n_valid = int(np.count_nonzero(valid))
     pct = 100.0 * n_valid / depth_mm.size
     median_mm = float(np.median(depth_mm[valid])) if n_valid > 0 else 0.0
 
+    # valid % 가드 색상 (BGR)
+    if pct >= 70.0:
+        guard_color = (0, 255, 0)      # 녹색 = 본 캡처 OK
+        guard_mark = "OK"
+    elif pct >= 50.0:
+        guard_color = (0, 255, 255)    # 노랑 = 거리/조명 조정 권장
+        guard_mark = "ADJ"
+    else:
+        guard_color = (0, 0, 255)      # 빨강 = 셋업 재점검
+        guard_mark = "FAIL"
+
     lines = [
-        f"FPS {fps:5.1f}    valid {pct:4.1f}%    median {median_mm:5.0f} mm",
-        f"range {dmin_mm}-{dmax_mm} mm    cmap {COLORMAP_NAMES[cmap_idx]}",
-        f"ESC/q quit   s save   c cmap   r auto-range   +/- range",
+        (f"FPS {fps:5.1f}    valid {pct:4.1f}% [{guard_mark}]    median {median_mm:5.0f} mm", guard_color),
+        (f"range {dmin_mm}-{dmax_mm} mm    cmap {COLORMAP_NAMES[cmap_idx]}", (255, 255, 255)),
+        (f"ESC/q quit   s save   c cmap   r auto-range   +/- range", (255, 255, 255)),
     ]
-    for i, line in enumerate(lines):
+    for i, (line, color) in enumerate(lines):
         y = 22 + i * 22
+        # 검정 외곽선 (가독성)
         cv2.putText(img, line, (10, y), cv2.FONT_HERSHEY_SIMPLEX,
                     0.55, (0, 0, 0), 3, cv2.LINE_AA)
+        # 본 텍스트 (첫 줄은 가드 색상, 나머지는 흰색)
         cv2.putText(img, line, (10, y), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55, (255, 255, 255), 1, cv2.LINE_AA)
+                    0.55, color, 1, cv2.LINE_AA)
 
 
 def main():
