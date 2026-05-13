@@ -240,5 +240,18 @@ PROJECT_STATUS_*.md
 bin_picking/models/d435_frames/
 bin_picking/models/d435_realworld/
 
+# Basler 캡처 프레임 + 데이터셋 (5/15~ 본 캡처 시작, 수백 MB ~ GB)
+# depth.npy / color.npy / confidence.npy / meta.json 다수
+bin_picking/models/captures/
+bin_picking/models/basler_frames/
+bin_picking/models/dataset_v1/
+bin_picking/models/dataset_v*/
+
 # E2E 시각화 출력 (PNG)
 bin_picking/tests/viz_output/
+
+# Intrinsics sanity check 캡처 (임시)
+bin_picking/models/planar_check/
+
+# 자세 검증 핸드폰 사진 (5/15 부품 던지기 검증, 회사 부품 = 보안 영역)
+bin_picking/models/pose_validation_photos*/
