@@ -117,6 +117,14 @@ ACE2_5MP_SPEC = {
 # ============================================================
 # 데이터 클래스
 # ============================================================
+# 카메라 intrinsics 버전 식별자
+# 추후 ChArUco 정식 캘리브 시 "calibrated_v1" 등으로 변경
+# 라벨 json + meta.json 에 박혀서 어느 캘리브로 만든 데이터인지 추적 가능
+INTRINSICS_VERSION = "estimated_v2_20260513"
+# v1 (사전): BLAZE fx=460 (잘못, FOV 미반영)
+# v2 (현재, 5/12): BLAZE fx=553 (width 848 + FOV 75° 기반), ACE2 fx=3478 (12mm 렌즈 가정)
+
+
 @dataclass
 class BaslerIntrinsics:
     """Basler 카메라 내부 파라미터."""
@@ -126,11 +134,13 @@ class BaslerIntrinsics:
     fy: float
     cx: float
     cy: float
+    version: str = INTRINSICS_VERSION  # 캘리브 버전 (정식 캘리브 시 갱신)
 
     def to_dict(self) -> dict:
         return {
             "width": self.width, "height": self.height,
             "fx": self.fx, "fy": self.fy, "cx": self.cx, "cy": self.cy,
+            "intrinsics_version": self.version,
         }
 
     @classmethod
@@ -139,6 +149,7 @@ class BaslerIntrinsics:
             width=int(d["width"]), height=int(d["height"]),
             fx=float(d["fx"]), fy=float(d["fy"]),
             cx=float(d["cx"]), cy=float(d["cy"]),
+            version=str(d.get("intrinsics_version", "unknown")),
         )
 
     @classmethod
@@ -148,6 +159,7 @@ class BaslerIntrinsics:
             width=spec["width"], height=spec["height"],
             fx=spec["fx"], fy=spec["fy"],
             cx=spec["cx"], cy=spec["cy"],
+            version=spec.get("intrinsics_version", INTRINSICS_VERSION),
         )
 
 
