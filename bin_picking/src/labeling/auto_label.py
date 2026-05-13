@@ -117,6 +117,8 @@ class LabelResult:
     auto_status: str                 # "ACCEPT" | "REVIEW" | "FAIL"
     review_reason: Optional[str]     # ACCEPT면 None
     pipeline_time_sec: float
+    intrinsics_version: str = "unknown"  # 캘리브 버전 (meta.json에서 추출). 향후 ChArUco 정식 캘리브 후 비교용
+    has_rgb: bool = False                # RGB 동반 여부 (5/15 depth-only / 추후 ACE2 합류 시 True)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -477,9 +479,16 @@ def auto_label_directory(
                     auto_status="FAIL",
                     review_reason="frame_load_failed",
                     pipeline_time_sec=time.time() - t0,
+                    intrinsics_version="unknown",
+                    has_rgb=False,
                 )
             )
             continue
+
+        # intrinsics_version 추출 (meta.json에 있으면, 없으면 "unknown")
+        intr_version = frame["intrinsics"].get("intrinsics_version", "unknown")
+        # has_rgb: color 이미지 존재 여부
+        has_rgb = frame.get("color") is not None
 
         # 파이프라인 실행
         best, err = process_frame(
@@ -506,6 +515,8 @@ def auto_label_directory(
                     auto_status="FAIL",
                     review_reason=err,
                     pipeline_time_sec=elapsed,
+                    intrinsics_version=intr_version,
+                    has_rgb=has_rgb,
                 )
             )
             continue
@@ -556,6 +567,8 @@ def auto_label_directory(
             auto_status=status,
             review_reason=reason,
             pipeline_time_sec=elapsed,
+            intrinsics_version=intr_version,
+            has_rgb=has_rgb,
         )
         results.append(result)
 
