@@ -587,7 +587,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | **Mac Blaze 풀 작동** (pypylon 단독, IPC-510 대기 불필요) | ✅ 5/12 (commit 7e28df9 외 5건) |
 | **사전 디벨롭 코드** (test_basler_live + pose_enumerator + auto_label) | ✅ 5/11 (~1,900줄) |
 | **학습 데이터 라벨 신뢰도 인프라** (스키마 확장 + 대칭 그룹 + 검증 매뉴얼 + SOP 보강) | ✅ 5/13 (commit f9ec525 + dc8d0bf) |
-| intrinsics sanity + capture wrapper + 1pager v2.4 | ⏳ 5/14 오전 (목, KAIST 전) |
+| **5/15 본 캡처 인프라** (intrinsics sanity + capture wrapper + viewer 가드 + runbook + smoke test + .gitignore + 1pager v2.4) | ✅ 5/14 (commit 대기, 새 세션 자동 진행) |
 | **5/15 본 캡처** — P5 자세 던지기 검증 + 자세 A 풀 캡처 + auto_label 첫 실 데이터 | ⏳ 5/15 종일 |
 | 5종 풀 데이터셋 (~1,200~2,400장) | ⏳ 5/18~6/1 (사무실 가용 4~5일) |
 | eye-in-hand 캘리브레이션 (2세트) + Colored ICP 실연동 | ⏳ 6월 이후 (그리퍼 장착 후) |
@@ -826,7 +826,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-05-13
+### 마지막 업데이트 일자: 2026-05-14
 
 ### 마일스톤 (시간 순)
 
@@ -863,6 +863,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-05-12 (저녁) | **🎉 라이브 뷰어 commit 0a34b72** (Mac, live_viewer_basler.py +179줄) — pylon Viewer macOS Blaze 미지원 회피용 cv2 + pypylon 단독 인터랙티브 뷰어. 키: ESC/q/s/c/r/+/-. FPS 20.1, depth median 835mm, JET 컬러맵 정상. 사용자 시각 확인 "오 잘되네". **5/12 인프라 단계 완전 종료** — 빈피킹 워크플로우 100% Mac 단독 가능 확정. 이제부터 사용자 부품 배치 + 본 캡처 페이스 | ✅ |
 | 2026-05-12 (퇴근 전) | **일정 결정 — 카메라 사무실 보관, 5/15 금 본 작업 시작** — 2.5kg 이동 부담 + 카메라 충격 위험 회피. 수 5/13 재택은 가벼운 작업만 (ACE2 단톡, 예승님 카톡, 1pager align 메시지 초안). 5/15 금 사무실 종일 P5 main_body 첫 시범 + auto_label 실 데이터 검증 | ✅ |
 | 2026-05-13 (수, 재택) | **학습 데이터 라벨 신뢰도 인프라** — 외부 커뮤니케이션 3건 발송 보류 (사용자 결정). commit 2개 dual push: `f9ec525` (pose_enumerator v1.1 / stable_poses 5종+29종 재생성 / auto_label 대칭 그룹 + canonicalize_pose_id + simulate PASS) + `dc8d0bf` (pose_validation_protocol.md 신규 = 5/15 첫 30분 부품 던지기 매뉴얼 / SOP v1→v1.1 = § 1.3 조명 valid % + § 2.1 L4 강제 + § 4.1 흔들림 + § 5.1 REVIEW 큐 처리). **6/2 KAIST 3단계 부트캠프 회사 데이터 프로젝트 마감 도입** (W22, 사무실 가용 4~5일 = 5/15·5/18·5/22·5/25·5/29·6/1) — 5종 ~1,200~2,400장 목표, 주제 결정 W21 (5/25~) | ✅ — `docs/binpicking_pose_validation_protocol.md` + SOP v1.1 + `project_week_plan_0511.md` 재조정 |
+| 2026-05-14 (목, 재택) | **5/15 본 캡처 인프라 완성** — 5 commits 단위로 분리 진행. ① `chore(gitignore)`: captures + dataset_v* + pose_validation_photos* ignore (5/15 commit 사고 방지) ② `feat(basler)`: INTRINSICS_VERSION 상수 + BaslerIntrinsics.version (캘리브 추적) ③ `feat(auto_label)`: intrinsics_version + has_rgb 라벨 추적 (depth-only vs RGB-D 구분) ④ `feat(binpicking)`: check_intrinsics_planar (A4 평면 RMS sanity) + capture_session (yaw sweep wrapper, 진행 카운터 + 중단/재개) + live_viewer 가드 색상 (valid % 70/50% 임계) ⑤ `docs(binpicking)`: runbook 단일 페이지 + friday_smoke_test.sh (5분 sanity) + 1pager v2.4 (§ 0 6/2 마감 + § 5.2 차원 축소 1,200장 옵션 + § 8 #17 silent bias / #18 domain gap + § 14 체크리스트). 시나리오 A 채택 (5/15 depth-only, ACE2는 5/18~ 추가) | ✅ commit 5개 + dual push — 인프라 100% |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 

@@ -26,6 +26,38 @@
 - § 12 환경 분담: IPC-510 우선순위 ↓ (Mac 단독 데이터 수집 진입 가능 확정)
 - § 13 신규: Mac Basler 운영 환경 (BASLER_BLAZE_IP 환경변수 / 192.168.20.x / dual push 정책)
 
+**v2.3 → v2.4 변경사항 (5/14 재택, 학습 데이터 라벨 신뢰도 인프라 + 6/2 부트캠프 마감)**:
+- 🎯 **§ 0 신규: 6/2 KAIST 3단계 부트캠프 회사 데이터 프로젝트 마감 도입** — 사무실 가용 4~5일 (5/15·5/18·5/22·5/25·5/29·6/1), 5종 ~1,200~2,400장 목표, 주제 결정 W21 (5/25~)
+- § 5 목표 데이터셋 — 차원 축소 옵션 추가 (yaw 24→12 / 조명 3→2 / 배경 3→2 = 1종 380→~200장, 5종 ~1,200장)
+- § 6 실험 계획 — 5/15 일정 재조정 (P5 자세 A만 풀, B/C는 시간 남으면). 5/18~6/1 본격 수집 일정 명시
+- § 8 리스크 #8 갱신 — intrinsics 캘리브 = `check_intrinsics_planar.py` 로 5/15 즉시 검증 가능 (RMS < 2mm 임계)
+- § 8 리스크 #17 신규 — **데이터셋 silent bias** (auto_label REVIEW 큐 무시 시 어려운 자세 underrepresented). SOP v1.1 § 5.1 대응
+- § 8 리스크 #18 신규 — **단독 부품 도메인 갭** (학습 데이터 = single-instance / 실 빈피킹 = cluttered + occlusion). 6월 합성 데이터 보강 검토
+- § 10 의사결정 5/13~5/14 추가 (스키마 확장 / 대칭 그룹 / 검증 매뉴얼 / SOP 보강 / intrinsics sanity / capture wrapper)
+- § 11 산출물 인벤토리 갱신 (코드 6→9: + check_intrinsics_planar + capture_session + auto_label intrinsics_version / 문서 3→4: + pose_validation_protocol)
+- § 14 신규: 학습 데이터 라벨 신뢰도 체크리스트 (5/15 본 캡처 직전 자가 점검)
+
+---
+
+## 🎯 0. 6/2 마감 — KAIST 3단계 부트캠프 회사 데이터 프로젝트
+
+| 항목 | 값 |
+|---|---|
+| 시작일 | **2026-06-02 (화)** |
+| 프로젝트 기간 | 6주 (~7/9) |
+| 입력 자료 | 빈피킹 5종 데이터셋 v1 (1,200~2,400장) + 라벨 (`auto_label.py` 출력) + CAD + stable_poses.yaml (사람 검증 완료) + 본 1pager |
+| 주제 결정 시점 | W21 (5/25~5/29) — 데이터 모인 후 함께 결정 |
+
+**준비 기간 21일 (5/13~6/1) 중 사무실 가용 = 4~5일**:
+- 5/15 (금) — P5 시범 + 자세 검증 + 자세 A 풀 캡처
+- 5/18 (월) — 본격 수집 1일차
+- 5/22 (금) — 본격 수집 2일차 (예승님 방문 일정 겹치면 E2E 우선)
+- 5/25 (월) — 본격 수집 3일차 + 부트캠프 주제 결정
+- 5/29 (금) — 본격 수집 4일차 + 미니 학습 sanity check 검토
+- 6/1 (월) — 부족분 보충 + 데이터셋 v1 최종 검증
+
+**리스크**: 첫 캡처 (5/15) ACCEPT 80% 미달 시 디버깅으로 1~2일 손실. 차원 축소 (1,200장 목표) 가 안전.
+
 ---
 
 ## 1. 배경
@@ -198,7 +230,9 @@ label = {
 
 ---
 
-## 5. 목표 데이터셋 (v2: 실측 자세 수 반영)
+## 5. 목표 데이터셋 (v2.4: 차원 축소 옵션 추가)
+
+### 5.1 풀 규모 (원안 v2)
 
 | 부품 | 자세 (실측) | 장수/자세 | 합계 | 비고 |
 |------|-----------|----------|------|------|
@@ -209,52 +243,71 @@ label = {
 | ③ cam_f_bracket | 5 | ~90 | 450 | top-3 72%, 자세 분류 정확도 중요 |
 | **합계** | **19자세** | | **~2,230장** |
 
-→ v1 (~2,440장)과 거의 동일. **자세 수 19개로 합리적 규모**.
+### 5.2 차원 축소 옵션 (6/2 마감 안전 가정, **권장**)
 
-### 촬영 변형 (자세 1개당)
-- yaw 24개 (15° step, 회전대)
-- pitch 2~4개 (선택, 부품 허용 자세)
-- 조명 3개 (normal / low / side)
-- 배경 3개 (white / dark / mixed)
-- → 1자세당 50~150장 (조명·배경 조합 일부만)
+사무실 가용 4~5일 = ~30시간 부족 가능성. 차원 축소로 **~1,200장 목표**:
 
-상세 절차: `docs/binpicking_capture_sop_20260511.md` ⭐ 신규
+| 차원 | 풀 (v2) | 축소 (v2.4) | 영향 |
+|---|---|---|---|
+| yaw | 24개 (15° step) | **12개 (30° step)** | 회전 다양성 절반 |
+| 조명 | 3개 (normal/low/side) | **2개 (normal + low)** | side 는 ToF 그림자 약점 |
+| 배경 | 3개 (white/dark/mixed) | **2개 (white + dark)** | mixed 는 단독 부품 가정 깨짐 |
+| 자세 | 19자세 | 19자세 (유지) | 자세 다양성은 학습 핵심이라 유지 |
+
+축소 데이터셋: 19자세 × 평균 60장 ≈ **1,140장**. 5/15~6/1 안에 충분.
+
+→ 부트캠프 주제에 따라 풀 (v2) vs 축소 (v2.4) 결정. **W21 (5/25) 시점 데이터 진척 + 주제 함께 결정**.
+
+상세 절차: [docs/binpicking_capture_sop_20260511.md](binpicking_capture_sop_20260511.md) (v1 → v1.1, 5/13)
 
 ---
 
-## 6. 실험 계획
+## 6. 실험 계획 (v2.4)
 
-### 5/11 (월, 사무실) — D435로 워크플로우 검증
-- 부품 5개 캘리퍼스 실측 + STL 매칭 → 이름 확정
-- D435 셋업 + USB 케이블 확인 + 오버헤드 30~50cm 가능 여부
-- 부품 1~2종 시범 (총 ~30장) — L1~L4 돌려서 인식률/RMSE 확인
-- **목표**: 4/22 USB 20cm 제약 해결 여부 + SOP 초안
+### 5/11~12 — 인프라 완성 ✅
+- 5/11: 부품 5종 사진/실측 + 사전 디벨롭 코드 ~1,900줄 + 어댑터 조기 도착
+- 5/12: Mac Blaze 풀 작동 + 라이브 뷰어 + SOP v1 + 1pager v2.3
 
-### 5/12~14 (화/목 KAIST, 수 재택) — D435 데이터 본격
-- 부품 5종 × ~30장 = ~150장 (D435 prototype)
-- 자동 라벨링 워크플로우 검증
-- 1pager v2 (실험 결과 반영)
+### 5/13~14 (재택) — 학습 데이터 라벨 신뢰도 인프라 ✅ + ⏳
+- stable_poses.yaml 스키마 확장 (human_label / symmetry_groups) ✅
+- auto_label.py 대칭 그룹 처리 (canonicalize_pose_id) ✅
+- pose_validation_protocol.md (5/15 첫 30분 매뉴얼) ✅
+- SOP v1.1 (REVIEW 큐 / 흔들림 검증 / 조명 valid % / L4 강제) ✅
+- check_intrinsics_planar.py (A4 평면 RMS sanity) ⏳ 5/14
+- capture_session.py (yaw sweep wrapper) ⏳ 5/14
+- auto_label.py intrinsics_version 필드 ⏳ 5/14
 
-### 5/15 (금, 사무실) — 어댑터 수령 + Basler 라이브
-- 8단계 검증 (`system_profiler` / `ifconfig` / pylon)
-- Blaze 라이브 depth + ace2 RGB
-- D435 SOP를 Basler에 적용 (카메라만 갈아끼움)
-- 부품 1종 Basler 시범 (~50장)
+### 5/15 (금, 사무실) — 본 캡처 진입 ⭐
 
-### 5월 후반 — 5종 풀 데이터셋
-- Basler로 부품 5종 × ~500장 = ~2,400장
-- 자동 라벨링 적용
-- 데이터셋 v1 완성
+| 시간 | 작업 |
+|---|---|
+| 9:00 | 카메라 셋업 (60~80cm, BASLER_BLAZE_IP=192.168.20.10) |
+| 9:15 | 라이브 뷰어로 시야 + valid % 70%+ 확인 |
+| 9:30 | **A4 평면 sanity check** (`check_intrinsics_planar.py`) — RMS < 2mm 확인 |
+| 10:00 | **부품 자세 던지기 검증** (`pose_validation_protocol.md`) — 5종 × 10회 → yaml null 채우기 + 핸드폰 사진 |
+| 11:30 | P5 main_body 자세 A 시범 5장 → auto_label 확인 |
+| 13:00 | P5 자세 A 풀 yaw sweep (`capture_session.py --part main_body --pose A`) |
+| 14:00 | **ACCEPT 80%+ 확인** — 미만이면 디버깅 / 80%+면 자세 B/C 추가 |
+| 17:00 | 결과 분석 + 5/19~ 본격 5종 수집 계획 |
 
-### 6월 — 학습 모델 검토
-- 옵션 1: 실데이터 augmentation → ICP 강건화
-- 옵션 2: PoseCNN / PVN3D / FoundationPose (1종당 1000+장 필요)
-- KAIST 3단계 프로젝트 주제 후보
+### 5/18~6/1 — 본격 5종 풀 데이터셋
 
-### 6~7월 — 펜던트 통합
+| 일자 | 목표 |
+|---|---|
+| 월 5/18 | P5 풀 데이터셋 완성 + P3 또는 P4 시작 |
+| 금 5/22 | 추가 부품 1~2종 (예승님 방문 일정 겹치면 E2E 우선) |
+| 월 5/25 | 나머지 부품 + **부트캠프 주제 결정** (데이터 진척 함께) |
+| 금 5/29 | 부족분 보충 + **미니 학습 sanity check** (1종 데이터로 1 epoch) |
+| 월 6/1 | 데이터셋 v1 최종 검증 + 부트캠프 입력 자료 정리 |
+
+### 6/2~7/9 (6주) — 부트캠프 본 프로젝트
+- W21 결정한 주제로 진행
+- 우리 데이터셋 v1 + 1pager 입력
+- 후보: 6DoF pose estimation / Stable pose classification / cluttered scene 인식
+
+### 6~7월 (병행) — 펜던트 통합
 - 한솔/한화 패키지 답 수신 후 HCR-10L 펜던트 구조 받기
 - 빈피킹 + 바텀비전 동시 운영 시퀀스 설계
-- 실 피킹 + 시뮬 토글 OFF E2E
 
 ---
 
@@ -293,7 +346,7 @@ label = {
 | 5 | 대표님 align 어긋남 | 중 | 본 1pager로 align. 출장 복귀 시 즉시 전송 |
 | 6 | 실 부품 CAD 불일치 | 저 | 4/22 발견 패턴 (SizeFilter Z 50% 오차) — 실측으로 검증 |
 | 7 | KAIST + 빈피킹 동시 진행 시간 부족 | 중 | 5월 SOP 확립 후 6월 KAIST 3단계 프로젝트로 통합 |
-| 8 | **BLAZE/ACE2 intrinsics 추정값 부정확** | 중 | 카메라 도착 후 ChAruco 보드로 정식 캘리브. 현재 **BLAZE fx=553/fy=188 (5/12 실측 정정: width 848 기반)**, ACE2 fx=3478 (12mm 렌즈 가정) |
+| 8 | **BLAZE/ACE2 intrinsics 추정값 부정확** | 중 | **5/14 갱신**: `check_intrinsics_planar.py` 로 5/15 사무실 도착 즉시 A4 평면 RMS 검증 (< 2mm = OK, > 5mm = ChArUco 캘리브 필요). intrinsics_version="estimated_v2_20260513" 모든 라벨에 박힘 → 추후 캘리브 후 재라벨 가능 |
 | 9 | **① main_body 180° 대칭** | 저 | 학습 라벨 A·B 통합 처리. 자세 4개 → 실질 3개 취급 |
 | ~~10~~ | ~~④ bracket_case 단위 의심 (10×5×6mm)~~ | ✅ **해소 (5/11)** | P3 캘리퍼스 실측 56mm → bracket_case가 아니라 **bracket_sen_1 (15×56×53mm) 확정**. STL 단위 mm 신뢰. grasp_database 재생성 불필요 |
 | 11 | P2/P4 STL 미확정 (2개 후보) | 저 | L4 매칭 시 자동 확정 (RMSE/fitness로 1개 결정) |
@@ -302,6 +355,8 @@ label = {
 | 14 | Basler GigE에 sudo 잘못 사용 시 권한 혼선 | 저 | RealSense D435 (USB raw) 패턴 잘못 적용 위험. SOP/test_basler_live 모두 sudo 없이 (5/11 정정) |
 | ~~15~~ | ~~macOS Blaze Supplementary 미지원 → Mac에서 못 씀 가설~~ | ✅ **해소 (5/12)** | pypylon만으로 Blaze-112 풀 작동 확인. ProducerGEV.cti + BaslerGigE TL 사용 + Range component만 enable + Mono16 raw로 깨끗한 848×480 uint16 mm depth. IPC-510 대기 불필요 |
 | 16 | macOS EnumerateDevices() Blaze 미동작 | 저 | 워크어라운드 적용됨 (commit 7e28df9): 환경변수 BASLER_BLAZE_IP 또는 인자로 IP 직접 fallback. 시리얼/모델 매칭 인터페이스 보존 |
+| **17** | **데이터셋 silent bias** — auto_label REVIEW 큐 무시 시 어려운 자세 underrepresented → 학습 모델이 그 자세 못 풀게 됨. "ACCEPT 80%" 지표가 거꾸로 위험 신호일 수 있음 | **중** | SOP v1.1 § 5.1 (5/13 신규): REVIEW 비율 20~40% 면 사람 검수 큐 / > 40% 면 셋업 디버깅. 자세 분포 (ACCEPT) vs yaml probability ±20% 비교. 어려운 자세는 수동 GT 라벨 입력 |
+| **18** | **단독 부품 도메인 갭** — 학습 데이터 = single-instance / 실 빈피킹 = cluttered + occlusion. 이대로 학습하면 single-instance pose model 만 잘 됨 | **중** | 6월 부트캠프 주제 결정 시 합성 데이터 (BlenderProc cluttered scene) 보강 검토. 또는 5/29 미니 학습 sanity check 시 실 빈피킹 시나리오 1~2장 테스트 |
 
 ---
 
@@ -344,41 +399,83 @@ label = {
 | 5/12 | **BLAZE 실측 정정: 848×480 (매뉴얼 640 오류)** | 5/8 박스 매뉴얼 640×480 가정이 사실은 native 848×480. fx 417 → **553** 재계산. cx 320 → 424. 향후 정식 캘리브 시 추가 정정 가능 |
 | 5/12 | **Mac 네트워크 영구 분리: 192.168.20/24** | 사무실 Wi-Fi (192.168.10/24)와 충돌 회피. 어댑터 en8 + Blaze 전용 서브넷. ping 11~76ms → 1.6~2.7ms (6~30배 빠름). Wi-Fi 켠 채 카메라 작업 가능 |
 | 5/12 | **Push 정책 명확화 — 모든 commit dual push (origin + personal)** | 사용자 기존 운영 방식 = 모든 파일 dual. 5/11 commit 9a2fafd "personal 제외"는 예외였고 정상 패턴 X. 정책: 모든 push = orinu-ai (origin) + m2222n (personal) 동시. 보안은 외부 유출 시점(스크린샷/카톡/PDF)에서 CLAUDE.md § 보안 원칙 적용. credentials/.env는 .gitignore로 보호 |
+| 5/13~14 | **학습 데이터 라벨 신뢰도 인프라 — 외부 커뮤니케이션 3건 발송 보류** | 사용자 결정: ACE2 단톡 + 예승님 카톡 + 1pager 대표님 메시지 발송 시점 자율 결정. 재택 시간 = 인프라 보강에 집중. 결과: stable_poses 스키마 확장 (human_label/symmetry_groups) + auto_label 대칭 그룹 (canonicalize_pose_id) + pose_validation_protocol.md (5/15 매뉴얼) + SOP v1.1 (REVIEW/흔들림/조명 valid %/L4 강제) + check_intrinsics_planar.py (A4 평면 sanity) + capture_session.py (yaw sweep wrapper) + intrinsics_version 라벨 추적 |
+| 5/14 | **6/2 KAIST 3단계 부트캠프 회사 데이터 프로젝트 마감 도입** | 준비 21일 (5/13~6/1), 사무실 가용 4~5일. 목표 데이터 1,200~2,400장 (차원 축소 옵션). 주제 결정 W21 (5/25~) — 데이터 진척 함께 결정. § 0 신규 절 추가 |
+| 5/14 | **목표 데이터셋 차원 축소 옵션 권장** | 사무실 가용 4~5일 = ~30시간 부족 위험. yaw 24→12 + 조명 3→2 + 배경 3→2 = 1종 380→200장, 5종 ~1,140장. 자세 다양성 유지 (학습 핵심). § 5.2 신규 |
+| 5/14 | **5/15 일정 재조정: "P5 풀 자세" → "P5 자세 A만 풀, B/C 시간 남으면"** | 첫 캡처 셋업 시행착오 시간 보수적 확보. ACCEPT 80% 미만이면 오후 디버깅. 80%+면 자세 B/C 추가. 사용자 결정 |
 
 ---
 
-## 11. 산출물 인벤토리 (5/11 사전 디벨롭 + 5/12 인프라 완성)
+## 11. 산출물 인벤토리 (5/11 + 5/12 + 5/13~14, 인프라 완성)
 
-### 코드 (6개 — 5/12 라이브 뷰어 추가)
+### 코드 (9개 — 5/13~14 추가: check_intrinsics_planar / capture_session / intrinsics_version 추적)
 | 파일 | 줄수 | 역할 |
 |------|------|------|
 | `bin_picking/tests/test_basler_live.py` | 678 | 어댑터 검증 (--discover/--live/--save/--load/--pipeline) |
-| `bin_picking/tests/live_viewer_basler.py` ⭐ 신규 (5/12) | 179 | Mac 인터랙티브 라이브 뷰어 (cv2 + pypylon, pylon Viewer 미지원 회피). 키: ESC/q/s/c/r/+/-. 시야 확인 + 부품 배치 조절 |
-| `bin_picking/src/recognition/pose_enumerator.py` | 412 | STL → 안정 자세 yaml 자동 생성 (5종 + 29종) |
-| `bin_picking/src/labeling/auto_label.py` | 815 | 자동 라벨링 (L1~L4 + stable_pose 매핑 + 품질 게이트, 시뮬 PASS) |
-| `bin_picking/src/acquisition/basler_capture.py` | 600+ (5/11+5/12 수정) | BLAZE 정정 (width 848 + fx 553 + cx 424) + IP fallback + Range/Mono16 |
-| `bin_picking/src/acquisition/{depth_to_pointcloud, hand_eye_calibration}.py` 등 | - | BLAZE intrinsics 일관성 (5/11 + 5/12) |
+| `bin_picking/tests/live_viewer_basler.py` (5/12) | 179 | Mac 인터랙티브 라이브 뷰어 (cv2 + pypylon). 시야 확인 + 부품 배치 조절 |
+| `bin_picking/tests/check_intrinsics_planar.py` ⭐ 신규 (5/14) | ~280 | A4 평면 RANSAC fit → intrinsics 추정값 검증 (RMS < 2mm = PASS). 5/15 첫 단계 |
+| `bin_picking/tests/capture_session.py` ⭐ 신규 (5/14) | ~290 | yaw sweep wrapper. 부품/자세/조명/배경 + 진행 카운터 + 중단/재개 + 자동 meta 갱신 |
+| `bin_picking/src/recognition/pose_enumerator.py` (5/13 v1.1) | 480 | STL → 안정 자세 yaml + **human_label/symmetry_groups 필드 신규** |
+| `bin_picking/src/labeling/auto_label.py` (5/13 대칭 + 5/14 intrinsics_version) | 880 | 자동 라벨링 + **canonicalize_pose_id (대칭 그룹) + intrinsics_version 라벨**. simulate PASS |
+| `bin_picking/src/acquisition/basler_capture.py` (5/13~14) | 600+ | BLAZE 정정 + IP fallback + Range/Mono16 + **INTRINSICS_VERSION 상수** |
+| `bin_picking/src/acquisition/{depth_to_pointcloud, hand_eye_calibration}.py` 등 | - | BLAZE intrinsics 일관성 |
 
 ### 설정 (2개)
 | 파일 | 크기 | 역할 |
 |------|------|------|
-| `bin_picking/config/stable_poses.yaml` | 10 KB | 5종 안정 자세 (parts.{plate_e, bracket_case, ...}) |
-| `bin_picking/config/stable_poses_all29.yaml` | 60 KB | 29종 전체 (향후 확장용 GT) |
+| `bin_picking/config/stable_poses.yaml` (5/13 v1.1) | 11 KB | 5종 안정 자세 + 신규 필드 (human_label/symmetry_groups/pickable/regrasp_to) |
+| `bin_picking/config/stable_poses_all29.yaml` (5/13 v1.1) | 64 KB | 29종 전체 + 신규 필드 |
 
-### 문서 (3개)
+### 문서 (4개 — pose_validation_protocol 신규)
 | 파일 | 역할 |
 |------|------|
-| `docs/binpicking_learning_data_strategy_1pager_20260511.md` | **본 1pager** (전략) |
-| `docs/binpicking_capture_sop_20260511.md` ⭐ 신규 | 데이터 수집 SOP (어댑터 도착 후 매뉴얼) |
+| `docs/binpicking_learning_data_strategy_1pager_20260511.md` (v2.4) | **본 1pager** (전략 + 6/2 마감) |
+| `docs/binpicking_capture_sop_20260511.md` (v1.1) | 데이터 수집 SOP + **§ 5.1 REVIEW 큐 처리 / § 1.3 조명 valid % / § 2.1 L4 강제 / § 4.1 흔들림 검증** |
+| `docs/binpicking_pose_validation_protocol.md` ⭐ 신규 (5/13) | **5/15 첫 30분 부품 던지기 검증 매뉴얼** (yaml null 채우기) |
 | `docs/hansol_handover/bottom_vision_interface_notes_20260511.md` | 한솔 바텀비전 인터페이스 명세 |
 
-### 메모리 (4개 신규/완료)
+### 메모리 (4개)
 | 파일 | 역할 |
 |------|------|
 | `memory/project_binpicking_5parts_strategy.md` | 5종 깊게 모드 |
-| `memory/project_binpicking_predev_codes_0511.md` | 사전 디벨롭 작업 기록 |
-| `memory/project_week_plan_0511.md` | 이번주 일정 |
+| `memory/project_binpicking_predev_codes_0511.md` | 사전 디벨롭 작업 기록 (5/11~14) |
+| `memory/project_week_plan_0511.md` (5/14 갱신) | W19 일정 + 5/15 재조정 + 6/2 마감 |
 | `memory/project_bottom_vision_handover_done.md` | 바텀비전 인수 완료 |
+
+---
+
+## 14. 학습 데이터 라벨 신뢰도 체크리스트 (5/15 본 캡처 직전 자가 점검)
+
+> 이 체크리스트 통과 없이 본 캡처 들어가면 **데이터 통째로 재라벨 위험**.
+
+### 사무실 도착 직후 (9:00~10:00)
+- [ ] 카메라 60~80cm 고정 (책장/모니터/삼각대 흔들림 없음)
+- [ ] BASLER_BLAZE_IP=192.168.20.10 환경변수 export
+- [ ] 라이브 뷰어로 시야 + valid % 70%+ 확인 (`live_viewer_basler.py`)
+- [ ] **A4 평면 sanity check 통과** (RMS < 2mm, `check_intrinsics_planar.py`)
+- [ ] **부품 5종 자세 던지기 검증 완료** (`pose_validation_protocol.md` Step 1~6)
+  - [ ] yaml `human_label` 채워짐 (부품 + 자세별)
+  - [ ] yaml `symmetry_groups` 결정됨 (대칭이면 묶기, 아니면 명시적 null)
+  - [ ] yaml `pickable` / `regrasp_to` 채워짐 (불확실하면 null 유지)
+  - [ ] 핸드폰 사진 (자세 id ↔ 외관) 기록됨
+
+### 첫 캡처 직후 (11:30~12:00)
+- [ ] auto_label.py `--part main_body` 강제 (L4 후보 좁히기, SOP § 2.1)
+- [ ] ACCEPT 비율 ≥ 80% (5장 시범에서)
+- [ ] 라벨 json 에 `intrinsics_version` 박혀 있음 (5/14 추가 필드)
+- [ ] 자세 id 가 사람 직관과 일치 (사진 vs yaml human_label 비교)
+
+### 본 캡처 진입 후 매 자세 (24장 끝날 때마다)
+- [ ] ACCEPT 자세 분포 vs yaml `probability` ±20% 이내 (SOP § 5.1)
+- [ ] REVIEW 사유 분포 확인 (rmse_high 가 다수면 intrinsics 의심)
+- [ ] depth 유니크 값 > 30 (양자화 X, SOP § 4.1)
+- [ ] 카메라 흔들림 검증 통과 (회전대 옵션 A 시 부품 없이 5장 RMS)
+
+### 본 캡처 종료 후 (저녁)
+- [ ] 5/19~ 일정 계획 (남은 부품 우선순위)
+- [ ] dataset_v1 폴더 구조 정상 (부품/자세/{accept,review,fail})
+- [ ] dual push (origin + personal)
+- [ ] 메모리 갱신 (week_plan_0511 + MEMORY.md P0)
 
 ---
 
