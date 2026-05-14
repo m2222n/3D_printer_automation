@@ -202,10 +202,15 @@ def run_session(
 
     if not captured:
         print(
-            "\n⚠️ 사전 점검 (SOP v1.1 § 1.3 / § 4.1):\n"
+            "\n⚠️ 사전 점검 (SOP v1.1 § 1.2 / § 1.3 / § 4.1):\n"
             "  1. 라이브 뷰어로 valid % > 70% 확인 (`live_viewer_basler.py`)\n"
             "  2. 카메라 흔들림 없음 (회전대 미사용 시 부품 없이 5장 RMS 검증)\n"
             "  3. A4 평면 sanity check 통과 (`check_intrinsics_planar.py`)\n"
+            "  4. 회전대 운영 (5/14 추가):\n"
+            "     - 회전대 0° = 카메라 방향 기준점 표시 (출발점 일관)\n"
+            "     - 검은 배경 시트 깔기 (DBSCAN 회전대 미혼입)\n"
+            "     - 회전대 가장자리/아래에서 손으로 돌리기 (시야에 손 안 들어가게)\n"
+            "     - 회전 후 1~2초 정지 → 부품 흔들림 가라앉은 후 캡처\n"
         )
         input("준비 완료 시 Enter (취소: Ctrl+C): ")
 
