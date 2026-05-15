@@ -1,6 +1,7 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import os
 import json
+from urllib.parse import unquote
 
 PORT = 8089
 SAVE_DIR = r"C:\STL_Files"
@@ -11,7 +12,7 @@ class FileReceiveHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/upload":
             content_length = int(self.headers.get("Content-Length", 0))
-            filename = self.headers.get("X-Filename", "unknown.stl")
+            filename = unquote(self.headers.get("X-Filename", "unknown.stl"))
 
             os.makedirs(SAVE_DIR, exist_ok=True)
 

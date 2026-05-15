@@ -10,6 +10,7 @@ import os
 import socket
 from typing import Optional, List, Dict, Any
 from pathlib import Path
+from urllib.parse import quote
 
 from app.core.config import get_settings
 from app.local.schemas import (
@@ -207,7 +208,7 @@ class PreFormServerClient:
                         receiver_url,
                         content=f.read(),
                         headers={
-                            "X-Filename": filename,
+                            "X-Filename": quote(filename, safe=''),
                             "Content-Type": "application/octet-stream"
                         }
                     )
