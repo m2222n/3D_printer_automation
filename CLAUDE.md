@@ -826,7 +826,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-05-14
+### 마지막 업데이트 일자: 2026-05-15
 
 ### 마일스톤 (시간 순)
 
@@ -864,6 +864,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-05-12 (퇴근 전) | **일정 결정 — 카메라 사무실 보관, 5/15 금 본 작업 시작** — 2.5kg 이동 부담 + 카메라 충격 위험 회피. 수 5/13 재택은 가벼운 작업만 (ACE2 단톡, 예승님 카톡, 1pager align 메시지 초안). 5/15 금 사무실 종일 P5 main_body 첫 시범 + auto_label 실 데이터 검증 | ✅ |
 | 2026-05-13 (수, 재택) | **학습 데이터 라벨 신뢰도 인프라** — 외부 커뮤니케이션 3건 발송 보류 (사용자 결정). commit 2개 dual push: `f9ec525` (pose_enumerator v1.1 / stable_poses 5종+29종 재생성 / auto_label 대칭 그룹 + canonicalize_pose_id + simulate PASS) + `dc8d0bf` (pose_validation_protocol.md 신규 = 5/15 첫 30분 부품 던지기 매뉴얼 / SOP v1→v1.1 = § 1.3 조명 valid % + § 2.1 L4 강제 + § 4.1 흔들림 + § 5.1 REVIEW 큐 처리). **6/2 KAIST 3단계 부트캠프 회사 데이터 프로젝트 마감 도입** (W22, 사무실 가용 4~5일 = 5/15·5/18·5/22·5/25·5/29·6/1) — 5종 ~1,200~2,400장 목표, 주제 결정 W21 (5/25~) | ✅ — `docs/binpicking_pose_validation_protocol.md` + SOP v1.1 + `project_week_plan_0511.md` 재조정 |
 | 2026-05-14 (목, 재택) | **5/15 본 캡처 인프라 완성** — 5 commits 단위로 분리 진행. ① `chore(gitignore)`: captures + dataset_v* + pose_validation_photos* ignore (5/15 commit 사고 방지) ② `feat(basler)`: INTRINSICS_VERSION 상수 + BaslerIntrinsics.version (캘리브 추적) ③ `feat(auto_label)`: intrinsics_version + has_rgb 라벨 추적 (depth-only vs RGB-D 구분) ④ `feat(binpicking)`: check_intrinsics_planar (A4 평면 RMS sanity) + capture_session (yaw sweep wrapper, 진행 카운터 + 중단/재개) + live_viewer 가드 색상 (valid % 70/50% 임계) ⑤ `docs(binpicking)`: runbook 단일 페이지 + friday_smoke_test.sh (5분 sanity) + 1pager v2.4 (§ 0 6/2 마감 + § 5.2 차원 축소 1,200장 옵션 + § 8 #17 silent bias / #18 domain gap + § 14 체크리스트). 시나리오 A 채택 (5/15 depth-only, ACE2는 5/18~ 추가) | ✅ commit 5개 + dual push — 인프라 100% |
+| 2026-05-15 (금, 공장) | **공장 방문 — 예승님 만남 + 한솔 브라켓 출력 + 한글 파일명 fix 종료** ① ACE2 전원 케이블 한솔 보유분 인수 ② 추가 어댑터 1개 필요 발견 (ACE2 동시 라이브) → ipTIME U1G-C 즉시 발주 ③ **예승님 YOLO + 데이터 증강 제안** — 5~6종 다각도 촬영 + Roboflow + YOLOv8. 트랙 1(6DoF) 유지하면서 트랙 2(YOLO) 병행 채택 ④ 🔴 **한솔 브라켓 STL 출력 슬라이스 준비 실패** — `브라켓.stl` 한글 파일명이 X-Filename HTTP 헤더 ASCII 위반 → file_receiver에서 깨진 경로 → PreFormServer import-model 실패. 현장 회피: PreForm 앱 직접 출력 ⑤ ✅ **영구 fix commit `06e68b4`** — RFC 5987 percent-encoding (web-api `quote` + factory-pc `unquote`) 2파일×2줄. round-trip 5/5 PASS + 부분 배포 변종 버그 실증. dual push + **3개 서버 동기화** (공장 PC AnyDesk + 카카오 VM + 6000 모두 active) + 공장 직접 검증 (브라켓.stl 한글명 그대로 슬라이스 미리보기 → 4h 26m 예측 + 유효성 통과). ⑥ 팀장님 발주 카톡 (ipTIME U1G-C 1개 + 이지셉 핸드워시 1L×3개) 발송 완료 | 🆕 `project_binpicking_yolo_track.md` + `project_ace2_adapter_reorder_0515.md` + `project_factory_print_korean_filename_bug_0515.md` |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 
