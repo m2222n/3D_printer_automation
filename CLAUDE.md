@@ -826,7 +826,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-05-18
+### 마지막 업데이트 일자: 2026-05-18 (저녁: AICA 학습 + 한솔 코드 인계 추가)
 
 ### 마일스톤 (시간 순)
 
@@ -865,7 +865,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-05-13 (수, 재택) | **학습 데이터 라벨 신뢰도 인프라** — 외부 커뮤니케이션 3건 발송 보류 (사용자 결정). commit 2개 dual push: `f9ec525` (pose_enumerator v1.1 / stable_poses 5종+29종 재생성 / auto_label 대칭 그룹 + canonicalize_pose_id + simulate PASS) + `dc8d0bf` (pose_validation_protocol.md 신규 = 5/15 첫 30분 부품 던지기 매뉴얼 / SOP v1→v1.1 = § 1.3 조명 valid % + § 2.1 L4 강제 + § 4.1 흔들림 + § 5.1 REVIEW 큐 처리). **6/2 KAIST 3단계 부트캠프 회사 데이터 프로젝트 마감 도입** (W22, 사무실 가용 4~5일 = 5/15·5/18·5/22·5/25·5/29·6/1) — 5종 ~1,200~2,400장 목표, 주제 결정 W21 (5/25~) | ✅ — `docs/binpicking_pose_validation_protocol.md` + SOP v1.1 + `project_week_plan_0511.md` 재조정 |
 | 2026-05-14 (목, 재택) | **5/15 본 캡처 인프라 완성** — 5 commits 단위로 분리 진행. ① `chore(gitignore)`: captures + dataset_v* + pose_validation_photos* ignore (5/15 commit 사고 방지) ② `feat(basler)`: INTRINSICS_VERSION 상수 + BaslerIntrinsics.version (캘리브 추적) ③ `feat(auto_label)`: intrinsics_version + has_rgb 라벨 추적 (depth-only vs RGB-D 구분) ④ `feat(binpicking)`: check_intrinsics_planar (A4 평면 RMS sanity) + capture_session (yaw sweep wrapper, 진행 카운터 + 중단/재개) + live_viewer 가드 색상 (valid % 70/50% 임계) ⑤ `docs(binpicking)`: runbook 단일 페이지 + friday_smoke_test.sh (5분 sanity) + 1pager v2.4 (§ 0 6/2 마감 + § 5.2 차원 축소 1,200장 옵션 + § 8 #17 silent bias / #18 domain gap + § 14 체크리스트). 시나리오 A 채택 (5/15 depth-only, ACE2는 5/18~ 추가) | ✅ commit 5개 + dual push — 인프라 100% |
 | 2026-05-15 (금, 공장) | **공장 방문 — 예승님 만남 + 한솔 브라켓 출력 + 한글 파일명 fix 종료 + Phase 2 E2E 검증** ① ACE2 전원 케이블 한솔 보유분 인수 ② 추가 어댑터 1개 필요 발견 → ipTIME U1G-C 즉시 발주 ③ **예승님 YOLO + Roboflow 제안 채택** — 트랙 1(6DoF) 유지하면서 트랙 2(YOLO) 병행 ④ 🔴→✅ **한글 파일명 fix commit `06e68b4`** — X-Filename ASCII 위반 → RFC 5987 percent-encoding. 3개 서버 동기화 + 공장 직접 검증 ⑤ ✅ **Phase 2 E2E 풀 패스 검증** — 우리 앱으로 STL → 슬라이스 → 프린터 전송 → 실 부품 형성 (`4.Senser_2_dog.stl` 사진 검증) ⑥ 🔥 **출력 실패 진짜 원인 발견** = 레진 탱크 바닥 잔여물 (FEP 굳음, "옛날부터 있던" 물리 운영 이슈, 우리 앱 무관) ⑦ **운영 의문 정정**: Form 4 Local API는 confirm 단계 원래 없음 (5/6 한솔 회의록 "수동 터치"는 출력 종료 후 얘기) ⑧ **시간 차이 미스터리** — PreForm 1h44m vs 우리 앱 4h26m (.form 올려도 4h12m, 우리 앱이 재슬라이스). layer_thickness 기본값 불일치 가설 + .form 워크플로우 패치 working tree에 있음 (미커밋) ⑨ **5개 부품 사전 촬영** — 23+장 × 4종 + 5장 (P5 main_body 가설 폐기, 5/11 P1~P5 라벨은 추정값) ⑩ **부트캠프 주제 = 빈피킹 + 비전 AI** 사용자 명시 ⑪ 일정 정정: 화/목 KAIST → 월/수/금 사무실, 가용 7일 (5/18·20·22·25·27·29·6/1) → 6/1 마감, 6/2 부트캠프 시작 | 🆕 `project_binpicking_yolo_track` + `project_ace2_adapter_reorder_0515` + `project_factory_print_korean_filename_bug_0515` + `project_phase2_e2e_complete_0515` + `project_shrewdstork_cartridge_slow_0515` + `project_factory_photos_0515` + `feedback_excessive_questions` |
-| **2026-05-18 (월, 사무실)** | **트랙 2 Roboflow v1 완성 + 트랙 1 보류 결정** ① Mac Claude Code 릴레이 12 commit pull + smoke test 13/14 PASS ② **Intrinsics 확정**: 848×480 / fx 553 / cx 424 / `estimated_v2_20260513` ③ **A4 sanity 2회 FAIL** — Blaze FOV 75° + 30cm fundamental 불가 (시야 가로 46cm vs A4 21cm = 45% 최대). 5/14 `check_intrinsics_planar.py` 산수 누락 발견 ④ **P5 main_body 파일럿 환경 제약으로 캡처 직전 중단** — P5 < 5cm 추정, Blaze 단독 어려움, ACE2 RGB 동시 필요 시그널. 사무실 valid % 4~8% (검정 흡수재 많음) ⑤ **사용자 결정 옵션 B: 트랙 2 우선 전환** — 트랙 1 P5 재시도는 다음 사무실 셋업 시 (깨끗한 책상 + 큰 부품 + ChArUco + ACE2) ⑥ **Mac Claude Code Bash false negative 발견** — venv activate 후 PATH 캐싱 → 시스템 python fallback. 우회법 3가지 메모리화 ⑦ **Roboflow 셋업**: 가입 + Workspace `오리누빈피킹` + Plan 무료 Public 확정 (Private는 Core $79/월 최소, 대표님 부재로 보류) + 보안 익명화 정책 (클래스명 `part_1~5` / Project `parts-5class-v1`) ⑧ 폰 사진 5폴더 영문화: **총 116장** (P1=25/P2=26/P3=23/P4=24/P5=18) ⑨ **116장 annotation 완주** — 보라색 ✓ "Add to Dataset" 해석 + 첫 사진 클래스 자동 채움 함정 (Part_2 첫 장 part_1 → part_2 정정) + Classes & Tags 검증 PASS + 빈 `parts` 자동 클래스 삭제 ⑩ **Version v1 Generated** (`2026-05-18 2:54pm`) — Split 70/20/10 (81/23/12) + Auto-Orient + Resize 640×640 + Aug 3x (Flip + Rot ±30° + Bright ±25%) → **Total 278장** (Train 243 augmented + Valid 23 + Test 12) ⑪ 코드 변경 없음 (Roboflow는 외부 SaaS) — git commit X | 🆕 `project_p5_pilot_blocked_0518` + `feedback_mac_claude_bash_caching` + `project_roboflow_v1_setup_0518` |
+| **2026-05-18 (월, 사무실)** | **트랙 2 Roboflow v1 + YOLO 학습 완성 + 한솔 빈피킹 코드 인계 + AICA A100 부활** ① Mac Claude Code 릴레이 12 commit pull + smoke test 13/14 PASS ② **Intrinsics 확정**: 848×480 / fx 553 / cx 424 / `estimated_v2_20260513` ③ **A4 sanity 2회 FAIL** — Blaze FOV 75° + 30cm fundamental 불가 (시야 가로 46cm vs A4 21cm = 45% 최대) ④ **P5 파일럿 환경 제약으로 보류** — P5 < 5cm, Blaze 단독 어려움, ACE2 RGB 필요. 사무실 valid % 4~8% ⑤ **트랙 2 우선 전환** ⑥ **Mac Claude Bash false negative 발견** — venv activate 후 PATH 캐싱 / 우회법 3가지 ⑦ **Roboflow 셋업**: Public plan + Project `parts-5class-v1` + 보안 익명화 (`part_1~5`) ⑧ **116장 annotation 완주** (P1=25/P2=26/P3=23/P4=24/P5=18) ⑨ **Version v1**: 278장 (Train 243 + Valid 23 + Test 12), Aug 3x ⑩ **AICA A100 부활** (근형님 컨테이너 재생성) — 6000→AICA ssh key 등록, 환경 구축 (PyTorch 2.1+CUDA 12.8, ultralytics, opencv-headless, numpy<2), 함정 해결 (`/dev/shm 64MB → workers=0 cache=ram`) ⑪ **YOLOv8n 학습 완료** — 150 epochs / **10분 22초** / **mAP50 0.988 / mAP50-95 0.836**. 클래스별 mAP50 ≥ 0.962. 약점: part_2 Recall 0.656 ⑫ 결과 회수 `bin_picking/yolo_track/runs/v1-yolov8n-0719/` (11MB) ⑬ **한솔 이예승 빈피킹 코드 인계** — `bin_picking.zip` 4파일 783줄 (`realsense_pure_python` + `handeye_calibration` + `T_gripper2camera.npy` z=-212mm 검증 PASS + `hanwha_bin_picking` 11단계 시퀀스). 보관 `~/hansol_handover/` (git 추적 X), 통합 전략 C 채택 → `bin_picking/yolo_track/`에 어댑테이션, 예승님 회신 완료 ⑭ 코드 git commit: CLAUDE.md만 (3f3220b) | 🆕 `project_p5_pilot_blocked_0518` + `feedback_mac_claude_bash_caching` + `project_roboflow_v1_setup_0518` + `project_hansol_bin_picking_handover_0518` + `reference_aica_a100` |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 
@@ -1005,6 +1005,20 @@ JWT_ABSOLUTE_MAX_DAYS=30
 ---
 
 ### 운영 인프라 핵심 정보 (재확인용)
+
+#### AICA A100 GPU (비전 학습용, 5/18 부활)
+
+| 항목 | 값 |
+|------|---|
+| 호스트 | `114.110.133.5:2222` (`root` / `vt2603!`) |
+| GPU | NVIDIA A100-SXM4-80GB × 1 |
+| 환경 | PyTorch 2.1.0 + CUDA 12.8, conda `/opt/conda` (Python 3.10) |
+| 작업 디렉토리 | `/workspace` (49TB NFS, 컨테이너 재시작 시 보존) |
+| 6000 인증 | ssh ed25519 key 등록 (무비번 접속) |
+| 학습 함정 | `/dev/shm 64MB` → `workers=0 cache=ram` 필수 / `python` PATH 미설정 → `/opt/conda/bin/python` |
+| 5/18 첫 학습 | YOLOv8n parts-5class-v1: 150 epochs / **10분 22초** / **mAP50 0.988** |
+
+상세: `memory/reference_aica_a100.md` — 접속 / ssh key 4단계 등록 / 환경 구축 / 학습 운영 / 함정 7가지 / 컨테이너 재생성 시 절차
 
 #### 공장 PC 자동 시작 체계 (4/24 완성)
 
