@@ -1,8 +1,8 @@
-# 빈피킹 학습 데이터 전략 — 1pager (대표님 align용)
+# 빈피킹 학습 데이터 전략 — 1pager (경영진 align용)
 
 **작성**: 2026-05-11 (정태민)
-**버전**: v2 (5/11 코드 작업 + 5종 자세 실측 반영)
-**목적**: 대표님 5/6 지시 이행을 위한 학습 데이터 전략 + 셀프 판단 영역 align
+**버전**: v2.5 (5/18 트랙 전환 + Roboflow + AICA YOLO 학습 + 협력사 코드 인계 반영)
+**목적**: 경영진 5/6 지시 이행을 위한 학습 데이터 전략 + 셀프 판단 영역 align
 
 **v1 → v2 변경사항**:
 - § 2 부품 5종 자세 추정 → 실측치 업데이트 (② 추정 틀림, ① 대칭 발견)
@@ -13,7 +13,7 @@
 
 **v2.1 → v2.2 변경사항 (5/11 오후, 어댑터 도착 후 검증 중 추가 보강)**:
 - § 6 실험 계획: 5/15 → 5/11 단축 반영 (어댑터 조기 도착)
-- § 8 리스크: ACE2 렌즈 초점거리 미확정 항목 추가 (한솔 보유, 8/12/16mm 분기)
+- § 8 리스크: ACE2 렌즈 초점거리 미확정 항목 추가 (협력사 보유, 8/12/16mm 분기)
 - § 10 의사결정 기록: 5/11 오후 (어댑터 도착, 검증 Step 1~3 PASS, sudo 정정, 양식 합의)
 - § 12 신규: Mac ↔ 6000 환경 분담 (5/11 명확화)
 - 운영 주의 (신규 sub-section): Basler GigE = sudo 불필요 (RealSense D435 USB 패턴 적용 금지)
@@ -22,9 +22,9 @@
 - § 2 BLAZE 사양 정정: width 640→**848 (실측)**, fx 417→**553** (재계산), cx 320→**424** (width/2)
 - § 8 리스크 #15 신규: macOS Blaze Supplementary 미지원 → ✅ 해소 (pypylon 단독으로 풀 작동 확인)
 - § 8 리스크 #16 신규: EnumerateDevices 미동작 → IP 직접 fallback 워크어라운드
-- § 10 의사결정 5/12 추가: Blaze 풀 작동 / 192.168.20/24 영구 분리 / Push 정책 명확화 (모든 commit dual)
+- § 10 의사결정 5/12 추가: Blaze 풀 작동 / <BLAZE_SUBNET> 영구 분리 / Push 정책 명확화 (모든 commit dual)
 - § 12 환경 분담: IPC-510 우선순위 ↓ (Mac 단독 데이터 수집 진입 가능 확정)
-- § 13 신규: Mac Basler 운영 환경 (BASLER_BLAZE_IP 환경변수 / 192.168.20.x / dual push 정책)
+- § 13 신규: Mac Basler 운영 환경 (BASLER_BLAZE_IP 환경변수 / <BLAZE_SUBNET> / dual push 정책)
 
 **v2.3 → v2.4 변경사항 (5/14 재택, 학습 데이터 라벨 신뢰도 인프라 + 6/2 부트캠프 마감)**:
 - 🎯 **§ 0 신규: 6/2 KAIST 3단계 부트캠프 회사 데이터 프로젝트 마감 도입** — 사무실 가용 4~5일 (5/15·5/18·5/22·5/25·5/29·6/1), 5종 ~1,200~2,400장 목표, 주제 결정 W21 (5/25~)
@@ -36,6 +36,11 @@
 - § 10 의사결정 5/13~5/14 추가 (스키마 확장 / 대칭 그룹 / 검증 매뉴얼 / SOP 보강 / intrinsics sanity / capture wrapper)
 - § 11 산출물 인벤토리 갱신 (코드 6→9: + check_intrinsics_planar + capture_session + auto_label intrinsics_version / 문서 3→4: + pose_validation_protocol)
 - § 14 신규: 학습 데이터 라벨 신뢰도 체크리스트 (5/15 본 캡처 직전 자가 점검)
+
+**v2.4 → v2.5 변경사항 (5/18, 트랙 1 보류 + 트랙 2 YOLO 학습 완료 + 협력사 코드 인계)**:
+- § 8 리스크 #19~23 신규 — A4 sanity fundamental 불가 (Blaze FOV 75° + 30cm) / 사무실 valid % 4~8% / 데이터 누수 의심 (v1 mAP 0.988 너무 높음) / Roboflow Public plan 노출 / best vs last 메트릭 차이
+- § 10 의사결정 5/18 8행 추가 — 트랙 전환 (옵션 B) / Roboflow Free Public / YOLOv8n 채택 / AICA A100 활용 / 길 D 채택 / 협력사 통합 전략 C / AICA `/dev/shm 64MB` 회피 (workers=0 cache=ram)
+- 핵심 결과: **YOLOv8n parts-5class-v1 v1 학습 완료 (150 epochs / 10분 22초 / mAP50 0.988 / mAP50-95 0.836)** — 단 데이터 누수 의심으로 v2 보강 필요
 
 ---
 
@@ -51,7 +56,7 @@
 **준비 기간 21일 (5/13~6/1) 중 사무실 가용 = 4~5일**:
 - 5/15 (금) — P5 시범 + 자세 검증 + 자세 A 풀 캡처
 - 5/18 (월) — 본격 수집 1일차
-- 5/22 (금) — 본격 수집 2일차 (예승님 방문 일정 겹치면 E2E 우선)
+- 5/22 (금) — 본격 수집 2일차 (협력사 담당자 방문 일정 겹치면 E2E 우선)
 - 5/25 (월) — 본격 수집 3일차 + 부트캠프 주제 결정
 - 5/29 (금) — 본격 수집 4일차 + 미니 학습 sanity check 검토
 - 6/1 (월) — 부족분 보충 + 데이터셋 v1 최종 검증
@@ -62,16 +67,16 @@
 
 ## 1. 배경
 
-**대표님 5/6 지시 4가지** (`memory/project_binpicking_ceo_directive_0506.md`):
+**경영진 5/6 지시 4가지** (`memory/project_binpicking_ceo_directive_0506.md`):
 1. Basler 카메라 로컬 테스트 — 로봇 장착 추후, 인식 검증 먼저
 2. 공장 실물 부품 다각도 촬영 + 학습 ⭐
 3. **X/Y 각도 (뒤집기) 데이터 고민** ⭐ — 코드 짜기 전 명세 → align
-4. 예승님 연락 — 좌표 명세 + 바텀비전 자료
+4. 협력사 담당자 연락 — 좌표 명세 + 바텀비전 자료
 
 **제약**:
 - 어댑터 금요일(5/15) 수령 (택배함 안전 보관 / 사무실 강행 비효율)
 - KAIST 화/목 13~18시 + 수 재택 → 주당 가용 시간 제한
-- **대표님 출장 중** → 셀프 판단 필요
+- **경영진 출장 중** → 셀프 판단 필요
 
 ---
 
@@ -114,7 +119,7 @@
 > 자세 자동 분석 결과: `bin_picking/config/stable_poses.yaml` (5종), `stable_poses_all29.yaml` (29종)
 
 ### 카메라
-- **D435** — 사무실에 있음 (대표님 USB 3.0 C-to-C 케이블 필요)
+- **D435** — 사무실에 있음 (경영진 USB 3.0 C-to-C 케이블 필요)
 - **Basler Blaze-112 + ace2** — 사무실 보관, 어댑터 도착 후 라이브 (금 5/15)
 
 ### 코드 (4/10 완성)
@@ -125,7 +130,7 @@
 - `test_basler_live.py` (5/11 작성, 어댑터 도착 시 1줄 검증)
 
 ### 추가 부품 (29종 풀 세트)
-- 대표님이 "공장 어딘가에 출력해뒀다" → 위치 불명
+- 경영진이 "공장 어딘가에 출력해뒀다" → 위치 불명
 - **5종으로 SOP 확립 후, 시간 나면 공장 둘러보기**
 
 ---
@@ -197,16 +202,16 @@ RMSE ≥ 1.5mm   → 수동 보정 큐
 
 ---
 
-## 4. ⭐ X/Y 각도 (대표님 #3) 처리안
+## 4. ⭐ X/Y 각도 (경영진 #3) 처리안
 
-대표님 인용: *"빈피킹 시 물체가 누워있거나 각도가 다르면 어떻게 뒤집는지? X/Y 각도가 중요한데 이에 필요한 데이터가 무엇인지 잘 고민할 것"*
+경영진 인용: *"빈피킹 시 물체가 누워있거나 각도가 다르면 어떻게 뒤집는지? X/Y 각도가 중요한데 이에 필요한 데이터가 무엇인지 잘 고민할 것"*
 
 **3가지 깔린 질문 → 답안**:
 
 | 질문 | 답 |
 |------|-----|
 | (a) 자세 판별 어떻게? | Layer 1의 `stable_pose_id` (FPFH+ICP 6DoF로 rotation 분해 → 자세 분류기) |
-| (b) 뒤집어야 픽 가능한 자세면 누가 뒤집나? | **펜던트 영역** (한솔 협의 필요). 우리는 `regrasp_to: A` 명시까지만 |
+| (b) 뒤집어야 픽 가능한 자세면 누가 뒤집나? | **펜던트 영역** (협력사 협의 필요). 우리는 `regrasp_to: A` 명시까지만 |
 | (c) X/Y 회전 안정성을 위한 학습 데이터? | Layer 2 다각도 촬영 + Layer 3 GT pose 라벨 (부품ID + stable_pose_id + 6DoF) |
 
 **데이터 라벨링 형식**:
@@ -281,7 +286,7 @@ label = {
 
 | 시간 | 작업 |
 |---|---|
-| 9:00 | 카메라 셋업 (60~80cm, BASLER_BLAZE_IP=192.168.20.10) |
+| 9:00 | 카메라 셋업 (60~80cm, BASLER_BLAZE_IP=<BLAZE_IP>) |
 | 9:15 | 라이브 뷰어로 시야 + valid % 70%+ 확인 |
 | 9:30 | **A4 평면 sanity check** (`check_intrinsics_planar.py`) — RMS < 2mm 확인 |
 | 10:00 | **부품 자세 던지기 검증** (`pose_validation_protocol.md`) — 5종 × 10회 → yaml null 채우기 + 핸드폰 사진 |
@@ -295,7 +300,7 @@ label = {
 | 일자 | 목표 |
 |---|---|
 | 월 5/18 | P5 풀 데이터셋 완성 + P3 또는 P4 시작 |
-| 금 5/22 | 추가 부품 1~2종 (예승님 방문 일정 겹치면 E2E 우선) |
+| 금 5/22 | 추가 부품 1~2종 (협력사 담당자 방문 일정 겹치면 E2E 우선) |
 | 월 5/25 | 나머지 부품 + **부트캠프 주제 결정** (데이터 진척 함께) |
 | 금 5/29 | 부족분 보충 + **미니 학습 sanity check** (1종 데이터로 1 epoch) |
 | 월 6/1 | 데이터셋 v1 최종 검증 + 부트캠프 입력 자료 정리 |
@@ -306,12 +311,12 @@ label = {
 - 후보: 6DoF pose estimation / Stable pose classification / cluttered scene 인식
 
 ### 6~7월 (병행) — 펜던트 통합
-- 한솔/한화 패키지 답 수신 후 HCR-10L 펜던트 구조 받기
+- 협력사/로봇사 패키지 답 수신 후 HCR-10L 펜던트 구조 받기
 - 빈피킹 + 바텀비전 동시 운영 시퀀스 설계
 
 ---
 
-## 7. 셀프 판단 영역 (대표님 부재 중)
+## 7. 셀프 판단 영역 (경영진 부재 중)
 
 ### ✅ 자율 진행 OK (지금 결정)
 - 5종 깊게 모드 (29종 얕게 X)
@@ -322,14 +327,14 @@ label = {
 
 ### ⏳ 초안만 작성 + align 대기
 - ⭐ `stable_poses.yaml` (Layer 1 명세) — 5종 우선
-- ⭐ regrasp 시퀀스 책임자 (우리 / 한솔 / 사람 / fixture?)
+- ⭐ regrasp 시퀀스 책임자 (우리 / 협력사 / 사람 / fixture?)
 - ⭐ 학습 모델 선택 (PoseCNN vs PVN3D vs ICP augmentation)
 - 5종 풀 데이터셋 규모 (각 500장 vs 1000장)
 - KAIST 3단계 프로젝트 연계 여부
 
 ### ❌ 절대 안 함
 - 외부 발주 (어댑터 외)
-- 한솔 인터페이스 임의 변경
+- 협력사 인터페이스 임의 변경
 - 좌표 출력 형식 확정 (한화 패키지 답 대기)
 - 펜던트 프로그램 우리 단독 결정
 
@@ -339,11 +344,11 @@ label = {
 
 | # | 리스크 | 가능성 | 대응 |
 |---|--------|-------|------|
-| 1 | 펜던트 통합 = 한솔/한화 협의 미해결 | 중 | 6~7월에 본 작업. 지금은 빈피킹 출력만 깔끔하게 |
+| 1 | 펜던트 통합 = 협력사/로봇사 협의 미해결 | 중 | 6~7월에 본 작업. 지금은 빈피킹 출력만 깔끔하게 |
 | 2 | D435 시도 시 4/22 USB 20cm 재현 | **확인됨** | 5/11 D435 케이블 짧음 확인 → **전략 A (코드 몰빵) 전환**, D435 실험 보류 |
 | 3 | 어댑터 사양 미달 | 저 | 환불 + UGREEN 재발주. SOP+코드 자산은 유지 |
 | 4 | 5종으로 학습 데이터 부족 | 중 | 5종 SOP 확립 → 29종 부품 추후 확보 시 동일 SOP 적용 |
-| 5 | 대표님 align 어긋남 | 중 | 본 1pager로 align. 출장 복귀 시 즉시 전송 |
+| 5 | 경영진 align 어긋남 | 중 | 본 1pager로 align. 출장 복귀 시 즉시 전송 |
 | 6 | 실 부품 CAD 불일치 | 저 | 4/22 발견 패턴 (SizeFilter Z 50% 오차) — 실측으로 검증 |
 | 7 | KAIST + 빈피킹 동시 진행 시간 부족 | 중 | 5월 SOP 확립 후 6월 KAIST 3단계 프로젝트로 통합 |
 | 8 | **BLAZE/ACE2 intrinsics 추정값 부정확** | 중 | **5/14 갱신**: `check_intrinsics_planar.py` 로 5/15 사무실 도착 즉시 A4 평면 RMS 검증 (< 2mm = OK, > 5mm = ChArUco 캘리브 필요). intrinsics_version="estimated_v2_20260513" 모든 라벨에 박힘 → 추후 캘리브 후 재라벨 가능 |
@@ -351,22 +356,27 @@ label = {
 | ~~10~~ | ~~④ bracket_case 단위 의심 (10×5×6mm)~~ | ✅ **해소 (5/11)** | P3 캘리퍼스 실측 56mm → bracket_case가 아니라 **bracket_sen_1 (15×56×53mm) 확정**. STL 단위 mm 신뢰. grasp_database 재생성 불필요 |
 | 11 | P2/P4 STL 미확정 (2개 후보) | 저 | L4 매칭 시 자동 확정 (RMSE/fitness로 1개 결정) |
 | 12 | 4/22 D435 매칭 실패 부품 재출현 가능성 | 저 | P3 = bracket_sen_1 → 4/22 매칭 실패 부품과 같음. Basler 60~80cm로 재시도 시 인식 가능 예상 |
-| 13 | **ACE2 렌즈 초점거리 미확정** (한솔 보유) | 중 | 현재 코드 12mm 렌즈 가정 (fx=3478). 한솔 단톡 답 받으면 정정: 8mm → 2319 / 16mm → 4638. 답 대기 중 Blaze 단독 (--no-ace2)으로 데이터 수집 가능 |
+| 13 | **ACE2 렌즈 초점거리 미확정** (협력사 보유) | 중 | 현재 코드 12mm 렌즈 가정 (fx=3478). 협력사 단톡 답 받으면 정정: 8mm → 2319 / 16mm → 4638. 답 대기 중 Blaze 단독 (--no-ace2)으로 데이터 수집 가능 |
 | 14 | Basler GigE에 sudo 잘못 사용 시 권한 혼선 | 저 | RealSense D435 (USB raw) 패턴 잘못 적용 위험. SOP/test_basler_live 모두 sudo 없이 (5/11 정정) |
 | ~~15~~ | ~~macOS Blaze Supplementary 미지원 → Mac에서 못 씀 가설~~ | ✅ **해소 (5/12)** | pypylon만으로 Blaze-112 풀 작동 확인. ProducerGEV.cti + BaslerGigE TL 사용 + Range component만 enable + Mono16 raw로 깨끗한 848×480 uint16 mm depth. IPC-510 대기 불필요 |
 | 16 | macOS EnumerateDevices() Blaze 미동작 | 저 | 워크어라운드 적용됨 (commit 7e28df9): 환경변수 BASLER_BLAZE_IP 또는 인자로 IP 직접 fallback. 시리얼/모델 매칭 인터페이스 보존 |
 | **17** | **데이터셋 silent bias** — auto_label REVIEW 큐 무시 시 어려운 자세 underrepresented → 학습 모델이 그 자세 못 풀게 됨. "ACCEPT 80%" 지표가 거꾸로 위험 신호일 수 있음 | **중** | SOP v1.1 § 5.1 (5/13 신규): REVIEW 비율 20~40% 면 사람 검수 큐 / > 40% 면 셋업 디버깅. 자세 분포 (ACCEPT) vs yaml probability ±20% 비교. 어려운 자세는 수동 GT 라벨 입력 |
 | **18** | **단독 부품 도메인 갭** — 학습 데이터 = single-instance / 실 빈피킹 = cluttered + occlusion. 이대로 학습하면 single-instance pose model 만 잘 됨 | **중** | 6월 부트캠프 주제 결정 시 합성 데이터 (BlenderProc cluttered scene) 보강 검토. 또는 5/29 미니 학습 sanity check 시 실 빈피킹 시나리오 1~2장 테스트 |
+| **19** | **A4 sanity fundamental 불가** — Blaze FOV 75° + 최소 30cm → 시야 가로 46cm vs A4 21cm = 45% 최대. 시야 70% 채우기 물리적으로 불가능 | **확인됨 (5/18)** | `check_intrinsics_planar.py` 한계 docstring 명시 필요. 대체안: **ChArUco 정식 캘리브 (5/20 ACE2 셋업 시) 또는 A2 평면 (A4 4장 합체)**. 트랙 1 사무실 재시도 시 우선 처리 |
+| **20** | **사무실 환경 valid % 4~8%** — 모니터/키보드/의자 등 검정 흡수재 많아 Blaze ToF valid 픽셀 본질적으로 낮음 | **확인됨 (5/18)** | 본 캡처 환경 = 깨끗한 책상 + 단순 배경 + 균일 조명 필수. 5/20 회전대 + 검은 시트 + 사무실 정리로 valid % > 70% 목표 |
+| **21** | **데이터 누수 (data leakage) 의심** — 5/18 v1 학습 mAP50 0.988 너무 높음. Train/Valid/Test가 같은 분포 (5/15 사무실 단일 환경)에서 random split → 모델이 sub-trivial pattern 외움 가능성 | **중** | 5/20 다른 환경 (배경/조명/거리) 추가 촬영 → v2에서 mAP 변화 확인. v2 mAP가 v1보다 떨어져도 그것이 진실. 6/2 부트캠프 발표 시 honest baseline |
+| **22** | **Roboflow Free Public plan = 데이터셋 외부 노출** — `parts-5class-v1` Universe URL 검색 가능. 회사 부품 사진 + Workspace 이름 `orinubinpicking` 노출 | **수용 (5/18)** | 보안 완화 정책: 클래스명 `part_1~5` (실 부품명 X), Project 이름 일반화. 부품 사진 자체는 노출되지만 실 제품/사용처 추측 어려움. Private 전환 시 Core $79/월 — 경영진 승인 시 5/22 이후 |
+| **23** | **best.pt vs last.pt 메트릭 차이** — best (val mAP 0.988) vs last (epoch 150, mAP 0.954). part_2 Recall: best=0.656 vs last=0.937. best epoch을 어느 metric으로 결정했냐에 따라 다름 | **저** | 5/22 v2 학습 시 epochs 100 정도로 단축 검토 (over-converged 가능성). 또는 last.pt를 시연용으로 사용 (recall 균형) |
 
 ---
 
-## 9. 대표님께 질의/Confirm 필요 (복귀 시)
+## 9. 경영진께 질의/Confirm 필요 (복귀 시)
 
 1. **학습 데이터 규모** — 5종 × ~500장 = 2,400장 적정한가? 부족하면 1000장씩?
-2. **regrasp 시퀀스 책임 소재** — 우리 코드에서 명시? 한솔 펜던트가 처리? 사람이 손으로?
+2. **regrasp 시퀀스 책임 소재** — 우리 코드에서 명시? 협력사 펜던트가 처리? 사람이 손으로?
 3. **학습 모델 선택 시점** — 데이터 모인 후? 아니면 지금 KAIST 3단계 프로젝트로 묶기?
 4. **29종 풀 데이터셋 시점** — 공장 출력 부품 위치 확인은 누가 / 언제?
-5. **펜던트 통합 일정** — 한화 패키지 답 ASAP는 우리가 push? 한솔 push?
+5. **펜던트 통합 일정** — 한화 패키지 답 ASAP는 우리가 push? 협력사 push?
 6. **빈피킹 우선순위** — Phase 4 MaixCAM 보다 우선 유지? KAIST 와 충돌 시 어느 쪽?
 
 ---
@@ -375,9 +385,9 @@ label = {
 
 | 일자 | 결정 | 이유 |
 |------|------|------|
-| 5/6 | 6DoF → 4DoF 좌표 출력 | 한솔 회의, 다면은 자세 분리로 |
-| 5/8 | 어댑터 ipTIME U1G-C 1개 발주 | AMCA017 사양 미달, ace2 부품은 한솔 보유 |
-| 5/11 | **29종 → 5종 깊게 모드** | 부품 위치 불명 + 대표님 부재. SOP가 부품 수보다 자산 |
+| 5/6 | 6DoF → 4DoF 좌표 출력 | 협력사 회의, 다면은 자세 분리로 |
+| 5/8 | 어댑터 ipTIME U1G-C 1개 발주 | AMCA017 사양 미달, ace2 부품은 협력사 보유 |
+| 5/11 | **29종 → 5종 깊게 모드** | 부품 위치 불명 + 경영진 부재. SOP가 부품 수보다 자산 |
 | 5/11 (오전) | D+B 전략 잠정 추천 | 사전 디벨롭 코드는 카메라 도착 후 어차피 재수정. 1pager+실데이터가 더 강함 |
 | 5/11 | 어댑터 금요일 수령 (화 사무실 강행 X) | 수 재택이라 차이 1일로 축소 |
 | 5/11 | **부품 5개 시범 순서**: ⑤ → ④ → ① → ③ → ② | 단순한 것부터 (뒤집기 케이스도 단순) |
@@ -391,18 +401,25 @@ label = {
 | 5/11 (오후) | **P3 캘리퍼스 실측 56mm** | bracket_case 단위 의심 해소 → bracket_sen_1 확정. STL 모든 단위 mm 신뢰 |
 | 5/11 (오후) | **레진 Grey 통일 + 무광 표면 확정** | 조명 변형 우선순위 ↓, ToF 반사 노이즈 우려 ↓, 데이터 수집 SOP 단순화 |
 | 5/11 (오후) | **회전대 자작 vs 다이소 → 사용자 결정 보류** | SOP § 1.2에 옵션 A(없이) + B(다이소) 둘 다 기록. auto_label.py가 yaw 자동 산출하므로 필수 아님 |
-| 5/11 (오후) | **🎉 어댑터 ipTIME U1G-C 조기 도착** (예상 5/15 → 5/11, 4일 빠름) | Mac 검증 Step 1~3 즉시 PASS (USB 5Gb/s + 1000baseT + IP 192.168.10.1). 데이터 수집 진입 4일 빠름 |
+| 5/11 (오후) | **🎉 어댑터 ipTIME U1G-C 조기 도착** (예상 5/15 → 5/11, 4일 빠름) | Mac 검증 Step 1~3 즉시 PASS (USB 5Gb/s + 1000baseT + IP <MAC_IP>). 데이터 수집 진입 4일 빠름 |
 | 5/11 (오후) | **Basler GigE = sudo 불필요 정정** | 메모리 § 4/13 D435 (USB raw access 차단) 패턴을 Basler에 적용하면 안 됨. test_basler_live.py + SOP 모두 sudo 없이 |
 | 5/11 (오후) | **Mac ↔ 6000 Claude 릴레이 양식 정식 채택** | `feedback_mac_6000_relay.md` (6000) + `feedback_server_relay_messages.md` (Mac). 환경 전환 시 동기화 메시지 필수 |
-| 5/11 (오후) | **commit 9a2fafd push origin main only** (personal/한솔 미러 제외) | 1pager § 7 셀프 판단 영역 + § 10 의사결정 = 내부 자료. 한솔 미러 노출 부적절. orinu-ai Private repo만 OK |
+| 5/11 (오후) | **commit 9a2fafd push origin main only** (personal/외부 미러 제외) | 1pager § 7 셀프 판단 영역 + § 10 의사결정 = 내부 자료. 외부 미러 노출 부적절. orinu-ai Private repo만 OK |
 | 5/12 | **🎉 Mac Blaze 풀 작동 검증 (옵션 1 성공)** | pypylon 단독으로 Blaze-112 풀 작동 (Supplementary 없이). IP fallback + Range component + Mono16. test_basler_live.py --live --save PASS (480×848 uint16, 유니크 382). IPC-510 대기 3주 불필요 |
 | 5/12 | **BLAZE 실측 정정: 848×480 (매뉴얼 640 오류)** | 5/8 박스 매뉴얼 640×480 가정이 사실은 native 848×480. fx 417 → **553** 재계산. cx 320 → 424. 향후 정식 캘리브 시 추가 정정 가능 |
-| 5/12 | **Mac 네트워크 영구 분리: 192.168.20/24** | 사무실 Wi-Fi (192.168.10/24)와 충돌 회피. 어댑터 en8 + Blaze 전용 서브넷. ping 11~76ms → 1.6~2.7ms (6~30배 빠름). Wi-Fi 켠 채 카메라 작업 가능 |
+| 5/12 | **Mac 네트워크 영구 분리: <BLAZE_SUBNET>** | 사무실 Wi-Fi (<WIFI_SUBNET>)와 충돌 회피. 어댑터 en8 + Blaze 전용 서브넷. ping 11~76ms → 1.6~2.7ms (6~30배 빠름). Wi-Fi 켠 채 카메라 작업 가능 |
 | 5/12 | **Push 정책 명확화 — 모든 commit dual push (origin + personal)** | 사용자 기존 운영 방식 = 모든 파일 dual. 5/11 commit 9a2fafd "personal 제외"는 예외였고 정상 패턴 X. 정책: 모든 push = orinu-ai (origin) + m2222n (personal) 동시. 보안은 외부 유출 시점(스크린샷/카톡/PDF)에서 CLAUDE.md § 보안 원칙 적용. credentials/.env는 .gitignore로 보호 |
-| 5/13~14 | **학습 데이터 라벨 신뢰도 인프라 — 외부 커뮤니케이션 3건 발송 보류** | 사용자 결정: ACE2 단톡 + 예승님 카톡 + 1pager 대표님 메시지 발송 시점 자율 결정. 재택 시간 = 인프라 보강에 집중. 결과: stable_poses 스키마 확장 (human_label/symmetry_groups) + auto_label 대칭 그룹 (canonicalize_pose_id) + pose_validation_protocol.md (5/15 매뉴얼) + SOP v1.1 (REVIEW/흔들림/조명 valid %/L4 강제) + check_intrinsics_planar.py (A4 평면 sanity) + capture_session.py (yaw sweep wrapper) + intrinsics_version 라벨 추적 |
+| 5/13~14 | **학습 데이터 라벨 신뢰도 인프라 — 외부 커뮤니케이션 3건 발송 보류** | 사용자 결정: ACE2 단톡 + 협력사 담당자 카톡 + 1pager 경영진 메시지 발송 시점 자율 결정. 재택 시간 = 인프라 보강에 집중. 결과: stable_poses 스키마 확장 (human_label/symmetry_groups) + auto_label 대칭 그룹 (canonicalize_pose_id) + pose_validation_protocol.md (5/15 매뉴얼) + SOP v1.1 (REVIEW/흔들림/조명 valid %/L4 강제) + check_intrinsics_planar.py (A4 평면 sanity) + capture_session.py (yaw sweep wrapper) + intrinsics_version 라벨 추적 |
 | 5/14 | **6/2 KAIST 3단계 부트캠프 회사 데이터 프로젝트 마감 도입** | 준비 21일 (5/13~6/1), 사무실 가용 4~5일. 목표 데이터 1,200~2,400장 (차원 축소 옵션). 주제 결정 W21 (5/25~) — 데이터 진척 함께 결정. § 0 신규 절 추가 |
 | 5/14 | **목표 데이터셋 차원 축소 옵션 권장** | 사무실 가용 4~5일 = ~30시간 부족 위험. yaw 24→12 + 조명 3→2 + 배경 3→2 = 1종 380→200장, 5종 ~1,140장. 자세 다양성 유지 (학습 핵심). § 5.2 신규 |
 | 5/14 | **5/15 일정 재조정: "P5 풀 자세" → "P5 자세 A만 풀, B/C 시간 남으면"** | 첫 캡처 셋업 시행착오 시간 보수적 확보. ACCEPT 80% 미만이면 오후 디버깅. 80%+면 자세 B/C 추가. 사용자 결정 |
+| 5/18 (오전) | **트랙 1 P5 파일럿 보류 → 트랙 2 (Roboflow + YOLO) 우선 전환** | A4 sanity 2회 FAIL (Blaze FOV 75° fundamental 한계 발견) + P5 < 5cm 추정 (Blaze 단독 어려움). 사용자 결정 옵션 B. 트랙 1 재시도는 다음 사무실 셋업 시 (깨끗한 책상 + 큰 부품 + ChArUco + ACE2) |
+| 5/18 (오후) | **Roboflow 무료 Public plan 채택 (Private 보류)** | Private = Core $79/월 (연간) 최소. 경영진 부재 + 6/2 마감 압박. 보안 완화: 클래스 `part_1~5` / Project `parts-5class-v1` / 부품 사진은 노출 수용. Core plan 승인은 5/22 이후 검토 |
+| 5/18 (오후) | **YOLOv8n + Roboflow Object Detection 채택** | Free Public plan 제약 + 협력사 담당자 5/15 제안 + 트랙 1 빠른 대안. yolov8n 6MB가 트랙 1 (29종 STL FPFH+ICP)보다 가벼움. 단순 분류 + bbox만 충분 (5/6 회의 4DoF X/Y/Z/Theta) |
+| 5/18 (오후) | **AICA A100 GPU 활용 (근형님 컨테이너 재생성)** | Mac/Colab/Roboflow 대안 중 AICA가 회사 자원 + A100 80GB 우월 + 무료. 5/18 ssh key 등록 + 환경 구축 + 학습 절차 정착 (`reference_aica_a100.md`). 6/2 부트캠프 v2/v3 학습에도 활용 |
+| 5/18 (오후) | **길 D (균형 전략) 채택** | 트랙 2 데이터 보강 (5/20) + 통합 시연 코드 (Phase 2) + 트랙 1 작은 검증 병행. 6/2 부트캠프 발표 카드 = 통합 시연 (협력사 코드 어댑테이션 + YOLO best.pt 카메라 라이브) |
+| 5/18 (저녁) | **협력사 빈피킹 코드 통합 전략 C 채택 (분리 + 차용)** | 협력사 4파일 원본은 git 추적 X (`~/hansol_handover/`, 라이센스 분쟁 회피). 우리는 `bin_picking/yolo_track/` 신규 디렉토리에 어댑테이션. 협력사 패턴 차용 (`get_frames()` / `cv2.calibrateHandEye(PARK)` / 시퀀스 11단계 / 마우스 GUI) + 우리 환경 적용 (Basler / Modbus / 4DoF) |
+| 5/18 (저녁) | **AICA YOLOv8n 학습 = batch 32 + workers=0 + cache=ram** | A100 컨테이너 `/dev/shm 64MB` 제약 발견 (Docker 표준). workers ≥ 2 시 즉시 OOM. 안전 조합 확립: workers=0 + cache=ram. 결과: 150 epochs / 10분 22초 / mAP50 0.988 |
 
 ---
 
@@ -432,7 +449,7 @@ label = {
 | `docs/binpicking_learning_data_strategy_1pager_20260511.md` (v2.4) | **본 1pager** (전략 + 6/2 마감) |
 | `docs/binpicking_capture_sop_20260511.md` (v1.1) | 데이터 수집 SOP + **§ 5.1 REVIEW 큐 처리 / § 1.3 조명 valid % / § 2.1 L4 강제 / § 4.1 흔들림 검증** |
 | `docs/binpicking_pose_validation_protocol.md` ⭐ 신규 (5/13) | **5/15 첫 30분 부품 던지기 검증 매뉴얼** (yaml null 채우기) |
-| `docs/hansol_handover/bottom_vision_interface_notes_20260511.md` | 한솔 바텀비전 인터페이스 명세 |
+| `docs/hansol_handover/bottom_vision_interface_notes_20260511.md` | 협력사 바텀비전 인터페이스 명세 |
 
 ### 메모리 (4개)
 | 파일 | 역할 |
@@ -450,7 +467,7 @@ label = {
 
 ### 사무실 도착 직후 (9:00~10:00)
 - [ ] 카메라 60~80cm 고정 (책장/모니터/삼각대 흔들림 없음)
-- [ ] BASLER_BLAZE_IP=192.168.20.10 환경변수 export
+- [ ] BASLER_BLAZE_IP=<BLAZE_IP> 환경변수 export
 - [ ] 라이브 뷰어로 시야 + valid % 70%+ 확인 (`live_viewer_basler.py`)
 - [ ] **A4 평면 sanity check 통과** (RMS < 2mm, `check_intrinsics_planar.py`)
 - [ ] **부품 5종 자세 던지기 검증 완료** (`pose_validation_protocol.md` Step 1~6)
@@ -485,7 +502,7 @@ label = {
 |------|------|------|
 | **Mac 로컬** | 카메라 데이터 수집 + Open3D 파이프라인 실행 + pylon GUI + 어댑터 검증 | Open3D ✅ (AVX2), pypylon 26.4.1, 카메라 직접 |
 | **6000 서버** | 코드 저장소 + git push/pull + sandbox + 메모리 관리 + 문서 | Open3D ❌ (AVX2 미지원), pypylon 26.03.1 (smoke만), 카메라 X |
-| **비전 PC (IPC-510)** | 본 운영 (5월 후반 ~) | Linux, pylon Suite 필요, 한솔 바텀비전 동거 |
+| **비전 PC (IPC-510)** | 본 운영 (5월 후반 ~) | Linux, pylon Suite 필요, 협력사 바텀비전 동거 |
 
 ### 운영 주의 (5/11 정정)
 
@@ -495,7 +512,7 @@ label = {
 
 ### 환경 전환 시 절차
 
-1. **6000 → Mac**: 새 코드 commit + push (orinu-ai만, personal/한솔 미러 보안 검토 후)
+1. **6000 → Mac**: 새 코드 commit + push (orinu-ai만, personal/외부 미러 보안 검토 후)
 2. **Mac**: `git pull origin main` + venv 확인 + 작업
 3. **Mac → 6000**: 카메라 실험 결과/메모리 갱신 필요 시 릴레이 메시지로 알림
 
@@ -508,12 +525,12 @@ label = {
 
 ## 참고 문서
 
-- 대표님 지시 원문: `memory/project_binpicking_ceo_directive_0506.md`
+- 경영진 지시 원문: `memory/project_binpicking_ceo_directive_0506.md`
 - 빈피킹 전체 상태: `memory/project_binpicking.md`
 - 5종 전략 상세: `memory/project_binpicking_5parts_strategy.md`
 - 사전 디벨롭 (5/11): `memory/project_binpicking_predev_codes_0511.md`
 - 이번주 계획: `memory/project_week_plan_0511.md`
-- 5/6 한솔 회의록: `memory/project_meeting_0506_hansol.md`
+- 5/6 협력사 회의록: `memory/project_meeting_0506_hansol.md`
 - 바텀비전 인터페이스: `docs/hansol_handover/bottom_vision_interface_notes_20260511.md`
 - **데이터 수집 SOP**: `docs/binpicking_capture_sop_20260511.md` ⭐
 - 4/14 HCR 교육 (Modbus + 펜던트): `memory/reference_hcr_user_education.md`

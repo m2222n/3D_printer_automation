@@ -255,3 +255,6 @@ bin_picking/models/planar_check/
 
 # 자세 검증 핸드폰 사진 (5/15 부품 던지기 검증, 회사 부품 = 보안 영역)
 bin_picking/models/pose_validation_photos*/
+
+# 경영진 보고용 소스 자료 (실명/내부 호칭 다수, 로컬 전용)
+docs/ceo_report_*.md
