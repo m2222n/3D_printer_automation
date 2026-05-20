@@ -196,7 +196,7 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | ✅ 완료 (5탭 UI + JWT 인증 + 3개 서버 운영) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | ✅ 한솔 머지 5차 완료. 다음주 예승님 방문 시 실 출력 + 로봇 E2E 테스트 |
 | **Phase 4** | MaixCAM 장비 모니터링 | 🟡 HIGH | ⬜ 빈피킹 후순위. 보유 장비(MaixCAM 1대 + LicheeRV Nano 2대) PoC 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 SW 완성 + Basler 입고 + 5/8 사무실 라이브 시도. 어댑터(ipTIME U1G-C) 토요일 도착 후 진행 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 트랙 2 (YOLO+Roboflow) v1 mAP50 0.988 / 5/20 ACE2 셋업 (렌즈 인수 대기) + 한솔 좌표 6요소 명세 수신 → 5/20 v2 YOLOv11s/m + 250장 학습 / 6/2 KAIST 부트캠프 마감 |
 
 ---
 
@@ -575,7 +575,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 > **파이프라인**: L1 영상취득 → L2 전처리 → L3 DBSCAN분할 → L4 FPFH+RANSAC+ICP → L5 그래스프 → L6 Modbus
 > **🎯 6/2 마감**: KAIST 3단계 부트캠프 회사 데이터 프로젝트 시작 — 그 전까지 학습 데이터셋 v1 (~1,200~2,400장) 확보
 
-### 현재 진행 상태 (2026-05-13)
+### 현재 진행 상태 (2026-05-20)
 
 | 단계 | 상태 |
 |------|------|
@@ -587,11 +587,18 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | **Mac Blaze 풀 작동** (pypylon 단독, IPC-510 대기 불필요) | ✅ 5/12 (commit 7e28df9 외 5건) |
 | **사전 디벨롭 코드** (test_basler_live + pose_enumerator + auto_label) | ✅ 5/11 (~1,900줄) |
 | **학습 데이터 라벨 신뢰도 인프라** (스키마 확장 + 대칭 그룹 + 검증 매뉴얼 + SOP 보강) | ✅ 5/13 (commit f9ec525 + dc8d0bf) |
-| **5/15 본 캡처 인프라** (intrinsics sanity + capture wrapper + viewer 가드 + runbook + smoke test + .gitignore + 1pager v2.4) | ✅ 5/14 (commit 대기, 새 세션 자동 진행) |
-| **5/15 본 캡처** — P5 자세 던지기 검증 + 자세 A 풀 캡처 + auto_label 첫 실 데이터 | ⏳ 5/15 종일 |
-| 5종 풀 데이터셋 (~1,200~2,400장) | ⏳ 5/18~6/1 (사무실 가용 4~5일) |
+| **5/15 본 캡처 인프라** (intrinsics sanity + capture wrapper + viewer 가드 + runbook + smoke test + .gitignore + 1pager v2.4) | ✅ 5/14 (commit 5개) |
+| **5/15 공장 방문 + 한글 fix + Phase 2 E2E + ACE2 케이블 인수 + 부트캠프 주제 확정** | ✅ 5/15 |
+| **5/18 트랙 1 P5 보류 → 트랙 2 (Roboflow + YOLOv8n) 전환 + AICA A100 부활 + 한솔 코드 인계** | ✅ 5/18 — YOLOv8n mAP50 0.988 (단일환경, 누수 의심) |
+| **5/19 Roboflow 178장 + 협력사 통합 메일 + 5/20 작업 계획** | ✅ 5/19 |
+| **5/20 ACE2 셋업 진단 — 어댑터/통신/코드 OK, C-mount 렌즈 미장착** (commit `09bdb33` live_viewer_ace2.py) | ✅ 5/20 — 한솔 보유 렌즈 인수 대기 |
+| **5/20 한솔 좌표 명세 답변 수신 — YOLOv11s/m 권고 + 6요소 (x,y,z,edge,angle,label) 명세** | ✅ 5/20 — 우리 v2 코드 변경 결정 |
+| 5/20 v2 학습 — YOLOv11s/m + 250장 (Part4 + 멀티 객체 추가) + manual split 누수 검증 | ⏳ 5/20 오후~ |
+| 5종 풀 데이터셋 (~1,200~2,400장) | ⏳ 5/22~6/1 (사무실 가용 5일) |
+| ACE2 RGB 인수 (한솔 C-mount 렌즈) + RGB+Depth 통합 출력 | ⏳ 5/22~ |
 | eye-in-hand 캘리브레이션 (2세트) + Colored ICP 실연동 | ⏳ 6월 이후 (그리퍼 장착 후) |
 | X/Y 각도 데이터 명세 (대표님 5/6 지시 3번) | ✅ **1pager + pose_validation_protocol + stable_poses.yaml 검증 매뉴얼 완성** (align 대기) |
+| **한솔 좌표 명세 (대표님 5/18 피드백)** | ✅ 5/20 — 6요소 명세 수신 + v2 모델 변경 결정 |
 
 ### 핵심 성과 수치
 
@@ -826,7 +833,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-05-19 (KAIST 교육 짬 — Roboflow 컨벤션 + 5/18 분 annotation + 협력사 통합 메일 발송)
+### 마지막 업데이트 일자: 2026-05-20 (사무실 — ACE2 셋업 진단 + 한솔 좌표 명세 답변 수신 + v2 YOLOv11 결정)
 
 ### 마일스톤 (시간 순)
 
@@ -868,6 +875,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | **2026-05-18 (월, 사무실)** | **트랙 2 Roboflow v1 + YOLO 학습 완성 + 한솔 빈피킹 코드 인계 + AICA A100 부활** ① Mac Claude Code 릴레이 12 commit pull + smoke test 13/14 PASS ② **Intrinsics 확정**: 848×480 / fx 553 / cx 424 / `estimated_v2_20260513` ③ **A4 sanity 2회 FAIL** — Blaze FOV 75° + 30cm fundamental 불가 (시야 가로 46cm vs A4 21cm = 45% 최대) ④ **P5 파일럿 환경 제약으로 보류** — P5 < 5cm, Blaze 단독 어려움, ACE2 RGB 필요. 사무실 valid % 4~8% ⑤ **트랙 2 우선 전환** ⑥ **Mac Claude Bash false negative 발견** — venv activate 후 PATH 캐싱 / 우회법 3가지 ⑦ **Roboflow 셋업**: Public plan + Project `parts-5class-v1` + 보안 익명화 (`part_1~5`) ⑧ **116장 annotation 완주** (P1=25/P2=26/P3=23/P4=24/P5=18) ⑨ **Version v1**: 278장 (Train 243 + Valid 23 + Test 12), Aug 3x ⑩ **AICA A100 부활** (근형님 컨테이너 재생성) — 6000→AICA ssh key 등록, 환경 구축 (PyTorch 2.1+CUDA 12.8, ultralytics, opencv-headless, numpy<2), 함정 해결 (`/dev/shm 64MB → workers=0 cache=ram`) ⑪ **YOLOv8n 학습 완료** — 150 epochs / **10분 22초** / **mAP50 0.988 / mAP50-95 0.836**. 클래스별 mAP50 ≥ 0.962. 약점: part_2 Recall 0.656 ⑫ 결과 회수 `bin_picking/yolo_track/runs/v1-yolov8n-0719/` (11MB) ⑬ **한솔 이예승 빈피킹 코드 인계** — `bin_picking.zip` 4파일 783줄 (`realsense_pure_python` + `handeye_calibration` + `T_gripper2camera.npy` z=-212mm 검증 PASS + `hanwha_bin_picking` 11단계 시퀀스). 보관 `~/hansol_handover/` (git 추적 X), 통합 전략 C 채택 → `bin_picking/yolo_track/`에 어댑테이션, 예승님 회신 완료 ⑭ 코드 git commit: CLAUDE.md만 (3f3220b) | 🆕 `project_p5_pilot_blocked_0518` + `feedback_mac_claude_bash_caching` + `project_roboflow_v1_setup_0518` + `project_hansol_bin_picking_handover_0518` + `reference_aica_a100` |
 | **2026-05-18 (월, 저녁 후반)** | **대표님 보고 발송 + 좌표 명세 피드백 + 5/19 작성 자산 준비** ① **보고 자료 정리** — `docs/ceo_report_20260518_source_material.md` (Basler YOLO 공식 입장 조사 + YOLOv8 선택 5가지 근거) ② **웹 Claude 보고서 작성** — `ORINU-BINPICKING-REPORT-2026-0518` 16페이지 PDF (아키텍처 다이어그램 + 완료/미완료 + YOLO 근거 + 5/20 다음 단계) ③ **대표님 보고 발송 완료** ④ 🔥 **대표님 피드백**: "한솔에서 달라고 했던 좌표들 x/y/z 좌표인지 뭔지 그거 먼저 물어보고 파악하고 인지하고 일을 해" — 5/6 4대 지시 중 좌표 명세 요청 미해결 지적 ⑤ **5/19 액션**: 예승님께 정식 명세 5가지 질문 메일 (좌표계 기준점 / 회전 표현 / 단위 / 그리퍼 기준점 / 시퀀스 책임) ⑥ **5/19 작성 자산 준비** — `bin_picking/yolo_track/camera/basler_wrapper.py` (~220줄) + `bin_picking/yolo_track/pipeline/bin_picking_main.py` (~360줄) Phase 2 임계 2파일 (5/22 통합 시연 코드 baseline) ⑦ **1pager v2.4 → v2.5** (§ 8 리스크 #19~23 추가: A4 fundamental 불가 / valid % / 데이터 누수 / Public 노출 / best vs last + § 10 의사결정 5/18 8행 추가) ⑧ **5/20 사무실 체크리스트** 작성 (`docs/office_checklist_20260520.md`) ⑨ **추가 사진 촬영** (회사 환경, A4 흰 배경): Part_1~3까지 진행, Part_4/5/멀티 객체는 5/20 이월 | 🆕 `project_ceo_feedback_0518` |
 | **2026-05-19 (화, KAIST 교육 짬)** | **Roboflow 컨벤션 확정 + 5/18 분 62장 annotation + 협력사 통합 메일 발송** ① **Roboflow 명명 컨벤션 확정**: Class/Tag = `PartN` (PascalCase 통일), Batch = `{YYYYMMDD}_partN` (일자=batch 작업/통합한 날) ② **5/15 batch rename**: `Part_N_initial` → `20260519_partN` (5개) ③ **5/18 분 62장 신규 업로드 + annotation 완료** (Part1=17 / Part2=15 / Part3=18 / Part5=12) → 누적 **178장** ④ **5/20 작업 옵션 B 채택**: Part4 + 멀티 객체까지 통합 후 v2 학습 (manual split 데이터 누수 검증 활용) ⑤ **멀티 객체 촬영 전략**: 9배치 × 3각도 = 27장 (효율 leverage: 부품 고정 + 카메라 각도 / 같은 배치 부품 회전) ⑥ **Occlusion 박스 규칙 확정**: 0~70% 추정 박스 / 70~90% 보이는 영역 / 90%+ 건너뜀 ⑦ ✅ **협력사 통합 메일 발송 완료** — 대표님 5/18 피드백 이행. 톤: 짧게 핵심만 + 솔직 표현. 좌표는 5가지 정식 질문 직접 안 던지고 "어떻게 진행하는 게 좋을지" 의견 요청. 회신 대기 → 코드 잠정 처리 ⑧ 미커밋/미푸시 없음 (외부 SaaS + 메일 작업, 로컬 코드 변경 X) | 🆕 `project_binpicking_0520_office_plan` + 갱신 `project_roboflow_v1_setup_0518` + `project_ceo_feedback_0518` |
+| **2026-05-20 (수, 사무실, 오전~오후)** | **ACE2 셋업 진단 + 한솔 좌표 명세 답변 수신** ① 🆕 **ACE2 단독 셋업 시도** — 2차 ipTIME U1G-C 어댑터 + Mac en8 192.168.20.1/24 + ACE2 static 192.168.20.20/24 + ping 0.7ms ② **pylon IP Configurator 발견**: a2A2448-23gcBAS S/N 41881328 + 첫 프레임 캡처 성공 (BayerRG8 2448×2048 uint8) ③ **`live_viewer_ace2.py` 신규 작성 + commit `09bdb33`** (232줄, BayerRG8 디모자이크 + GigE 패킷 튜닝 + Focus score 오버레이) origin + personal dual push ④ 🔥 **ACE2 광학 진단 — 렌즈 미장착 확정** — DARK mean 39.4 (Exp 100000us) / BRIGHT mean 212.8 (Exp 26us) / OBJECT 형상 없음. 사진 분석: C-mount 마운트만 있고 빨간 센서 노출. **5/8 메모리 "ACE2 렌즈 미장착, 한솔 보유" 그대로 유지** — 5/15 인수 시 명시적 기록 없음 ⑤ 🆕 **ACE2 ↔ Blaze L자 듀얼 마운트 확인** (5/6 회의 합의 "eye-in-hand 듀얼" 실물 구조) ⑥ 🆕 **GigE 튜닝 발견**: ipTIME U1G-C MTU 9000 거부 (Mac sudo invalid) → 어댑터 max packet 8192 보고하나 Mac MTU 1500 한계. ACE2 5MP 안정 캡처는 해상도 절반(1224×1024) + GevSCPD 2000 권장 ⑦ ⭐ **한솔 좌표 명세 답변 수신** (5/19 통합 메일 회신) — 예승님 답변 3가지: (a) 단일환경 누수 검증은 우리 책임 (b) **YOLOv8 → YOLOv11 + n → m/l 권고** (AICA A100 충분) (c) **좌표 6요소 필요: x,y(2D픽셀) + z(Blaze depth) + edge(외각선) + angle(회전) + label**. "Pointcloud 데이터 받아서 로봇 움직임" ⑧ **5/20 v2 학습 모델 변경 결정**: `yolov8n.pt` → `yolov11s.pt` 또는 `yolov11m.pt` (detection 우선, segmentation은 v3 별도) ⑨ **대표님 5/18 피드백 이행 완료** — 좌표 명세 명확화 + 우리 코드 변경 결정 ⑩ **미확정 5항목** (좌표계 기준점/단위/PCD vs dict/각도 정의/edge 형식) — 5/22~5/29 또는 ACE2 렌즈 인수 시 추가 확인 ⑪ 사용자 결정 대기: 한솔 단톡 ACE2 C-mount 렌즈 보유 확인 메시지 시점 자율 | 🆕 `project_ace2_lensless_diagnosis_0520` + `project_hansol_coord_spec_0520` + 갱신 `project_ceo_feedback_0518` + `project_binpicking_yolo_track` + `project_binpicking_0520_office_plan` + `MEMORY.md` |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 
