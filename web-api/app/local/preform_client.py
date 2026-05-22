@@ -226,6 +226,49 @@ class PreFormServerClient:
             logger.error(f"공장 PC 파일 전송 오류: {e}")
             return None
 
+    async def load_form(self, form_path: str) -> Optional[str]:
+        """
+        .form 파일을 PreFormServer에 로드 (Scene 자동 생성 + 슬라이스 완료 상태)
+
+        .form 파일은 PreForm 데스크탑 앱에서 이미 최적화(방향/서포트/배치/슬라이스) 완료된
+        Formlabs 전용 컨테이너. 따라서 auto-orient/support/layout 호출 불필요.
+        바로 send_to_printer() 호출 가능.
+
+        Args:
+            form_path: 서버의 .form 파일 경로
+
+        Returns:
+            scene_id (성공) 또는 None (실패)
+        """
+        if not os.path.exists(form_path):
+            logger.error(f"파일 없음: {form_path}")
+            return None
+
+        try:
+            remote_path = await self._upload_to_factory_pc(form_path)
+            if not remote_path:
+                logger.error("공장 PC 파일 전송 실패")
+                return None
+
+            client = await self._get_client()
+            response = await client.post(
+                "/load-form/",
+                json={"file": remote_path}
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                scene_id = data.get("id") or data.get("scene_id")
+                logger.info(f"✅ .form 로드 성공: {remote_path} (scene_id: {scene_id})")
+                return scene_id
+            else:
+                logger.error(f".form 로드 실패: {response.status_code} - {response.text}")
+                return None
+
+        except Exception as e:
+            logger.error(f".form 로드 오류: {e}")
+            return None
+
     async def import_model(self, scene_id: str, file_path: str) -> bool:
         """
         STL 파일을 Scene에 추가
@@ -643,45 +686,52 @@ class PreFormServerClient:
             "success": False,
             "scene_id": None,
             "estimate": None,
-            "error": None
+            "error": None,
+            "source_format": None,
         }
 
-        # 1. Scene 생성
-        scene_id = await self.create_scene(
-            machine_type=machine_type,
-            material_code=material_code,
-            layer_thickness_mm=layer_thickness_mm
-        )
-        if not scene_id:
-            result["error"] = "Scene 생성 실패"
-            return result
+        is_form = Path(stl_path).suffix.lower() == ".form"
+        result["source_format"] = "form" if is_form else "stl"
+
+        if is_form:
+            scene_id = await self.load_form(stl_path)
+            if not scene_id:
+                result["error"] = ".form 로드 실패"
+                return result
+        else:
+            scene_id = await self.create_scene(
+                machine_type=machine_type,
+                material_code=material_code,
+                layer_thickness_mm=layer_thickness_mm
+            )
+            if not scene_id:
+                result["error"] = "Scene 생성 실패"
+                return result
         result["scene_id"] = scene_id
 
         try:
-            # 2. 모델 임포트
-            if not await self.import_model(scene_id, stl_path):
-                result["error"] = "모델 임포트 실패"
-                await self.delete_scene(scene_id)
-                return result
+            if not is_form:
+                if not await self.import_model(scene_id, stl_path):
+                    result["error"] = "모델 임포트 실패"
+                    await self.delete_scene(scene_id)
+                    return result
 
-            # 2.5 내부 비우기 (선택)
-            if hollow:
-                if not await self.hollow_model(scene_id, wall_thickness_mm=hollow_wall_thickness_mm):
-                    logger.warning("모델 내부 비우기 실패, 계속 진행")
+                if hollow:
+                    if not await self.hollow_model(scene_id, wall_thickness_mm=hollow_wall_thickness_mm):
+                        logger.warning("모델 내부 비우기 실패, 계속 진행")
 
-            # 3. 자동 준비
-            if not await self.auto_orient(scene_id):
-                logger.warning("자동 방향 설정 실패, 계속 진행")
+                if not await self.auto_orient(scene_id):
+                    logger.warning("자동 방향 설정 실패, 계속 진행")
 
-            if not await self.auto_support(
-                scene_id,
-                density=support_density,
-                touchpoint_size=touchpoint_size
-            ):
-                logger.warning("자동 서포트 생성 실패, 계속 진행")
+                if not await self.auto_support(
+                    scene_id,
+                    density=support_density,
+                    touchpoint_size=touchpoint_size
+                ):
+                    logger.warning("자동 서포트 생성 실패, 계속 진행")
 
-            if not await self.auto_layout(scene_id):
-                logger.warning("자동 배치 실패, 계속 진행")
+                if not await self.auto_layout(scene_id):
+                    logger.warning("자동 배치 실패, 계속 진행")
 
             # 4. Scene 정보 조회 (예측 결과)
             scene_info = await self.get_scene_info(scene_id)
@@ -808,60 +858,65 @@ class PreFormServerClient:
             "scene_id": None,
             "error": None,
             "estimated_print_time_ms": None,
-            "estimated_material_ml": None
+            "estimated_material_ml": None,
+            "source_format": None,
         }
 
-        # 1. Scene 생성
-        scene_id = await self.create_scene(
-            machine_type=settings.machine_type,
-            material_code=settings.material_code.value if isinstance(settings.material_code, MaterialCode) else settings.material_code,
-            layer_thickness_mm=settings.layer_thickness_mm
-        )
-        if not scene_id:
-            result["error"] = "Scene 생성 실패"
-            return result
+        is_form = Path(stl_path).suffix.lower() == ".form"
+        result["source_format"] = "form" if is_form else "stl"
+
+        if is_form:
+            scene_id = await self.load_form(stl_path)
+            if not scene_id:
+                result["error"] = ".form 로드 실패"
+                return result
+        else:
+            scene_id = await self.create_scene(
+                machine_type=settings.machine_type,
+                material_code=settings.material_code.value if isinstance(settings.material_code, MaterialCode) else settings.material_code,
+                layer_thickness_mm=settings.layer_thickness_mm
+            )
+            if not scene_id:
+                result["error"] = "Scene 생성 실패"
+                return result
         result["scene_id"] = scene_id
 
         try:
-            # 2. 모델 임포트
-            if not await self.import_model(scene_id, stl_path):
-                result["error"] = "모델 임포트 실패"
-                return result
+            if not is_form:
+                if not await self.import_model(scene_id, stl_path):
+                    result["error"] = "모델 임포트 실패"
+                    return result
 
-            # 3. 자동 준비 (옵션)
-            if auto_prepare:
-                if not await self.auto_orient(scene_id):
-                    logger.warning("자동 방향 설정 실패, 계속 진행")
+                if auto_prepare:
+                    if not await self.auto_orient(scene_id):
+                        logger.warning("자동 방향 설정 실패, 계속 진행")
 
-                if not await self.auto_support(
-                    scene_id,
-                    density=settings.support.density.value if isinstance(settings.support.density, SupportDensity) else settings.support.density,
-                    touchpoint_size=settings.support.touchpoint_size
-                ):
-                    logger.warning("자동 서포트 생성 실패, 계속 진행")
+                    if not await self.auto_support(
+                        scene_id,
+                        density=settings.support.density.value if isinstance(settings.support.density, SupportDensity) else settings.support.density,
+                        touchpoint_size=settings.support.touchpoint_size
+                    ):
+                        logger.warning("자동 서포트 생성 실패, 계속 진행")
 
-                if not await self.auto_layout(scene_id):
-                    logger.warning("자동 배치 실패, 계속 진행")
+                    if not await self.auto_layout(scene_id):
+                        logger.warning("자동 배치 실패, 계속 진행")
 
-            # 4. Scene 정보 조회
             scene_info = await self.get_scene_info(scene_id)
             if scene_info:
                 result["estimated_print_time_ms"] = scene_info.estimated_print_time_ms
                 result["estimated_material_ml"] = scene_info.estimated_material_ml
 
-            # 5. 프린터로 전송
             job_name = Path(stl_path).stem
             if not await self.send_to_printer(scene_id, printer_serial, job_name=job_name):
                 result["error"] = "프린터 전송 실패"
                 return result
 
             result["success"] = True
-            logger.info(f"🎉 프린트 작업 전송 완료: {printer_serial}")
+            logger.info(f"🎉 프린트 작업 전송 완료: {printer_serial} ({result['source_format']})")
             return result
 
         except Exception as e:
             result["error"] = str(e)
-            # 실패 시 Scene 정리
             await self.delete_scene(scene_id)
             return result
 
