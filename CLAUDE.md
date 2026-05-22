@@ -79,6 +79,77 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ---
 
+## ⭐ 빈피킹 프로젝트 북극성 (North Star) — 모든 의사결정의 최상위 기준
+
+> **2026-05-21 사용자 명시**: "우리의 목적은 학습이 잘 되어서 카메라로 잘 인식해서 로봇이 결국 빈피킹을 잘하는거니까, 성공적인 빈피킹 프로젝트가 되도록 안내해줘. 이 내용은 가장 중요한 내용이지 메모하고 있어."
+
+```
+학습이 잘 됨  →  카메라가 잘 인식  →  로봇이 빈피킹을 잘 수행
+```
+
+**모든 작업 시작 전 자문**: "이 작업이 카메라 인식 잘 되고 로봇 빈피킹 잘 되는 데 기여하나?"
+
+**중간 산출물은 다 수단**: mAP 수치, annotation 양, 모델 크기, 코드 라인 수 → 모두 목적이 아닌 수단
+
+상세 (Tier 1/2/3 분류 + 함정 5가지 + 진행률 표): `memory/project_binpicking_north_star_0521.md`
+
+---
+
+## ⭐ 빈피킹 일정 재정렬 (2026-05-22 대표님 통화)
+
+**핵심**: 빈피킹 실 시연 = **가을 (9~10월)** 협력사 페이스. 그동안 우리 = 학습 + 카메라 완성도.
+
+### 단계별 일정 (재정렬)
+| 단계 | 목표 | 마일스톤 |
+|------|------|--------|
+| A. 학습 | v2/v3 완성 + 7클래스 통합 + 도메인 매칭 | 5~7월 |
+| B. 카메라 인식 | mAP50 0.95+, 실전 occlusion 검증, 라이브 30fps | 6~8월 |
+| C. 좌표 출력 | 6요소 YAML/JSON + 한솔 인터페이스 합의 | 6월 초 |
+| D. 로봇 E2E | YOLO → Modbus → HCR-10L | **가을 (9~10월)** |
+| E. 실연동 | 공장 빈에서 실 피킹 | **가을 (9~10월)** |
+
+### 우선순위 변경
+- **P0 (빈피킹)**: 학습 + 카메라 개발 집중 (실 로봇 시연 약속 X)
+- **P1 (전공정)**: 그리퍼 교체 (한솔과 조만간 회의, 별도 트랙)
+
+### 함정 회피 (5/22 신규)
+"가을 페이스니까 천천히" 자만 X — 시간 여유 = A/B/C 완성도 끝까지 끌어올리는 시간
+
+상세: `memory/project_binpicking_timeline_realignment_0522.md`
+
+---
+
+## ⭐ 빈피킹 AI 프레임워크 결정 (2026-05-22)
+
+**결정**: PyTorch + Ultralytics (TensorFlow 안 씀)
+
+**파이프라인**:
+```
+[학습]  AICA A100 (PyTorch 2.1 + CUDA 11.8 + Ultralytics 8.4.51)
+   ↓ best.pt
+[변환]  ONNX (산업 표준, yolo export format=onnx)
+   ↓ best.onnx
+[배포]  IPC-510 (NVIDIA GPU, ONNXRuntime-GPU)
+   ↓ 추론
+[출력]  6요소 YAML/JSON (x, y, z, edge, angle, label) — `detect_and_output.py`
+   ↓
+[통신]  한솔 시스템 → Modbus → HCR-10L
+```
+
+**TF 안 쓰는 이유 (대표님 보고 답변)**:
+1. YOLOv8/v11 = PyTorch 전용 (한솔 권고와 일치)
+2. 산업 표준 = PyTorch → ONNX → 어디서나 배포
+3. AICA + 한솔 + 우리 코드 = 모두 PyTorch 진영
+
+**미확정 (다음 단계)**:
+- IPC-510 정확한 GPU 모델 확인 (5/29~ 셋업 시)
+- v2 학습 결과 분석 (5/23 토 또는 5/26 화)
+- ONNX 변환 + 한솔 인터페이스 합의 (6월 초)
+
+상세 (대표님 추가 질문 답변 + 다른 옵션 비교): `memory/project_yolo_framework_decision.md` + `memory/project_ai_deployment_landscape.md`
+
+---
+
 ## 대표님 피드백 (핵심 결정사항)
 
 > 시간 순이 아닌 **주제별 결정 흐름**으로 정리. 구식 결정도 "왜 정하고 왜 바뀌었는지" 보존.
@@ -196,7 +267,7 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | ✅ 완료 (5탭 UI + JWT 인증 + 3개 서버 운영) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | ✅ 한솔 머지 5차 완료. 다음주 예승님 방문 시 실 출력 + 로봇 E2E 테스트 |
 | **Phase 4** | MaixCAM 장비 모니터링 | 🟡 HIGH | ⬜ 빈피킹 후순위. 보유 장비(MaixCAM 1대 + LicheeRV Nano 2대) PoC 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 트랙 2 (YOLO+Roboflow) v1 mAP50 0.988 / 5/20 ACE2 셋업 (렌즈 인수 대기) + 한솔 좌표 6요소 명세 수신 → 5/20 v2 YOLOv11s/m + 250장 학습 / 6/2 KAIST 부트캠프 마감 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 트랙 2 (YOLO+Roboflow) **5/22 빅데이**: Part6/7 50장 (누적 394장 7클래스) + Roboflow v2 5parts + **AICA 5모델 학습 14:45 시작** (YOLOv8n/8m/11s/11m/11l). **18:08 시점 결과**: YOLOv8n ✅ mAP50 **0.990** / YOLOv8m ✅ mAP50 0.975 / YOLOv11s 진행 중 / 종료 **자정 전 예상**. **좌표 6요소 출력 코드 완성** (`detect_and_output.py` 582 lines + AICA dry-run 검증, 대표님 5/18 피드백 종결). **PyTorch + Ultralytics + ONNX → IPC-510** 결정 명문화. **🔥 5/22 저녁 대표님 통화: 빈피킹 실 시연 = 가을(9~10월) 협력사 페이스. 그동안 우리 = 학습+카메라 완성도 (북극성 단계 A/B/C 집중). 전공정 그리퍼 교체는 한솔 조만간 회의** — `project_binpicking_timeline_realignment_0522.md` |
 
 ---
 
@@ -593,7 +664,9 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 | **5/19 Roboflow 178장 + 협력사 통합 메일 + 5/20 작업 계획** | ✅ 5/19 |
 | **5/20 ACE2 셋업 진단 — 어댑터/통신/코드 OK, C-mount 렌즈 미장착** (commit `09bdb33` live_viewer_ace2.py) | ✅ 5/20 — 한솔 보유 렌즈 인수 대기 |
 | **5/20 한솔 좌표 명세 답변 수신 — YOLOv11s/m 권고 + 6요소 (x,y,z,edge,angle,label) 명세** | ✅ 5/20 — 우리 v2 코드 변경 결정 |
-| 5/20 v2 학습 — YOLOv11s/m + 250장 (Part4 + 멀티 객체 추가) + manual split 누수 검증 | ⏳ 5/20 오후~ |
+| **5/20 v2 5모델 비교 학습 인프라 완성** (yolov8n/m + yolo11s/m/l, commit `9b68c14`) + 공장 촬영 전환 가이드 (`docs/factory_capture_20260520.md` commit `ee332b9`) | ✅ 5/20 오후 |
+| **5/20 저녁 공장 촬영 완료 — 핸드폰 200장+** (한화 협동로봇 + 흰 작업대 후보 1순위, 미확정) — **2개 조합 C(5,2)=10쌍 전수 + 3개 조합 C(5,3)=10조합 전수** + 5종 단일 + 빈/박스 | ✅ 5/20 저녁 — 5/21 Mac 업로드 예정 |
+| 5/21 Mac 업로드 → Roboflow batch `20260520_factory_*` → annotation → manual split v2 → AICA 5모델 비교 학습 | ⏳ 5/21~ |
 | 5종 풀 데이터셋 (~1,200~2,400장) | ⏳ 5/22~6/1 (사무실 가용 5일) |
 | ACE2 RGB 인수 (한솔 C-mount 렌즈) + RGB+Depth 통합 출력 | ⏳ 5/22~ |
 | eye-in-hand 캘리브레이션 (2세트) + Colored ICP 실연동 | ⏳ 6월 이후 (그리퍼 장착 후) |
