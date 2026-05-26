@@ -258,3 +258,13 @@ bin_picking/models/pose_validation_photos*/
 
 # 경영진 보고용 소스 자료 (실명/내부 호칭 다수, 로컬 전용)
 docs/ceo_report_*.md
+
+# 피지컬 AI 팀 회의 자료 (실명/내부 디테일 포함, 로컬 전용)
+docs/meeting_*.md
+
+# YOLO 모델 가중치 (크고 외부 노출 부적합, AICA에 원본 보관)
+bin_picking/yolo_track/runs/**/*.pt
+bin_picking/yolo_track/runs/**/weights/
+
+# 학습 메타데이터 (CSV/summary)는 추적 OK
+# 가중치 파일 .pt만 ignore

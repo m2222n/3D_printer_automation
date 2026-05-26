@@ -1,0 +1,6 @@
+rank,model,version,size,params_M,status,best_mAP50,best_mAP50-95,best_precision,best_recall,best_epoch,epochs_trained,best_pt_size_MB
+1,yolov8n,v8,nano,3.2,OK,0.99388,0.74576,0.99112,0.97816,107,174,6.268515
+2,yolo11s,v11,small,9.5,OK,0.99103,0.74456,0.96389,0.97926,126,175,19.198675
+3,yolov8m,v8,medium,25.9,OK,0.98991,0.72553,0.97217,0.94673,91,154,52.050251
+4,yolo11m,v11,medium,20.1,OK,0.98679,0.72249,0.98205,0.92947,139,183,40.545381
+5,yolo11l,v11,large,25.3,OK,0.9842,0.73629,0.96749,0.91577,117,167,51.221522

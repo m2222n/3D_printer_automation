@@ -119,6 +119,61 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ---
 
+## ⭐ 전체 프로젝트 그림 — 전공정/후공정 분리 (2026-05-26)
+
+**시연 순서 (대표님 방향성)**:
+1. **전공정 시연 1순위** = 한솔코에버 그리퍼 교체 (빌드플레이트 픽업) → 출력→세척→경화 E2E
+2. **후공정 시연 2순위** = 빈피킹 (가을 9~10월, 협력사 페이스)
+
+**우리 6~8월 미션**: 학습 모델 도메인 일반화 — "수치 자랑"이 아니라 "진짜 현장에서 통하는 모델"
+
+| 공정 | 장비 | 우리 책임 |
+|------|------|---------|
+| 전공정 | 3D 프린터 4대 (Form 4) + 세척기 2대 + 경화기 | 데이터 수집 + 불량/완료 감지 모델 |
+| 후공정 | 빈피킹 비전 + HCR-10L 협동로봇 | 카메라 인식 + 6요소 좌표 출력 |
+
+## ⭐ 데이터 수집 카메라 전략 (2026-05-26)
+
+**핵심**: 데이터 수집 = 핸드폰, 운영 = 전용 카메라. 빈피킹 v2가 검증한 패턴 그대로 전공정에도 적용.
+
+| 단계 | 카메라 | 이유 |
+|------|--------|------|
+| **데이터 수집 (Phase A)** | **핸드폰** | 다각도/다거리/다조명 즉시 다양화, 빈피킹 v2 mAP 0.99 검증, KAIST 팀원 4명 동시 분담 |
+| **운영 — 세척기/경화기** | MaixCAM ($40~50/대, 1 TOPS NPU + WiFi 6 + MQTT) | 온디바이스 추론, 24시간 무인 |
+| **운영 — 프린터 4대 timelapse** | 외부 USB/IP 카메라 + 라즈베리파이 4세트 (~$300) — 권고 | 1~4시간 timelapse 화질 우위 |
+| **운영 — 빈피킹** | Basler Blaze + ace2 (eye-in-hand) | depth + RGB 동시 |
+| **학습 finetune (Phase B)** | MaixCAM 시점 100장씩 추가 | 도메인 갭 깸 |
+
+**5/26 사용자 지시**: 전공정 학습 데이터도 **바로** 모아야 함. 후공정/전공정 병행 수집. 5/30 사무실부터 핸드폰으로 세척기/경화기 LED 상태 시작.
+
+상세 (필요 데이터 분량, 시나리오, 메타데이터 스키마, KAIST 연결 액션): `memory/project_data_collection_long_term.md`
+
+---
+
+## ⭐ Notion 마스터 페이지 — Robot Arm Factory (2026-05-26 전면 갱신)
+
+**위치**: `notion.so/orinu/Robot-Arm-Factory-60d973ebb99942c8852017d39d58e6f6`
+- 부모: orinu HQ > Physical AI Engineering Hub
+- 5/26 MCP 복구 + 일괄 갱신 완료
+
+**구성**:
+- 본문 callout 8섹션: 전체 프로젝트 구조 / Hardware / Phase 별 현황 / 후공정 빈피킹 학습 진척 / 데이터 수집 전략 / KAIST / 향후 로드맵 / Operational
+- Plans & Roadmap DB: 9 rows (Phase 1~3 완료 + 전공정 그리퍼/시연 + 후공정 학습/카메라/좌표/시연)
+- Tasks DB: 20 rows (5/26~28 P0 6건 + 5/29 P0/P1 6건 + 6월~ 백로그 8건)
+- Issues & Risks DB: 10 rows (도메인 갭 High + Part5 정체 + ACE2 + IPC-510 + 등)
+
+**명명 규칙 (사용자 5/26 결정)**:
+- ✅ Notion = **"한솔코에버"** 실명 OK
+- ❌ GitHub/README/외부 출력물 = "협력사" 유지 (보안 원칙 그대로)
+- 메모리/CLAUDE.md = 자유
+
+**Notion MCP 연결**:
+- VSCode `claude.ai Notion` MCP 활성
+- 401 떨어지면 `claude.ai/directory/connectors/...` 에서 "연결 해제" → "연결" 재시도 (VSCode Disable/Enable만으론 안 됨)
+- 상세: `memory/project_notion_mcp_setup_pending.md`
+
+---
+
 ## ⭐ 빈피킹 AI 프레임워크 결정 (2026-05-22)
 
 **결정**: PyTorch + Ultralytics (TensorFlow 안 씀)
