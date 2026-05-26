@@ -1,6 +1,6 @@
 # 3D Printer Automation System
 
-> 3D프린터-로봇 연동 자동화 시스템 | Formlabs Form 4 + HCR 협동로봇 + 3D 빈피킹 비전 + 엣지 AI
+> 3D프린터-로봇 연동 자동화 시스템 | Formlabs Form 4 + HCR 협동로봇 + 3D 빈피킹 비전 (YOLO + Basler) + 엣지 AI
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -9,6 +9,9 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.1-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org)
+[![Ultralytics](https://img.shields.io/badge/Ultralytics-YOLOv8%2Fv11-0078D4?logoColor=white)](https://docs.ultralytics.com)
+[![ONNX](https://img.shields.io/badge/ONNX-Runtime-005CED?logo=onnx&logoColor=white)](https://onnx.ai)
 [![Open3D](https://img.shields.io/badge/Open3D-0.19-4B8BBE?logo=python&logoColor=white)](http://www.open3d.org)
 [![Modbus](https://img.shields.io/badge/Modbus_TCP-pymodbus_3-FF6F00?logo=python&logoColor=white)](https://pymodbus.readthedocs.io)
 [![Basler](https://img.shields.io/badge/Basler-pypylon-0078D4?logoColor=white)](https://www.baslerweb.com)
@@ -50,15 +53,76 @@
 | **Phase 2** | Local API 원격 프린트 제어 + 프론트엔드 UI | ✅ 완료 |
 | **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 | ✅ 통합 |
 | **Phase 4** | 장비 모니터링 (엣지 AI 카메라) | 🔄 리서치 완료, PoC 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 L1~L6 SW 완성 + Basler 카메라 입고, 라이브 검증 진행 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 트랙 2 (YOLO) v2 5모델 비교 학습 완료, ONNX 변환 + 도메인 갭 검증 단계 |
 
-### 빈피킹 파이프라인 현황
+### 빈피킹 — 듀얼 트랙 전략
+
+협력사 제안으로 두 트랙을 병행 개발 중. 산업 현장 도입 관점에서 트랙 2가 우선.
+
+| | 트랙 1: 6DoF Pose Estimation | 트랙 2: YOLO 2D 인식 + Depth |
+|---|---|---|
+| 방식 | CAD 라이브러리 + FPFH + Colored ICP | YOLOv8/v11 detection + depth fusion |
+| 구현 | L1~L6 Python (Open3D 기반) | Ultralytics + Roboflow + ONNXRuntime |
+| 좌표 | 6DoF (rotation matrix) | 6요소 (x, y, z, edge, angle, label) |
+| 데이터 | CAD 29종 + 합성 검증 | 실 부품 촬영 + augmentation |
+| 상태 | 인프라 완성, 환경 제약으로 단계적 검증 보류 | **v2 학습 완료, 도메인 갭 검증 단계** |
+
+### 빈피킹 v2 학습 결과 (2026-05-22 학습 / 2026-05-26 분석)
+
+5종 부품 (Part1~5) 인식 — Roboflow 데이터셋 946 augmented images (train 828 / val 80 / test 39):
+
+| Rank | Model | Params | mAP50 | mAP50-95 | Recall | best.pt |
+|------|-------|--------|-------|----------|--------|---------|
+| 🥇 1 | **YOLOv8n** | 3.2M | **0.9939** | 0.7458 | 0.978 | 6.3MB |
+| 🥈 2 | YOLOv11s | 9.5M | 0.9910 | 0.7446 | 0.979 | 19.2MB |
+| 🥉 3 | YOLOv8m | 25.9M | 0.9899 | 0.7255 | 0.947 | 52.1MB |
+| 4 | YOLOv11m | 20.1M | 0.9868 | 0.7225 | 0.929 | 40.5MB |
+| 5 | YOLOv11l | 25.3M | 0.9842 | 0.7363 | 0.916 | 51.2MB |
+
+**핵심 관찰**:
+- 가장 작은 YOLOv8n이 1등 — 데이터셋 작은 규모에서 큰 모델은 과적합 경향
+- 클래스별 약점 부품 Recall **0.656 → 0.958 (+30%p)** 회복 — 멀티 객체 촬영 효과 입증
+- IPC-510 ONNXRuntime 배포 관점에서 YOLOv8n(6MB) / YOLOv11s(19MB) 동률 후보
+- 다음 단계: ONNX 변환 → 도메인 갭 검증 (별도 환경 평가셋) → 최종 모델 선정
+
+### 빈피킹 학습/배포 파이프라인
+
+```mermaid
+flowchart LR
+    Capture["📸 데이터 수집<br/>실 부품 다각도 촬영<br/>(스마트폰 + Basler)"]
+    Roboflow["🏷️ Roboflow<br/>(annotation + 증강)"]
+    Train["🎓 A100 GPU<br/>(PyTorch + Ultralytics)"]
+    ONNX["⚙️ ONNX Export<br/>(yolo export format=onnx)"]
+    Deploy["🏭 IPC-510<br/>(ONNXRuntime-GPU)"]
+    Coord["📐 6요소 좌표<br/>(x, y, z, edge, angle, label)"]
+    Modbus["🤖 Modbus → HCR-10L"]
+
+    Capture --> Roboflow --> Train --> ONNX --> Deploy --> Coord --> Modbus
+
+    classDef capture fill:#e3f2fd,stroke:#1976d2,color:#000
+    classDef label fill:#fff8e1,stroke:#f57c00,color:#000
+    classDef train fill:#f3e5f5,stroke:#7b1fa2,color:#000
+    classDef export fill:#e0f7fa,stroke:#00838f,color:#000
+    classDef deploy fill:#fff3e0,stroke:#e65100,color:#000
+    classDef output fill:#e8f5e9,stroke:#388e3c,color:#000
+
+    class Capture capture
+    class Roboflow label
+    class Train train
+    class ONNX export
+    class Deploy deploy
+    class Coord,Modbus output
+```
+
+### 트랙 1 (6DoF Pose) 현황 — 보존 상태
+
+CAD 기반 파이프라인은 인프라가 완성되어 있으며, 환경 제약(작업 영역, 카메라 캘리브레이션 fundamental 검증)으로 단계적 검증을 보류 중. 추후 산업 현장 셋업이 갖춰지면 트랙 2와 병행 비교 예정.
+
 - L1~L6 Python 단독 구현 (CAD 기반 29종 인식)
-- 인식률: easy 100%, crowded 90%, hard 60% (Colored ICP로 hard 개선 진행)
+- 인식률: easy 100%, crowded 90%, hard 60% (Colored ICP로 hard 개선)
 - 매칭 시간 0.4~0.6s/부품, RMSE 1.0~1.5mm
-- 레진별 프리셋 4종 (grey/white/clear/flexible) 일관 적용
-- 데모 시각화: 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT) + 실패 케이스 자동 PNG 저장
-- 로봇 좌표 출력: **X, Y, Z, Theta (4DoF)** + 자세 분리(A자세/B자세) + 리그립으로 다면 처리
+- 레진별 프리셋 4종 (grey/white/clear/flexible)
+- 데모 시각화: 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT) + 실패 케이스 자동 PNG
 - 카메라: Basler Blaze-112 (ToF depth) + Basler ace2 (RGB 5MP) eye-in-hand 동시 마운트
 
 ---
@@ -95,7 +159,7 @@ flowchart LR
 
 **허브 개념**: 로봇·프린터·카메라 같은 실시간 제어는 공장 PC 로컬에서 직접 처리(네트워크 장애 시에도 안전). 원격 모니터링·UI·이력 조회만 Cloudflare Tunnel을 통해 제공.
 
-### 빈피킹 비전 파이프라인 (Phase 5)
+### 빈피킹 트랙 1 — 6DoF Pose 파이프라인
 
 ```mermaid
 flowchart LR
@@ -135,6 +199,14 @@ flowchart LR
 - Ajin IO + Windows WinDLL (공장 PC 전용 실행)
 
 ### Phase 5: 3D 빈피킹 비전 시스템
+
+**트랙 2: YOLO 2D 인식 + Depth (현재 메인 트랙)**
+- Roboflow annotation + augmentation 파이프라인
+- A100 GPU에서 다중 모델 비교 학습 (YOLOv8n/8m, YOLOv11s/m/l)
+- 6요소 좌표 출력: x, y, z (depth), edge, angle, label
+- ONNX 변환 + ONNXRuntime-GPU 배포 (산업용 PC)
+
+**트랙 1: 6DoF Pose Estimation (인프라 보존 상태)**
 - STL 29종 라이브러리 (FPFH 캐싱)
 - Multi-resolution ICP (coarse-to-fine)
 - Colored ICP 파이프라인
@@ -251,7 +323,7 @@ GET    /api/v1/local/notifications
 │   └── file_receiver.py           # STL 파일 수신
 │
 ├── bin_picking/                   # Phase 5 3D 빈피킹
-│   ├── src/
+│   ├── src/                       # 트랙 1: 6DoF Pose Estimation
 │   │   ├── acquisition/           # L1: realsense, basler, depth_to_pointcloud
 │   │   ├── preprocessing/         # L2: cloud_filter (레진별 프리셋)
 │   │   ├── segmentation/          # L3: dbscan_segmenter
@@ -259,6 +331,9 @@ GET    /api/v1/local/notifications
 │   │   ├── grasping/              # L5: grasp_planner, grasp_database.yaml
 │   │   ├── communication/         # L6: modbus_server
 │   │   └── visualization/         # demo_ui, e2e_viz
+│   ├── yolo_track/                # 트랙 2: YOLO 2D 인식 + Depth (현재 메인)
+│   │   ├── pipeline/              # detect_and_output.py (6요소 좌표)
+│   │   └── runs/                  # 학습 결과 (모델별 weights + metrics)
 │   ├── scripts/
 │   │   ├── demo_live_recognition.py
 │   │   ├── basler_setup.sh
@@ -293,7 +368,12 @@ GET    /api/v1/local/notifications
 React 18 · TypeScript 5 · Vite 5 · Tailwind CSS 4 · WebSocket
 
 ### 빈피킹 비전 (Phase 5)
-Open3D 0.19 · NumPy · OpenCV · trimesh · pypylon (Basler Blaze-112 + ace2) · pyrealsense2 (RealSense D435) · SciPy
+
+**트랙 2 (YOLO)**: PyTorch 2.1 · Ultralytics 8.4.51 (YOLOv8/v11) · Roboflow (annotation + augmentation) · ONNX + ONNXRuntime-GPU (산업용 PC 배포)
+
+**트랙 1 (6DoF)**: Open3D 0.19 · NumPy · OpenCV · trimesh · pypylon (Basler Blaze-112 + ace2) · pyrealsense2 (RealSense D435) · SciPy
+
+**학습 인프라**: NVIDIA A100 80GB GPU · 컨테이너 환경
 
 ### Infrastructure
 Docker · systemd --user · Cloudflare Tunnel · MQTT (Mosquitto)
@@ -387,15 +467,22 @@ npm run build
 ### 빈피킹 데모
 
 ```bash
-# synthetic 씬 렌더 검증
+# 트랙 1 (6DoF Pose) — synthetic 씬 렌더 검증
 python bin_picking/scripts/demo_live_recognition.py \
   --synthetic --test-render /tmp/demo.png
 
-# RealSense D435 라이브
+# 트랙 1 — RealSense D435 라이브
 python bin_picking/scripts/demo_live_recognition.py --realsense
 
-# Basler 라이브
+# 트랙 1 — Basler 라이브
 python bin_picking/scripts/demo_live_recognition.py --basler
+
+# 트랙 2 (YOLO) — 단일 이미지 → 6요소 좌표 출력
+python bin_picking/yolo_track/pipeline/detect_and_output.py \
+  --model path/to/best.pt --image path/to/scene.jpg --format yaml
+
+# 트랙 2 — ONNX 변환 (산업용 PC 배포 준비)
+yolo export model=path/to/best.pt format=onnx imgsz=640
 ```
 
 ---
@@ -406,4 +493,4 @@ python bin_picking/scripts/demo_live_recognition.py --basler
 
 ---
 
-_Last updated: 2026-05-08_
+_Last updated: 2026-05-26_

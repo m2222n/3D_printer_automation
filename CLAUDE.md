@@ -261,13 +261,25 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ## Phase별 개발 계획 (확정)
 
-| Phase | 항목 | 우선순위 | 상태 (2026-05-08) |
+| Phase | 항목 | 우선순위 | 상태 (2026-05-26) |
 |-------|------|----------|------|
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | ✅ 완료 (5탭 UI + JWT 인증 + 3개 서버 운영) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | ✅ 한솔 머지 5차 완료. 다음주 예승님 방문 시 실 출력 + 로봇 E2E 테스트 |
 | **Phase 4** | MaixCAM 장비 모니터링 | 🟡 HIGH | ⬜ 빈피킹 후순위. 보유 장비(MaixCAM 1대 + LicheeRV Nano 2대) PoC 대기 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | 🔄 트랙 2 (YOLO+Roboflow) **5/22 빅데이**: Part6/7 50장 (누적 394장 7클래스) + Roboflow v2 5parts + **AICA 5모델 학습 14:45 시작** (YOLOv8n/8m/11s/11m/11l). **18:08 시점 결과**: YOLOv8n ✅ mAP50 **0.990** / YOLOv8m ✅ mAP50 0.975 / YOLOv11s 진행 중 / 종료 **자정 전 예상**. **좌표 6요소 출력 코드 완성** (`detect_and_output.py` 582 lines + AICA dry-run 검증, 대표님 5/18 피드백 종결). **PyTorch + Ultralytics + ONNX → IPC-510** 결정 명문화. **🔥 5/22 저녁 대표님 통화: 빈피킹 실 시연 = 가을(9~10월) 협력사 페이스. 그동안 우리 = 학습+카메라 완성도 (북극성 단계 A/B/C 집중). 전공정 그리퍼 교체는 한솔 조만간 회의** — `project_binpicking_timeline_realignment_0522.md` |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | ✅ 트랙 2 v2 **5모델 학습 + 분석 완료** (5/22 시작 → 자정 전 종료 → 5/26 분석). **🥇 yolov8n mAP50 0.9939 / 🥈 yolo11s 0.9910 / 🥉 yolov8m 0.9899**. Part2 회복 **v1 0.656 → v2 yolo11s 0.958 (+30%p)** ⭐. Part5 0.909 정체 = v3 보강 필요. 우승 후보 = yolov8n(6.3MB) or yolo11s(19.2MB), 5/27 ONNX + 도메인 갭 후 최종. 좌표 6요소 출력 코드 + PyTorch → ONNX → IPC-510 결정 완료. **🔥 5/22 대표님 통화: 빈피킹 = 가을(9~10월) 협력사 페이스, 우리 = 학습+카메라 완성도** — `project_yolo_v2_training_results_0522.md` + `project_binpicking_timeline_realignment_0522.md` |
+
+### v2 5모델 비교 결과 (5/26 시점) ⭐
+
+| Rank | Model | Params | mAP50 | mAP50-95 | Precision | Recall | best.pt |
+|------|-------|--------|-------|----------|-----------|--------|---------|
+| 🥇 1 | **yolov8n** | 3.2M | **0.9939** | 0.7458 | 0.991 | 0.978 | 6.3MB |
+| 🥈 2 | yolo11s | 9.5M | 0.9910 | 0.7446 | 0.964 | 0.979 | 19.2MB |
+| 🥉 3 | yolov8m | 25.9M | 0.9899 | 0.7255 | 0.972 | 0.947 | 52.1MB |
+| 4 | yolo11m | 20.1M | 0.9868 | 0.7225 | 0.982 | 0.929 | 40.5MB |
+| 5 | yolo11l | 25.3M | 0.9842 | 0.7363 | 0.967 | 0.916 | 51.2MB |
+
+**핵심 발견**: 가장 작은 yolov8n이 1등 — 데이터셋 작아서(946 aug) 큰 모델 과적합 경향. **Part2 Recall +30%p 회복** (5/20 공장 멀티 촬영 효과 입증). **Part5 0.909 정체** = v3 보강 필요. 상세 5×5 클래스별 표 + 다음 액션 → `memory/project_yolo_v2_training_results_0522.md`
 
 ---
 
