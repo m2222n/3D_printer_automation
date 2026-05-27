@@ -336,6 +336,20 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 **핵심 발견**: 가장 작은 yolov8n이 1등 — 데이터셋 작아서(946 aug) 큰 모델 과적합 경향. **Part2 Recall +30%p 회복** (5/20 공장 멀티 촬영 효과 입증). **Part5 0.909 정체** = v3 보강 필요. 상세 5×5 클래스별 표 + 다음 액션 → `memory/project_yolo_v2_training_results_0522.md`
 
+### v3 학습 계획 (5/27 수립) ⭐
+
+> 사명: **"외운 모델(0.99)" → "현장에서 통하는 모델"** (도메인 일반화 + Part5 약점 해소). 계획서: `bin_picking/yolo_track/V3_TRAINING_PLAN.md`
+
+v2의 두 약점을 v3가 푼다:
+1. **Part5 Recall 0.909 정체** (5모델 전부 동일 = 데이터 문제) → Part5 단일/멀티 보강 50~80장 + 클래스 균형
+2. **도메인 갭 미검증** (valid도 train과 같은 환경) → 다른환경 100~150장
+
+⭐ **도메인 갭 hold-out 전략** (가장 중요): 5/29 다른환경 촬영분의 30%(30~40장)를 **학습에 절대 미투입** → v2 두 모델(yolov8n vs yolo11s) inference로 **우승 모델 정직하게 확정** + 도메인갭 개선 측정. Roboflow `20260529_holdout_*` 별도 batch, export 제외 (누수 방지 = 생명).
+
+모델 후보: v2 5개 → **v3는 yolov8n + yolo11s 2개 집중** (데이터 작아 큰모델 과적합 교훈). 7클래스(Part6/7 통합) vs 5클래스는 5/29 촬영량 보고 현장 판단. 성공 기준: Part5 Recall 0.95+ / hold-out mAP50 0.90+ / 우승 1개 확정 + ONNX 변환.
+
+**5/27 재택 작업**: 한솔 6요소 YAML 샘플(`sample_output_6elements.yaml`) + 카톡 확정본(성과공유+방향확인 톤, 미발송) + v3 계획서 작성. **ONNX·도메인갭은 보류** (6000 GPU없음+디스크99% / 평가셋 없음 → 5/29 사무실 IPC-510). — `memory/project_binpicking_0527_remote_work.md`
+
 ---
 
 ## 프로젝트 구조

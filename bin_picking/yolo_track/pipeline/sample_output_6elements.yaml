@@ -1,0 +1,85 @@
+# =============================================================================
+# 빈피킹 좌표 6요소 출력 — 협력사 인터페이스 합의용 샘플
+# =============================================================================
+# 생성: detect_and_output.py 의 DetectionFrame.to_dict() 출력 구조 그대로
+# 용도: 협력사(빈피킹 로봇 통합)에 보낼 표준 출력 형식 제안 + 미확정 항목 협의
+#
+# ⚠️ 이 파일은 "형식 제안" 샘플입니다. 아래 detection 값(좌표/depth/angle)은
+#    멀티 객체 장면을 가정한 예시 수치이며, 실제 추론 결과가 아닙니다.
+#    형식(필드 구조)에 대한 합의가 목적입니다.
+#
+# 6요소 (협력사 5/20 명세): x, y, z, edge, angle, label
+# 부가 (우리 제안, 협력사가 선택적으로 사용): bbox_pixel, camera_3d, confidence, source, notes
+# =============================================================================
+
+timestamp: '2026-05-27T14:30:00'
+image_shape: [480, 848]            # [H, W] — Blaze depth 해상도 기준
+spec_version: hansol_6elements_v1_20260520
+output_schema_version: orinu_output_v1_20260522
+
+# -----------------------------------------------------------------------------
+# 카메라 intrinsics — 현재 추정값(estimated). 실측 캘리브레이션 후 갱신 예정.
+# 단위: fx/fy/ppx/ppy 모두 pixel. depth(z) 단위는 mm.
+# -----------------------------------------------------------------------------
+intrinsics:
+  camera: Basler_Blaze_112_estimated
+  version: estimated_v2_20260513
+  fx: 553.0
+  fy: 553.0
+  ppx: 424.0
+  ppy: 240.0
+  width: 848
+  height: 480
+  unit: pixel for fx/fy/ppx/ppy
+
+# -----------------------------------------------------------------------------
+# detections — 한 프레임에서 인식한 모든 객체. 멀티 객체 예시 2건.
+# -----------------------------------------------------------------------------
+detections:
+
+  # === [0] Part2 — 회전된 객체 예시 (angle ≠ 0) ===
+  - # 6요소 (필수)
+    x: 312                          # 픽셀 가로 (객체 중심)
+    y: 198                          # 픽셀 세로 (객체 중심)
+    z: 812.4                        # depth (mm) — (x,y) 주변 5x5 median
+    edge:                           # 외곽선 polygon [[x,y], ...]
+      - [268, 160]                  #   현재 v2(detection)는 OBB 4코너 (minAreaRect)
+      - [359, 172]                  #   v3 segmentation 도입 시 진짜 contour polygon으로 교체
+      - [351, 238]
+      - [260, 226]
+    angle: 37.5                     # 회전 각도 (degree, 0~360, 수평=0°)
+    label: Part2                    # 클래스 이름 (Part1~5)
+
+    # 부가 정보 (선택적 사용)
+    bbox_pixel: {cx: 312, cy: 198, w: 99, h: 78, x1: 262, y1: 159, x2: 361, y2: 237}
+    camera_3d: {Xc: -164.6, Yc: -62.6, Zc: 812.4}   # 핀홀 모델 카메라 좌표 (mm)
+    confidence: 0.958
+    source: obb                     # edge/angle 출처: detection | obb | segmentation
+    notes: depth_source=median_5x5_valid=25 | edge_source=obb_minAreaRect_otsu
+
+  # === [1] Part5 — 정렬된 객체 예시 (angle ≈ 0) ===
+  - x: 540
+    y: 305
+    z: 798.1
+    edge:
+      - [498, 270]
+      - [582, 270]
+      - [582, 340]
+      - [498, 340]
+    angle: 0.0
+    label: Part5
+
+    bbox_pixel: {cx: 540, cy: 305, w: 84, h: 70, x1: 498, y1: 270, x2: 582, y2: 340}
+    camera_3d: {Xc: 167.4, Yc: 93.8, Zc: 798.1}
+    confidence: 0.912
+    source: obb
+    notes: depth_source=median_5x5_valid=25 | edge_source=obb_minAreaRect_otsu
+
+notes: |
+  협의 필요 항목 (협력사 5/20 답변 후 우리 제안):
+  (1) 좌표계 기준점 — 픽셀(x,y)과 camera_3d(Xc,Yc,Zc mm) 둘 다 출력. 협력사가 선택.
+      카메라→로봇 변환(hand-eye)은 협력사 측 T_gripper2camera 적용 가정.
+  (2) 단위 — 거리 전부 mm 통일. 픽셀 좌표(x,y)와 intrinsics는 pixel.
+  (3) "Pointcloud" — 1차는 이 dict(YAML/JSON). PCD 파일 동시 전달 필요 시 옵션 추가.
+  (4) 각도 정의 — 0°=수평, 0~360° 반시계 양(+). 협력사 컨벤션과 다르면 변환식 합의.
+  (5) edge 형식 — 현재 detection은 OBB 4코너. v3 segmentation 도입 시 polygon contour로 확장.
