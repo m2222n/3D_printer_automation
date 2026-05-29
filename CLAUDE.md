@@ -352,15 +352,32 @@ v2의 두 약점을 v3가 푼다:
 
 ---
 
-## 📍 5/29 금 진척 (공장 도착 + JWT 회귀 버그 발견/픽스 + 배포 부분 진행 🟡)
+## 📍 5/29 금 진척 ⭐⭐⭐ JWT 회귀 버그 → 픽스 → 공장 PC 검증 완료
 
 - ✅ commit `e052e02` dual push — CLAUDE.md + ACE2 렌즈 보고서 ("대표님" → "경영진" 치환)
-- ✅ 공장 도착 (FARIDH님 동행, 도움 불가 → 혼자 진행)
-- ✅ 예승님 통화 + AnyDesk 원격 진단 (시뮬 CMD start 안 됨 디버깅)
-- 🐛 **JWT 회귀 버그 발견 + 픽스 commit `db6adcf` dual push** ⭐ — 5/6 JWT 도입 시 sequence_service 클라이언트 누락. `printer_interface.py WebApiPrinterClient` Authorization 헤더 없음 → 운영 모드에서 web-api 401 → `Printer-N use -> N (status check failed: HTTP 401)` → CMD 픽업 영원히 실패. **픽스**: `web-api/app/core/jwt_middleware.py` 127.0.0.1 loopback 면제 (5줄). 상세: `memory/project_jwt_sequence_service_bug_0529.md`
-- 🟡 **공장 PC 배포 부분 진행 (NSSM 권한 부족)** — `deploy.bat` 실행 → git pull/build/DEPLOY DONE까지 갔으나 NSSM restart "OpenService 액세스 거부" → **fix 미적용 (옛 web-api 그대로)**. health check HTTP 401. **예승님 공장 오시는 중** → 관리자 권한 cmd로 재시도 필요
-- ⏳ 펜던트 시연 + 빈피킹 측정 + v3 보강 (예승님 도착 후)
-- 상세 (deploy.bat 5단계 결과 + 예승님 도착 후 절차): `CLAUDE.local.md` 최상단
+- ✅ 공장 도착 + 예승님 합류 (FARIDH님 동행, 도움 불가)
+- ✅ AnyDesk 원격 디버깅 → JWT 회귀 버그 발견
+- 🐛 **JWT 회귀 버그 fix commit `db6adcf` dual push** ⭐ — 5/6 JWT 도입 시 sequence_service 클라이언트 누락. `printer_interface.py WebApiPrinterClient` Authorization 헤더 없음 → 운영 모드에서 web-api 401 → `Printer-N use -> N (status check failed: HTTP 401)` → CMD 픽업 영원히 실패. **픽스**: `web-api/app/core/jwt_middleware.py` 127.0.0.1 loopback 면제 (5줄)
+- ✅ **공장 PC 배포 + 검증 완료** ⭐⭐⭐ — 관리자 권한 cmd로 `"C:\nssm\nssm-2.24\win64\nssm.exe" restart OrinuMain` 성공. python.exe 7개 떠 있음. curl `-I` 401→405 / GET → `{"local_api":"ok","preform_server":"connected"}`. **시뮬 CMD 전체 흐름 정상**: `main.stl` QUEUED → PRINT_FINISHED(full-sim) on printer-1 → ROBOT_REQ SW → ROBOT PICK from=printer-1 to=wash → ROBOT SW done → ACK → POST_PROCESSING 50 (9초간 끝까지 정상). 401 메시지 0건
+- ⏳ 펜던트 시연 + 빈피킹 측정 + v3 보강 (오후 남은 시간)
+- ⏸️ 카카오 VM + 6000 배포 (외부 IP만 써서 영향 없으나 일관성, 저녁/다음 재택)
+- ⏸️ 정식 fix (방법 C: sequence_service에 JWT 발급/첨부) — 다음 안정 재택일 PR
+- 상세: `CLAUDE.local.md` 최상단 + `memory/project_jwt_sequence_service_bug_0529.md`
+
+### 🔐 재발 방지 룰 (5/29 사고 학습)
+
+**web-api 인증/미들웨어/응답 스키마 변경 시 반드시 같이 확인**:
+- `sequence_service/app/cell/printer_interface.py` (web-api 호출 클라이언트)
+- `factory-pc/file_receiver.py` (web-api 호출 클라이언트)
+- 향후 추가될 내부 서비스 클라이언트들
+
+**큰 변경 후 검증 루틴 (deploy.bat 후 필수)**:
+1. `tasklist | findstr python.exe` → 3개+ 확인
+2. `curl http://127.0.0.1:8085/api/v1/local/health` → `{"local_api":"ok"}` 확인
+3. **시뮬 CMD 1회 끝까지 돌려보기** ⭐ (오늘처럼 PRINT_FINISHED → ROBOT_REQ까지)
+4. Automation Logs에 401/500/에러 없는지 확인
+
+git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시점**이 위험.
 
 ---
 
