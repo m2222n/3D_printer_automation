@@ -102,6 +102,16 @@ class JWTAuthMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # 같은 호스트(loopback) 요청은 인증 면제 — 내부 서비스 간 호출 허용
+        # (sequence_service → web-api 호출 시 JWT 토큰 없이도 통과)
+        # 5/29 운영 모드에서 401 받아 CMD 픽업 실패 회귀 fix.
+        # 외부 노출 = Cloudflare Tunnel(https://factory.flickdone.com) → 항상 외부 IP라 영향 없음
+        client = scope.get("client") or ("", 0)
+        client_host = client[0] if client else ""
+        if client_host in ("127.0.0.1", "::1", "localhost"):
+            await self.app(scope, receive, send)
+            return
+
         headers = dict(scope.get("headers", []))
 
         # 토큰 추출

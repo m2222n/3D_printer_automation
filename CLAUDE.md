@@ -352,6 +352,17 @@ v2의 두 약점을 v3가 푼다:
 
 ---
 
+## 📍 5/29 금 진척 (공장 도착 + JWT 회귀 버그 발견/픽스)
+
+- ✅ commit `e052e02` dual push — CLAUDE.md + ACE2 렌즈 보고서 ("대표님" → "경영진" 치환)
+- ✅ 공장 도착 (FARIDH님 동행, 도움 불가 → 혼자 진행)
+- ✅ 예승님 통화 + AnyDesk 원격 진단 (시뮬 CMD start 안 됨 디버깅)
+- 🐛 **JWT 회귀 버그 발견 + 픽스** ⭐ — 5/6 JWT 도입 시 sequence_service 클라이언트 누락. `printer_interface.py WebApiPrinterClient` Authorization 헤더 없음 → 운영 모드에서 web-api 401 → `Printer-N use -> N (status check failed: HTTP 401)` → CMD 픽업 영원히 실패. **픽스**: `web-api/app/core/jwt_middleware.py` 127.0.0.1 loopback 면제 (5줄). 배포 대기 (사용자 승인 후). 상세: `memory/project_jwt_sequence_service_bug_0529.md`
+- ⏳ 펜던트 시연 + 빈피킹 측정 + v3 보강 (시퀀스 디버깅 끝나면)
+- 상세: `CLAUDE.local.md` 최상단
+
+---
+
 ## ⚠️ 대표님 5/28 4대 지시 (잠재적 방향 변화)
 
 상세: `memory/project_ceo_directives_0528.md`
