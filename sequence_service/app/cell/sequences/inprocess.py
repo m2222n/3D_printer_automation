@@ -131,10 +131,10 @@ class InprocessSequence(Sequence):
             self.ctx.repo.update_command(cmd_id, message=f'{self.sequence_name}:{now_step}:{remark}')
 
     def _is_printer_available(self, pid: int) -> bool:
-        if self.ctx.printer_use.get(pid, 'N') != 'Y':
-            return False
         if self.ctx.simul_mode or self._settings.PRINTER_SERVER_SIMUL:
             return True
+        if self.ctx.printer_use.get(pid, 'N') != 'Y':
+            return False
 
         serial = str(self._settings.PRINTER_SERIAL_MAP.get(pid) or '').strip()
         if not serial:

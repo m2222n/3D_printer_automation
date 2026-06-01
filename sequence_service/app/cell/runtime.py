@@ -287,6 +287,8 @@ class SequenceThread(threading.Thread):
         - only printer server simulation is enabled.
         """
         if self.ctx.simul_mode or self._settings.PRINTER_SERVER_SIMUL:
+            for pid in self.ctx.printer_use.keys():
+                self.ctx.printer_use[pid] = 'Y'
             return
         now = time.time()
         if now < self._next_printer_health_sync_ts:
