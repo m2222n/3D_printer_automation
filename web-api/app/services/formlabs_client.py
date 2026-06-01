@@ -552,7 +552,13 @@ class FormlabsAPIClient:
                     status = "ABORTING"
                     print_phase = "중단 중"
                 elif run_status == PrintStatus.FINISHED:
-                    status = "FINISHED"
+                    # Formlabs API는 다음 출력 시작 전까지 이전 current_print_run을
+                    # FINISHED 상태로 유지함. ready_to_print가 READY로 갱신됐다면
+                    # 프린터는 실제로 IDLE 상태 — current_print_run은 stale.
+                    if ps.ready_to_print in ("READY", "READY_TO_PRINT_READY"):
+                        status = "IDLE"
+                    else:
+                        status = "FINISHED"
                 elif run_status == PrintStatus.ERROR:
                     status = "ERROR"
                     has_error = True
