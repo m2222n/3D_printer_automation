@@ -381,24 +381,49 @@ git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시�
 
 ---
 
-## 📍 6/1 월 진척 ⭐⭐ Formlabs API status stale 버그 → Fix
+## 📍 6/1 월 진척 ⭐⭐ Formlabs API status stale 버그 → Fix + Notion 갱신
 
 시연(15:00) 직전 발견·디버깅·fix. 5/29 JWT 회귀와 동일 패턴 (외부 API/내부 서비스 호출자 동기화).
 
 - 🐛 **증상**: ShrewdStork 본체 READY + PreForm 앱 READY인데 **우리 웹만 "FINISHED" stuck** → "프린터로 전송" 버튼 disabled
 - 🔍 **Root cause**: Formlabs Cloud API는 다음 출력 전까지 이전 `current_print_run`을 `status=FINISHED`로 유지. 별도 `ready_to_print` 필드만 READY로 갱신. PreForm은 `ready_to_print` 우선 보지만 우리는 `current_print_run.status` 우선 봐서 stuck
-- 🛠️ **Fix (5줄)**: `web-api/app/services/formlabs_client.py` `printer_to_summary()` — `FINISHED + ready_to_print=READY` → `IDLE` 분기
+- 🛠️ **Fix (5줄, commit `044ddb7` dual push)**: `web-api/app/services/formlabs_client.py` `printer_to_summary()` — `FINISHED + ready_to_print=READY` → `IDLE` 분기
 - ✅ **영향 분석 완료**:
   - polling_service 알림 로직 무관 (raw `current_print_run.status` 보고 PRINTING→FINISHED 전환 감지, summary 변환 전 단계)
   - frontend 안전 (`current_job_name` 표시는 `hasActiveJob` 가드)
   - 프린터 4대 (CapableGecko / HeavenlyTuna / CorrectPelican / ShrewdStork) 모두 적용
-- 📋 시연 준비 (오늘):
-  - 시연 시나리오: 펜던트 시뮬 ✅ + 웹에서 출력 전송(전송까지만, 실 출력 X)
+- ✅ **공장 PC 배포 + 검증 완료**: NSSM restart → 웹 IDLE 표시 → "프린터로 전송" 활성화 → **ShrewdStork 본체 실제 출력 동작 시작 확인** → cancel (Mixer 1.8.1 에러는 별개 hw 이슈)
+- 📋 시연 준비 + 정리 작업:
+  - 시연 시나리오: 펜던트 시뮬 ✅ + 웹에서 출력 전송 (전송까지만, 실 출력 X)
   - 메모리 시스템 정리: 78 → 61개 (15 삭제 + 8 → 4 통합)
   - "연구노트" → "IRIS 보고" / "Orinu Hub 보관" 워크플로우 명확화
   - 6/5 예승님 로봇 티칭 교육 메모리 신설 (정태민 + FARIDH 대상)
+  - **Notion Robot Arm Factory 페이지 전면 갱신** (본문 § 9 신설 + Tasks DB 4건 + Issues DB 3건)
 - ⏸️ 카카오 VM + 6000 배포 (다음 안정 재택일, 외부 IP만 써서 영향 없음)
 - 상세: `memory/project_formlabs_status_stale_bug_0601.md`
+
+### 시연 결과 (15:00) — ✅ 성공 + 신규 외주 가능성
+
+- ✅ **6/1 시연 성공적으로 종료**
+- ℹ️ 외부 방문처가 3D프린터-로봇 자동화를 자체 검토 중 우리 시스템을 보러 온 것. 괜찮으면 외주 가능성 있는 흐름 (가능성 수준, **중요도 낮음·인지만**). 고객사 식별 정보 = 영업 사안, 외부 출력물 노출 금지 (상세는 메모리 only). 상세: `memory/project_samsung_outsourcing_lead_0601.md`
+
+### ⭐ 대표님 빈피킹 설계 과제 (6/1) — 두 시나리오
+
+기존 "펼쳐서 vs 쌓아서 미확정" 항목을 대표님이 구체화. 전공정에서 출력한 부품을 박스에 담을 때 두 경우를 어떻게 풀지 고민하라 지시:
+- **① 정렬형** — 어느정도 정렬돼 있고 위치만 계속 바뀜 (occlusion 약함, 자세 안정)
+- **② 무작위 적재형** — 부품들이 어지럽게 쌓임 (occlusion 심함, 임의 3D 자세)
+
+**전략 (사용자 6/1 결정)**: **정렬형 먼저** — 현 YOLO bbox/seg + 4DoF 자산으로 인식→좌표→Modbus→로봇 E2E를 먼저 닫고, **적재형은 segmentation(겹침 분리) + depth(3D 자세) + grasp 우선순위**로 단계적 확장. (정렬형 = 6~8월 + 가을 1차 / 적재형 = 가을 + KAIST seg 산출물 인수 후)
+
+**⭐ 개발 전략 (태민님 본인 생존 전략, 6/1 — 대표님 지시 아님)**: **빈피킹은 웬만하면 회사 프로젝트 ↔ KAIST 6주 프로젝트를 연계해서 개발한다.** 1인 개발 + 화/목 KAIST 부재 상황에서 두 트랙을 한 작업으로 묶는 게 지속 가능한 유일한 길 ("내가 살아남고 회사가 잘 되려면"). KAIST 산출물(다양 환경 평가셋·segmentation·SAM 자동 마스크·증강·라이브 인식 모듈)이 곧 회사 본업의 부분집합/직접 입력. 적재형 대비 seg 데이터 = KAIST seg 과제와 직결. 7/9 발표 후 회사 자산으로 이어감.
+
+- 상세: `memory/project_binpicking_two_scenarios_0601.md` + `memory/project_kaist_6week_definition_0528.md`
+
+### 한솔 머지 6차 (6/1) — 🔴 공장 PC 배포 미완
+
+- 예승님 `f7ca0ad` (personal/hansol-dev, 6/1) "시뮬 모드 전환 시 프린터 상태 동결 버그 수정" → cherry-pick → **commit `310087d` dual push 완료**
+- sequence_service 2파일 4줄. 우리 `044ddb7`(web-api)와 파일 안 겹침 = 충돌 없음. 5/29 JWT 버그와 같은 `runtime.py` 시뮬 분기 가족
+- 🔴 **공장 PC 배포·검증 미완** (sequence_service 전용 → 공장 PC에서만). 절차: git pull → nssm restart → 시뮬 CMD 1회. 검증 = 시뮬 모드 프린터 'Y' 안 동결 + CMD 픽업. 상세: `memory/project_hansol_merge_issues.md` 머지 6차
 
 ### 🔐 재발 방지 룰 추가 (6/1 학습)
 
@@ -410,6 +435,14 @@ git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시�
 **외부 API status 매핑 변경 시 검증 루틴**:
 - 시연 전 1대로 검증 + 4대 모니터링 화면 cross-check
 - 시뮬 CMD 1회까지 (5/29 검증 루틴과 결합)
+
+**📋 Notion DB 작성 규율 (6/1 사용자 지시, 영구 적용)**:
+- 시작일자(`date:Due date:start`) 명시 — 예정이면 채움
+- 긴급도(Priority) P0~P3 정확히
+- **진행상황(Status) 정확히**: 예정 = **To Do** / 진행중 = **In Progress** / 완료 = **Done**
+- 종료일자는 신경 X (완료되면 Done 상태로 표시)
+- Notion DB가 회사 자산 + 외부 협업 가시성 (한솔/대표님 보는 자료)이라 정확성 핵심
+- 상세: `memory/feedback_notion_task_status_discipline.md`
 
 ---
 
@@ -477,7 +510,21 @@ git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시�
 
 ---
 
-## 🎓 KAIST 부트캠프 3단계 6주 프로젝트 (6/2~7/9, 5/28 정의 + 5/29 궁극목표 갱신) ⭐⭐
+## 🎓 KAIST 부트캠프 3단계 6주 프로젝트 (6/2~7/9) ⭐⭐
+
+> **⭐ 6/2 첫 미팅으로 방향 전환** — 아래 5/28~29 정의(RePaint/SDEdit·GAA·SAM 증강 중심)는 **CAD 합성 데이터 + 다객체 인식 중심으로 갱신됨**. 최신 기준은 `memory/project_kaist_meeting_0602.md`.
+
+### 📍 6/2 첫 미팅 결과 (최신 기준) ⭐⭐
+
+- **일정**: 다음 미팅 = 금 6/5 13:00 / **1차 중간발표 = 화 6/9 13:00**(주제·데이터, PPT 6/8 제출) / **2차 중간발표 = 목 6/25 16:00**(모델링·결과) / 6주 타임라인 = 1주 데이터셋구축·계획 → 2주 확정 → 3주 전처리 → 4주 학습·검증. 발표 상세 → `memory/project_kaist_midterm_presentations.md`
+- **조교 피드백**: 이상치/불량 탐지 = 시급X·쉬움 → **부트캠프 후에도 가져갈 어려운 주제 권장** / 데이터셋 = 다양하되 패턴 비슷, 단색 정면 → 배경 다양화
+- **확정 방향**: ⭐ **CAD 도면 모델로 전 parts 데이터셋 구축** (각도 회전 렌더링, 없으면 open dataset) + ⭐⭐ **단일 부품 학습 → 다량 객체 인식/분류** (조교 개인 리서치·피드백 약속 = 적재형 빈피킹 직결). 목표 = **실제 빈피킹에서 유효하게 동작하는 인식 모델**
+- **대표님 보고 (6/2) → ✅ 6/4 답변 수령**: **CAD(STEP) 공유 완료** + **화·금 일정 승인** ("화금 해도 됩니다") + 격려
+- ✅ **6/5 금 13:00 충돌 해소** — 화·금 승인으로 금=KAIST 고정, 예승님 메시지 불필요 (사용자 판단)
+- ✅ **6/4 KAIST 1주차 데이터셋 완성** — CAD→STL 28개→자동 렌더 **1,120장**(28부품×40각도, 정면시점·정각회피, trimesh+pyrender). 6000 `~/kaist_render/` → `memory/project_kaist_dataset_render_0604.md`
+- 상세: `memory/project_kaist_meeting_0602.md`
+
+### 5/28~29 정의 (역사 — 미팅 전 베이스라인)
 
 상세: `memory/project_kaist_6week_definition_0528.md` + `memory/project_kaist_advisor_limhaksu_consult_0529.md`
 
@@ -489,10 +536,15 @@ git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시�
 - 다양 환경 평가셋 200장 (팀원 4명 × 50장, 학습 미투입)
 - Polygon segmentation 400~500장 — **5/29 조교 자문 흡수: SAM 자동 마스크 활용** (수동 라벨링 → 자동화)
 - **RePaint/SDEdit 증강 파이프라인** (5/29 조교 자문)
+  - **RePaint** (DDPM inpainting, 코드 공개): 배경 다양화 ← 도메인 갭 최대 원인이라 **먼저**
+  - **SDEdit** (Stochastic Differential Editing): 조명/질감 다양화
 - YOLOv11s-seg 학습 + 도메인 갭 정량 측정 + 보고서
 - ⭐⭐ **ACE2 라이브 카메라 인식 데모** — 3주차부터 누적 → 6주차 본 데모
 
-**보너스 (4주차 이후)**: GAA segmentation 도전 (조교님 멘토링 약속)
+**보너스 (4주차 이후)**: GAA 도전 (조교님 멘토링 약속)
+- ⚠️ **GAA = Generate Aligned Anomaly** (6/1 논문 확인) — 우리가 "부품 seg"로 이해했으나 실제론 **산업 검사용 불량 이미지 합성**. 빈피킹 인식과 결 다름 → 회사 **불량검출 트랙**엔 유효. 보너스 위치 맞음
+
+**⭐ 회사 도움 분석 (6/1)**: RePaint/SDEdit = 회사 빈피킹 도메인 갭 직격(강함, 북극성 2단계). GAA = 불량검출 트랙에만 유효(보너스). **단 AI 증강만 믿지 말고 실 ACE2 라이브 데모 + hold-out으로 검증** 必 ("또 다른 외운 모델" 방지). 상세: `memory/project_kaist_advisor_limhaksu_consult_0529.md`
 
 **성공 기준**:
 - ⭐⭐ **ACE2 라이브 인식 데모 Pass/Fail** (궁극)
