@@ -64,7 +64,7 @@
 | 방식 | CAD 라이브러리 + FPFH + Colored ICP | YOLOv8/v11 detection + depth fusion |
 | 구현 | L1~L6 Python (Open3D 기반) | Ultralytics + Roboflow + ONNXRuntime |
 | 좌표 | 6DoF (rotation matrix) | 6요소 (x, y, z, edge, angle, label) |
-| 데이터 | CAD 29종 + 합성 검증 | 실 부품 촬영 + augmentation |
+| 데이터 | CAD 29종 + 합성 검증 | 실 부품 촬영 + augmentation + **CAD 렌더 합성 데이터셋** |
 | 상태 | 인프라 완성, 환경 제약으로 단계적 검증 보류 | **v2 학습 완료, 도메인 갭 검증 단계** |
 
 ### 빈피킹 v2 학습 결과 (2026-05-22 학습 / 2026-05-26 분석)
@@ -89,7 +89,8 @@
 
 ```mermaid
 flowchart LR
-    Capture["📸 데이터 수집<br/>실 부품 다각도 촬영<br/>(스마트폰 + Basler)"]
+    Capture["📸 실 부품 촬영<br/>다각도<br/>(스마트폰 + Basler)"]
+    Synth["🧩 CAD 렌더 합성<br/>STEP/STL 다각도 렌더<br/>(trimesh + pyrender)"]
     Roboflow["🏷️ Roboflow<br/>(annotation + 증강)"]
     Train["🎓 A100 GPU<br/>(PyTorch + Ultralytics)"]
     ONNX["⚙️ ONNX Export<br/>(yolo export format=onnx)"]
@@ -97,7 +98,9 @@ flowchart LR
     Coord["📐 6요소 좌표<br/>(x, y, z, edge, angle, label)"]
     Modbus["🤖 Modbus → HCR-10L"]
 
-    Capture --> Roboflow --> Train --> ONNX --> Deploy --> Coord --> Modbus
+    Capture --> Roboflow
+    Synth --> Roboflow
+    Roboflow --> Train --> ONNX --> Deploy --> Coord --> Modbus
 
     classDef capture fill:#e3f2fd,stroke:#1976d2,color:#000
     classDef label fill:#fff8e1,stroke:#f57c00,color:#000
@@ -106,7 +109,7 @@ flowchart LR
     classDef deploy fill:#fff3e0,stroke:#e65100,color:#000
     classDef output fill:#e8f5e9,stroke:#388e3c,color:#000
 
-    class Capture capture
+    class Capture,Synth capture
     class Roboflow label
     class Train train
     class ONNX export
@@ -202,6 +205,7 @@ flowchart LR
 
 **트랙 2: YOLO 2D 인식 + Depth (현재 메인 트랙)**
 - Roboflow annotation + augmentation 파이프라인
+- **CAD 렌더 합성 데이터셋** — STEP/STL 부품을 다각도(기울임 × 회전) 자동 렌더링해 부품별 합성 이미지 생성 (trimesh + pyrender, 헤드리스). 실 촬영 데이터 보완 + 부품 클래스 확장용
 - A100 GPU에서 다중 모델 비교 학습 (YOLOv8n/8m, YOLOv11s/m/l)
 - 6요소 좌표 출력: x, y, z (depth), edge, angle, label
 - ONNX 변환 + ONNXRuntime-GPU 배포 (산업용 PC)
@@ -369,7 +373,7 @@ React 18 · TypeScript 5 · Vite 5 · Tailwind CSS 4 · WebSocket
 
 ### 빈피킹 비전 (Phase 5)
 
-**트랙 2 (YOLO)**: PyTorch 2.1 · Ultralytics 8.4.51 (YOLOv8/v11) · Roboflow (annotation + augmentation) · ONNX + ONNXRuntime-GPU (산업용 PC 배포)
+**트랙 2 (YOLO)**: PyTorch 2.1 · Ultralytics 8.4.51 (YOLOv8/v11) · Roboflow (annotation + augmentation) · trimesh + pyrender (CAD 다각도 렌더 합성 데이터) · ONNX + ONNXRuntime-GPU (산업용 PC 배포)
 
 **트랙 1 (6DoF)**: Open3D 0.19 · NumPy · OpenCV · trimesh · pypylon (Basler Blaze-112 + ace2) · pyrealsense2 (RealSense D435) · SciPy
 
@@ -493,4 +497,4 @@ yolo export model=path/to/best.pt format=onnx imgsz=640
 
 ---
 
-_Last updated: 2026-05-26_
+_Last updated: 2026-06-04_
