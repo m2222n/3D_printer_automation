@@ -47,7 +47,7 @@ class RobotSequence(Sequence):
 
     @property
     def _use_real_io(self) -> bool:
-        return bool(self._settings.ENABLE_TCP_IO) and not self.ctx.simul_mode
+        return bool(self._settings.ENABLE_TCP_IO)
 
     def _log_job(self, cmd_id: str, msg: str, allocated_data: dict | None = None) -> None:
         # Keep robot-origin logs grouped in the common command log table.
