@@ -152,6 +152,8 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ## ⭐ Notion 마스터 페이지 — Robot Arm Factory (2026-05-26 전면 갱신)
 
+> ⚠️ **2026-06-09 회사 업무관리 체계 개편됨** — 대시보드 2개 분리(🗓️ 일정 / 📝 업무일지), 매일 일일 업무일지 자동생성, 이슈관리=Hub orinu. **새 워크플로우 = `CLAUDE.local.md` § 업무관리 워크플로우** (일일 양식·주간 간소화 규칙). 아래 Robot Arm Factory 페이지는 프로젝트 개요용으로 유지.
+
 **위치**: `notion.so/orinu/Robot-Arm-Factory-60d973ebb99942c8852017d39d58e6f6`
 - 부모: orinu HQ > Physical AI Engineering Hub
 - 5/26 MCP 복구 + 일괄 갱신 완료
@@ -419,11 +421,11 @@ git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시�
 
 - 상세: `memory/project_binpicking_two_scenarios_0601.md` + `memory/project_kaist_6week_definition_0528.md`
 
-### 한솔 머지 6차 (6/1) — 🔴 공장 PC 배포 미완
+### 한솔 머지 6차 (6/1 머지 → 6/4 배포) + 7차 (6/8) — ✅ 둘 다 공장 배포 완료
 
-- 예승님 `f7ca0ad` (personal/hansol-dev, 6/1) "시뮬 모드 전환 시 프린터 상태 동결 버그 수정" → cherry-pick → **commit `310087d` dual push 완료**
-- sequence_service 2파일 4줄. 우리 `044ddb7`(web-api)와 파일 안 겹침 = 충돌 없음. 5/29 JWT 버그와 같은 `runtime.py` 시뮬 분기 가족
-- 🔴 **공장 PC 배포·검증 미완** (sequence_service 전용 → 공장 PC에서만). 절차: git pull → nssm restart → 시뮬 CMD 1회. 검증 = 시뮬 모드 프린터 'Y' 안 동결 + CMD 픽업. 상세: `memory/project_hansol_merge_issues.md` 머지 6차
+- **6차** `310087d` (원본 `f7ca0ad`, "시뮬 모드 전환 시 상태 동결 fix", sequence_service 2파일 4줄) → dual push → **6/4 공장 PC 배포·검증 완료** (AnyDesk: c916fa3 FF + restart + health). 시뮬검증 = 예승님 현장 대체
+- **7차** `5288396` (원본 `283f0cb`, "시뮬 테스트 종료에 따른 로직 수정", `robot.py` 1줄: `_use_real_io`에서 `and not simul_mode` 제거 = 실 TCP I/O 활성화) → dual push → **6/8 공장 PC 배포·검증 완료** (AnyDesk: c916fa3..5288396 FF + restart + python 7개 + health). ⚠️ 프로퍼티라 restart 필수. 시뮬 CMD 검증 = 예승님 6/9 현장 대체
+- ⚠️ 예승님 커밋은 **personal/hansol-dev**에 올라옴 (origin 아님). 머지 시 personal 먼저 확인. 상세: `memory/project_hansol_merge_issues.md` 머지 6·7차
 
 ### 🔐 재발 방지 룰 추가 (6/1 학습)
 
@@ -512,9 +514,21 @@ git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시�
 
 ## 🎓 KAIST 부트캠프 3단계 6주 프로젝트 (6/2~7/9) ⭐⭐
 
-> **⭐ 6/2 첫 미팅으로 방향 전환** — 아래 5/28~29 정의(RePaint/SDEdit·GAA·SAM 증강 중심)는 **CAD 합성 데이터 + 다객체 인식 중심으로 갱신됨**. 최신 기준은 `memory/project_kaist_meeting_0602.md`.
+> **⭐ 방향이 두 번 더 전환됨** — 6/2 미팅(CAD 각도 데이터셋+다객체)에서 다시 **6/5 미팅 = 실루엣 기반 3D 복원→부품 판별**로 대전환. 아래 6/2/5/28~29 정의는 역사. **최신 기준 = `memory/project_kaist_meeting_0605.md` + `memory/project_kaist_visualhull_baseline_0608.md`**.
 
-### 📍 6/2 첫 미팅 결과 (최신 기준) ⭐⭐
+### 📍 6/5~6/8 최신 기준 ⭐⭐⭐ (Visual Hull baseline 구현 완료)
+
+- **6/5 2차 미팅 = 방향 대전환**: 캡처 vs CAD 렌더 품질격차 발단 → ⭐ **실루엣 → 3D 복원 → 부품 판별** 알고리즘으로 목표 재정의. 1순위 baseline = **Visual Hull(Shape-from-Silhouette)**. 우리 강점 = 렌더 포즈 알고 GT STL 보유 → 어려운 포즈추정 스킵 + IoU/Chamfer 정량비교. 한계 = 내부 오목면 복원 불가. 인식 2안(SAM+YOLO det / YOLO seg), 3D↔2D 비교법 = 조교 추가 리서치 → `memory/project_kaist_meeting_0605.md`
+- **6/8 Visual Hull baseline 구현 완료** ⭐ — `~/kaist_project/` (KAIST repo 단일). **28부품 전체 완주 정량표**: IoU mean **0.589** / gt_in_hull mean **0.989** / Chamfer mean 2.85mm. 발표 스토리 = 볼록·단순 잘됨(IoU 0.8+) vs 오목·길쭉 hull 부풂(infl 4.0) IoU 낮음 → Visual Hull 한계 정직하게 증명. (OOM 함정: contains 청크화로 58GB→8GB) → `memory/project_kaist_visualhull_baseline_0608.md`
+- **6/9(화) 13:00 1차 중간발표** — PPT 6/8 23:59 제출, 발표자 1명. 28부품 분포표 = 발표 핵심
+- **⭐ 빈피킹 직결 방향 (6/8 결정)**: Visual Hull은 기반 역량엔 도움이나 '로봇이 집는 것'엔 간접적(합성·부품1개·40뷰 못찍음) → **KAIST 안에서 빈피킹 쪽으로 당김**. Visual Hull=GT/검증 도구 재배치, 무게중심을 실카메라 부품 인식(YOLO seg/SAM)+mesh↔CAD 매칭으로. 6/9 발표 끝 "빈피킹 연결" 슬라이드 + 조교 제안 → 2주차 반영 → `memory/feedback_kaist_binpicking_pull_0608.md`
+- **⭐⭐ 6/9 1차 발표 피드백 = 방향 재조정** (상세 `memory/project_kaist_feedback_0609.md`): embedding(제로샷 retrieval)은 죽지 않되 **순서가 바뀜**. 교수님 = ① 제로샷보다 **사전정의 28부품 지도학습 먼저**(YOLO object detection) ② **CAD에서 depth map 추출**, 하나하나 입력 ③ **test set을 실사진으로**, 학습도 최대한 실사 ④ **Blaze=depth / ACE2=seg** 모달리티 분담(depth-only가 더 나을수도) ⑤ CAD 다각도+**배경 실사 합성** ⑥ 실제 빈피킹 출력 = **6DoF pose estimation**. 조교 = 인력 없음 → **합성데이터(디지털 트윈/도메인 랜덤화)가 현실적**(실제 그림자·질감, 배경 실사 합성), **CAD 연동 물리엔진(Isaac Sim/Omniverse) 알아볼 것**, 조명·질감 후보정 가능, YOLO개량·3D인코더·latent align도 방법. **⭐ 카톡 과제 = CAD/사진 → 3D 디지털 트윈 + 중력 적재 시뮬로 합성데이터 생성**(경로 A=CAD→USD→PhysX 1순위 / B=Photogrammetry·NeRF·3DGS). **다음 미팅 6/19(목)15:30, 그때까지 바쁠 것**
+- **⭐ 6/9 당일 합성데이터 PoC 1~4단계 착수·완료** (KAIST 2주차 = 카톡 과제 실행): 조사 결론 **BlenderProc**로 6000에 설치(venv·Blender·출력 전부 `/data/jtm/`) → 우리 STL 빈 **중력 낙하 적재** → **RGB+depth+instance seg+6DoF pose 자동 라벨** 출력 검증 → 부품 배치·카메라 튜닝(8부품 occlusion 적재, 물리 함정 3개 해결). **카메라·실물 0, 코드만으로 라벨 생성** = 조교 "인력 부족→합성" 동기 실현. ⚠️ **6000=GPU없는 VM→렌더 CPU만 / A100=학습 전용(RT코어 없어 렌더 부적합)**. 용량 무제약(scene 0.48MB·/data 847G). 5단계(28부품 대량)~6단계(A100 학습)는 6/10~ → `memory/project_digital_twin_synth_data_research_0609.md`
+- **✅ 6/10 5단계 밤샘 배치 완주·검증 = 완벽 성공**: **dataset_v1 2000/2000장**(6/9 12:32~6/10 01:40 ≈13h CPU), **빈 장면 0건**(6/9 디버깅 3개 fix 전수 통과 입증), 에러 0건, visible 평균 8.12개(2~14)=occlusion 다양성, 용량 872MB. hdf5 키=colors/depth(m)/instance·category seg/pose JSON → **Blaze=depth/ACE2=seg + YOLO 라벨 + 6DoF pose GT 코드 자동생성**. 4패널 PNG 육안 검증 통과(품질 우수, 빈 벽 단색만 미세점). **미팅(6/19) 시연용 2000장 PNG 추출**(`preview_all/`). KAIST repo 커밋 `2500bbe`(⚠️6/9 PoC 코드가 세션 끊김으로 미커밋이던 것 확보). **다음=6단계 A100 YOLO 지도학습**(dataset_v1→28부품 det, hdf5→YOLO 변환) → `memory/project_digital_twin_synth_data_research_0609.md` § 6/10
+- **(역사) 6/9 발표 전 방향 = 2D/3D embedding latent alignment**: 조교 제시 = 2D·3D embedder 공유 latent space contrastive align(ULIP/CLIP2Point) → 28 CAD 임베딩 nearest-neighbor retrieval. eye-in-hand 1뷰 + 도메인 갭 흡수. 교수님 Q&A = CAD GT depth map 활용(Blaze ToF 동일 modality). → 6/9 피드백으로 supervised+합성 뒤(5순위)로 재배치 → `memory/project_kaist_meeting_0605.md`
+- **⚠️ Push 분리 규칙 (6/8 재강조)**: 회사=dual push / KAIST(`~/kaist_project`)=KAIST repo 단일에만, 회사 내용 절대 금지 → `memory/feedback_push_target_separation.md`
+
+### 📍 6/2 첫 미팅 결과 (역사 — 6/5에 재전환됨)
 
 - **일정**: 다음 미팅 = 금 6/5 13:00 / **1차 중간발표 = 화 6/9 13:00**(주제·데이터, PPT 6/8 제출) / **2차 중간발표 = 목 6/25 16:00**(모델링·결과) / 6주 타임라인 = 1주 데이터셋구축·계획 → 2주 확정 → 3주 전처리 → 4주 학습·검증. 발표 상세 → `memory/project_kaist_midterm_presentations.md`
 - **조교 피드백**: 이상치/불량 탐지 = 시급X·쉬움 → **부트캠프 후에도 가져갈 어려운 주제 권장** / 데이터셋 = 다양하되 패턴 비슷, 단색 정면 → 배경 다양화
