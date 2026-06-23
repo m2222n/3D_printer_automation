@@ -79,6 +79,23 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ---
 
+## ⭐ 대표님 6/18 신규 방향성 — 3D 프린팅 SaaS 플랫폼 + 후공정 모니터링 + ERP (제품화)
+
+> **2026-06-18 대표님 녹음 지시**: 현 시스템(3D프린터 모니터링 + 작업지시)을 앞뒤로 확장해 **타 기업에 판매 가능한 제품**으로 키워라.
+
+세 축으로 확장:
+1. **① 앞단 — 고객 셀프 주문 홈페이지**: 고객이 모델 파일 업로드 → **자동 견적** → **PG 결제** → 결제 시 **자동으로 작업 큐 투입**(우리가 출력 시작 누르는 것까지 자동) → 완료 시 **담당자 알림**(카카오톡/SMS/우리 앱 푸시) → 픽업. ⭐ **이 시스템 자체를 타 기업에 판매**(멀티테넌트 제품화).
+2. **② 뒷단 — 후공정 작업 카운팅 모니터링**(현재 전무): 공장 모니터에 "어떤 파츠 / 어떤 가공 / 총 몇 개 중 몇 개째" 실시간 표시. ⭐ **로봇과 통신**(동일 작업 몇 번째인지) — 기존 HCR Modbus 자산 연계.
+3. **③ ERP**: 원재료(SLA 레진 / FDM 필라멘트) **입고·사용량·잔여·발주 알림** 관리. 6/1 ERP 참고영상 2개(`memory/project_ceo_terminology_study_0601.md`) 기반 학습.
+
+**진행 방식 (대표님 명시)**: **개발 기획을 Claude와 정리 → 대표님께 먼저 보여드리고 검토** → 실개발은 그 후 별도 결정. **바이브 코딩**으로 개발. (코드 짜기 전 명세 → 대표님 align = 5/6 방식과 동일)
+
+⚠️ 현 주업무(빈피킹 + KAIST, ~7/9)와 **별개 트랙**. 6/18 시점 = **기획만 먼저**(실개발 미착수). 6/1 제조용어 프레임(현 웹=MES / 로봇=ATS)과 정합: ①상거래 프론트 + ②MES 확장 + ③ERP 계층 추가.
+
+상세: `memory/project_saas_platform_directive_0618.md`
+
+---
+
 ## ⭐ 빈피킹 프로젝트 북극성 (North Star) — 모든 의사결정의 최상위 기준
 
 > **2026-05-21 사용자 명시**: "우리의 목적은 학습이 잘 되어서 카메라로 잘 인식해서 로봇이 결국 빈피킹을 잘하는거니까, 성공적인 빈피킹 프로젝트가 되도록 안내해줘. 이 내용은 가장 중요한 내용이지 메모하고 있어."
@@ -282,7 +299,7 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 - 다면 인식 정식 안건화 (리그립 스테이션 vs 시퀀스 분할 A/B자세)
 - Formlabs API 무인 운전 불가 — 공식 확인. 출력 종료 후 수동 터치 체크리스트 필수
 - 그리퍼 교체 요청 (한솔) — 잔여 레진 제거 어려움
-- 3D 프린터 하단 파손 270만원 분담 협의 중
+- 3D 프린터 하단 파손 270만원 분담 협의 중 (⚠️ **6/15 추가 발견**: Form 5대 중 3대 광학 판(LCD/LPU 윈도우) 균열 → 출력 불가, 멀쩡한 2대(ShrewdStork+Gecko)만 가용. 대표님/예승님 보고 필요 = 이 파손 이력과 묶일 수 있음 → `memory/project_factory_work_0615.md`)
 - 삼성전자 ~2억 규모 하반기 지원사업 참여 준비
 - 카카오톡 단톡방 운영 (5/7 입장 완료)
 
@@ -354,97 +371,27 @@ v2의 두 약점을 v3가 푼다:
 
 ---
 
-## 📍 5/29 금 진척 ⭐⭐⭐ JWT 회귀 버그 → 픽스 → 공장 PC 검증 완료
+## 📍 주요 버그 fix 2건 (5/29 JWT / 6/1 Formlabs) + 재발 방지 룰
 
-- ✅ commit `e052e02` dual push — CLAUDE.md + ACE2 렌즈 보고서 ("대표님" → "경영진" 치환)
-- ✅ 공장 도착 + 예승님 합류 (FARIDH님 동행, 도움 불가)
-- ✅ AnyDesk 원격 디버깅 → JWT 회귀 버그 발견
-- 🐛 **JWT 회귀 버그 fix commit `db6adcf` dual push** ⭐ — 5/6 JWT 도입 시 sequence_service 클라이언트 누락. `printer_interface.py WebApiPrinterClient` Authorization 헤더 없음 → 운영 모드에서 web-api 401 → `Printer-N use -> N (status check failed: HTTP 401)` → CMD 픽업 영원히 실패. **픽스**: `web-api/app/core/jwt_middleware.py` 127.0.0.1 loopback 면제 (5줄)
-- ✅ **공장 PC 배포 + 검증 완료** ⭐⭐⭐ — 관리자 권한 cmd로 `"C:\nssm\nssm-2.24\win64\nssm.exe" restart OrinuMain` 성공. python.exe 7개 떠 있음. curl `-I` 401→405 / GET → `{"local_api":"ok","preform_server":"connected"}`. **시뮬 CMD 전체 흐름 정상**: `main.stl` QUEUED → PRINT_FINISHED(full-sim) on printer-1 → ROBOT_REQ SW → ROBOT PICK from=printer-1 to=wash → ROBOT SW done → ACK → POST_PROCESSING 50 (9초간 끝까지 정상). 401 메시지 0건
-- ⏳ 펜던트 시연 + 빈피킹 측정 + v3 보강 (오후 남은 시간)
-- ⏸️ 카카오 VM + 6000 배포 (외부 IP만 써서 영향 없으나 일관성, 저녁/다음 재택)
-- ⏸️ 정식 fix (방법 C: sequence_service에 JWT 발급/첨부) — 다음 안정 재택일 PR
-- 상세: `CLAUDE.local.md` 최상단 + `memory/project_jwt_sequence_service_bug_0529.md`
+> 일자별 진척 상세는 메모리. 여기엔 **재발 방지 룰**(아키텍처 차원 영구 규칙)만 보존.
 
-### 🔐 재발 방지 룰 (5/29 사고 학습)
+**1. JWT 회귀 버그**(5/29, `db6adcf`) — 5/6 JWT 도입 시 sequence_service 클라이언트 Authorization 누락 → 운영 모드 web-api 401 → CMD 픽업 실패. fix=`web-api/app/core/jwt_middleware.py` loopback 면제 → [[jwt-sequence-service-bug-0529]]
+**2. Formlabs status stale 버그**(6/1, `044ddb7`) — Cloud API가 이전 `current_print_run.status=FINISHED` 유지, `ready_to_print`만 갱신 → 우리 웹 stuck. fix=`formlabs_client.py` `FINISHED+ready_to_print=READY`→IDLE → [[formlabs-status-stale-bug-0601]]
 
-**web-api 인증/미들웨어/응답 스키마 변경 시 반드시 같이 확인**:
-- `sequence_service/app/cell/printer_interface.py` (web-api 호출 클라이언트)
-- `factory-pc/file_receiver.py` (web-api 호출 클라이언트)
-- 향후 추가될 내부 서비스 클라이언트들
+### 🔐 재발 방지 룰 (두 사고 공통 = 외부 API/내부 호출자 동기화)
+- **web-api 인증/미들웨어/응답 스키마 변경 시** 내부 호출 클라이언트 같이 확인: `sequence_service/app/cell/printer_interface.py`, `factory-pc/file_receiver.py`, 향후 추가분
+- **외부 API 응답 단일 필드 의존 금지** — stale 가능성 의심, 다른 필드 cross-check, reference client(PreForm 등) 동작과 비교
+- **큰 변경/배포 후 검증 루틴**: ① `tasklist|findstr python.exe` 3개+ ② `curl .../local/health`→ok ③ **시뮬 CMD 1회 끝까지**(PRINT_FINISHED→ROBOT_REQ) ④ 로그 401/500 확인. ⚠️ git pull은 안전, **NSSM restart + 운영 모드 첫 진입**이 위험 → [[deployment-verification-routine]]
 
-**큰 변경 후 검증 루틴 (deploy.bat 후 필수)**:
-1. `tasklist | findstr python.exe` → 3개+ 확인
-2. `curl http://127.0.0.1:8085/api/v1/local/health` → `{"local_api":"ok"}` 확인
-3. **시뮬 CMD 1회 끝까지 돌려보기** ⭐ (오늘처럼 PRINT_FINISHED → ROBOT_REQ까지)
-4. Automation Logs에 401/500/에러 없는지 확인
+### 📋 Notion DB 작성 규율 (6/1 사용자 지시, 영구)
+- 시작일자 명시 / Priority P0~P3 / **Status 정확히**(예정=To Do / 진행중=In Progress / 완료=Done). 회사 자산+외부 가시성이라 정확성 핵심 → [[notion-task-status-discipline]]
 
-git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시점**이 위험.
+### ⭐ 대표님 빈피킹 2시나리오 (6/1) + 개발 전략
+- **① 정렬형**(occlusion 약함) **먼저** YOLO bbox/seg+4DoF로 E2E → **② 적재형**(occlusion 심함)은 seg+depth+grasp로 단계 확장 → [[binpicking-two-scenarios-0601]]
+- 본인 생존 전략(지시 아님): **빈피킹 = 회사 ↔ KAIST 연계 개발** (1인+화/목 부재, 두 트랙 한 작업으로) → [[feedback-binpicking-kaist-linkage]]
 
----
-
-## 📍 6/1 월 진척 ⭐⭐ Formlabs API status stale 버그 → Fix + Notion 갱신
-
-시연(15:00) 직전 발견·디버깅·fix. 5/29 JWT 회귀와 동일 패턴 (외부 API/내부 서비스 호출자 동기화).
-
-- 🐛 **증상**: ShrewdStork 본체 READY + PreForm 앱 READY인데 **우리 웹만 "FINISHED" stuck** → "프린터로 전송" 버튼 disabled
-- 🔍 **Root cause**: Formlabs Cloud API는 다음 출력 전까지 이전 `current_print_run`을 `status=FINISHED`로 유지. 별도 `ready_to_print` 필드만 READY로 갱신. PreForm은 `ready_to_print` 우선 보지만 우리는 `current_print_run.status` 우선 봐서 stuck
-- 🛠️ **Fix (5줄, commit `044ddb7` dual push)**: `web-api/app/services/formlabs_client.py` `printer_to_summary()` — `FINISHED + ready_to_print=READY` → `IDLE` 분기
-- ✅ **영향 분석 완료**:
-  - polling_service 알림 로직 무관 (raw `current_print_run.status` 보고 PRINTING→FINISHED 전환 감지, summary 변환 전 단계)
-  - frontend 안전 (`current_job_name` 표시는 `hasActiveJob` 가드)
-  - 프린터 4대 (CapableGecko / HeavenlyTuna / CorrectPelican / ShrewdStork) 모두 적용
-- ✅ **공장 PC 배포 + 검증 완료**: NSSM restart → 웹 IDLE 표시 → "프린터로 전송" 활성화 → **ShrewdStork 본체 실제 출력 동작 시작 확인** → cancel (Mixer 1.8.1 에러는 별개 hw 이슈)
-- 📋 시연 준비 + 정리 작업:
-  - 시연 시나리오: 펜던트 시뮬 ✅ + 웹에서 출력 전송 (전송까지만, 실 출력 X)
-  - 메모리 시스템 정리: 78 → 61개 (15 삭제 + 8 → 4 통합)
-  - "연구노트" → "IRIS 보고" / "Orinu Hub 보관" 워크플로우 명확화
-  - 6/5 예승님 로봇 티칭 교육 메모리 신설 (정태민 + FARIDH 대상)
-  - **Notion Robot Arm Factory 페이지 전면 갱신** (본문 § 9 신설 + Tasks DB 4건 + Issues DB 3건)
-- ⏸️ 카카오 VM + 6000 배포 (다음 안정 재택일, 외부 IP만 써서 영향 없음)
-- 상세: `memory/project_formlabs_status_stale_bug_0601.md`
-
-### 시연 결과 (15:00) — ✅ 성공 + 신규 외주 가능성
-
-- ✅ **6/1 시연 성공적으로 종료**
-- ℹ️ 외부 방문처가 3D프린터-로봇 자동화를 자체 검토 중 우리 시스템을 보러 온 것. 괜찮으면 외주 가능성 있는 흐름 (가능성 수준, **중요도 낮음·인지만**). 고객사 식별 정보 = 영업 사안, 외부 출력물 노출 금지 (상세는 메모리 only). 상세: `memory/project_samsung_outsourcing_lead_0601.md`
-
-### ⭐ 대표님 빈피킹 설계 과제 (6/1) — 두 시나리오
-
-기존 "펼쳐서 vs 쌓아서 미확정" 항목을 대표님이 구체화. 전공정에서 출력한 부품을 박스에 담을 때 두 경우를 어떻게 풀지 고민하라 지시:
-- **① 정렬형** — 어느정도 정렬돼 있고 위치만 계속 바뀜 (occlusion 약함, 자세 안정)
-- **② 무작위 적재형** — 부품들이 어지럽게 쌓임 (occlusion 심함, 임의 3D 자세)
-
-**전략 (사용자 6/1 결정)**: **정렬형 먼저** — 현 YOLO bbox/seg + 4DoF 자산으로 인식→좌표→Modbus→로봇 E2E를 먼저 닫고, **적재형은 segmentation(겹침 분리) + depth(3D 자세) + grasp 우선순위**로 단계적 확장. (정렬형 = 6~8월 + 가을 1차 / 적재형 = 가을 + KAIST seg 산출물 인수 후)
-
-**⭐ 개발 전략 (태민님 본인 생존 전략, 6/1 — 대표님 지시 아님)**: **빈피킹은 웬만하면 회사 프로젝트 ↔ KAIST 6주 프로젝트를 연계해서 개발한다.** 1인 개발 + 화/목 KAIST 부재 상황에서 두 트랙을 한 작업으로 묶는 게 지속 가능한 유일한 길 ("내가 살아남고 회사가 잘 되려면"). KAIST 산출물(다양 환경 평가셋·segmentation·SAM 자동 마스크·증강·라이브 인식 모듈)이 곧 회사 본업의 부분집합/직접 입력. 적재형 대비 seg 데이터 = KAIST seg 과제와 직결. 7/9 발표 후 회사 자산으로 이어감.
-
-- 상세: `memory/project_binpicking_two_scenarios_0601.md` + `memory/project_kaist_6week_definition_0528.md`
-
-### 한솔 머지 6차 (6/1 머지 → 6/4 배포) + 7차 (6/8) — ✅ 둘 다 공장 배포 완료
-
-- **6차** `310087d` (원본 `f7ca0ad`, "시뮬 모드 전환 시 상태 동결 fix", sequence_service 2파일 4줄) → dual push → **6/4 공장 PC 배포·검증 완료** (AnyDesk: c916fa3 FF + restart + health). 시뮬검증 = 예승님 현장 대체
-- **7차** `5288396` (원본 `283f0cb`, "시뮬 테스트 종료에 따른 로직 수정", `robot.py` 1줄: `_use_real_io`에서 `and not simul_mode` 제거 = 실 TCP I/O 활성화) → dual push → **6/8 공장 PC 배포·검증 완료** (AnyDesk: c916fa3..5288396 FF + restart + python 7개 + health). ⚠️ 프로퍼티라 restart 필수. 시뮬 CMD 검증 = 예승님 6/9 현장 대체
-- ⚠️ 예승님 커밋은 **personal/hansol-dev**에 올라옴 (origin 아님). 머지 시 personal 먼저 확인. 상세: `memory/project_hansol_merge_issues.md` 머지 6·7차
-
-### 🔐 재발 방지 룰 추가 (6/1 학습)
-
-**외부 API 응답 해석 시 단일 필드 의존 금지**:
-- Formlabs `current_print_run.status` 처럼 stale 필드 가능성 항상 의심
-- 다른 필드 (`ready_to_print` 등) 와 cross-check
-- **Reference client (PreForm 앱 등) 동작과 비교** — 우리만 다르면 의심
-
-**외부 API status 매핑 변경 시 검증 루틴**:
-- 시연 전 1대로 검증 + 4대 모니터링 화면 cross-check
-- 시뮬 CMD 1회까지 (5/29 검증 루틴과 결합)
-
-**📋 Notion DB 작성 규율 (6/1 사용자 지시, 영구 적용)**:
-- 시작일자(`date:Due date:start`) 명시 — 예정이면 채움
-- 긴급도(Priority) P0~P3 정확히
-- **진행상황(Status) 정확히**: 예정 = **To Do** / 진행중 = **In Progress** / 완료 = **Done**
-- 종료일자는 신경 X (완료되면 Done 상태로 표시)
-- Notion DB가 회사 자산 + 외부 협업 가시성 (한솔/대표님 보는 자료)이라 정확성 핵심
-- 상세: `memory/feedback_notion_task_status_discipline.md`
+### 한솔 머지 6·7차 — ✅ 공장 배포 완료
+- 6차 `310087d`(시뮬 동결 fix, 6/4) / 7차 `5288396`(robot.py 실 TCP I/O, 6/8). ⚠️ 예승님 커밋은 **personal/hansol-dev**에 올라옴 → 머지 시 personal 먼저 확인 → [[hansol-merge-issues]]
 
 ---
 
@@ -455,7 +402,7 @@ git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시�
 1. **외부 시연 일정** — ✅ **5/29 오후 통화로 6/1 (월) 15:00 그대로 확정**. (5/29 오전 한 차례 "연기, 6/2 또는 6/5" 흐름 있었으나 오후 재확정.) **시연 범위 = 펜던트 시뮬레이션 + 웹에서 출력 거는 것까지** (5/29 오후 대표님 추가 지시). **시연 본질 = 로봇 펜던트 모션 시연** (실제 출력 X, 5/28 예승님 답변 그대로).
 2. **5/28 예승님 답변으로 시나리오 정정** — 정태민 "감 안 옴" → 예승님 본인 권장 "1회로 위험" → **추가 교육 진행 결정**. **5/29 오후 예승님 공장 방문 + 펜던트 시연 전 과정 직접 설명 완료** = 추가 교육 사실상 달성. 5/29 저녁 본인 직접 리허설 진행.
 3. **한솔코에버 협업 = 유지 방향** — 5/29 흐름(오전 1시간 30분 통화 + 오후 공장 직접 방문 + JWT fix 공동 검증 + 펜던트 시연 설명)으로 협업 실질 심화. 5/29 사용자 지시: 종료 관련 표현 앞으로 항상 제외 (`memory/feedback_hansol_termination_phrase.md`). 5/28 잠정 보류 항목은 협업 유지 전제로 진행 모드.
-4. **ACE2 C-mount 렌즈 8mm + 12mm 둘 다 자체 구매** — 대표님 직접 결재. 5/8 김주엽 과장 "현장 보유" → 5/15 미수령 → 5/20 미장착 확정 → 자체 구매 결정. **렌즈 결정 측정 = 불필요 (둘 다 구매)** 하지만 본업 작동거리·KAIST 라이브 데모 일정 안전마진용으로 측정 가치 남음.
+4. **ACE2 C-mount 렌즈 8mm + 12mm 둘 다 자체 구매** — 대표님 직접 결재. 5/8 김주엽 과장 "현장 보유" → 5/15 미수령 → 5/20 미장착 확정 → 자체 구매 결정. **렌즈 결정 측정 = 불필요 (둘 다 구매)** 하지만 본업 작동거리·KAIST 라이브 데모 일정 안전마진용으로 측정 가치 남음. → ✅ **6/15 8mm(C23-0824-5M)+12mm(C23-1224-5M) 둘 다 입고 완료**. 설명서 스펙·렌즈 선택 분석(8mm 유력)·KAIST 검증=ACE2 결정 → `memory/project_ace2_camera.md` § 6/15
 
 ### 5/28 잠정 보류 항목 → 5/29 진행 모드 전환 (협업 유지 전제)
 
@@ -527,6 +474,12 @@ git pull 자체는 안전. **NSSM restart 시점 + 운영 모드 첫 진입 시�
 - **✅ 6/10 5단계 밤샘 배치 완주·검증 = 완벽 성공**: **dataset_v1 2000/2000장**(6/9 12:32~6/10 01:40 ≈13h CPU), **빈 장면 0건**(6/9 디버깅 3개 fix 전수 통과 입증), 에러 0건, visible 평균 8.12개(2~14)=occlusion 다양성, 용량 872MB. hdf5 키=colors/depth(m)/instance·category seg/pose JSON → **Blaze=depth/ACE2=seg + YOLO 라벨 + 6DoF pose GT 코드 자동생성**. 4패널 PNG 육안 검증 통과(품질 우수, 빈 벽 단색만 미세점). **미팅(6/19) 시연용 2000장 PNG 추출**(`preview_all/`). KAIST repo 커밋 `2500bbe`(⚠️6/9 PoC 코드가 세션 끊김으로 미커밋이던 것 확보) → `memory/project_digital_twin_synth_data_research_0609.md` § 6/10
 - **✅ 6/10 오후 = 도메인 랜덤화(v2) + Depth 전략 결정** (커밋 `b9dc666`): ⚠️**학습은 6/19 미팅 전까지 보류=데이터 품질 우선**(사용자 지시). 일정정정=6/11 정규수업+6/19 팀미팅 둘 다. (1) **도메인 랜덤화**: 실제 빈 배경 미확정(대표님 확인 필요)→"모르는 배경 논의 무의미"→배경 수백종 랜덤화로 형상 학습. `gen_one_v2.py`(CC0 텍스처 370+종·재질·다광원), v2 300장 가동. (2) **Depth Map 심층**: z=depth=한솔 6요소 필수(없으면 빈피킹 불성립). 합성 depth=완벽매끈=비현실→`depth_noise.py`로 Blaze ToF 노이즈 주입(numpy만). (3) ⭐**활용 전략=depth-only 1차→RGB 라벨 합류(④) 최종**: 배경 모름→depth가 색·배경 무관·형상만=갭 최소 + Blaze 1대 완결 + 교수님 "depth-only 나을수도" 추천. (4) **v2 300장 완주**(빈장면0·visible 7.77·28부품 균형1.5배) + dataset_v2_noisy 후처리 + **미팅 발표자료 4폴더**(`meeting_0611/`: 단색/랜덤화/비교/depth) 커밋 `211ad53`. ⭐**조교 평가기준=데이터셋 품질** → "좋은 데이터셋" 정의 미팅서 직접 확인이 다음 핵심. **학습은 미팅 후**
 - **✅ 6/11(목) 15:30 KAIST 미팅 완료 = 목표 재정의 + 방향 지시** ⭐⭐ — 합성데이터 v1/v2/noisy + `meeting_0611/` 4폴더 발표. **목표 재정의("데이터셋 다 만들고 고민")**: ① 모델 = 기성 YOLO(쉬움) or **2D→3D 복원 직접 개발**(도전, 3D 좌표 해석) ② ⭐⭐ **부품 = 회색 단색**(알록달록→색으로 판별 위험 / ⚠️6/10 부품색 랜덤화와 상충 → 배경만 랜덤·부품은 회색 고정) ③ ⭐ **28부품 3D 좌표값 추출 가능 확인**(실루엣X, CAD raw 코드로 될 듯, 안되면 조교 헬프·시작 전 말씀) ④ **GitHub 리포 조교 공유** ⑤ **실물 빈피킹 데이터셋 촬영**(없는 부품 출력 + 10~15개 무작위 + **100장**, **조명 중요**) ⑥ v2 더 사실적으로 + 학습 전략. **샘플 나오는 대로 조교 공유**. **학습 보류 유지**("데이터 다 만들고 고민") → `memory/project_digital_twin_synth_data_research_0609.md` § 6/11 미팅. 다음 미팅 일정 미정
+- **✅ 6/12(금, 민방위 휴무) = v3 합성데이터 신설(회색+배경확정) + 기존 3셋 PNG 추출** ⭐ — 6/11 미팅 ①(부품 회색 단색) 반영. `gen_one_v3.py`/`run_batch_v3.sh` 신설(v2 보존): **부품 회색 단색 고정**(색 판별 방지, v2 색 랜덤화 폐기) + **배경 2종 scene랜덤**(사용자 결정 "박스=투명벽/책상=벽제거", 실제 빈피킹 2시나리오 정합) = **투명 플라스틱 박스=적재형**(얇은 투명벽, 부품 8~15개 촘촘 쌓임) / **흰색 책상=정렬형**(벽제거+큰 흰평면 0.75m, 부품 4~8개 드문드문). ⭐**1차 검증 후 Claude 냉정 피드백→시나리오 분리 보강**(1차는 두 배경 적재패턴 동일→무의미, 부품수/낙하범위/높이 배경별 분기로 적재형↔정렬형 구분). **v3 2000장 배치 setsid 가동**(`dataset_v3`, ~6~7h). 기존 v1/v2/v2_noisy 4패널 PNG 6000장 추출(`png_export/`, 사용자 맥북 바탕화면 다운→Drive). 디버깅 5건(Blender4.2 `Transmission`→`Transmission Weight` / 흰책상 depth 45%inf=평면<화각→평면확대 / 투명박스 벽30mm→6mm / seg벽색칠=instance정상·category=0정확 / 정렬형 흩뿌림 과다 visible↓). **v3 2000장 완주**(빈장면 3건/2000) + 4셋 PNG 8000장 추출 + 샘플 160장 → **GitHub 푸시 2건**(`9ccb977` v3코드 + `efe48de` README 합성데이터 섹션·synth/ 안내, 조교 코드리뷰용) + Drive/단톡 공유 + **회사 주간보고서 작성**(Notion, 한 주 성과 묶음). 오늘 할 일 5개 중 4개 완료(IRIS만 남음) → `memory/project_digital_twin_synth_data_research_0609.md` § 6/12
+- **✅ 6/15(월) = 조교 피드백 3건 처리 + 현장 촬영 착수** ⭐ — (1) **GitHub 404 → KAIST repo PUBLIC 전환**: 조교 접근 불가(Private+collaborator 본인만). 전수 보안 점검(추적파일27+커밋10+README+PPT context=회사정보/credentials/IP/실명 0건) 후 `gh repo edit --visibility public`. 교육 기간 Public OK(사용자 결정). STL은 .gitignore 제외 유지. (2) **raw CAD = 원본 STL 28개 확정·Drive 공유**(STEP 원본 시스템에 없음=6/4 변환 후 미보관). (3) **팀원 contour 시도 폐기 방향**: 조교 "contour는 겹친 물체 전부 하나로 봄→구분 불가, 다른 방식"(Recall 0.41). 우리 합성데이터 GT(instance seg+pose) 있으니 검출 불필요=YOLO-seg 학습이 정답(6/11 ①과 일치). (4) 🏭 **실물 빈피킹 촬영 착수**(6/11 ⑤): 출력 먼저 걸고→있는 부품 촬영(빈 10~15개 적재+조명 다양화+핸드폰, 100장 분산), 15:00 교육 때 작동거리(TCP↔빈) 측정 동반. ⏭️ **다음 = 27부품 3D 좌표 추출 가능성**(수 6/17 재택, 시작 전 조교 보고) → `memory/project_digital_twin_synth_data_research_0609.md` § 6/15
+- **⭐⭐ 대표님 6/15: 빈피킹 배경 = 단색** ("뭐가 됐건 단색", 색 미정) — 🔥 6/10 도메인 랜덤화 대전제("배경 모름→랜덤화") 뒤집힘. 운영 배경을 단색으로 통제→배경 랜덤화 불필요, 실제와 같은 단색 학습=도메인 갭 최소(좋은 소식·단순화). v1(단색)이 실제에 근접. **색 미정→배경색 파라미터화**(하드코딩 금지), 회색 부품 대비색(흰/파랑) 권고. v3 배경 2종도 단색 기조로 재정렬 필요 → `memory/project_digital_twin_synth_data_research_0609.md` § 6/15
+- **⭐⭐⭐ 6/16(화) KAIST 미팅 = 조교 모델 아키텍처 확정 + 최우선 과제 = 2D 인코더 학습용 numpy 데이터셋** (최신 기준) — 조교님이 **3D 인코더(CAD→pointcloud, 부품을 패치로 나눠 표면 관계성 학습; 입력=우리 STL 28개) + 2D 인코더(DepthMap+label+기울기 메타)를 latent space에서 복원**하는 모델을 **직접 개발**. 우리 역할 = 2D 인코더 학습용 raw 데이터 준비(드리면 조교가 모델 제작). **내 최우선(1순위) = 2D 인코더 numpy 1000장**: 이미지 뽑기 전 raw numpy / label별 마스크 따로 / 한 장 = 마스크+메타(CAD 도면상 기울기)+label / **배경 없애고 depth map**. 신규 생성기 `~/kaist_project/synth/gen_one_2denc.py`(v3 기반 + per-instance 자세 추출 + 배경 NaN 마스킹 + numpy 저장). 저장스펙(사용자 확정)=scene 전체 npz + 부품별 crop npz **둘 다** / 기울기 = quat(wxyz)+euler(ZYX deg) **둘 다**(STL canonical→물리 후 현재자세) / 배경 = 부품픽셀만 남기고 전부 NaN(물리적재는 유지). ✅5장 검증 통과(왕복오차0·배경NaN93%·17/28클래스) → 5장샘플 Drive 업로드+조교 카톡 컨펌요청(회전컨벤션·저장단위·해상도512·NaN) → 🔄1000장 배치 가동(장당 ≈12.3s, 전체 ≈3.5h). **2순위=Depth 카메라 실촬영 10장 / 3순위=Detection 방식 고민(컨베이어 탐지?). 다음 미팅=금 6/19(추정), 데이터셋 최대한 빨리** → `memory/project_digital_twin_synth_data_research_0609.md` § 6/16
+- **⭐⭐⭐ 6/19+6/23 = 조교 모델 명문화 → 코드 수신·통합·리뷰·A100 구동** (최신 기준) — **6/19 미팅**: 모델 명문화(3D=**PointNet++** arXiv1706.02413 / 2D=VQ-VAE의 VQ, DepthMap만·RGB X·Point뿌리기), 조교 1차학습 완료, 내 ToDo=실증 100장+OpenDataset 3종+Baseline 비교, ⭐논문(TripleAI 다음달말 조교+교수+나+대표 공저)+특허→대표님 보고, 보고서 도구분담(KAIST=웹Claude). **6/23**: ⭐조교 코드 수신=`github.com/LimHaksoo/Mentoring`(=**CADENCE 파이프라인**, 6/19 "VQ만"보다 정교=**DETR/Mask2Former계열 depth-only detector + CAD VQ head**, 검출 통합) → `~/kaist_project/model/` 통합(`INTEGRATION.md`) + 리뷰(`docs/조교_코드리뷰_0623.md`) + **A100서 직접 구동**(3D encoder 식별 1.00 + codebook 완료). **detector 학습 느림 = 조교 `dataset.py` `_boxes_from_mask`의 `torch.where` 박스추출(scene당 5.8초)** 병목 → **numpy 투영으로 최적화(400배, 결과 동일, 모델 불변)**. A100 특화 아님=코드 비효율 → 조교 부드럽게 고지. 정식 학습 nohup 독립실행(PPID=1, 세션 끊겨도 완주, ETA ~6-7h). 근형님 GPU 정리 완료. + **OpenDataset=BOP ITODD+IC-BIN 다운완료** + 🥇**Blaze 실물촬영 착수**(GigE TL+IP직접 연결, Intensity off, 시험촬영→조교 피드백요청) + 2차 PPT/발표스크립트/그림2종(detector "학습 진행중" 표기, 6/24 Zoom 전 조교 공유) → `memory/project_digital_twin_synth_data_research_0609.md` § 6/23, `project_basler_setup_history.md` 재연결노하우
+- **⭐ 6/17(수, 재택) = 부품 최종 27종 확정 + 2D 인코더 1000장 27종 재생성 + 3D 좌표 추출 probe** — (세션 중단 후 복구 점검: 27종 수정·재생성 지시가 어디까지 됐는지 실파일 점검 = 둘 다 완료). **① 부품 최종 = 27종 확정**: 원본 STL 28종 − `10_guide_paper_roll_l`(bbox 236mm, Form4 빌드볼륨 초과 → 실물 출력 영구불가) = 27종. STL 폴더 `~/kaist_render/stl/`=27개(제외분 `stl_excluded_10/` 보존), 생성기 전부 `glob("*.stl")`이라 폴더 정리만으로 자동 반영. README·메모리 전부 27 정정. **② 2D 인코더 1000장 = 27종 재생성 완료**(6/17 08:47): `/data/jtm/synth_out/dataset_2denc/`(npz 1000+crops 8181, 129M, label 1..27). 패키지 `/tmp/2denc_dataset_1000scenes_27parts.tar.gz`(98M). 5장샘플 포맷 **컨펌 미수신** → 학습 착수 가능하도록 우선 1000장 맥북 Desktop scp→Drive 업로드(컨펌 오면 동일포맷 재추출 ≈3.5h). **③ 3D 좌표 추출 probe + 조교 사전보고 준비 완료**(6/11 ②): `synth/probe_3d_coords.py` → 27/27 watertight(COM·주축·안정자세 추출 OK). 정규화 산출 `coords_27parts.json`(27개: COM world mm + 주축 quat wxyz + canonical bbox + 키포인트 14개 + grasp 폭). **수치 전수 검증 = 초안 일치**: 키포인트 14개(전부) / grasp 최소폭<40mm 25/27 / COM offset>50mm 22/27(max 1009mm). 사전보고 초안 `docs/조교_3D좌표_사전보고_0617.md`(보안 OK). **조교 확인 2개**: ① "3D좌표"=키포인트/6DoF pose/grasp 6요소 중 무엇 ② COM 원점 정규화가 3D인코더 pointcloud와 정합되는지. JSON 공유는 답변 후. → ⏳ 멘트 발송 후 답변 대기 → `memory/project_digital_twin_synth_data_research_0609.md` § 6/17
 - **(역사) 6/9 발표 전 방향 = 2D/3D embedding latent alignment**: 조교 제시 = 2D·3D embedder 공유 latent space contrastive align(ULIP/CLIP2Point) → 28 CAD 임베딩 nearest-neighbor retrieval. eye-in-hand 1뷰 + 도메인 갭 흡수. 교수님 Q&A = CAD GT depth map 활용(Blaze ToF 동일 modality). → 6/9 피드백으로 supervised+합성 뒤(5순위)로 재배치 → `memory/project_kaist_meeting_0605.md`
 - **⚠️ Push 분리 규칙 (6/8 재강조)**: 회사=dual push / KAIST(`~/kaist_project`)=KAIST repo 단일에만, 회사 내용 절대 금지 → `memory/feedback_push_target_separation.md`
 
@@ -900,7 +853,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ---
 
-## Phase 3: HCR 로봇 연동 ✅ 머지 5차 완료, 다음주 E2E 테스트 예정
+## Phase 3: HCR 로봇 연동 ✅ 한솔 머지 7차까지 공장 PC 배포·검증 완료
 
 - **프로토콜**: Modbus TCP (포트 502), pymodbus 3.x
 - **로봇**:
@@ -944,7 +897,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ---
 
-## Phase 5: 3D 빈피킹 비전 시스템 🔄 인프라 완성 → 5/15 본 캡처 진입
+## Phase 5: 3D 빈피킹 비전 시스템 🔄 합성데이터(디지털 트윈) v1~v3 8000장 구축 (6/12)
 
 > **문서**: ORINU-DEV-2026-002 (구본경 대표, 2026-03-18)
 > **개발 환경**: Mac (Intel) + venv binpick (Python 3.12 + Open3D 0.19.0). 6000 서버는 Open3D 불가 (AVX2 미지원)
@@ -1211,7 +1164,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-05-20 (사무실 — ACE2 셋업 진단 + 한솔 좌표 명세 답변 수신 + v2 YOLOv11 결정)
+### 마지막 업데이트 일자: 2026-06-12 (민방위 휴무 — 합성데이터 v3 신설(회색+배경2종) + 8000장 PNG + GitHub/Drive 공유 + 회사 주간보고)
 
 ### 마일스톤 (시간 순)
 
