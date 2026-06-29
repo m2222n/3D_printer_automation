@@ -1,0 +1,509 @@
+<title>3D 프린팅 SaaS 플랫폼 — 기획 초안</title>
+<meta name="description" content="현 시스템을 앞·뒤로 확장해 타 기업에 판매 가능한 제품으로 — 3축 기획 1차 초안 (대표님 검토용)">
+
+<style>
+  :root {
+    --paper: #FAFAF8;
+    --ink: #1A1D21;
+    --muted: #6B7178;
+    --line: #E3E5E2;
+    --line-strong: #CDD1CD;
+    --blue: #1F5C8B;
+    --blue-tint: #ECF2F7;
+    --green: #0E7C5A;
+    --green-tint: #E9F3EF;
+    --amber: #B5701A;
+    --amber-tint: #F7EFE2;
+    --card: #FFFFFF;
+    --maxw: 58rem;
+    --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+            "Pretendard", "Malgun Gothic", "Noto Sans KR", "Nanum Gothic", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15.5px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 4rem 2rem 5rem;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--blue);
+    font-weight: 700;
+    margin: 0 0 0.6rem;
+  }
+  h1 {
+    font-size: 2.1rem;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.7rem;
+    text-wrap: balance;
+  }
+  .lede {
+    font-size: 1.02rem;
+    color: #3A3F45;
+    margin: 0;
+    max-width: 46rem;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.4rem;
+    margin-top: 1.3rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .meta-row span strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Section ---------- */
+  section { margin-top: 3rem; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.55rem;
+    margin-bottom: 1.3rem;
+  }
+  .sec-num {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--blue);
+    font-variant-numeric: tabular-nums;
+    min-width: 1.4rem;
+  }
+  h2 {
+    font-size: 1.32rem;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 700;
+    margin: 1.6rem 0 0.6rem;
+    color: #2A2E33;
+  }
+  p { margin: 0.7rem 0; }
+  strong { font-weight: 700; }
+  a { color: var(--blue); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+
+  ul { margin: 0.7rem 0; padding-left: 1.2rem; }
+  li { margin: 0.35rem 0; }
+
+  .accent { color: var(--blue); font-weight: 700; }
+  .star { color: var(--amber); }
+
+  /* ---------- One-page summary diagram ---------- */
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.6rem;
+    margin: 1.4rem 0;
+  }
+  .pipeline {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .stage {
+    border-radius: 8px;
+    padding: 0.85rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border: 1px solid var(--line);
+    background: #FCFCFB;
+  }
+  .stage.now { background: var(--blue-tint); border-color: #C5D8E6; }
+  .stage.new { background: #FFFFFF; }
+  .stage-tag {
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .stage.now .stage-tag { color: var(--blue); }
+  .stage-title { font-weight: 700; font-size: 0.92rem; line-height: 1.3; }
+  .stage-sub { font-size: 0.76rem; color: var(--muted); line-height: 1.4; }
+  .arrow {
+    align-self: center;
+    color: var(--line-strong);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .product-bar {
+    margin-top: 0.9rem;
+    background: var(--green-tint);
+    border: 1px dashed #9FCBB8;
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.88rem;
+    color: #0B5A41;
+    text-align: center;
+    font-weight: 600;
+  }
+  @media (max-width: 720px) {
+    .pipeline { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); justify-self: center; }
+  }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    border-left: 3px solid var(--blue);
+    background: var(--blue-tint);
+    padding: 0.9rem 1.1rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1.2rem 0;
+    font-size: 0.95rem;
+  }
+  .callout.warn { border-left-color: var(--amber); background: var(--amber-tint); }
+  .callout.warn strong { color: var(--amber); }
+  .callout .ct-label {
+    font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+    font-weight: 700; color: var(--blue); display: block; margin-bottom: 0.25rem;
+  }
+  .callout.warn .ct-label { color: var(--amber); }
+
+  /* ---------- Tables ---------- */
+  .table-scroll { overflow-x: auto; margin: 1.1rem 0; border-radius: 8px; border: 1px solid var(--line); }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.88rem;
+    background: var(--card);
+  }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th {
+    background: #F2F3F1;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    color: #34383D;
+    border-bottom: 1.5px solid var(--line-strong);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) td { background: #FBFBFA; }
+  td .yes { color: var(--green); font-weight: 700; }
+  td .no { color: #B23A3A; font-weight: 700; }
+  .rank { color: var(--amber); font-weight: 700; }
+
+  /* ---------- Asset reuse / decision lists ---------- */
+  .decisions { counter-reset: dec; list-style: none; padding: 0; margin: 1rem 0; }
+  .decisions li {
+    counter-increment: dec;
+    position: relative;
+    padding: 0.7rem 0.9rem 0.7rem 2.6rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 0.55rem;
+    background: var(--card);
+    font-size: 0.93rem;
+  }
+  .decisions li::before {
+    content: counter(dec);
+    position: absolute;
+    left: 0.8rem; top: 0.72rem;
+    width: 1.4rem; height: 1.4rem;
+    background: var(--blue); color: #fff;
+    border-radius: 50%;
+    font-size: 0.78rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pillrow { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0; }
+  .pill {
+    font-size: 0.74rem; font-weight: 600;
+    padding: 0.12rem 0.55rem; border-radius: 999px;
+    background: #EEF0ED; color: #4A4F54;
+  }
+  .pill.mvp { background: var(--green-tint); color: var(--green); }
+
+  /* ---------- Footer ---------- */
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  footer a { color: var(--muted); }
+
+  @media print {
+    @page { size: A4; margin: 14mm 12mm; }
+    html, body { background: #fff; }
+    body { font-size: 10.2pt; line-height: 1.55; }
+    .wrap { padding: 0; max-width: 100%; margin: 0; }
+
+    /* 가로 넘침 방지: 인쇄 시 모든 컨테이너를 페이지 폭 안에 가둠 */
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .table-scroll { overflow: visible; }
+    table { font-size: 8.6pt; width: 100%; table-layout: fixed; }
+    th, td { padding: 0.34rem 0.45rem; word-break: keep-all; overflow-wrap: anywhere; }
+    thead th { white-space: normal; }
+
+    /* 파이프라인 7열 → 인쇄에선 4열 카드만 가로로(화살표 숨김) */
+    .pipeline { grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+    .arrow { display: none; }
+    .stage { padding: 0.5rem 0.5rem; }
+    .stage-title { font-size: 0.82rem; }
+    .stage-sub { font-size: 0.68rem; }
+
+    h1 { font-size: 1.7rem; }
+    h2 { font-size: 1.12rem; break-after: avoid; }
+    section { margin-top: 1.6rem; }
+
+    /* 페이지 나눔 제어 */
+    section, .summary-card, .decisions li, .callout { break-inside: avoid; }
+    .table-scroll { break-inside: auto; }
+    tr { break-inside: avoid; }
+    thead { display: table-header-group; }
+    a { border-bottom: none; color: var(--ink); }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">대표님 검토용 · 기획 1차 초안</p>
+    <h1>3D 프린팅 SaaS 플랫폼 기획</h1>
+    <p class="lede">현 시스템(프린터 모니터링 + 로봇 작업지시)의 <strong>앞단과 뒷단을 붙여</strong>,
+      타 기업에 판매 가능한 완결된 제품으로 확장한다. — 3축 기획.</p>
+    <div class="meta-row">
+      <span><strong>작성</strong> 2026-06-29 (월) · 정태민</span>
+      <span><strong>성격</strong> 비전 + 로드맵 (코드 착수 전 방향 합의용)</span>
+      <span><strong>개발 방식</strong> 바이브 코딩 (명세 먼저 → align → 개발)</span>
+    </div>
+  </header>
+
+  <!-- 0. 한 장 요약 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">0</span><h2>한 장 요약</h2></div>
+    <p>우리가 이미 가진 것 = 프린터 실시간 모니터링 + 로봇 작업지시 (<strong>작은 MES</strong>).
+       이 "공정 실행 엔진"의 앞단과 뒷단을 붙여 완결된 제품으로 만든다.</p>
+
+    <div class="summary-card">
+      <div class="pipeline">
+        <div class="stage new">
+          <span class="stage-tag">① 앞단 · 신규</span>
+          <span class="stage-title">고객 셀프주문</span>
+          <span class="stage-sub">파일 → 견적 → 결제 → 큐 자동투입</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage now">
+          <span class="stage-tag">현재 · 보유</span>
+          <span class="stage-title">공정 실행 (MES)</span>
+          <span class="stage-sub">프린터 제어 + 로봇</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage new">
+          <span class="stage-tag">② 뒷단 · 신규</span>
+          <span class="stage-title">후공정 카운팅</span>
+          <span class="stage-sub">"몇 개 중 몇 개째" + 로봇 통신</span>
+        </div>
+        <div class="arrow">＋</div>
+        <div class="stage new">
+          <span class="stage-tag">③ 경영 · 신규</span>
+          <span class="stage-title">ERP 자재</span>
+          <span class="stage-sub">레진·필라멘트 입출고·발주</span>
+        </div>
+      </div>
+      <div class="product-bar">⭐ 이 전체를 멀티테넌트로 = 타 기업에 판매하는 제품</div>
+    </div>
+
+    <div class="callout">
+      <span class="ct-label">왜 우리가 유리한가</span>
+      경쟁사(온라인 출력 대행)는 주문 사이트만 있고 <strong>현장 자동화가 없다.</strong>
+      우리는 프린터 제어·로봇을 이미 보유 → "주문이 들어오면 사람 손 거의 없이 출력 큐에 자동 투입되고
+      후공정까지 카운팅되는" 시스템은 <strong>우리만의 차별점.</strong>
+    </div>
+
+    <p><strong>1순위 제안:</strong> <span class="accent">① 고객 셀프주문 홈페이지</span>부터.
+       (매출 직결 + 제품화 시장성 명확 + 견적·알림 자산을 일부 보유해 가장 빠르게 데모 가능)</p>
+
+    <div class="callout warn">
+      <span class="ct-label">핵심 일정 통찰</span>
+      코딩보다 <strong>행정 심사(PG 가맹, 카카오 알림톡 채널·템플릿 심사)가 더 오래 걸린다</strong> (각 1~2주).
+      → 방향 확정 즉시 <strong>심사 신청부터</strong> 걸고, 그 사이 개발.
+    </div>
+  </section>
+
+  <!-- 1. 배경 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">1</span><h2>배경 — 현재 시스템과 표준 용어</h2></div>
+    <p>세 축 모두 "남의 개념을 새로 배우는 것"이 아니라, <strong>우리가 이미 하는 일의 앞뒤를 표준 계층으로 채우는 것.</strong></p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>우리가 하는 일</th><th>표준 제조 용어</th><th>이번 확장에서의 위치</th></tr></thead>
+        <tbody>
+          <tr><td>출력→세척→경화 (전공정) + 로봇 이송 (후공정)</td><td>제조 공정 (SLA 적층)</td><td>그대로</td></tr>
+          <tr><td>웹 플랫폼이 실시간 모니터링·작업지시·로봇 제어</td><td><strong>MES</strong> (현장 실행)</td><td><span class="accent">이미 보유</span> = 확장의 중심 엔진</td></tr>
+          <tr><td>고객 주문 받는 사이트</td><td>상거래(주문) 계층</td><td>① 신규</td></tr>
+          <tr><td>후공정 작업 카운팅 + 로봇 통신</td><td>MES 확장</td><td>② 신규</td></tr>
+          <tr><td>레진/필라멘트 자재 재고·발주</td><td><strong>ERP</strong> (경영/자재)</td><td>③ 신규</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 2. 앞단 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">2</span><h2>① 앞단 — 고객 셀프주문 홈페이지 <span class="star">⭐ 1순위</span></h2></div>
+
+    <h3>고객 경험 흐름 (6단계)</h3>
+    <ol>
+      <li>파일 업로드 (STL/3MF) + 옵션 선택 (재료·수량)</li>
+      <li><strong>자동 견적</strong> 산출 (모델 분석 → 가격 즉시 표시)</li>
+      <li>PG 결제</li>
+      <li>결제 완료 → 모델 파일이 <strong>바로 작업 큐로 자동 투입</strong> (우리가 "출력 시작" 누르던 것까지 자동)</li>
+      <li>공정 완료 시 고객 알림 (카카오 알림톡 / SMS / 이메일)</li>
+      <li>고객 픽업 (향후 배송)</li>
+    </ol>
+
+    <h3>자동 견적 — 어떻게 가격을 매기나</h3>
+    <p>업로드된 파일에서 <strong>부피·치수</strong>를 서버에서 추출(<code>trimesh</code>) → 부피 기반 견적.
+       SLA(레진)는 FDM과 달리 재료가 부피에 거의 비례해 간이 견적의 정확도가 실무상 충분.</p>
+    <div class="callout">
+      <span class="ct-label">견적 공식 초안</span>
+      견적 = max(최소주문금액, 부피 × 레진단가 × 서포트계수(1.1~1.3) + 후처리·세척 고정비) × (1 + 실패율 마진)
+      <br><span style="color:var(--muted); font-size:0.85rem;">※ 단가·계수는 대표님과 실제 원가 기준으로 확정 필요 — 이 문서에선 구조만 제안.</span>
+    </div>
+
+    <h3>외부 연동 (조사 결과)</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>영역</th><th>1순위 추천</th><th>이유</th><th>행정 리드타임</th></tr></thead>
+        <tbody>
+          <tr><td>결제 (PG)</td><td><span class="rank">포트원</span> (아임포트)</td><td>단일 SDK로 카드·간편결제 일괄, PG 갈아타기 자유</td><td>사업자+통신판매업 신고+카드사 심사 (수일~2주)</td></tr>
+          <tr><td>알림</td><td><span class="rank">솔라피</span> (Solapi)</td><td>알림톡·SMS·이메일 단일 API + 알림톡 실패 시 SMS 자동 폴백</td><td>채널 심사 3~7일 + 템플릿 심사 2~3일</td></tr>
+          <tr><td>견적</td><td><span class="rank">trimesh</span></td><td>pip 한 줄, 백엔드 직접 임포트, SLA 부피모델 적합</td><td>없음 (즉시)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>⭐ 멀티테넌트 (타 기업 판매) — 제품화 관점</h3>
+    <ul>
+      <li>대표님 핵심 = "이 시스템 자체를 다른 기업에도 판매".</li>
+      <li>설계 원칙: 처음부터 <strong>업체(테넌트) 단위 데이터 분리</strong> + 단가표·브랜딩·프린터 구성을 업체별 설정값으로.</li>
+      <li>MVP는 <strong>우리 공장(1테넌트)으로 먼저 완성</strong>해 검증 → 구조만 멀티테넌트 대비.</li>
+      <li>판매 형태 후보: 월 구독(SaaS) / 설치형 / 거래 수수료 — 사업모델은 대표님 결정 영역.</li>
+    </ul>
+  </section>
+
+  <!-- 3. 뒷단 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">3</span><h2>② 뒷단 — 후공정 작업 카운팅 모니터링</h2></div>
+    <ul>
+      <li><strong>현재:</strong> 후공정 모니터링 전무.</li>
+      <li><strong>목표 화면:</strong> 공장 모니터에 "어떤 파츠 / 어떤 가공 / 총 N개 중 M개째" 실시간 표시.</li>
+      <li><strong>로봇 연계:</strong> 우리는 이미 <span class="accent">HCR 로봇 ↔ Modbus 통신 자산</span> 보유 → 동일 작업 몇 번째인지 카운트. 빈피킹/이송 로봇 진척과 직결.</li>
+      <li><strong>MVP:</strong> 주문(①)의 "총 수량" + 공정에서 올라오는 "완료 수량" 매칭 → 진행률 대시보드.</li>
+      <li>로봇 통신 규격이 이미 정의돼 있어 카운팅 UI + 집계 로직 위주. (①보다 의존성 적으나 매출 직결성은 낮음)</li>
+    </ul>
+  </section>
+
+  <!-- 4. ERP -->
+  <section>
+    <div class="sec-head"><span class="sec-num">4</span><h2>③ ERP — 자재 재고관리 (레진/필라멘트)</h2></div>
+    <p><strong>참고 영상 핵심</strong>(대표님 제공): "작은 단위로 세분화, 핵심 기능부터, 사람은 승인만 하는 자동화, 실시간 의사결정 데이터".</p>
+    <ul>
+      <li><strong>범위(작게 시작):</strong> 자재 마스터(레진/필라멘트) · 입고 · 사용량(출력 시 차감) · 잔여량 · 임계 도달 시 <strong>발주 알림</strong>.</li>
+      <li><strong>자산 재사용:</strong> 우리 시스템은 이미 Formlabs API로 <span class="accent">카트리지·탱크 레진 사용량·잔량</span>을 읽고 있음 → 사용량 자동 차감의 원천 데이터를 이미 보유. "사람은 승인만" 자동화에 직결.</li>
+      <li><strong>MVP:</strong> 자재 목록 + 입출고 기록 + 잔량 + 임계 알림. 회계/구매 전체 확장은 차후.</li>
+      <li>범위가 가장 작고 내부용이라 리스크 낮음. 단 매출 직결성은 가장 낮음.</li>
+    </ul>
+  </section>
+
+  <!-- 5. 자산 재사용 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">5</span><h2>기존 자산 재사용 — 신규 개발량 최소화</h2></div>
+    <p>3축 모두 "0에서 시작"이 아니라 보유 자산 위에 올린다. 특히 알림·견적·자재는 핵심 부품을 이미 갖고 있음.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>필요 기능</th><th>기존 자산</th><th>신규 개발</th></tr></thead>
+        <tbody>
+          <tr><td>사용자 인증</td><td><span class="yes">✓</span> JWT 인증 보유</td><td>고객용 회원/권한 분리, 멀티테넌트</td></tr>
+          <tr><td>완료 알림</td><td><span class="yes">✓</span> 알림 서비스 (이메일/푸시 추상화 구조)</td><td>카카오 알림톡 / SMS 추가</td></tr>
+          <tr><td>견적 원천 데이터</td><td><span class="yes">✓</span> Formlabs API (부피·재료·시간)</td><td>업로드 파일 사전 견적 (trimesh)</td></tr>
+          <tr><td>자재 잔량 데이터</td><td><span class="yes">✓</span> Formlabs 카트리지·탱크 잔량</td><td>ERP 입출고·임계 로직</td></tr>
+          <tr><td>공정 실행 / 작업 큐</td><td><span class="yes">✓</span> 현 웹 플랫폼(MES) + 작업지시</td><td>결제 → 큐 자동 투입 연결</td></tr>
+          <tr><td>로봇 통신</td><td><span class="yes">✓</span> HCR Modbus</td><td>후공정 카운팅 집계</td></tr>
+          <tr><td>배포 인프라</td><td><span class="yes">✓</span> 서버 운영 중</td><td>고객용 도메인/보안 분리</td></tr>
+          <tr><td>결제</td><td><span class="no">✗</span> 없음</td><td>PG (포트원) 신규</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 6. 로드맵 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">6</span><h2>단계별 로드맵 (제안)</h2></div>
+    <p style="color:var(--muted); font-size:0.9rem;">본업(빈피킹+KAIST)이 ~7/9까지이므로 본격 착수 시점은 대표님과 협의. 아래는 착수했을 때의 순서.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>단계</th><th>내용</th><th>산출물</th></tr></thead>
+        <tbody>
+          <tr><td><strong>0. 기획 확정</strong> (지금)</td><td>본 문서 검토 → 3축 우선순위·범위·사업모델 합의</td><td>확정 기획</td></tr>
+          <tr><td><strong>0.5 행정 선신청</strong></td><td>PG 가맹 + 알림톡 채널·템플릿 신청 (심사 동시 진행)</td><td>심사 접수</td></tr>
+          <tr><td><strong>1. ① 주문~견적</strong></td><td>파일 업로드 + trimesh 자동 견적 + 주문 내역</td><td>데모 가능한 주문 사이트</td></tr>
+          <tr><td><strong>2. ① 결제~큐 투입</strong></td><td>PG 실결제 + 결제 완료 → 큐 자동 등록 + SMS/이메일 알림</td><td>E2E 주문 1건 자동 처리</td></tr>
+          <tr><td><strong>3. ① 알림톡 + 다듬기</strong></td><td>알림톡 스위치 온, 견적 단가 튜닝, 고객 UX</td><td>운영 가능 수준</td></tr>
+          <tr><td><strong>4. ② 후공정 카운팅</strong></td><td>로봇/공정 완료 수량 집계 대시보드</td><td>공장 모니터 화면</td></tr>
+          <tr><td><strong>5. ③ ERP 자재</strong></td><td>레진/필라멘트 입출고·잔량·발주 알림 (Formlabs 잔량 자동 연계)</td><td>자재 관리 화면</td></tr>
+          <tr><td><strong>6. 멀티테넌트 제품화</strong></td><td>업체별 데이터 분리·설정·브랜딩 → 판매형</td><td>타 기업 판매 버전</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7. 결정사항 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">7</span><h2>대표님께 여쭐 결정사항 (6/29 논의용)</h2></div>
+    <ol class="decisions">
+      <li><strong>3축 우선순위 확정</strong> — 초안 제안은 ① → ② → ③. 동의하시는지?</li>
+      <li><strong>견적 단가 정책</strong> — 레진 단가·서포트계수·최소주문금액·실패율 마진 = 실제 원가 기준 수치 필요.</li>
+      <li><strong>사업모델</strong> — 멀티테넌트 판매 형태 (월 구독 / 설치형 / 수수료)?</li>
+      <li><strong>착수 시점</strong> — 본업(~7/9) 대비 SaaS 본격 개발 시작 시점.</li>
+      <li><strong>행정 선신청 승인</strong> — PG 가맹·알림톡 채널 신청을 지금 걸어둘지 (사업자/통신판매업 신고 상태 확인 필요).</li>
+      <li><strong>결제 첫 대상</strong> — 우리 공장 자체 주문(내부 검증)부터인지, 처음부터 외부 고객인지.</li>
+    </ol>
+  </section>
+
+  <footer>
+    <p>참고: 대표님 ERP 영상(브런치/LinkedIn) · 포트원(developers.portone.io) · 솔라피(solapi.com) · trimesh(trimesh.org)</p>
+    <p>3D 프린팅 SaaS 플랫폼 기획 초안 · 2026-06-29 · 내부 검토용</p>
+  </footer>
+
+</div>
