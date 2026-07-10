@@ -13,7 +13,8 @@ from datetime import datetime
 from dataclasses import dataclass, field
 
 from app.core.config import get_settings
-from app.services.formlabs_client import FormlabsAPIClient, get_formlabs_client
+from app.adapters.base import PrinterAdapter
+from app.adapters.factory import get_printer_adapter
 from app.schemas.printer import (
     Printer, PrinterSummary, DashboardData,
     PrintStatus, NotificationType, Notification,
@@ -50,7 +51,7 @@ class PrinterPollingService:
         await service.start()
     """
     
-    def __init__(self, client: FormlabsAPIClient):
+    def __init__(self, client: PrinterAdapter):
         self.settings = get_settings()
         self.client = client
         
@@ -332,7 +333,7 @@ async def get_polling_service() -> PrinterPollingService:
     """폴링 서비스 싱글톤 반환"""
     global _polling_service
     if _polling_service is None:
-        client = await get_formlabs_client()
+        client = await get_printer_adapter()
         _polling_service = PrinterPollingService(client)
     return _polling_service
 

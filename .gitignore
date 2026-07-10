@@ -268,3 +268,8 @@ bin_picking/yolo_track/runs/**/weights/
 
 # 학습 메타데이터 (CSV/summary)는 추적 OK
 # 가중치 파일 .pt만 ignore
+
+# 회사 내부 기획·검토 문서 (대표님 호칭 등 포함, 한솔 미러 노출 금지)
+docs/MES_ERP_ATS_*.md
+docs/SaaS_플랫폼_*.md
+docs/saas_plan_*.html
