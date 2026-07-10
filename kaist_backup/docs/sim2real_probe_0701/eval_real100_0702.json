@@ -1,0 +1,21 @@
+{
+  "loss_bbox": 0.048498557955026625,
+  "loss_cad_align": 0.9804907655715942,
+  "loss_cad_ce": 7.901310176849365,
+  "loss_ce": 6.102099838256836,
+  "loss_dice": 0.19245424270629882,
+  "loss_giou": 0.500212608575821,
+  "loss_mask": 0.006729580173268915,
+  "loss_total": 21.94289375305176,
+  "num_gt_objects": 872.0,
+  "num_matched": 872.0,
+  "hungarian_recall": 1.0,
+  "matched_class_acc": 0.05045871559633028,
+  "matched_box_iou": 0.5313695212569806,
+  "matched_mask_iou": 0.7309240753497552,
+  "num_cad_valid": 872.0,
+  "matched_cad_acc": 0.04931192660550459,
+  "source": "/workspace/cadence/data/real_capture100_eval/manifest.json",
+  "checkpoint": "/workspace/cadence/runs/depth_vq_detector_split/best.pt",
+  "num_scenes": 100
+}

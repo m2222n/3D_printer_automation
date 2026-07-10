@@ -1,0 +1,44 @@
+{
+  "name": "pseudo regeneration profile v1",
+  "purpose": "Regenerate CAD-rendered pseudo scenes closer to real_depth_0626 shots without using real images for supervised training.",
+  "camera": {
+    "render_resolution_hw": [480, 848],
+    "train_center_crop": "1/6,5/6",
+    "crop_shape_hw_expected": [320, 565],
+    "network_image_size_recommended": [320, 576],
+    "resize_policy": "keep aspect ratio and pad; do not squeeze to square",
+    "working_distance_m_main": [0.45, 0.55],
+    "working_distance_m_robust": [0.35, 0.60],
+    "view": "vertical down-view with small pitch/roll/yaw perturbation",
+    "pitch_roll_perturb_deg": [-3.0, 3.0],
+    "yaw_perturb_deg": [-180.0, 180.0]
+  },
+  "scene": {
+    "visible_object_count_target": [8, 9],
+    "parts_total": 27,
+    "background_kinds": ["clear_box", "white_desk"],
+    "target_valid_ratio_after_crop": [0.04, 0.08],
+    "placement_note": "Tune camera distance/FOV/object placement until center-crop valid pixel ratio and bbox areas match real profile."
+  },
+  "depth_output": {
+    "metric_unit": "meter",
+    "invalid_background": "NaN for pseudo source; training augmentation may simulate real raw uint16 0-invalid export",
+    "sensorization_for_train": {
+      "uint16_max_depth_m": 10.0,
+      "depth_noise_sigma_m": 0.0015,
+      "depth_noise_rel_sigma": 0.002,
+      "random_dropout_prob": 0.02,
+      "boundary_dropout_prob": 0.35,
+      "boundary_radius_px": 2,
+      "hole_prob_per_10k_valid_px": 2.0,
+      "valid_ratio_range": [0.04, 0.08]
+    }
+  },
+  "required_scene_npz_keys": ["depth", "inst_id", "category_id", "meta"],
+  "required_meta_instance_keys": ["category_id", "stl", "quat_wxyz", "euler_zyx_deg"],
+  "notes": [
+    "Do not real-finetune for the main contribution path; use real labels for evaluation/diagnosis only.",
+    "If renderer can output directly at 480x848, also provide post-crop diagnostic PNGs for quick visual sanity check.",
+    "If the 480x848 render takes too long, keep 512x512 as an auxiliary ablation, not the main experiment."
+  ]
+}
