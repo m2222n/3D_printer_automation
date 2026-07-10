@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # ===========================================
     # Formlabs API 설정
     # ===========================================
+    # 프린터 벤더 선택 (어댑터 팩토리) — 현재 "formlabs"(SLA)만 지원.
+    # 향후 FDM 등 추가 시 이 값으로 어댑터가 분기됨.
+    PRINTER_VENDOR: str = "formlabs"
+
     # Dashboard > Developer Tools에서 발급
     FORMLABS_CLIENT_ID: str = ""
     FORMLABS_CLIENT_SECRET: str = ""

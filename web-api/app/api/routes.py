@@ -13,7 +13,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Qu
 
 from app.core.config import get_settings
 from app.core.auth import get_auth_manager
-from app.services.formlabs_client import get_formlabs_client
+from app.adapters.factory import get_printer_adapter
 from app.services.polling_service import get_polling_service
 from app.schemas.printer import (
     PrinterSummary, DashboardData, PrintHistoryItem,
@@ -125,7 +125,7 @@ async def get_printer(serial: str):
 async def refresh_printer(serial: str):
     """프린터 상태 즉시 새로고침"""
     try:
-        client = await get_formlabs_client()
+        client = await get_printer_adapter()
         printer = await client.get_printer(serial)
         
         if not printer:
@@ -164,7 +164,7 @@ async def get_print_history(
 ):
     """프린트 이력 조회"""
     try:
-        client = await get_formlabs_client()
+        client = await get_printer_adapter()
         
         # Formlabs API에서 전체 이력 조회 (페이지네이션 순회)
         items = await client.get_print_history(
@@ -206,7 +206,7 @@ async def get_printer_history(
 ):
     """특정 프린터 이력 조회"""
     try:
-        client = await get_formlabs_client()
+        client = await get_printer_adapter()
         items = await client.get_print_history(
             printer_serial=serial,
             limit=limit
@@ -235,7 +235,7 @@ async def get_statistics(
 ):
     """프린트 통계 조회 (재료 사용량, 일별 출력 추이, 프린터별 통계)"""
     try:
-        client = await get_formlabs_client()
+        client = await get_printer_adapter()
         polling_service = await get_polling_service()
 
         # 전체 이력 조회
