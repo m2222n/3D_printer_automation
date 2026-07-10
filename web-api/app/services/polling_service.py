@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 
 from app.core.config import get_settings
 from app.services.formlabs_client import FormlabsAPIClient, get_formlabs_client
+from app.adapters.base import PrinterAdapter
 from app.schemas.printer import (
     Printer, PrinterSummary, DashboardData,
     PrintStatus, NotificationType, Notification,
@@ -50,7 +51,7 @@ class PrinterPollingService:
         await service.start()
     """
     
-    def __init__(self, client: FormlabsAPIClient):
+    def __init__(self, client: PrinterAdapter):
         self.settings = get_settings()
         self.client = client
         
