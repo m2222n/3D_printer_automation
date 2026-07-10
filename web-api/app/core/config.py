@@ -132,8 +132,8 @@ class Settings(BaseSettings):
     # ===========================================
     # Phase 3: 시퀀스 서비스 (한솔코에버 자동화) 설정
     # ===========================================
-    # MySQL DSN — .env에서 설정 (기본값은 개발용)
-    SEQUENCE_MYSQL_DSN: str = "mysql+pymysql://root:root@127.0.0.1:3306/automation"
+    # MySQL DSN — .env에서 반드시 설정 (기본값에 실제 계정 두지 않음, 보안)
+    SEQUENCE_MYSQL_DSN: str = "mysql+pymysql://USER:PASSWORD@127.0.0.1:3306/automation"
 
     # 수동 제어 TCP 대상
     ROBOT_TCP_HOST: str = "127.0.0.1"
@@ -158,10 +158,6 @@ class Settings(BaseSettings):
     JWT_EXPIRE_DAYS: int = 7
     # 절대 최대: 30일 (이 기간 지나면 무조건 재로그인)
     JWT_ABSOLUTE_MAX_DAYS: int = 30
-
-    # 레거시 (호환성, 사용 안 함 - 추후 삭제)
-    BASIC_AUTH_USERNAME: str = ""
-    BASIC_AUTH_PASSWORD: str = ""
 
     # Ajin IO (AXL.dll) — Windows 전용
     AJIN_SIMULATION: bool = True
