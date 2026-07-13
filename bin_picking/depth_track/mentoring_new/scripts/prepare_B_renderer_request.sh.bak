@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEPTH_DIR=${DEPTH_DIR:-./data/real_depth/npy}
+OUT_DIR=${OUT_DIR:-./data/domain_profile}
+mkdir -p "$OUT_DIR"
+
+python tools/measure_real_depth_profile.py \
+  --depth_dir "$DEPTH_DIR" \
+  --glob "${GLOB:-shot_*_g1.npy}" \
+  --out_json "$OUT_DIR/real_depth_profile.json" \
+  --out_csv "$OUT_DIR/real_depth_profile.csv" \
+  --real_uint16_max_depth_m 10.0 \
+  --center_crop "1/6,5/6" \
+  --depth_keep_range "0.40,0.60"
+
+python tools/make_render_request.py \
+  --real_profile_json "$OUT_DIR/real_depth_profile.json" \
+  --base_config configs/pseudo_regen_profile.json \
+  --out_json "$OUT_DIR/pseudo_regen_request.json"
+
+echo "Renderer handoff written to: $OUT_DIR/pseudo_regen_request.json"

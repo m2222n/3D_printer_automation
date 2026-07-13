@@ -1,0 +1,33 @@
+# depth_track — 대용량 자산은 git에서 제외 (코드만 미러/커밋)
+# 데이터·체크포인트는 6000 서버에 상주, data/ 하위 심볼릭 링크로 연결.
+# GPU 서버(A100/IPC-510 등)로 옮길 때는 README의 "데이터 위치" 표대로 재연결.
+
+# 데이터 심볼릭 링크 (링크 자체를 커밋하지 않음 — 절대경로라 서버마다 다름)
+data/*
+!data/.gitkeep
+
+# 학습 산출물
+runs/
+outputs/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# 대용량 데이터 원본
+*.npz
+*.npy
+*.hdf5
+*.tar
+*.tar.gz
+
+# 파이썬 캐시
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# 로그
+*.log
+
+# 내부 실사 문서 (회사정보 포함 — 미러 금지)
+docs/asset_audit_*.md

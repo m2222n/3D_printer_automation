@@ -1,0 +1,22 @@
+{
+  "description": "Default B BlenderProc settings. The generator also reads data/domain_profile/pseudo_regen_request.json.",
+  "expected_output_format": {
+    "scene_npz_keys": ["depth", "inst_id", "category_id", "meta"],
+    "crop_npz_keys": ["depth", "mask", "label", "quat_wxyz", "euler_zyx_deg", "bbox_yxyx", "stl"]
+  },
+  "run_policy": {
+    "command": "blenderproc run tools/generate_B_dataset_blenderproc.py",
+    "dataset_root_suggestion": "./data/2d_dataset_B_blenderproc"
+  },
+  "renderer_defaults": {
+    "resolution_hw": [480, 848],
+    "center_crop": "1/6,5/6",
+    "network_image_size_recommended": [320, 576],
+    "working_distance_m_main": [0.45, 0.55],
+    "working_distance_m_robust": [0.35, 0.60],
+    "visible_object_count_target": [8, 9],
+    "target_valid_ratio_after_crop": [0.04, 0.08],
+    "stl_unit_scale": 0.001,
+    "hfov_deg": 62.0
+  }
+}

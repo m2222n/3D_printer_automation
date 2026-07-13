@@ -1,0 +1,6 @@
+========== 파이프라인 시작 Mon Jul  6 03:45:37 UTC 2026 ==========
+
+>>>>> [0. render request 생성 (prepare_B_renderer_request.sh)] Mon Jul  6 03:45:37 UTC 2026
+-rw-r--r-- 1 root 1004 2621 Jul  6 03:45 ./data/domain_profile/pseudo_regen_request.json
+
+>>>>> [1. warmup detector (30ep)] Mon Jul  6 03:45:38 UTC 2026

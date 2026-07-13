@@ -96,9 +96,24 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ✅ **6/29 기획 초안 작성 완료**: `docs/SaaS_플랫폼_기획초안_0629.md`(MD) + `docs/saas_plan_0629.html`(PDF용). 방향=비전+로드맵, 1순위=① 주문 홈페이지. ⭐**핵심 발견=기존 자산이 3축에 거의 다 매핑**(알림 sender 추상화·Formlabs 견적원천·레진잔량 보유, 결제만 신규). 외부연동 1순위=포트원/솔라피/trimesh. ⚠️행정심사(PG·알림톡)가 코딩보다 오래걸림→선신청 권장.
 
-⭐⭐ **7/7 대표님 회의 = 기획 고도화 지시 (본업 P0, 9월말 지원사업 마감)**: 6/29 초안이 "너무 포괄적"→**정식 기획서**로. ①현 개발현황 정리 ②**타사/FDM 프린터 범용화**(API 있으면 API·없으면 오픈소스 슬라이서, FDM은 오픈소스 잘 나와 난이도 낮음) ③주문·관리 시스템 ④⭐**ERP/MES/ATS로 발전하려면 어떤 기능 필요한지="이거부터"**(1순위). +한솔 로봇교육 재요청. → ✅ **기능정의 문서** `docs/MES_ERP_ATS_기능정의_0710.md`(현황§1·3계층 필요기능§2·프린터 범용화 어댑터§3·주문관리§4·대표님 결정 7가지§5). ✅ **현 앱 정직 현황**(코드 전수조사)=SLA 전용 소형 MES+로봇 ATS(7탭), 3축(주문·ERP·카운팅)은 코드 0건. ✅ 앱 상태점검=3서버 200·PreFormServer connected·프린터 NOT READY(실물출력 시연은 탱크 필요). ✅ **대표님 보고용 HTML 문서**=`/data/jtm/synth_out/factory_system_report.html`(현 앱 설명+앞으로 방향 4파트, sim2real 스타일·PDF버튼, 내부용). 보고용 문서 표준형식→`memory/feedback_report_doc_format.md`. ✅ **코드 리팩터링 완료 = 프린터 어댑터 토대**(`memory/project_printer_adapter_refactor_0710.md`): Formlabs 전용→`PrinterAdapter` Protocol 격리(`web-api/app/adapters/`), 테스트 0→27개 신설(⚠️PrinterSummary 5필드=로봇 계약 동결), 죽은코드(local-api·basic_auth) 정리, `PRINTER_VENDOR` config 스위치. FDM 추가 시 어댑터+factory elif만. 런타임 0 변경(실구동 검증). main 머지(`2a6d69a`)·dual push 완료. **✅ 3개 서버 전부 배포·검증 완료**(6000·카카오VM·공장PC, web-api·JWT·CMD DB등록 정상). ⚠️공장PC 시뮬 CMD는 프린터 4대 OFFLINE(전원·탱크 없음)으로 미진행=리팩터링 무관 물리이슈. ⏭️ 오후 대표님 논의 후 3축 우선순위·9월범위 확정.
+⭐⭐ **7/7 대표님 회의 = 기획 고도화 지시 (본업 P0, 9월말 지원사업 마감)**: 6/29 초안이 "너무 포괄적"→**정식 기획서**로. ①현 개발현황 정리 ②**타사/FDM 프린터 범용화**(API 있으면 API·없으면 오픈소스 슬라이서, FDM은 오픈소스 잘 나와 난이도 낮음) ③주문·관리 시스템 ④⭐**ERP/MES/ATS로 발전하려면 어떤 기능 필요한지="이거부터"**(1순위). +한솔 로봇교육 재요청. → ✅ **기능정의 문서** `docs/MES_ERP_ATS_기능정의_0710.md`(현황§1·3계층 필요기능§2·프린터 범용화 어댑터§3·주문관리§4·대표님 결정 7가지§5). ✅ **현 앱 정직 현황**(코드 전수조사)=SLA 전용 소형 MES+로봇 ATS(7탭), 3축(주문·ERP·카운팅)은 코드 0건. ✅ 앱 상태점검=3서버 200·PreFormServer connected·프린터 NOT READY(실물출력 시연은 탱크 필요). ✅ **대표님 보고용 HTML 문서**=`/data/jtm/synth_out/factory_system_report.html`(현 앱 설명+앞으로 방향 4파트, sim2real 스타일·PDF버튼, 내부용). 보고용 문서 표준형식→`memory/feedback_report_doc_format.md`. ✅ **코드 리팩터링 완료 = 프린터 어댑터 토대**(`memory/project_printer_adapter_refactor_0710.md`): Formlabs 전용→`PrinterAdapter` Protocol 격리(`web-api/app/adapters/`), 테스트 0→27개 신설(⚠️PrinterSummary 5필드=로봇 계약 동결), 죽은코드(local-api·basic_auth) 정리, `PRINTER_VENDOR` config 스위치. FDM 추가 시 어댑터+factory elif만. 런타임 0 변경(실구동 검증). main 머지(`2a6d69a`)·dual push 완료. **✅ 3개 서버 전부 배포·검증 완료**(6000·카카오VM·공장PC, web-api·JWT·CMD DB등록 정상). ⚠️공장PC 시뮬 CMD는 프린터 4대 OFFLINE(전원·탱크 없음)으로 미진행=리팩터링 무관 물리이슈. ✅ **7/10 대표님 보고 3개 문서(PDF) 제출**(내부용, 대표님만)=①빈피킹 비전 AI 성과 보고(KAIST 우수상 검증·위치0.91/종류0.85/종합0.684) ②sim2real 학습 리포트(11섹션 상세) ③3D 프린터 자동화 현황&확장 방향(SaaS 7/7 지시 답). 배경=대표님 "그동안 공장개발 못 하고 KAIST 교육 들었으니 성과 달라". ⏭️ **월요일(7/13) 대표님 회의에서 SaaS 방향 확정**(3축 우선순위·9월범위·1순위·판매모델·견적단가)→착수. 회의 전=회신 미정.
 
 상세: `memory/project_saas_platform_directive_0618.md` + `memory/project_ceo_saas_directive_0707.md` + `memory/project_current_app_status_0710.md` + `memory/project_printer_adapter_refactor_0710.md`
+
+---
+
+## ⭐ KAIST 빈피킹 자산 → 회사 depth_track 편입 (2026-07-13)
+
+> **2026-07-13 태민님 지시**: KAIST 6주 성과(우수상)를 회사 빈피킹 성과로 만들자. **조교 모델 포함 전부 회사 자산**. 목표 4개(지원사업 데모·실제 로봇 피킹 E2E·성능 향상·정식 이식), 방법 불문·성과가 기준.
+
+- **위치**: `bin_picking/depth_track/` — 기존 `yolo_track/`(RGB YOLO)과 **대등한 두 번째 인식 트랙**. depth_track = Blaze ToF depth 단독 + CAD codebook 매칭(색·재질 무관, CAD만 있으면 데이터 수집 없이 학습).
+- **방식**: 원본 `~/kaist_project` **불변** + 복사 편입. 구조 = `model/`(조교 depth-only 모델, import 유지) + `mentoring_new/`(학습·평가 진입점) + `synth/`(합성 생성 BlenderProc) + `scripts/`(Blaze 촬영·라벨링) + `visual_hull/` + `data/`(6000 상주 심볼릭 링크).
+- **최종 성능**: 27종 실측 test100 **F1 0.684**(위치 0.88/종류 0.85), 파일 검증됨(`eval_real_metrics.json` f1_micro 0.6836). best.pt 4개 온전.
+- **편입 규칙**: 코드만 git(dual push=한솔 미러 OK, 보안정리 완료: 점자→대상부품·A100 IP→`$GPU_HOST` 환경변수·실사문서 gitignore) / 대용량 데이터·체크포인트는 6000 상주·`data/` 심볼릭·git 제외.
+- ⚠️ **병목 = GPU 미정**: 6000엔 GPU 없음(합성생성·보관 전용). 4개 목표 전부 GPU 전제. 후보 = A100(임대, 즉시) vs IPC-510(산업용 5060, 현장배포 최종점·셋업필요, 대표님 "일반PC→IPC-510 이전" 지시와 연계). → 태민님과 같이 정하기로.
+- **핵심 교훈(sim2real)**: 합성 aug 강화는 천장(F1 0.203) → 성능 열쇠는 실측 소량 fine-tune(0.203→0.45→0.684), lr이 지렛대. 남은 병목=센서 물리(대칭·표면패턴)→RGB 융합·고해상 depth가 다음 카드.
+
+상세: `memory/project_depth_track_integration_0713.md` + `bin_picking/depth_track/README.md`
 
 ---
 
@@ -466,6 +481,8 @@ v2의 두 약점을 v3가 푼다:
 ---
 
 ## 🎓 KAIST 부트캠프 3단계 6주 프로젝트 (6/2~7/9) ⭐⭐
+
+> ✅ **종료(2026-07-09, 🏆우수상·수료).** 최종 결과 = depth-only 부품 인식·식별, 27종 test100 **F1 0.684**(위치 0.88/종류 0.85). sim2real 여정(합성 5% 붕괴→real fine-tune→0.684→학습 종료=병목 센서 물리)·최종 발표·후속(논문 AAAI-27·특허·PoC) 전부 → **`memory/project_kaist_final_presentation_0709.md` + `memory/project_digital_twin_synth_data_research_0609.md`**. 아래 섹션은 **6/5~6/8 시점 역사 기록**(Visual Hull baseline 등)이며 이후 지도학습+합성데이터로 방향 재정의됨.
 
 > **⭐ 방향이 두 번 더 전환됨** — 6/2 미팅(CAD 각도 데이터셋+다객체)에서 다시 **6/5 미팅 = 실루엣 기반 3D 복원→부품 판별**로 대전환. 아래 6/2/5/28~29 정의는 역사. **최신 기준 = `memory/project_kaist_meeting_0605.md` + `memory/project_kaist_visualhull_baseline_0608.md`**.
 
@@ -1174,7 +1191,9 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 > 일자별 작업 이력은 **`CLAUDE.local.md`** 참조. 이 섹션은 **프로젝트 마일스톤 + 핵심 의사결정 + 현재 진행**만 보관.
 
-### 마지막 업데이트 일자: 2026-06-12 (민방위 휴무 — 합성데이터 v3 신설(회색+배경2종) + 8000장 PNG + GitHub/Drive 공유 + 회사 주간보고)
+### 마지막 업데이트 일자: 2026-07-10 (KAIST 부트캠프 종료(우수상) 후 정리 — sim2real 여정 완결 + 대표님 SaaS 고도화 지시 착수 + 프린터 어댑터 리팩터링·배포)
+
+> ⚠️ 아래 마일스톤 표는 5/20까지 상세, 이후는 요약. 6/13~7/10 상세 일자별은 `CLAUDE.local.md`(주간 요약) + `memory/project_digital_twin_synth_data_research_0609.md`(§6/13~§7/8) + `memory/project_kaist_final_presentation_0709.md` 참조.
 
 ### 마일스톤 (시간 순)
 
@@ -1217,6 +1236,14 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | **2026-05-18 (월, 저녁 후반)** | **대표님 보고 발송 + 좌표 명세 피드백 + 5/19 작성 자산 준비** ① **보고 자료 정리** — `docs/ceo_report_20260518_source_material.md` (Basler YOLO 공식 입장 조사 + YOLOv8 선택 5가지 근거) ② **웹 Claude 보고서 작성** — `ORINU-BINPICKING-REPORT-2026-0518` 16페이지 PDF (아키텍처 다이어그램 + 완료/미완료 + YOLO 근거 + 5/20 다음 단계) ③ **대표님 보고 발송 완료** ④ 🔥 **대표님 피드백**: "한솔에서 달라고 했던 좌표들 x/y/z 좌표인지 뭔지 그거 먼저 물어보고 파악하고 인지하고 일을 해" — 5/6 4대 지시 중 좌표 명세 요청 미해결 지적 ⑤ **5/19 액션**: 예승님께 정식 명세 5가지 질문 메일 (좌표계 기준점 / 회전 표현 / 단위 / 그리퍼 기준점 / 시퀀스 책임) ⑥ **5/19 작성 자산 준비** — `bin_picking/yolo_track/camera/basler_wrapper.py` (~220줄) + `bin_picking/yolo_track/pipeline/bin_picking_main.py` (~360줄) Phase 2 임계 2파일 (5/22 통합 시연 코드 baseline) ⑦ **1pager v2.4 → v2.5** (§ 8 리스크 #19~23 추가: A4 fundamental 불가 / valid % / 데이터 누수 / Public 노출 / best vs last + § 10 의사결정 5/18 8행 추가) ⑧ **5/20 사무실 체크리스트** 작성 (`docs/office_checklist_20260520.md`) ⑨ **추가 사진 촬영** (회사 환경, A4 흰 배경): Part_1~3까지 진행, Part_4/5/멀티 객체는 5/20 이월 | 🆕 `project_hansol_coord_spec_0520` |
 | **2026-05-19 (화, KAIST 교육 짬)** | **Roboflow 컨벤션 확정 + 5/18 분 62장 annotation + 협력사 통합 메일 발송** ① **Roboflow 명명 컨벤션 확정**: Class/Tag = `PartN` (PascalCase 통일), Batch = `{YYYYMMDD}_partN` (일자=batch 작업/통합한 날) ② **5/15 batch rename**: `Part_N_initial` → `20260519_partN` (5개) ③ **5/18 분 62장 신규 업로드 + annotation 완료** (Part1=17 / Part2=15 / Part3=18 / Part5=12) → 누적 **178장** ④ **5/20 작업 옵션 B 채택**: Part4 + 멀티 객체까지 통합 후 v2 학습 (manual split 데이터 누수 검증 활용) ⑤ **멀티 객체 촬영 전략**: 9배치 × 3각도 = 27장 (효율 leverage: 부품 고정 + 카메라 각도 / 같은 배치 부품 회전) ⑥ **Occlusion 박스 규칙 확정**: 0~70% 추정 박스 / 70~90% 보이는 영역 / 90%+ 건너뜀 ⑦ ✅ **협력사 통합 메일 발송 완료** — 대표님 5/18 피드백 이행. 톤: 짧게 핵심만 + 솔직 표현. 좌표는 5가지 정식 질문 직접 안 던지고 "어떻게 진행하는 게 좋을지" 의견 요청. 회신 대기 → 코드 잠정 처리 ⑧ 미커밋/미푸시 없음 (외부 SaaS + 메일 작업, 로컬 코드 변경 X) | 🆕 `project_factory_capture_0520` + 갱신 `project_roboflow_dataset` + `project_hansol_coord_spec_0520` |
 | **2026-05-20 (수, 사무실, 오전~오후)** | **ACE2 셋업 진단 + 한솔 좌표 명세 답변 수신** ① 🆕 **ACE2 단독 셋업 시도** — 2차 ipTIME U1G-C 어댑터 + Mac en8 192.168.20.1/24 + ACE2 static 192.168.20.20/24 + ping 0.7ms ② **pylon IP Configurator 발견**: a2A2448-23gcBAS S/N 41881328 + 첫 프레임 캡처 성공 (BayerRG8 2448×2048 uint8) ③ **`live_viewer_ace2.py` 신규 작성 + commit `09bdb33`** (232줄, BayerRG8 디모자이크 + GigE 패킷 튜닝 + Focus score 오버레이) origin + personal dual push ④ 🔥 **ACE2 광학 진단 — 렌즈 미장착 확정** — DARK mean 39.4 (Exp 100000us) / BRIGHT mean 212.8 (Exp 26us) / OBJECT 형상 없음. 사진 분석: C-mount 마운트만 있고 빨간 센서 노출. **5/8 메모리 "ACE2 렌즈 미장착, 한솔 보유" 그대로 유지** — 5/15 인수 시 명시적 기록 없음 ⑤ 🆕 **ACE2 ↔ Blaze L자 듀얼 마운트 확인** (5/6 회의 합의 "eye-in-hand 듀얼" 실물 구조) ⑥ 🆕 **GigE 튜닝 발견**: ipTIME U1G-C MTU 9000 거부 (Mac sudo invalid) → 어댑터 max packet 8192 보고하나 Mac MTU 1500 한계. ACE2 5MP 안정 캡처는 해상도 절반(1224×1024) + GevSCPD 2000 권장 ⑦ ⭐ **한솔 좌표 명세 답변 수신** (5/19 통합 메일 회신) — 예승님 답변 3가지: (a) 단일환경 누수 검증은 우리 책임 (b) **YOLOv8 → YOLOv11 + n → m/l 권고** (AICA A100 충분) (c) **좌표 6요소 필요: x,y(2D픽셀) + z(Blaze depth) + edge(외각선) + angle(회전) + label**. "Pointcloud 데이터 받아서 로봇 움직임" ⑧ **5/20 v2 학습 모델 변경 결정**: `yolov8n.pt` → `yolov11s.pt` 또는 `yolov11m.pt` (detection 우선, segmentation은 v3 별도) ⑨ **대표님 5/18 피드백 이행 완료** — 좌표 명세 명확화 + 우리 코드 변경 결정 ⑩ **미확정 5항목** (좌표계 기준점/단위/PCD vs dict/각도 정의/edge 형식) — 5/22~5/29 또는 ACE2 렌즈 인수 시 추가 확인 ⑪ 사용자 결정 대기: 한솔 단톡 ACE2 C-mount 렌즈 보유 확인 메시지 시점 자율 | 🆕 `project_ace2_camera` + `project_hansol_coord_spec_0520` + 갱신 `project_hansol_coord_spec_0520` + `project_binpicking_overview.md` + `project_factory_capture_0520` + `MEMORY.md` |
+| 2026-05-22~29 (W21~22) | v2 5모델 YOLO 학습(🥇yolov8n mAP50 0.9939) + 일정 재정렬(빈피킹=가을) + JWT 회귀버그 fix + 대표님 5/28 4대 지시 | ✅ — `memory/project_yolo_v2_training_results_0522.md` |
+| 2026-06-01~05 (W23) | 삼성 시연 성공 + Formlabs fix + KAIST 첫 미팅(방향 전환) | ✅ — `memory/project_kaist_meetings_timeline.md` |
+| 2026-06-08~12 (W24) | KAIST 1차 발표 + Visual Hull baseline + 디지털트윈 합성데이터 v1~v3(8000장) | ✅ — `memory/project_digital_twin_synth_data_research_0609.md` |
+| 2026-06-15~19 (W25) | 부품 27종 확정 + 모델 아키텍처 확정(PointNet++/VQ-VAE) + ⭐대표님 6/18 SaaS 지시 | ✅ — `memory/project_saas_platform_directive_0618.md` |
+| 2026-06-22~26 (W26) | 조교 코드 통합·A100 학습 1사이클(합성 class 0.804) + 2차 발표 + 실증 100장 촬영 | ✅ — `memory/project_digital_twin_synth_data_research_0609.md` §6/23~26 |
+| 2026-06-29~07-08 (W27) | ⭐⭐ sim2real 여정: 실측 5% 붕괴 → real fine-tune 대전환 → test100 F1 0.684 → 학습 종료(병목=센서 물리) | ✅ — `memory/project_digital_twin_synth_data_research_0609.md` §7 |
+| **2026-07-09** | 🏆 **KAIST 부트캠프 3단계 최종발표 — 우수상 수상·수료** | ✅ — `memory/project_kaist_final_presentation_0709.md` |
+| **2026-07-10** | 대표님 7/7 SaaS 고도화 지시 착수(현황정리+ERP/MES/ATS 기능정의) + 프린터 어댑터 리팩터링·3서버 배포 + KAIST 코드 3곳 백업 | ✅ — `memory/project_ceo_saas_directive_0707.md` + `memory/project_printer_adapter_refactor_0710.md` |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 
