@@ -108,10 +108,10 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 - **위치**: `bin_picking/depth_track/` — 기존 `yolo_track/`(RGB YOLO)과 **대등한 두 번째 인식 트랙**. depth_track = Blaze ToF depth 단독 + CAD codebook 매칭(색·재질 무관, CAD만 있으면 데이터 수집 없이 학습).
 - **방식**: 원본 `~/kaist_project` **불변** + 복사 편입. 구조 = `model/`(조교 depth-only 모델, import 유지) + `mentoring_new/`(학습·평가 진입점) + `synth/`(합성 생성 BlenderProc) + `scripts/`(Blaze 촬영·라벨링) + `visual_hull/` + `data/`(6000 상주 심볼릭 링크).
-- **최종 성능**: 27종 실측 test100 **F1 0.684**(위치 0.88/종류 0.85), 파일 검증됨(`eval_real_metrics.json` f1_micro 0.6836). best.pt 4개 온전.
+- **최종 성능**: 27종 실측 test100 **F1 0.684**(위치 0.88/종류 0.85). ✅ **A100서 실제 재현 검증**(`scripts/reproduce_f1_0684.sh`): 재현 0.683649 = 발표 0.683649, 차이 0.000000. best.pt 4개 온전.
 - **편입 규칙**: 코드만 git(dual push=한솔 미러 OK, 보안정리 완료: 점자→대상부품·A100 IP→`$GPU_HOST` 환경변수·실사문서 gitignore) / 대용량 데이터·체크포인트는 6000 상주·`data/` 심볼릭·git 제외.
-- ⚠️ **병목 = GPU 미정**: 6000엔 GPU 없음(합성생성·보관 전용). 4개 목표 전부 GPU 전제. 후보 = A100(임대, 즉시) vs IPC-510(산업용 5060, 현장배포 최종점·셋업필요, 대표님 "일반PC→IPC-510 이전" 지시와 연계). → 태민님과 같이 정하기로.
-- **핵심 교훈(sim2real)**: 합성 aug 강화는 천장(F1 0.203) → 성능 열쇠는 실측 소량 fine-tune(0.203→0.45→0.684), lr이 지렛대. 남은 병목=센서 물리(대칭·표면패턴)→RGB 융합·고해상 depth가 다음 카드.
+- ✅ **GPU 전략 = A100 개발 → IPC-510 배포**(순차): A100=재현·재학습·성능실험(빠름) / IPC-510(산업용 5060)=완성모델 배포·현장 추론·실피킹 E2E. 근거=모델 작음(batch2·320×576·67MB→5060 추론 충분). IPC-510 셋업=대표님 "일반PC→IPC-510" 지시와 동일작업. (6000엔 GPU 없음=합성생성·보관 전용.)
+- **성능 향상**: ✅ TTA(실측 추가 없이, `scripts/eval_tta.py`)=다중스케일 결합 F1 0.6907(+0.007, recall↑). "공짜 소폭"이고 종류식별 병목은 미해결. **핵심 교훈(sim2real)**: 합성 aug 강화는 천장(F1 0.203)→성능 열쇠는 실측 소량 fine-tune(0.203→0.45→0.684), lr이 지렛대. 남은 병목=센서 물리(대칭·표면패턴)→**큰 향상은 실측 데이터·RGB 융합·고해상 depth 필요**.
 
 상세: `memory/project_depth_track_integration_0713.md` + `bin_picking/depth_track/README.md`
 
