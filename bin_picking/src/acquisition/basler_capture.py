@@ -325,6 +325,8 @@ class BaslerCapture:
                 nodemap = self._blaze_cam.GetNodeMap()
                 # 해상도 설정 (Blaze는 640x480 고정이지만 노드가 있을 수 있음)
                 self._setup_blaze(nodemap)
+                # GigE 스트리밍 튜닝 (macOS + USB 이더넷 어댑터 buffer underrun 방지)
+                self._tune_gige(self._blaze_cam, nodemap)
             except Exception:
                 pass  # 노드 없으면 기본값 사용
             self._blaze_cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
@@ -349,6 +351,35 @@ class BaslerCapture:
             )
 
         return result
+
+    # GigE 스트리밍 튜닝 상수 (2026-07-20 macOS Tahoe + ipTIME U1G-C 실측)
+    # 원인: macOS + USB 이더넷 어댑터가 기본 66Mbps GigE 스트림을 못 따라가
+    #       "buffer was incompletely grabbed" (0xE1000014) 발생. on-board adapter가
+    #       아니면 throughput를 낮춰야 함 (Basler README도 on-board 권장).
+    # 실측: 66Mbps=grab실패 / 20Mbps=4/5 / 15Mbps=10/10 안정 / 8Mbps=10/10.
+    #       15Mbps 채택(안정하면서 최대 속도). 빈피킹은 정지물체 top-down이라 fps 무관.
+    _GIGE_THROUGHPUT_LIMIT = 15_000_000  # bytes/s (DeviceLinkThroughputLimit)
+    _GIGE_MAX_NUM_BUFFER = 30            # grab 버퍼 개수 (언더런 여유)
+
+    def _tune_gige(self, cam, nodemap) -> None:
+        """GigE 스트리밍 파라미터 튜닝 (buffer underrun 방지).
+
+        macOS/USB 어댑터 조합에서만 필요하나, on-board(공장 IPC 등)에서는
+        높은 throughput를 그대로 견디므로 이 낮은 값이어도 무해(fps만 소폭↓).
+        노드 없거나 실패해도 무시 — 기존 동작 유지.
+        """
+        try:
+            n = nodemap.GetNode("DeviceLinkThroughputLimit")
+            if n is not None:
+                # 카메라 지원 범위로 클램프
+                val = max(int(n.Min), min(self._GIGE_THROUGHPUT_LIMIT, int(n.Max)))
+                n.SetValue(val)
+        except Exception:
+            pass
+        try:
+            cam.MaxNumBuffer.SetValue(self._GIGE_MAX_NUM_BUFFER)
+        except Exception:
+            pass
 
     def _setup_blaze(self, nodemap) -> None:
         """Blaze-112 GenICam 노드 설정.
