@@ -152,13 +152,19 @@ def grab_gray(cam, pylon, is_blaze):
     return cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
 
 
-def pose_from_gray(gray, detector, board, K, dist):
-    """ChArUco 검출 → solvePnP → (rvec, tvec, n_corners). 실패 시 None."""
+def detect_corners(gray, detector):
+    """ChArUco 코너 검출만 → (ch_corners, ch_ids, n) 또는 (None,None,0)."""
     ch_corners, ch_ids, _, _ = detector.detectBoard(gray)
-    if ch_ids is None or len(ch_ids) < 6:
+    n = 0 if ch_ids is None else len(ch_ids)
+    return ch_corners, ch_ids, n
+
+
+def pose_from_corners(ch_corners, ch_ids, board, K, dist, min_corners=6):
+    """검출된 코너 → solvePnP → (rvec, tvec, n). 실패 시 None."""
+    if ch_ids is None or len(ch_ids) < max(4, min_corners):
         return None
     obj_pts, img_pts = board.matchImagePoints(ch_corners, ch_ids)
-    if obj_pts is None or len(obj_pts) < 6:
+    if obj_pts is None or len(obj_pts) < max(4, min_corners):
         return None
     ok, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, K, dist)
     if not ok:
@@ -185,6 +191,8 @@ def main() -> int:
     ap.add_argument("--marker-ratio", type=float, default=0.75)
     ap.add_argument("--blaze-exposure", type=float, default=1000.0,
                     help="Blaze intensity 노출 us. 과노출로 보드 안 보이면 낮추기(300~500)")
+    ap.add_argument("--min-corners", type=int, default=6,
+                    help="pose 성립 최소 코너(양쪽 동시 어려우면 4로 낮춤, 정확도 소폭↓)")
     ap.add_argument("--diag", action="store_true", help="진단: 검출만 확인(정렬 안 함)")
     ap.add_argument("--out", type=Path,
                     default=PROJECT_ROOT / "bin_picking" / "config" / "blaze_ace2_extrinsic.json")
@@ -221,24 +229,40 @@ def main() -> int:
                     break
                 continue
 
-            pb = pose_from_gray(gb, detector, board, BLAZE_K, BLAZE_DIST)
-            pa = pose_from_gray(ga, detector, board, ace2_K, ace2_dist)
+            cb, ib, nb = detect_corners(gb, detector)
+            ca, ia, na = detect_corners(ga, detector)
+            pb = pose_from_corners(cb, ib, board, BLAZE_K, BLAZE_DIST, args.min_corners)
+            pa = pose_from_corners(ca, ia, board, ace2_K, ace2_dist, args.min_corners)
 
             disp_b = cv2.cvtColor(gb, cv2.COLOR_GRAY2BGR)
-            disp_a = cv2.resize(cv2.cvtColor(ga, cv2.COLOR_GRAY2BGR), (640, 536))
-            nb = pb[2] if pb else 0
-            na = pa[2] if pa else 0
-            cv2.putText(disp_b, f"Blaze corners: {nb}", (8, 24),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if nb else (0, 0, 255), 2)
-            cv2.putText(disp_a, f"ACE2 corners: {na}  pairs: {len(T_pairs)}", (8, 24),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if na else (0, 0, 255), 2)
+            disp_a = cv2.cvtColor(ga, cv2.COLOR_GRAY2BGR)
+            # 검출 코너 점으로 그리기 (어디가 잡히는지 눈으로 확인)
+            if nb > 0:
+                for p in cb.reshape(-1, 2).astype(int):
+                    cv2.circle(disp_b, tuple(p), 5, (0, 255, 0), -1)
+            if na > 0:
+                for p in ca.reshape(-1, 2).astype(int):
+                    cv2.circle(disp_a, tuple(p), 6, (0, 255, 0), -1)
+            disp_a = cv2.resize(disp_a, (640, 536))
+
+            ok_b = pb is not None
+            ok_a = pa is not None
+            cv2.putText(disp_b, f"Blaze corners: {nb} {'OK' if ok_b else ''}", (8, 24),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if ok_b else (0, 0, 255), 2)
+            cv2.putText(disp_a, f"ACE2 corners: {na} {'OK' if ok_a else ''}  pairs: {len(T_pairs)}",
+                        (8, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                        (0, 255, 0) if ok_a else (0, 0, 255), 2)
+            # 양쪽 동시 성립이면 상단에 크게 표시(채택 타이밍 알림)
+            if ok_b and ok_a:
+                cv2.putText(disp_b, "<< BOTH OK - SPACE >>", (8, 56),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             cv2.imshow(win_b, disp_b)
             cv2.imshow(win_a, disp_a)
 
             key = cv2.waitKey(1) & 0xFF
             if key in (27, ord("q")):
                 break
-            if not args.diag and key == ord(" ") and pb and pa:
+            if not args.diag and key == ord(" ") and ok_b and ok_a:
                 T_pairs.append((to_T(pb[0], pb[1]), to_T(pa[0], pa[1])))
                 print(f"  채택 {len(T_pairs)} (blaze {nb}, ace2 {na})")
     finally:
