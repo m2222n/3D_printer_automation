@@ -94,7 +94,13 @@ def open_cam(ip, throughput_mbps=30.0):
         cam.GevSCPSPacketSize.SetValue(1500)
     except Exception:
         pass
-    cam.GevSCPD.SetValue(1000)
+    try:
+        # GevSCPD(inter-packet delay) — Blaze는 Max 96, ACE2는 큼. 범위로 클램프.
+        n = cam.GetNodeMap().GetNode("GevSCPD")
+        if n is not None:
+            n.SetValue(min(1000, int(n.Max)))
+    except Exception:
+        pass
     try:
         n = cam.GetNodeMap().GetNode("DeviceLinkThroughputLimit")
         if n is not None:
