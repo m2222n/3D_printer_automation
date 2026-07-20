@@ -148,19 +148,26 @@ def collect_from_images(img_dir: Path):
     return shots
 
 
-def calibrate(shots, board, detector):
-    """채택된 gray 이미지들 → calibrateCamera. 반환: dict 결과."""
+def calibrate(shots, board, detector, min_corners: int = 6):
+    """채택된 gray 이미지들 → calibrateCamera. 반환: dict 결과.
+
+    min_corners: 이보다 코너가 적게 검출된 프레임은 제외(부정확 → RMS 악화).
+                 재계산 시 15~20으로 올리면 나쁜 프레임 걸러짐.
+    """
     all_obj, all_img = [], []
     img_size = None
     used = 0
+    skipped = 0
     for gray in shots:
         if img_size is None:
             img_size = (gray.shape[1], gray.shape[0])
         ch_corners, ch_ids, _, _ = detector.detectBoard(gray)
-        if ch_ids is None or len(ch_ids) < 6:
+        if ch_ids is None or len(ch_ids) < max(6, min_corners):
+            skipped += 1
             continue
         obj_pts, img_pts = board.matchImagePoints(ch_corners, ch_ids)
         if obj_pts is None or len(obj_pts) < 6:
+            skipped += 1
             continue
         all_obj.append(obj_pts)
         all_img.append(img_pts)
@@ -168,7 +175,7 @@ def calibrate(shots, board, detector):
 
     if used < 5:
         return {"status": "FAIL",
-                "message": f"유효 프레임 부족 ({used} < 5). 각도·거리 다양하게 더 촬영."}
+                "message": f"유효 프레임 부족 ({used} < 5). min-corners 낮추거나 더 촬영."}
 
     rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(
         all_obj, all_img, img_size, None, None
@@ -183,6 +190,7 @@ def calibrate(shots, board, detector):
         "cx": float(K[0, 2]), "cy": float(K[1, 2]),
         "dist_coeffs": dist.ravel().tolist(),
         "camera_matrix": K.tolist(),
+        "n_frames_skipped": skipped,
     }
 
 
@@ -198,7 +206,9 @@ def main() -> int:
     ap.add_argument("--exposure", type=float, default=8000.0)
     ap.add_argument("--packet-size", type=int, default=1500)
     ap.add_argument("--throughput", type=float, default=30.0)
-    ap.add_argument("--images", type=Path, help="라이브 대신 이미지 폴더에서 캘리브")
+    ap.add_argument("--images", type=Path, help="라이브 대신 이미지 폴더에서 캘리브(재계산)")
+    ap.add_argument("--min-corners", type=int, default=6,
+                    help="이보다 코너 적은 프레임 제외(재계산 시 15~20으로 올려 RMS 개선)")
     ap.add_argument("--out", type=Path,
                     default=PROJECT_ROOT / "bin_picking" / "config" / "ace2_intrinsics.json")
     args = ap.parse_args()
@@ -215,8 +225,8 @@ def main() -> int:
         print("[ERROR] 채택된 프레임 없음.")
         return 1
 
-    print(f"\n캘리브 실행 ({len(shots)}장)...")
-    result = calibrate(shots, board, detector)
+    print(f"\n캘리브 실행 ({len(shots)}장, min-corners={args.min_corners})...")
+    result = calibrate(shots, board, detector, min_corners=args.min_corners)
 
     print("\n" + "=" * 60)
     print("ACE2 Intrinsic 캘리브 결과")
@@ -227,7 +237,7 @@ def main() -> int:
 
     print(f"  재투영 RMS: {result['rms_reproj_px']:.3f} px  "
           f"({'✅ 양호 <1px' if result['rms_reproj_px'] < 1.0 else '⚠️ >1px, 촬영 재검토'})")
-    print(f"  사용 프레임: {result['n_frames_used']}")
+    print(f"  사용 프레임: {result['n_frames_used']}  (제외 {result.get('n_frames_skipped', 0)})")
     print(f"  fx={result['fx']:.1f}  fy={result['fy']:.1f}  "
           f"cx={result['cx']:.1f}  cy={result['cy']:.1f}")
     print(f"  dist: {[round(c, 4) for c in result['dist_coeffs']]}")
