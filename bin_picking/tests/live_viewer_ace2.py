@@ -21,7 +21,13 @@ CLI:
     --exposure 8000           초기 노출 (us), 기본 8ms
     --auto                    시작 시 노출 자동 ON
     --packet-size 1500        GigE 패킷 크기 (jumbo 안 되면 1500)
+    --throughput 30           GigE throughput 상한 (Mbps). macOS+USB어댑터 underrun 방지.
     --no-stats                통계 오버레이 끄기
+
+⚠️ macOS Tahoe + USB이더넷 어댑터에서 GigE buffer underrun('incompletely grabbed',
+   0xE1000014)이 뜨면 --throughput 를 낮추기 (7/20 Blaze 검증: 10Mbps=30/30 안정).
+   ACE2는 5MP(6.5MB/frame)로 Blaze보다 무거워 더 낮아야 할 수 있음.
+   기본 30Mbps에서 drop 뜨면 20 → 15 → 10 순으로 낮춰볼 것.
 """
 from __future__ import annotations
 
@@ -35,7 +41,26 @@ import numpy as np
 from pypylon import pylon
 
 
-def open_ace2(ip: str, exposure_us: float, auto: bool, packet_size: int) -> pylon.InstantCamera:
+def _tune_gige(cam, throughput_mbps: float) -> None:
+    """GigE throughput 상한을 낮춰 macOS+USB어댑터 buffer underrun 방지.
+
+    7/20 Blaze 검증(basler_capture._tune_gige)과 동일한 레버.
+    DeviceLinkThroughputLimit(bytes/s)를 카메라 지원 범위로 클램프.
+    노드 없거나 실패해도 무시 — 기존 동작 유지(on-board에선 이 값이어도 무해).
+    """
+    limit = int(throughput_mbps * 1_000_000)
+    try:
+        n = cam.GetNodeMap().GetNode("DeviceLinkThroughputLimit")
+        if n is not None:
+            val = max(int(n.Min), min(limit, int(n.Max)))
+            n.SetValue(val)
+            print(f"  DeviceLinkThroughputLimit = {val/1e6:.1f} Mbps (요청 {throughput_mbps} Mbps)")
+    except Exception as e:
+        print(f"  throughput 튜닝 스킵: {e}")
+
+
+def open_ace2(ip: str, exposure_us: float, auto: bool, packet_size: int,
+              throughput_mbps: float) -> pylon.InstantCamera:
     """IP 직접 지정으로 ace2 카메라 열기."""
     tlf = pylon.TlFactory.GetInstance()
     info = pylon.DeviceInfo()
@@ -50,7 +75,8 @@ def open_ace2(ip: str, exposure_us: float, auto: bool, packet_size: int) -> pylo
         print(f"PacketSize {packet_size} 실패, 1500 fallback: {e}")
         cam.GevSCPSPacketSize.SetValue(1500)
     cam.GevSCPD.SetValue(1000)
-    cam.MaxNumBuffer.SetValue(10)
+    _tune_gige(cam, throughput_mbps)
+    cam.MaxNumBuffer.SetValue(30)  # underrun 여유 (Blaze와 동일)
 
     if auto:
         try:
@@ -121,13 +147,15 @@ def main():
     ap.add_argument("--exposure", type=float, default=8000.0, help="us (1ms = 1000us)")
     ap.add_argument("--auto", action="store_true", help="자동 노출 시작")
     ap.add_argument("--packet-size", type=int, default=1500)
+    ap.add_argument("--throughput", type=float, default=30.0,
+                    help="GigE throughput 상한 (Mbps). drop 뜨면 20→15→10 낮출 것")
     ap.add_argument("--no-stats", action="store_true")
     ap.add_argument("--display-scale", type=float, default=0.4,
                     help="화면 표시 축소 (2448x2048 너무 커서 기본 0.4)")
     args = ap.parse_args()
 
     print(f"ACE2 IP: {args.ip}")
-    cam = open_ace2(args.ip, args.exposure, args.auto, args.packet_size)
+    cam = open_ace2(args.ip, args.exposure, args.auto, args.packet_size, args.throughput)
     print(f"Model: {cam.GetDeviceInfo().GetModelName()}  Serial: {cam.GetDeviceInfo().GetSerialNumber()}")
     print(f"PixelFormat: {cam.PixelFormat.GetValue()}  WxH: {cam.Width.GetValue()}x{cam.Height.GetValue()}")
     cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)

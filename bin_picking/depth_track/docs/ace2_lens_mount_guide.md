@@ -21,6 +21,14 @@
 export BASLER_ACE2_IP=192.168.20.20
 python bin_picking/tests/live_viewer_ace2.py --packet-size 1500
 ```
+- ⚠️ **grab 실패('incompletely grabbed' / drop 다발)면 throughput 낮추기**:
+  ```bash
+  python bin_picking/tests/live_viewer_ace2.py --throughput 20   # 안 되면 15 → 10
+  ```
+  7/20 Blaze가 macOS Tahoe + USB이더넷 어댑터에서 buffer underrun으로 grab 전량
+  실패했던 것과 동일 원인. ACE2는 5MP(6.5MB/frame)라 Blaze(depth 848×480)보다
+  무거워 더 낮은 값이 필요할 수 있음. 기본 30Mbps → drop 뜨면 순차 하향.
+  포커스 맞추는 정지 작업이라 낮은 fps여도 무방.
 - 화면 뜨면 `f` 눌러 **FOCUS score 표시 ON**
 - 카메라 앞 30~50cm에 글자·패턴 있는 물체(자·부품·인쇄물) 놓기
 - **포커스 링을 천천히 돌리며 score 최대화**:
