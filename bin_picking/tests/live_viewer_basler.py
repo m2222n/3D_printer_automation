@@ -63,6 +63,20 @@ def open_blaze(ip: str) -> pylon.InstantCamera:
     except Exception:
         pass
 
+    # GigE 스트리밍 튜닝 (macOS + USB 어댑터 buffer underrun 방지)
+    # basler_capture._tune_gige와 동일 값. 이거 없으면 라이브 뷰가 멈춤/에러.
+    try:
+        n = nm.GetNode("DeviceLinkThroughputLimit")
+        if n is not None:
+            val = max(int(n.Min), min(10_000_000, int(n.Max)))
+            n.SetValue(val)
+    except Exception:
+        pass
+    try:
+        cam.MaxNumBuffer.SetValue(30)
+    except Exception:
+        pass
+
     return cam
 
 
@@ -142,10 +156,12 @@ def main():
     print("뷰어 시작. ESC/q로 종료.")
     try:
         while True:
-            res = cam.RetrieveResult(2000, pylon.TimeoutHandling_ThrowException)
+            res = cam.RetrieveResult(5000, pylon.TimeoutHandling_Return)
+            if res is None:
+                continue  # 타임아웃 — 다음 프레임 시도 (뷰어 안 죽음)
             if not res.GrabSucceeded():
                 res.Release()
-                continue
+                continue  # 간헐 buffer underrun — 스킵하고 계속
             depth = res.Array.copy()
             res.Release()
 
