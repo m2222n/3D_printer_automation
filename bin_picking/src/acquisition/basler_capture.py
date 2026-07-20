@@ -358,8 +358,10 @@ class BaslerCapture:
     #       "buffer was incompletely grabbed" (0xE1000014) 발생. on-board adapter가
     #       아니면 throughput를 낮춰야 함 (Basler README도 on-board 권장).
     # 실측: 66Mbps=grab실패 / 20Mbps=4/5 / 15Mbps=10/10 안정 / 8Mbps=10/10.
-    #       15Mbps 채택(안정하면서 최대 속도). 빈피킹은 정지물체 top-down이라 fps 무관.
-    _GIGE_THROUGHPUT_LIMIT = 15_000_000  # bytes/s (DeviceLinkThroughputLimit)
+    #       초기 15Mbps는 9/10~10/10로 간헐 underrun(연속 warmup 실패) → 재실측:
+    #       10M/8M/6M 모두 30/30 완벽 → 30/30 나오는 최고값 10Mbps 확정.
+    #       빈피킹은 정지물체 top-down 단발 촬영이라 fps 무관(10Mbps=~1.5fps 충분).
+    _GIGE_THROUGHPUT_LIMIT = 10_000_000  # bytes/s (DeviceLinkThroughputLimit)
     _GIGE_MAX_NUM_BUFFER = 30            # grab 버퍼 개수 (언더런 여유)
 
     def _tune_gige(self, cam, nodemap) -> None:
