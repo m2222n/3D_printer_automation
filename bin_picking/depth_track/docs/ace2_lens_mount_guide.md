@@ -46,10 +46,38 @@ python bin_picking/tests/live_viewer_ace2.py --packet-size 1500
 - `s` 눌러 PNG 저장 (viz_output/) → 성공샷 1장 = 증빙
 - 8mm 확인되면 12mm도 같은 절차로 한 번 (선택, 화각 비교용)
 
-## 성공 후 다음 (이 가이드 범위 밖)
-- intrinsics 캘리브(ChArUco) → `ACE2_5MP_SPEC` 갱신(초점거리/2.74µm)
-- Blaze↔ace2 정렬(extrinsic) → RGB-D 정합
-- 이후에야 RGB 융합 학습 가능 (선행 4겹 중 나머지)
+## ✅ 7/20 렌즈 장착·형상 검증 성공
+- 8mm(C23-0824-5M) 장착 → 라이브뷰(throughput 30Mbps 기본, drop 없음, FPS 5.1)
+  키보드 글자·손가락 지문·Dock 아이콘 또렷 = RGB 살아있음 확정(5/20엔 형상 0).
+- OpenCV 4.13.0(Mac) = CharucoDetector 신 API 사용 가능.
+
+## 다음 단계 A — Intrinsic 캘리브 (ChArUco)
+> RGB 융합 선행조건. 정확한 fx/fy/cx/cy + 왜곡계수를 구해 ACE2_5MP_SPEC 교체.
+> ⚠️ 준비물 = **ChArUco 보드 실물**(인쇄 → 평평한 판에 기포 없이 부착).
+
+### A-1) 보드 인쇄물 생성 (Mac 또는 어디서든)
+```bash
+python bin_picking/tests/make_charuco_board.py --out viz_output/charuco_A4.png
+```
+- 기본 7x5 칸, 한 칸 30mm, DICT_5X5_250. A4에 **배율 100%(실제 크기)**로 인쇄.
+- ⚠️ 인쇄 후 **자로 한 칸 실제 길이 측정** → 캘리브 시 그 실측값을 `--square-mm`로.
+- 평평한 판(폼보드·아크릴·두꺼운 하드보드)에 기포 없이 부착(휘면 캘리브 오차).
+
+### A-2) 캘리브 실행 (Mac, 카메라 연결 상태)
+```bash
+export BASLER_ACE2_IP=192.168.20.20
+python bin_picking/tests/calibrate_ace2_intrinsics.py \
+  --squares-x 7 --squares-y 5 --square-mm <실측값> --marker-ratio 0.75
+```
+- 라이브 뜨면 보드를 화면 모서리·중앙 골고루, ±30° 기울여, 30~60cm 거리 바꿔가며
+  **SPACE로 15~25장 채택**(초록 코너 6개+ 잡힐 때만). `q`로 끝내면 자동 캘리브.
+- 결과 = 재투영 RMS(<1px 양호) + fx/fy/cx/cy/dist → `config/ace2_intrinsics.json` 저장.
+- 이 값으로 `basler_capture.py` `ACE2_5MP_SPEC` fx/fy/cx/cy 교체.
+
+## 다음 단계 B — Blaze↔ACE2 extrinsic 정렬 (A 이후)
+- 두 카메라가 **같은 ChArUco 보드를 동시에** 보게 하여 상대 R,t 추정 → RGB-D 정합.
+- L자 듀얼 브래킷에 이미 고정됨(7/20 확인) → 정렬값 한 번 구하면 고정 재사용.
+- 이후에야 RGB 융합 학습 가능. (스크립트는 A 결과 확인 후 신설 예정)
 
 ## 참고 (코드/스펙)
 - 뷰어: `bin_picking/tests/live_viewer_ace2.py` (focus score = 중앙 ROI Laplacian variance)

@@ -88,13 +88,15 @@ BLAZE_112_SPEC = {
 }
 
 # Basler ace2 a2A2448-23gcBAS (RGB 5MP)
-# 5/8 박스 개봉 시 실 모델명 확인 (S/N 41881328) — 코드 가정과 다름
-# Sony IMX392 센서, 픽셀 피치 3.45µm, C-mount 렌즈 별매 (한솔 보유)
-# fx/fy는 렌즈 초점거리에 따라 가변:
-#   12mm 렌즈: fx = fy = 12 / 3.45e-3 ≈ 3478 px
-#   8mm 렌즈:  fx = fy = 8 / 3.45e-3 ≈ 2319 px
-#   16mm 렌즈: fx = fy = 16 / 3.45e-3 ≈ 4638 px
-# ⚠️ 일단 12mm 가정. 한솔 렌즈 인수 + 캘리브 후 정확값으로 교체
+# 5/8 박스 개봉 시 실 모델명 확인 (S/N 41881328)
+# 센서 = Sony IMX547, 픽셀 피치 2.74µm (5/28 Basler 공식 재확인 정정,
+#        기존 IMX392/3.45µm 는 오류). 광학 포맷 1/1.8".
+# 렌즈 = C23-0824-5M (8mm), 7/20 장착·형상 검증 완료 (빈피킹 유력, eye-in-hand).
+# fx/fy는 렌즈 초점거리에 따라 가변 (픽셀피치 2.74µm 기준):
+#   8mm 렌즈:  fx = fy = 8  / 2.74e-3 ≈ 2920 px
+#   12mm 렌즈: fx = fy = 12 / 2.74e-3 ≈ 4380 px
+# ⚠️ 아래는 8mm 이론값(근사). ChArUco 정식 캘리브 후 정확값으로 교체할 것
+#    (스크립트: bin_picking/tests/calibrate_ace2_intrinsics.py)
 ACE2_5MP_SPEC = {
     "model": "Basler ace2 a2A2448-23gcBAS",
     "type": "RGB",
@@ -102,13 +104,15 @@ ACE2_5MP_SPEC = {
     "height": 2048,
     "fps": 23,
     "interface": "GigE",
-    "sensor": "Sony IMX392",
-    "pixel_pitch_um": 3.45,
-    "lens": "C-mount, 별매 (한솔 보유)",
-    "lens_focal_mm_assumed": 12.0,
-    # 내부 파라미터 — 12mm 렌즈 가정 (5/11 정정: 2400 → 3478)
-    "fx": 3478.0,
-    "fy": 3478.0,
+    "sensor": "Sony IMX547",
+    "pixel_pitch_um": 2.74,
+    "optical_format": "1/1.8\"",
+    "lens": "C23-0824-5M (8mm, C-mount) — 7/20 장착 검증",
+    "lens_focal_mm_assumed": 8.0,
+    # 내부 파라미터 — 8mm 렌즈 이론 근사값 (7/20 정정: 픽셀피치 2.74µm 기준)
+    # ⚠️ 캘리브 전 임시값. ChArUco 캘리브 후 교체 필수.
+    "fx": 2920.0,
+    "fy": 2920.0,
     "cx": 1224.0,
     "cy": 1024.0,
 }
