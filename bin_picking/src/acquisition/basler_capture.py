@@ -320,15 +320,16 @@ class BaslerCapture:
         self._blaze_cam = self._find_camera("blaze", self.blaze_serial, self.blaze_ip)
         if self._blaze_cam is not None:
             self._blaze_cam.Open()
+            nodemap = self._blaze_cam.GetNodeMap()
             # Blaze-112 설정 (pypylon GenICam 노드)
             try:
-                nodemap = self._blaze_cam.GetNodeMap()
                 # 해상도 설정 (Blaze는 640x480 고정이지만 노드가 있을 수 있음)
                 self._setup_blaze(nodemap)
-                # GigE 스트리밍 튜닝 (macOS + USB 이더넷 어댑터 buffer underrun 방지)
-                self._tune_gige(self._blaze_cam, nodemap)
             except Exception:
                 pass  # 노드 없으면 기본값 사용
+            # GigE 스트리밍 튜닝은 grab 성공에 필수 → _setup_blaze 예외와 무관하게
+            # 항상 실행 (별도 블록). _tune_gige 자체가 실패에 안전.
+            self._tune_gige(self._blaze_cam, nodemap)
             self._blaze_cam.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
             result["blaze"] = True
 
