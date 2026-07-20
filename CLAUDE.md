@@ -112,6 +112,7 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 - **편입 규칙**: 코드만 git(dual push=한솔 미러 OK, 보안정리 완료: 점자→대상부품·A100 IP→`$GPU_HOST` 환경변수·실사문서 gitignore) / 대용량 데이터·체크포인트는 6000 상주·`data/` 심볼릭·git 제외.
 - ✅ **GPU 전략(대표님 7/13 지시)**: 개발 GPU = **A100**(임대 넉넉, 재현·재학습·성능실험) / 배포 최종 타깃 = **NVIDIA Thor**(Jetson Thor 엣지 AI, 대표님 예정) / **IPC-510 = 공장 하드웨어 세팅만**(태민님 GPU 배포 대상 아님, 대표님·현장 영역). ⭐ **태민님 역할 = 빈피킹 "개발" 집중**(하드웨어·배포 인프라는 대표님). 모델 작아(batch2·320×576·67MB) Thor 엣지 추론 적합 예상(ONNX/TensorRT 경로). 6000엔 GPU 없음(합성생성·보관 전용).
 - **성능 향상**: ✅ TTA(실측 추가 없이, `scripts/eval_tta.py`)=다중스케일 결합 F1 0.6907(+0.007, recall↑). "공짜 소폭"이고 종류식별 병목은 미해결. **핵심 교훈(sim2real)**: 합성 aug 강화는 천장(F1 0.203)→성능 열쇠는 실측 소량 fine-tune(0.203→0.45→0.684), lr이 지렛대. 남은 병목=센서 물리(대칭·표면패턴)→**큰 향상은 실측 데이터·RGB 융합·고해상 depth 필요**.
+- ✅✅ **Basler 실증 파이프라인 복구(7/20)**: macOS Tahoe 26 업그레이드 후 Blaze-112 검증 완료. pypylon 재설치·venv 재구축 불필요(Tahoe 안전). 🐛 GigE grab 전량실패(`0xE1000014` buffer underrun)=macOS+USB어댑터가 66Mbps 못 따라감 → **`DeviceLinkThroughputLimit`=10Mbps로 튜닝**(30/30 안정, 빈피킹 정지물체라 fps 무관)이 유일 해결. `basler_capture._tune_gige()` + 라이브 뷰어 반영, dual push. ✅ depth 라이브 뷰(848×480 uint16 mm) Mac서 실시간 확인. ⏭️ **다음 블로커=ACE2 렌즈 장착·정렬**(depth↔RGB 시야 겹치기=RGB 융합 착수). depth 화질 최적화(노출 스윕)는 추후. → `memory/project_basler_setup_history.md` §macOS Tahoe
 
 상세: `memory/project_depth_track_integration_0713.md` + `bin_picking/depth_track/README.md`
 
