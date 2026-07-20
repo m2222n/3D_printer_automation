@@ -21,6 +21,12 @@ PNG(+선택적으로 벡터 없는 고해상 PNG)로 생성. A4/A3에 인쇄해�
 - 프린터 "실제 크기 / 배율 100% / 여백맞춤 끄기"로 인쇄 (자동 축소 금지!)
 - 인쇄 후 자로 한 칸 실제 길이 측정 → 캘리브 시 그 실측값을 square-mm 로 넘김
   (인쇄 배율이 1~2% 틀어져도 실측값 쓰면 캘리브 정확)
+
+⭐ USB로 프린터에 가져가 인쇄할 때 = --pdf 옵션 권장:
+    python bin_picking/tests/make_charuco_board.py --pdf --out viz_output/charuco_A4.pdf
+  A4(210x297mm) 페이지 정중앙에 보드를 정확한 mm 크기로 앉힌 PDF 생성.
+  PNG는 프린터가 못 읽거나 변환 시 확대되지만, 이 PDF는 A4에 딱 맞게 나옴.
+  (프린터에서 "실제 크기/배율 100%"로 인쇄. 그래도 인쇄 후 자로 실측은 필수.)
 """
 from __future__ import annotations
 
@@ -46,6 +52,8 @@ def main() -> int:
     ap.add_argument("--dpi", type=int, default=300, help="인쇄 해상도")
     ap.add_argument("--margin-mm", type=float, default=10.0, help="바깥 여백 mm")
     ap.add_argument("--out", type=Path, default=Path("viz_output/charuco_board.png"))
+    ap.add_argument("--pdf", action="store_true",
+                    help="A4 페이지에 실제 mm 크기로 앉힌 PDF 생성 (USB 인쇄용 권장)")
     args = ap.parse_args()
 
     square_m = args.square_mm / 1000.0
@@ -71,13 +79,32 @@ def main() -> int:
     canvas[margin_px:margin_px + img_h, margin_px:margin_px + img_w] = board_img
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(args.out), canvas)
+
+    if args.pdf:
+        # A4(210x297mm) 페이지 정중앙에 보드를 실제 mm 크기로 앉힌 PDF.
+        # board_img(=canvas)는 이미 args.dpi 기준 실제 mm 크기의 px 배열.
+        from PIL import Image
+        A4_W_MM, A4_H_MM = 210.0, 297.0
+        page_w_px = int(round(A4_W_MM * px_per_mm))
+        page_h_px = int(round(A4_H_MM * px_per_mm))
+        if canvas.shape[1] > page_w_px or canvas.shape[0] > page_h_px:
+            print(f"⚠️ 보드({board_w_mm:.0f}x{board_h_mm:.0f}mm)+여백이 A4보다 큼 → "
+                  f"--square-mm 를 줄이거나 --margin-mm 낮추세요. (그래도 저장은 진행)")
+        page = Image.new("L", (page_w_px, page_h_px), 255)
+        board_pil = Image.fromarray(canvas)
+        ox = max(0, (page_w_px - canvas.shape[1]) // 2)
+        oy = max(0, (page_h_px - canvas.shape[0]) // 2)
+        page.paste(board_pil, (ox, oy))
+        # DPI 메타를 박아 저장 → 뷰어/프린터가 실제 크기(210x297mm)로 인식
+        page.save(str(args.out), "PDF", resolution=float(args.dpi))
+    else:
+        cv2.imwrite(str(args.out), canvas)
 
     print(f"✅ 저장: {args.out}")
     print(f"   보드: {args.squares_x}x{args.squares_y} 칸, 한 칸 {args.square_mm}mm, "
           f"마커비 {args.marker_ratio}")
     print(f"   전체 인쇄 크기: {board_w_mm:.0f} x {board_h_mm:.0f} mm (+여백 {args.margin_mm}mm)")
-    print(f"   딕셔너리: DICT_5X5_250")
+    print(f"   딕셔너리: DICT_5X5_250" + ("  | 형식: A4 PDF (실제 크기)" if args.pdf else ""))
     print()
     print("⚠️ 인쇄: '실제 크기/배율 100%'로. 인쇄 후 자로 한 칸 실측 → 캘리브 시 그 값 사용.")
     print(f"   캘리브 명령 예시:")
