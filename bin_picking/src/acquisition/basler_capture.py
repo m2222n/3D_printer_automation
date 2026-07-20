@@ -95,8 +95,11 @@ BLAZE_112_SPEC = {
 # fx/fy는 렌즈 초점거리에 따라 가변 (픽셀피치 2.74µm 기준):
 #   8mm 렌즈:  fx = fy = 8  / 2.74e-3 ≈ 2920 px
 #   12mm 렌즈: fx = fy = 12 / 2.74e-3 ≈ 4380 px
-# ⚠️ 아래는 8mm 이론값(근사). ChArUco 정식 캘리브 후 정확값으로 교체할 것
-#    (스크립트: bin_picking/tests/calibrate_ace2_intrinsics.py)
+# ✅ 7/20 ChArUco 정식 캘리브 완료 (재투영 RMS 0.546px, 15프레임).
+#    이론 근사값(fx 2920/cx 1224/cy 1024) → 실측값으로 교체.
+#    캘리브 결과 원본: bin_picking/config/ace2_intrinsics.json (Mac 상주).
+#    스크립트: bin_picking/tests/calibrate_ace2_intrinsics.py --square-mm 25 --exposure 3000
+#    dist_coeffs(왜곡)는 SPEC에 없으므로 RGB-D 정합 시 json에서 직접 로드할 것.
 ACE2_5MP_SPEC = {
     "model": "Basler ace2 a2A2448-23gcBAS",
     "type": "RGB",
@@ -109,12 +112,14 @@ ACE2_5MP_SPEC = {
     "optical_format": "1/1.8\"",
     "lens": "C23-0824-5M (8mm, C-mount) — 7/20 장착 검증",
     "lens_focal_mm_assumed": 8.0,
-    # 내부 파라미터 — 8mm 렌즈 이론 근사값 (7/20 정정: 픽셀피치 2.74µm 기준)
-    # ⚠️ 캘리브 전 임시값. ChArUco 캘리브 후 교체 필수.
-    "fx": 2920.0,
-    "fy": 2920.0,
-    "cx": 1224.0,
-    "cy": 1024.0,
+    # 내부 파라미터 — 7/20 ChArUco 캘리브 실측값 (RMS 0.546px, 이론값과 0.3% 일치)
+    "fx": 2929.6,
+    "fy": 2930.4,
+    "cx": 1233.7,
+    "cy": 1041.7,
+    "dist_coeffs": [-0.0912, 0.1773, 0.003, 0.0009, -1.332],
+    "calib_rms_px": 0.546,
+    "calib_date": "2026-07-20",
 }
 
 
