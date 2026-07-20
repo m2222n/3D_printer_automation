@@ -66,12 +66,29 @@ def load_ace2_intrinsics():
 
 
 def open_cam(ip, throughput_mbps=30.0):
+    """IP로 GigE 카메라 열기.
+
+    macOS + 다중 어댑터(en8/en10 서로 다른 서브넷)에서는 IP 직접 CreateDevice가
+    'Failed to discover'로 실패 → GigE TL의 EnumerateAllDevices로 먼저 링크를
+    스캔한 뒤 IP 매칭되는 device 객체로 여는 방식이 견고(find_blaze 방식).
+    """
     from pypylon import pylon
     tlf = pylon.TlFactory.GetInstance()
-    info = pylon.DeviceInfo()
-    info.SetIpAddress(ip)
-    info.SetDeviceClass("BaslerGigE")
-    cam = pylon.InstantCamera(tlf.CreateDevice(info))
+    gige = tlf.CreateTl("BaslerGigE")
+    target = None
+    try:
+        for d in gige.EnumerateAllDevices():
+            if d.IsIpAddressAvailable() and d.GetIpAddress() == ip:
+                target = d
+                break
+    except Exception:
+        target = None
+    if target is None:
+        # fallback: 기존 IP 직접 지정
+        target = pylon.DeviceInfo()
+        target.SetIpAddress(ip)
+        target.SetDeviceClass("BaslerGigE")
+    cam = pylon.InstantCamera(tlf.CreateDevice(target))
     cam.Open()
     try:
         cam.GevSCPSPacketSize.SetValue(1500)
