@@ -112,8 +112,12 @@ def open_cam(ip, throughput_mbps=30.0):
     return cam, pylon
 
 
-def setup_blaze_intensity(cam):
-    """Blaze를 intensity(흑백) 컴포넌트로 전환 → 보드 검출용."""
+def setup_blaze_intensity(cam, exposure_us=1000.0):
+    """Blaze를 intensity(흑백) 컴포넌트로 전환 → 보드 검출용.
+
+    exposure_us: ToF intensity 노출. 강한 조명(850nm 직사광)에 과노출되면
+                 흑백 대비가 날아가 ChArUco 검출 실패 → 노출 낮추기(예: 200~500).
+    """
     nm = cam.GetNodeMap()
     try:
         cs, ce = nm.GetNode("ComponentSelector"), nm.GetNode("ComponentEnable")
@@ -122,7 +126,10 @@ def setup_blaze_intensity(cam):
     except Exception as e:
         print(f"  ⚠️ Blaze intensity 전환 실패: {e}")
     try:
-        nm.GetNode("ExposureTime").SetValue(1000)
+        n = nm.GetNode("ExposureTime")
+        if n is not None:
+            n.SetValue(max(float(n.Min), min(exposure_us, float(n.Max))))
+            print(f"  Blaze intensity 노출: {exposure_us}us")
     except Exception:
         pass
 
@@ -176,6 +183,8 @@ def main() -> int:
     ap.add_argument("--squares-y", type=int, default=5)
     ap.add_argument("--square-mm", type=float, default=25.0)
     ap.add_argument("--marker-ratio", type=float, default=0.75)
+    ap.add_argument("--blaze-exposure", type=float, default=1000.0,
+                    help="Blaze intensity 노출 us. 과노출로 보드 안 보이면 낮추기(300~500)")
     ap.add_argument("--diag", action="store_true", help="진단: 검출만 확인(정렬 안 함)")
     ap.add_argument("--out", type=Path,
                     default=PROJECT_ROOT / "bin_picking" / "config" / "blaze_ace2_extrinsic.json")
@@ -187,7 +196,7 @@ def main() -> int:
     print(f"ACE2 intrinsic 로드: fx={ace2_K[0,0]:.1f} cx={ace2_K[0,2]:.1f}")
 
     blaze, pylon = open_cam(args.blaze_ip)
-    setup_blaze_intensity(blaze)
+    setup_blaze_intensity(blaze, args.blaze_exposure)
     ace2, _ = open_cam(args.ace2_ip)
     try:
         ace2.ExposureAuto.SetValue("Continuous")
