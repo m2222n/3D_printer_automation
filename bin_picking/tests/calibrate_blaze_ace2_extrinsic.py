@@ -1,0 +1,266 @@
+"""
+Blaze ↔ ACE2 Extrinsic 정렬 (RGB-D 정합, B단계)
+================================================
+
+목적: L자 브래킷에 고정된 Blaze(depth)와 ACE2(RGB)의 상대 위치·회전(R,t)을 구해
+     depth를 RGB에 투영할 수 있게 함 = RGB-D 정합. A단계(intrinsic 캘리브) 완료 전제.
+
+원리: 두 카메라가 **같은 ChArUco 보드를 동시에** 관측.
+  - ACE2 RGB → ChArUco 검출 → solvePnP(캘리브된 intrinsic) → T_board_to_ace2
+  - Blaze intensity(흑백) → ChArUco 검출 → solvePnP(Blaze intrinsic) → T_board_to_blaze
+  - T_ace2_to_blaze = T_board_to_blaze @ inv(T_board_to_ace2)  ← 프레임마다 구해 평균
+  L자 고정이라 한 번 구하면 재사용.
+
+⚠️ Blaze는 ToF depth 카메라 → 흑백 intensity 컴포넌트로 보드를 봐야 함.
+   intensity 화질이 낮으면 검출 실패 가능 → --diag 모드로 먼저 확인.
+⚠️ 실물 = Mac 직접. 두 카메라 동시 연결 필요(Blaze .10, ACE2 .20 / 192.168.20).
+
+사용:
+    export BASLER_BLAZE_IP=192.168.20.10
+    export BASLER_ACE2_IP=192.168.20.20
+
+    # 1) 진단: 두 카메라가 보드를 동시에 검출하는지 먼저 확인 (강력 권장)
+    python bin_picking/tests/calibrate_blaze_ace2_extrinsic.py --diag --square-mm 25
+
+    # 2) 정렬: 보드를 두 카메라 공통 시야에 두고 여러 각도 채택 → extrinsic
+    python bin_picking/tests/calibrate_blaze_ace2_extrinsic.py --square-mm 25
+
+키(정렬):
+    SPACE   현재 프레임 채택 (양쪽 다 검출됐을 때만)
+    q/ESC   종료 → extrinsic 계산·저장
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+_DICT = cv2.aruco.DICT_5X5_250
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ACE2_INTRINSICS = PROJECT_ROOT / "bin_picking" / "config" / "ace2_intrinsics.json"
+
+# Blaze-112 depth intrinsics (basler_capture.BLAZE_112_SPEC, 5/12 실측정정)
+BLAZE_K = np.array([[553.0, 0, 424.0], [0, 188.0, 240.0], [0, 0, 1]], np.float64)
+BLAZE_DIST = np.zeros(5, np.float64)  # ToF depth 왜곡 무시(초기 근사)
+
+
+def build_board(sx, sy, square_mm, marker_ratio):
+    square_m = square_mm / 1000.0
+    dictionary = cv2.aruco.getPredefinedDictionary(_DICT)
+    board = cv2.aruco.CharucoBoard((sx, sy), square_m, square_m * marker_ratio, dictionary)
+    return board, cv2.aruco.CharucoDetector(board)
+
+
+def load_ace2_intrinsics():
+    if not ACE2_INTRINSICS.exists():
+        raise SystemExit(f"[ERROR] ACE2 intrinsic 없음: {ACE2_INTRINSICS}\n"
+                         f"  먼저 calibrate_ace2_intrinsics.py 로 A단계 완료할 것.")
+    d = json.loads(ACE2_INTRINSICS.read_text())
+    K = np.array(d["camera_matrix"], np.float64)
+    dist = np.array(d["dist_coeffs"], np.float64)
+    return K, dist
+
+
+def open_cam(ip, throughput_mbps=30.0):
+    from pypylon import pylon
+    tlf = pylon.TlFactory.GetInstance()
+    info = pylon.DeviceInfo()
+    info.SetIpAddress(ip)
+    info.SetDeviceClass("BaslerGigE")
+    cam = pylon.InstantCamera(tlf.CreateDevice(info))
+    cam.Open()
+    try:
+        cam.GevSCPSPacketSize.SetValue(1500)
+    except Exception:
+        pass
+    cam.GevSCPD.SetValue(1000)
+    try:
+        n = cam.GetNodeMap().GetNode("DeviceLinkThroughputLimit")
+        if n is not None:
+            lim = int(throughput_mbps * 1_000_000)
+            n.SetValue(max(int(n.Min), min(lim, int(n.Max))))
+    except Exception:
+        pass
+    cam.MaxNumBuffer.SetValue(30)
+    return cam, pylon
+
+
+def setup_blaze_intensity(cam):
+    """Blaze를 intensity(흑백) 컴포넌트로 전환 → 보드 검출용."""
+    nm = cam.GetNodeMap()
+    try:
+        cs, ce = nm.GetNode("ComponentSelector"), nm.GetNode("ComponentEnable")
+        cs.FromString("Range"); ce.SetValue(False)      # depth 끄기
+        cs.FromString("Intensity"); ce.SetValue(True)   # 흑백 켜기
+    except Exception as e:
+        print(f"  ⚠️ Blaze intensity 전환 실패: {e}")
+    try:
+        nm.GetNode("ExposureTime").SetValue(1000)
+    except Exception:
+        pass
+
+
+def grab_gray(cam, pylon, is_blaze):
+    res = cam.RetrieveResult(2000, pylon.TimeoutHandling_Return)
+    if res is None or not res.GrabSucceeded():
+        if res is not None:
+            res.Release()
+        return None
+    arr = res.Array.copy()
+    res.Release()
+    if is_blaze:
+        # intensity = Mono (8 or 16bit). 8bit로 정규화.
+        if arr.dtype != np.uint8:
+            arr = cv2.normalize(arr, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        return arr
+    # ACE2 = BayerRG8 → gray
+    bgr = cv2.cvtColor(arr, cv2.COLOR_BayerRG2BGR)
+    return cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+
+
+def pose_from_gray(gray, detector, board, K, dist):
+    """ChArUco 검출 → solvePnP → (rvec, tvec, n_corners). 실패 시 None."""
+    ch_corners, ch_ids, _, _ = detector.detectBoard(gray)
+    if ch_ids is None or len(ch_ids) < 6:
+        return None
+    obj_pts, img_pts = board.matchImagePoints(ch_corners, ch_ids)
+    if obj_pts is None or len(obj_pts) < 6:
+        return None
+    ok, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, K, dist)
+    if not ok:
+        return None
+    return rvec, tvec, len(ch_ids)
+
+
+def to_T(rvec, tvec):
+    R, _ = cv2.Rodrigues(rvec)
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = tvec.ravel()
+    return T
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--blaze-ip", default=os.environ.get("BASLER_BLAZE_IP", "192.168.20.10"))
+    ap.add_argument("--ace2-ip", default=os.environ.get("BASLER_ACE2_IP", "192.168.20.20"))
+    ap.add_argument("--squares-x", type=int, default=7)
+    ap.add_argument("--squares-y", type=int, default=5)
+    ap.add_argument("--square-mm", type=float, default=25.0)
+    ap.add_argument("--marker-ratio", type=float, default=0.75)
+    ap.add_argument("--diag", action="store_true", help="진단: 검출만 확인(정렬 안 함)")
+    ap.add_argument("--out", type=Path,
+                    default=PROJECT_ROOT / "bin_picking" / "config" / "blaze_ace2_extrinsic.json")
+    args = ap.parse_args()
+
+    board, detector = build_board(args.squares_x, args.squares_y,
+                                  args.square_mm, args.marker_ratio)
+    ace2_K, ace2_dist = load_ace2_intrinsics()
+    print(f"ACE2 intrinsic 로드: fx={ace2_K[0,0]:.1f} cx={ace2_K[0,2]:.1f}")
+
+    blaze, pylon = open_cam(args.blaze_ip)
+    setup_blaze_intensity(blaze)
+    ace2, _ = open_cam(args.ace2_ip)
+    try:
+        ace2.ExposureAuto.SetValue("Continuous")
+    except Exception:
+        pass
+    blaze.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+    ace2.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+    print("두 카메라 grab 시작. 보드를 양쪽 공통 시야에 두세요.")
+
+    win_b, win_a = "Blaze intensity", "ACE2 RGB"
+    cv2.namedWindow(win_b, cv2.WINDOW_NORMAL)
+    cv2.namedWindow(win_a, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(win_a, 640, 536)
+
+    T_pairs = []  # (T_board_to_blaze, T_board_to_ace2)
+    try:
+        while True:
+            gb = grab_gray(blaze, pylon, is_blaze=True)
+            ga = grab_gray(ace2, pylon, is_blaze=False)
+            if gb is None or ga is None:
+                if cv2.waitKey(1) & 0xFF in (27, ord("q")):
+                    break
+                continue
+
+            pb = pose_from_gray(gb, detector, board, BLAZE_K, BLAZE_DIST)
+            pa = pose_from_gray(ga, detector, board, ace2_K, ace2_dist)
+
+            disp_b = cv2.cvtColor(gb, cv2.COLOR_GRAY2BGR)
+            disp_a = cv2.resize(cv2.cvtColor(ga, cv2.COLOR_GRAY2BGR), (640, 536))
+            nb = pb[2] if pb else 0
+            na = pa[2] if pa else 0
+            cv2.putText(disp_b, f"Blaze corners: {nb}", (8, 24),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if nb else (0, 0, 255), 2)
+            cv2.putText(disp_a, f"ACE2 corners: {na}  pairs: {len(T_pairs)}", (8, 24),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if na else (0, 0, 255), 2)
+            cv2.imshow(win_b, disp_b)
+            cv2.imshow(win_a, disp_a)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key in (27, ord("q")):
+                break
+            if not args.diag and key == ord(" ") and pb and pa:
+                T_pairs.append((to_T(pb[0], pb[1]), to_T(pa[0], pa[1])))
+                print(f"  채택 {len(T_pairs)} (blaze {nb}, ace2 {na})")
+    finally:
+        blaze.StopGrabbing(); blaze.Close()
+        ace2.StopGrabbing(); ace2.Close()
+        cv2.destroyAllWindows()
+
+    if args.diag:
+        print("\n[진단 종료] 두 창에서 corners 숫자가 양쪽 다 초록(6+)으로 뜨면 정렬 가능.")
+        print("  Blaze intensity 검출이 안 되면(빨강/0) → 조명·거리 조정 또는 코드 보완 필요.")
+        return 0
+
+    if len(T_pairs) < 3:
+        print(f"[ERROR] 채택 부족 ({len(T_pairs)} < 3). 양쪽 동시 검출되는 위치에서 더 채택.")
+        return 1
+
+    # T_ace2_to_blaze = T_board_to_blaze @ inv(T_board_to_ace2), 프레임마다 → 평균
+    Ts = [Tb @ np.linalg.inv(Ta) for Tb, Ta in T_pairs]
+    t_mean = np.mean([T[:3, 3] for T in Ts], axis=0)
+    # 회전 평균: 쿼터니언 평균 근사(첫 R 기준 정렬 후 산술평균→재정규화)
+    Rs = np.array([T[:3, :3] for T in Ts])
+    R_mean = Rs.mean(axis=0)
+    U, _, Vt = np.linalg.svd(R_mean)
+    R_mean = U @ Vt
+    spread_mm = float(np.std([T[:3, 3] for T in Ts], axis=0).mean() * 1000)
+
+    T_final = np.eye(4)
+    T_final[:3, :3] = R_mean
+    T_final[:3, 3] = t_mean
+
+    print("\n" + "=" * 60)
+    print("Blaze ↔ ACE2 Extrinsic 결과 (T_ace2_to_blaze)")
+    print("=" * 60)
+    print(f"  채택 프레임: {len(T_pairs)}")
+    print(f"  translation (m): [{t_mean[0]:.4f}, {t_mean[1]:.4f}, {t_mean[2]:.4f}]")
+    print(f"  baseline: {np.linalg.norm(t_mean)*1000:.1f} mm  (두 카메라 광학중심 거리)")
+    print(f"  프레임 간 translation 산포(std): {spread_mm:.2f} mm  "
+          f"({'✅ 안정 <5mm' if spread_mm < 5 else '⚠️ >5mm, 프레임 재검토'})")
+
+    result = {
+        "T_ace2_to_blaze": T_final.tolist(),
+        "translation_m": t_mean.tolist(),
+        "baseline_mm": float(np.linalg.norm(t_mean) * 1000),
+        "spread_mm": spread_mm,
+        "n_frames": len(T_pairs),
+        "board": {"squares_x": args.squares_x, "squares_y": args.squares_y,
+                  "square_mm": args.square_mm},
+    }
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(result, ensure_ascii=False, indent=2))
+    print(f"\n  ✅ 저장: {args.out}")
+    print("  → RGB-D 정합: depth 점을 이 T로 ACE2 좌표계에 투영 후 RGB 샘플링.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
