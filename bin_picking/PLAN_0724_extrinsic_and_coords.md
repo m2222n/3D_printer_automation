@@ -34,7 +34,39 @@ python bin_picking/tests/calibrate_blaze_ace2_extrinsic.py \
 - **BOTH OK** 뜰 때 SPACE → **5~8쌍** 수집 → `q` 저장.
 - 산출물: `bin_picking/config/blaze_ace2_extrinsic.json` (baseline mm·spread mm)
 
-### ⚠️ 7/20 미해결 관문 2개 + 대응책 (이게 오늘의 실제 난관)
+### 🚨 7/27 추가 — 먼저 `--diag`로 원인부터 가를 것 (신규 발견)
+
+**코드 검토 중 Blaze intrinsic이 물리적으로 불가능한 값임을 발견**했습니다. 정렬 실패의 유력 원인입니다.
+
+```
+기존 Blaze K:  fx=553, fy=188  →  비율 2.94 : 1
+```
+정상 카메라는 픽셀이 정사각형이라 **fx ≈ fy**여야 합니다. FOV(75°×104°)를 축마다 따로 역산한 추정값인데 그 계산 방식 자체가 틀렸습니다. 이 K로 `solvePnP`하면 **수렴 실패하거나 틀린 pose**가 나옵니다 → **BOTH OK가 안 뜨는 원인**.
+
+**→ 그래서 순서가 바뀝니다. 조명·화각을 손대기 전에 진단부터.**
+
+```bash
+python bin_picking/tests/calibrate_blaze_ace2_extrinsic.py --diag --square-mm 25 \
+  --blaze-ip 192.168.30.10 --blaze-exposure 400
+```
+
+화면 대괄호 안 사유로 갈립니다 (7/27 신규 표시):
+
+| 표시 | 의미 | 대응 |
+|------|------|------|
+| `[OK]` | 정렬 가능 | `--diag` 빼고 재실행 → SPACE 채택 |
+| `[NO_CORNERS]` `[FEW_CORNERS]` | **조명·화각 문제** (기존 가설) | 아래 관문 2개 표 |
+| `[PNP_FAIL]` | 🚨 **intrinsic 문제** (코너는 보이는데 pose 실패) | ↓ Blaze 실측 캘리브 |
+
+**`[PNP_FAIL]`이면** — 조명·보드 위치 아무리 만져도 안 됩니다. 실측 캘리브가 답:
+```bash
+python bin_picking/tests/calibrate_blaze_intrinsics.py \
+  --ip 192.168.30.10 --square-mm 25 --exposure 400
+```
+→ `config/blaze_intrinsics.json` 생성 → **extrinsic 스크립트가 자동으로 집어 씀**(코드 수정 불필요).
+촬영 요령은 ACE2 A단계와 동일: **정지 0.5초 후 SPACE**(모션블러가 RMS 주범, 2.98→0.546px 개선 사례), 화면 곳곳·기울기 다양하게 15~25장.
+
+### ⚠️ 7/20 미해결 관문 2개 + 대응책 (`[NO_CORNERS]`/`[FEW_CORNERS]`일 때)
 | 관문 | 증상 | 대응 |
 |------|------|------|
 | **Blaze intensity 조명 민감** | 850nm 직사광 과노출 → 흑백 칸 대비 소실 → 검출 실패 | **조명 등지기** + `--blaze-exposure 400`(안 되면 200~800 스윕) |

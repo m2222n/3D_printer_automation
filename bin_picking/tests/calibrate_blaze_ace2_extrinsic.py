@@ -42,10 +42,24 @@ import numpy as np
 _DICT = cv2.aruco.DICT_5X5_250
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ACE2_INTRINSICS = PROJECT_ROOT / "bin_picking" / "config" / "ace2_intrinsics.json"
+BLAZE_INTRINSICS = PROJECT_ROOT / "bin_picking" / "config" / "blaze_intrinsics.json"
 
-# Blaze-112 depth intrinsics (basler_capture.BLAZE_112_SPEC, 5/12 실측정정)
-BLAZE_K = np.array([[553.0, 0, 424.0], [0, 188.0, 240.0], [0, 0, 1]], np.float64)
-BLAZE_DIST = np.zeros(5, np.float64)  # ToF depth 왜곡 무시(초기 근사)
+# ⚠️ Blaze-112 intrinsics — FOV(75°×104°) 기반 추정값이며 **신뢰 불가**.
+#    fx=553 / fy=188 = 비율 2.94:1 → 물리적으로 불가능(정상 카메라는 픽셀 정사각형이라 fx≈fy).
+#    축마다 FOV를 따로 대입해 계산한 것이 원인 = 계산 방식 자체가 틀림.
+#    이 K로 solvePnP하면 수렴 실패(PNP_FAIL)하거나 틀린 pose가 나옴 → extrinsic 정렬 실패의 유력 원인.
+#    ✅ 정답 = calibrate_blaze_intrinsics.py 로 실측 캘리브 후 blaze_intrinsics.json 생성.
+BLAZE_K_FALLBACK = np.array([[553.0, 0, 424.0], [0, 188.0, 240.0], [0, 0, 1]], np.float64)
+BLAZE_DIST_FALLBACK = np.zeros(5, np.float64)
+
+
+def load_blaze_intrinsics():
+    """실측 캘리브 json 우선, 없으면 추정값 fallback. 반환: (K, dist, source)."""
+    if BLAZE_INTRINSICS.exists():
+        d = json.loads(BLAZE_INTRINSICS.read_text())
+        return (np.array(d["camera_matrix"], np.float64),
+                np.array(d["dist_coeffs"], np.float64), "실측 캘리브")
+    return BLAZE_K_FALLBACK, BLAZE_DIST_FALLBACK, "⚠️추정값(신뢰불가)"
 
 
 def build_board(sx, sy, square_mm, marker_ratio):
@@ -161,15 +175,55 @@ def detect_corners(gray, detector):
 
 def pose_from_corners(ch_corners, ch_ids, board, K, dist, min_corners=6):
     """검출된 코너 → solvePnP → (rvec, tvec, n). 실패 시 None."""
-    if ch_ids is None or len(ch_ids) < max(4, min_corners):
-        return None
+    r = pose_from_corners_diag(ch_corners, ch_ids, board, K, dist, min_corners)
+    return r[0]
+
+
+def pose_from_corners_diag(ch_corners, ch_ids, board, K, dist, min_corners=6):
+    """pose_from_corners + 실패 사유 문자열.
+
+    ⭐ 7/27 추가: "코너는 잡히는데 pose가 안 나오는" 경우를 구분하기 위함.
+       코너 부족(조명·화각 문제)과 PnP 실패(intrinsic 문제)는 대응책이 완전히 다른데,
+       기존엔 둘 다 그냥 OK 미표시라 현장에서 원인 판별이 불가능했음.
+
+    반환: (pose or None, reason)
+      reason: "OK" | "NO_CORNERS" | "FEW_CORNERS(n<min)" | "MATCH_FAIL" | "PNP_FAIL"
+    """
+    if ch_ids is None or len(ch_ids) == 0:
+        return None, "NO_CORNERS"
+    n = len(ch_ids)
+    need = max(4, min_corners)
+    if n < need:
+        return None, f"FEW_CORNERS({n}<{need})"
     obj_pts, img_pts = board.matchImagePoints(ch_corners, ch_ids)
-    if obj_pts is None or len(obj_pts) < max(4, min_corners):
-        return None
+    if obj_pts is None or len(obj_pts) < need:
+        return None, "MATCH_FAIL"
     ok, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, K, dist)
     if not ok:
-        return None
-    return rvec, tvec, len(ch_ids)
+        return None, "PNP_FAIL"
+    return (rvec, tvec, n), "OK"
+
+
+def check_intrinsic_sanity(K, name, width=None):
+    """fx/fy 비율 sanity check → 경고 문자열 리스트.
+
+    ⭐ 7/27: Blaze K가 fx=553/fy=188(비율 2.94)로 물리적으로 불가능한 값이었음.
+       정상 카메라는 픽셀이 정사각형이라 fx≈fy여야 함. FOV(75°×104°)를 축마다
+       따로 대입해 계산한 추정값이 원인 — 그 계산 방식 자체가 틀림.
+       이 K로 solvePnP하면 수렴 실패(PNP_FAIL) 또는 틀린 pose가 나옴.
+    """
+    warns = []
+    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+    ratio = max(fx, fy) / max(1e-9, min(fx, fy))
+    if ratio > 1.15:
+        warns.append(
+            f"🚨 {name} fx/fy 비율 {ratio:.2f} (fx={fx:.1f}, fy={fy:.1f}) — "
+            f"정상 카메라는 fx≈fy. 이 intrinsic으로는 solvePnP가 실패하거나 "
+            f"틀린 pose를 냄. → calibrate_blaze_intrinsics.py 로 실측 캘리브 필요."
+        )
+    if width is not None and abs(cx - width / 2) > width * 0.25:
+        warns.append(f"⚠️ {name} cx={cx:.1f}가 이미지 중심({width/2:.0f})에서 많이 벗어남")
+    return warns
 
 
 def to_T(rvec, tvec):
@@ -201,7 +255,20 @@ def main() -> int:
     board, detector = build_board(args.squares_x, args.squares_y,
                                   args.square_mm, args.marker_ratio)
     ace2_K, ace2_dist = load_ace2_intrinsics()
-    print(f"ACE2 intrinsic 로드: fx={ace2_K[0,0]:.1f} cx={ace2_K[0,2]:.1f}")
+    print(f"ACE2 intrinsic 로드: fx={ace2_K[0,0]:.1f} fy={ace2_K[1,1]:.1f} cx={ace2_K[0,2]:.1f}")
+
+    # Blaze intrinsic: 실측 캘리브 json 있으면 그걸, 없으면 추정값(경고와 함께)
+    blaze_K, blaze_dist, blaze_src = load_blaze_intrinsics()
+    print(f"Blaze intrinsic 로드({blaze_src}): "
+          f"fx={blaze_K[0,0]:.1f} fy={blaze_K[1,1]:.1f} cx={blaze_K[0,2]:.1f}")
+
+    warns = (check_intrinsic_sanity(ace2_K, "ACE2")
+             + check_intrinsic_sanity(blaze_K, "Blaze", width=848))
+    for w in warns:
+        print(f"  {w}")
+    if warns:
+        print("  ⚠️ 위 경고가 있으면 BOTH OK가 안 뜨거나 spread가 커질 수 있음.\n"
+              "     --diag 로 먼저 확인: 코너는 잡히는데 [PNP_FAIL]이면 intrinsic이 원인.")
 
     blaze, pylon = open_cam(args.blaze_ip)
     setup_blaze_intensity(blaze, args.blaze_exposure)
@@ -231,8 +298,10 @@ def main() -> int:
 
             cb, ib, nb = detect_corners(gb, detector)
             ca, ia, na = detect_corners(ga, detector)
-            pb = pose_from_corners(cb, ib, board, BLAZE_K, BLAZE_DIST, args.min_corners)
-            pa = pose_from_corners(ca, ia, board, ace2_K, ace2_dist, args.min_corners)
+            pb, why_b = pose_from_corners_diag(cb, ib, board, blaze_K, blaze_dist,
+                                               args.min_corners)
+            pa, why_a = pose_from_corners_diag(ca, ia, board, ace2_K, ace2_dist,
+                                               args.min_corners)
 
             disp_b = cv2.cvtColor(gb, cv2.COLOR_GRAY2BGR)
             disp_a = cv2.cvtColor(ga, cv2.COLOR_GRAY2BGR)
@@ -247,11 +316,16 @@ def main() -> int:
 
             ok_b = pb is not None
             ok_a = pa is not None
-            cv2.putText(disp_b, f"Blaze corners: {nb} {'OK' if ok_b else ''}", (8, 24),
+            # ⭐ 실패 사유를 화면에 표시 — "코너는 잡히는데 PNP_FAIL"이면 intrinsic 문제,
+            #    "NO_CORNERS/FEW_CORNERS"면 조명·화각 문제. 대응책이 다르므로 구분 필수.
+            cv2.putText(disp_b, f"Blaze corners: {nb} [{why_b}]", (8, 24),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0) if ok_b else (0, 0, 255), 2)
-            cv2.putText(disp_a, f"ACE2 corners: {na} {'OK' if ok_a else ''}  pairs: {len(T_pairs)}",
+            cv2.putText(disp_a, f"ACE2 corners: {na} [{why_a}]  pairs: {len(T_pairs)}",
                         (8, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
                         (0, 255, 0) if ok_a else (0, 0, 255), 2)
+            if why_b == "PNP_FAIL" or why_a == "PNP_FAIL":
+                cv2.putText(disp_b, "PNP_FAIL = intrinsic 의심 (코너는 보임)", (8, 84),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
             # 양쪽 동시 성립이면 상단에 크게 표시(채택 타이밍 알림)
             if ok_b and ok_a:
                 cv2.putText(disp_b, "<< BOTH OK - SPACE >>", (8, 56),
@@ -271,8 +345,14 @@ def main() -> int:
         cv2.destroyAllWindows()
 
     if args.diag:
-        print("\n[진단 종료] 두 창에서 corners 숫자가 양쪽 다 초록(6+)으로 뜨면 정렬 가능.")
-        print("  Blaze intensity 검출이 안 되면(빨강/0) → 조명·거리 조정 또는 코드 보완 필요.")
+        print("\n[진단 종료] 화면의 대괄호 안 사유로 원인을 가를 것:")
+        print("  [OK]                → 정렬 가능. --diag 빼고 재실행해 SPACE로 채택.")
+        print("  [NO_CORNERS]/[FEW_CORNERS] → 조명·화각 문제.")
+        print("        → Blaze: 조명 등지기 + --blaze-exposure 200~800 스윕")
+        print("        → 화각차: 보드를 두 화각 겹치는 중앙에 / 카메라를 더 멀리 / A3 보드")
+        print("  [PNP_FAIL]          → 🚨 intrinsic 문제(코너는 보이는데 pose 계산 실패).")
+        print("        → python bin_picking/tests/calibrate_blaze_intrinsics.py 로 실측 캘리브")
+        print("           (현 Blaze 추정값 fx=553/fy=188은 비율 2.94로 물리적으로 불가능)")
         return 0
 
     if len(T_pairs) < 3:
