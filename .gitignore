@@ -273,3 +273,7 @@ bin_picking/yolo_track/runs/**/weights/
 docs/MES_ERP_ATS_*.md
 docs/SaaS_플랫폼_*.md
 docs/saas_plan_*.html
+
+# 지원사업 구매/장비 조사 문서 (사업비 한도·단가·거래처 담당자 연락처 포함, 로컬 전용)
+docs/구매물품_*.md
+docs/장비_리스트업_*.md

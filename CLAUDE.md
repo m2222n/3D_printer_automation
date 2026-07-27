@@ -113,9 +113,38 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 - ✅ **GPU 전략(대표님 7/13 지시)**: 개발 GPU = **A100**(임대 넉넉, 재현·재학습·성능실험) / 배포 최종 타깃 = **NVIDIA Thor**(Jetson Thor 엣지 AI, 대표님 예정) / **IPC-510 = 공장 하드웨어 세팅만**(태민님 GPU 배포 대상 아님, 대표님·현장 영역). ⭐ **태민님 역할 = 빈피킹 "개발" 집중**(하드웨어·배포 인프라는 대표님). 모델 작아(batch2·320×576·67MB) Thor 엣지 추론 적합 예상(ONNX/TensorRT 경로). 6000엔 GPU 없음(합성생성·보관 전용).
 - **성능 향상**: ✅ TTA(실측 추가 없이, `scripts/eval_tta.py`)=다중스케일 결합 F1 0.6907(+0.007, recall↑). "공짜 소폭"이고 종류식별 병목은 미해결. **핵심 교훈(sim2real)**: 합성 aug 강화는 천장(F1 0.203)→성능 열쇠는 실측 소량 fine-tune(0.203→0.45→0.684), lr이 지렛대. 남은 병목=센서 물리(대칭·표면패턴)→**큰 향상은 실측 데이터·RGB 융합·고해상 depth 필요**.
 - ✅✅ **Basler 실증 파이프라인 복구(7/20)**: macOS Tahoe 26 업그레이드 후 Blaze-112 검증 완료. pypylon 재설치·venv 재구축 불필요(Tahoe 안전). 🐛 GigE grab 전량실패(`0xE1000014` buffer underrun)=macOS+USB어댑터가 66Mbps 못 따라감 → **`DeviceLinkThroughputLimit`=10Mbps로 튜닝**(30/30 안정, 빈피킹 정지물체라 fps 무관)이 유일 해결. `basler_capture._tune_gige()` + 라이브 뷰어 반영, dual push. ✅ depth 라이브 뷰(848×480 uint16 mm) Mac서 실시간 확인. depth 화질 최적화(노출 스윕)는 추후. → `memory/project_basler_setup_history.md` §macOS Tahoe
-- ✅✅ **RGB 융합 A단계 완주(7/20) — 대표님 "빈피킹 속도 내라" 지시**: depth-only 병목(종류식별 F1 0.85)을 ACE2 RGB로 보완하는 RGB 융합 착수. ①**ACE2 8mm 렌즈 장착·형상 검증 성공**(5/20 이후 처음 RGB 살아남, throughput 튜닝 선반영 `cfe7b18`) ②**스펙 정정**(IMX392→IMX547·3.45→2.74µm·8mm 확정) ③**ChArUco 보드 직접 제작**(`make_charuco_board.py --pdf`=A4 실제크기 25mm, 회사 보드 없음) ④**intrinsic 캘리브 성공 RMS 0.546px**(`calibrate_ace2_intrinsics.py`, fx=2929.6·cx=1233.7 등 실측값 `ACE2_5MP_SPEC` 교체, `614cdf1`). ⭐교훈=5MP 손촬영 모션블러가 RMS 주범→노출 3ms+정지 촬영이 해결. **B단계(Blaze↔ACE2 extrinsic 정렬) 스크립트·인프라 완성(7/20)**=`calibrate_blaze_ace2_extrinsic.py`(Blaze intensity로 보드 검출)+`find_blaze.py`. 🐛인프라 4이슈 해결(Basler ToF ICMP무응답·다중어댑터 대역분리 ACE2 20/Blaze 30·EnumerateAllDevices 열기·GevSCPD Max 96). ⚠️미해결 관문=Blaze intensity 조명민감(850nm 과노출)+두 카메라 화각차(동시 6코너 어려움)→`--min-corners 4`·`--blaze-exposure 400`으로 대응, **실 정렬 데이터 수집은 7/21**. → `memory/project_ace2_camera.md` §7/20 + `memory/project_binpicking_speedup_directive_0720.md`
+- ✅✅ **RGB 융합 A단계 완주(7/20) — 대표님 "빈피킹 속도 내라" 지시**: depth-only 병목(종류식별 F1 0.85)을 ACE2 RGB로 보완하는 RGB 융합 착수. ①**ACE2 8mm 렌즈 장착·형상 검증 성공**(5/20 이후 처음 RGB 살아남, throughput 튜닝 선반영 `cfe7b18`) ②**스펙 정정**(IMX392→IMX547·3.45→2.74µm·8mm 확정) ③**ChArUco 보드 직접 제작**(`make_charuco_board.py --pdf`=A4 실제크기 25mm, 회사 보드 없음) ④**intrinsic 캘리브 성공 RMS 0.546px**(`calibrate_ace2_intrinsics.py`, fx=2929.6·cx=1233.7 등 실측값 `ACE2_5MP_SPEC` 교체, `614cdf1`). ⭐교훈=5MP 손촬영 모션블러가 RMS 주범→노출 3ms+정지 촬영이 해결. **B단계(Blaze↔ACE2 extrinsic 정렬) 스크립트·인프라 완성(7/20)**=`calibrate_blaze_ace2_extrinsic.py`(Blaze intensity로 보드 검출)+`find_blaze.py`. 🐛인프라 4이슈 해결(Basler ToF ICMP무응답·다중어댑터 대역분리 ACE2 20/Blaze 30·EnumerateAllDevices 열기·GevSCPD Max 96). ⚠️미해결 관문=Blaze intensity 조명민감(850nm 과노출)+두 카메라 화각차(동시 6코너 어려움)→`--min-corners 4`·`--blaze-exposure 400`으로 대응, **실 정렬 데이터 수집 이월**. → `memory/project_ace2_camera.md` §7/20 + `memory/project_binpicking_speedup_directive_0720.md`
+- ⏭️ **7/24(금) 사무실 = 실카메라 연동 빈피킹 실환경 구동**(태민님 "무조건"): 순서 **①extrinsic 정렬 마무리→②좌표 출력**. 계획서 `bin_picking/PLAN_0724_extrinsic_and_coords.md`(도착 즉시 실행 명령어+7/20 막힘 관문 대응책). 성공기준=최소 extrinsic json / 목표 실부품 6요소 좌표 1건 / 로봇 E2E는 로봇전원·펜던트 후.
 
 상세: `memory/project_depth_track_integration_0713.md` + `bin_picking/depth_track/README.md`
+
+---
+
+## ⭐ 지원사업 구매물품 조사 (7/23 조사) → ✅ 7/24 미팅서 방향 대폭 확정 (아래 7/23 조사 전제 다수 뒤집힘)
+
+> 🚨🚨 **2026-07-24 구매물품 확정 미팅(대표님·주희님)으로 아래 7/23 조사의 전제 다수가 무효화됨** — 반드시 최신 결정을 우선할 것. 회의록=`3a7a7d640dab804bbeaae18a262aa1e3`, 상세=`memory/project_hwaseong_support_program_0716.md` §7/24 미팅.
+> - 🚨 **중국산 칩 전면 배제**(허용=퀄컴·브로드컴·NXP·마이크로칩·STM 최우선) → **reCamera 2002(SG2002)·오렌지파이·락파이 탈락**, 어제 "MaixCAM 동일칩 재사용성" 근거 무효. **N6는 ST칩이라 채택 유지**. 보유 MaixCAM=테스트/자비 장비로만.
+> - ✅ **Thor 구매 확정**(과스펙시 NX/슈퍼 하향, AGX Orin 신규구매 제외). OCR=고화질 1대 크롭커버+파인튜닝. 외주 2천만 취소→내부개발(6천만 전액 장비 가능). 일정 10/30 종료·**빈피킹 8월말 데드라인 아님**.
+> - 🔥 **ToDo #1=장비 리서치 7종 "오늘 마감"**(MPU카메라·웹캠·PoE카메라·SBC보드ST·PoE스위치·UPS·이더넷 리모트IO). 어제 카메라 조사는 중국칩 배제로 재작업 필요.
+> - ✅✅ **7/24 오후 장비 리서치 실행**(노션 `🛒 7/24 장비 리서치` `3a7a7d640dab805294e0db6c5eb9889a`, 주희님 공동): ⭐**리모트IO 신호 전수조사**=우리 신호 거의 다 디지털(아날로그 0), **로봇은 Modbus 직결이라 리모트IO서 뺌**, 리모트IO=세척·건조·드릴·타워램프·안전 등 전선신호 통합허브(대표님 "전·후공정 포괄" 실체). 채택 **PET-7255**(8DI/8DO·PoE·453,000원·총판 굿모닝계측기 최동호), 개수 입출력 각~10→2식 필요, 건조 온도 시 PET-7015 아날로그 추가. Thor 미국가 $5,499 실인상·국내 962만 확인. 상세 `memory/project_hwaseong_support_program_0716.md` §7/24 장비 리서치.
+> - ✅✅ **최종 확정 구매 리스트(7/24 주희님·태민 검토, 노션 맨 아래)**: ①Thor(~962만) ②온디바이스AI카메라=**AMD Kria KV260**($249) ③웹캠 고성능 **e-con e-CAM82_USB**/저비용 **로지텍 C270** ④SBC=**BeagleBone AI-64**($189·TI·미국) ⑤카메라센서 고해상 **RPi HQ IMX477**/저비용 **IMX219 8MP**. ⚠️발주 전 국내정품·세금계산서·SBC 호환 확인.
+> - ✅✅ **대표님 컨펌(7/24 저녁)으로 아래 항목 확정 추가/변경** (위 초안에서 갱신): ①**리모트IO 넉넉히 구매**(보류 해제)=**PET-7255 2대 + PET-7015 1대 + PoE 스위치(NEXT-POE8022GDT)**, 출력(DO 10~15)이 입력(DI 8~12)보다 살짝↑→입출력 균형형 PET-7255가 정답, 아날로그=건조기 온도 입력만 PET-7015(히터 연속조절 시에만 AO 추가[미확정]). ②**온디바이스 카메라에 OpenMV N6 추가**(Kria + N6). ③**SBC에 Rubik Pi 3 추가**(BBAI-64 + Rubik Pi 3, ⚠️BBAI-64는 우선 구매하되 산업용 아니어서 검토). 발주 전=로봇 신호 정체(dry/wet·전압·NPN/PNP, 한화 HCR/예승님)+건조 온도조절 방식+최동호 사원 견적. ⚠️노션 최종리스트 표 위 "리모트IO 보류" 인용문은 옛 문구=정리 필요.
+
+> **2026-07-23 대표님(디스코드)**: ①AI카메라·웹캠 더 찾아봐 ②토르 어떤 사양 ③네트워크 그대로vs변동 ④**건조대 사업 구매 불가**. + 태민님 "우리 공장·있는 물건들로 잘 하도록 깊게·꼼꼼히". → A/B/C 3안 선택이 아닌 **조사 심화**(태민+주희 협업). 산출물 `docs/구매물품_조사_0723.md`. ⚠️아래 내용은 7/24 미팅 前 조사이므로 위 경고 블록 우선.
+
+> ⚠️ **정직성 원칙(태민님)**: 확실하지 않은 건 맞다고 하지 말 것 → 문서에 **[확인]/[미확인]/[실측필요]** 라벨.
+- 🚨 **Thor 변수 2개(대표님 보고)**: ①가격 [확인] NVIDIA **7/22 인상** $3,499→$5,499 → 한국정품 **ICBanQ 875만(VAT별도)**(검색 "540만"=구가·믿지말것). ②⚠️INT8 이슈 [확인] Thor에서 INT8이 FP16보다 느림(NVIDIA 포럼, 구체 fps는 출처불명→명시안함)→우리 ONNX→TensorRT **INT8 경로 불리 가능**(Orin은 성숙)→우리 모델 실FPS [실측필요]. ⭐**대안**=Orin NX 16GB/**AGX Orin 64GB 418.8~462.2만[확인]**(Thor 875만 대비 **약 2배 쌈**)가 우리 작은 모델엔 적정, 단 서식 "Thor" 명시→변경 시 협약변경(8/31)=대표님 판단.
+- 📷 **AI카메라**(호환=MQTT+유선): N6(유선 Gigabit[확인]·⚠️**Modbus RTU만·TCP 미지원[확인]→게이트웨이 필요**). ⭐**Seeed reCamera 2002**(우리 **MaixCAM 동일칩**·5MP·유선·저가·**MQTT 공식[확인]**·ONVIF[미확인])=재사용성 최고. reCamera Pro(8MP·**MQTT/ONVIF 공식[확인]**)=OCR 유리하나 ⚠️7/29 신제품·**RV1126B(SG2002 아님→동일칩 이점 없음)**. MaixCAM 재활용(⚠️국내 유통 [미확인]=사업비 부적합, 자비용).
+- 📷 **산업용 카메라(심화)**: ⭐우리가 이미 **Basler+pypylon 생태계**→**Basler dart**(⚠️구성별 견적·셔터 센서 의존)면 코드·IPC-510/6000 재사용(추가비용0). **하이브리드**=OCR소수=Basler dart/가동감지다수=엣지AI.
+- 📹 **웹캠**: ⚠️**대표님 "Brio 비싸다"**→후순위. ⭐**지급 웹캠 먼저 실측**, 부족시 IMX415 바리포컬. ⭐⭐**심화 광학=진짜 열쇠는 4K 아닌 렌즈**(수동 바리포컬로 LCD 화면 꽉 채워 글자 30px↑)+CPL 편광필터+고정노출. 국내 유통 증빙=OAK·로지텍·e-con 확실 / MaixCAM·reCamera Pro [미확인].
+- 🔌 **네트워크 "변동"**: 큰 틀 유지 + **PoE 스위치 격상**(WiFi사고 회피)+VLAN.
+- ❌ **건조대 = 사업 구매 불가**(자체/민간).
+- ⭐ **최적 리스트**: Thor 1(⚠️875만·INT8이슈)+N6 2+reCamera 2002/Pro+IMX415 웹캠(지급분 실측 후)+네트워크(PoE)+리모트IO. 분담=태민(호환근거·벤치·Thor보고)/주희(공급가액 견적·정품·지급웹캠 실측)/대표님(Thor 예산재배분·Orin 대안·reCamera·PoE).
+- ✅ **대표님 7/23 답변**(취합 보고 후속): ①**시스템 서버는 있으나 추론서버 없음→그래서 Thor 살리려는 것**(⚠️"추론서버 있어서"가 아님=정확한 표현) ②⭐**Orin NX·Nano 이미 보유**(조사에 없던 사실)→보유 Orin으로 모델 실측하면 Thor 필요성 판단 가능 ③카메라="녹색 추천행 사자는 거죠?" ④PoE OK. **⏭️7/24 대표님+주희님 미팅 확정**. 취합 산출물=`equipment_merged_0723.{html,pdf}`(주희님과 함께 조사 취합, 조사자 구분 없이).
+- ⭐⭐ **작업방식 지시(7/23)**: 대표님 "앞으로 PDF·파일 말고 **노션 페이지**로"(파일 관리 불편) → 태민님 "**산출물 만들 때마다 PDF vs 노션 먼저 물어봐줘**". ⚠️**자동으로 HTML/PDF 만들지 말 것, 형식부터 확인** → `memory/feedback_report_doc_format.md`
+- ✅✅ **7/24 노션 전면 정비**(대표님 "노션으로" 이행): **Robot Arm Factory 마스터** 6/26→7/24 전면 갱신(본문+Plans/Issues DB, §9·§10 과거이력 삭제) + **회의용 페이지 신설** `🗓️ 7/24 구매물품 확정 미팅`(`3a7a7d640dab8120aa0df0241e112d73`, 녹색 추천 5개 표+`equipment_merged_0723.html` 임베드). ⭐**"녹색 제품"=취합 HTML `class="rec"` 5행**(reCamera 2002w/RK3588/VIM3/IMX415/MaixCAM). ⚠️Notion MCP=로컬 PDF 직접 첨부 불가(HTML은 content 텍스트로 embed 가능)·한글 자동변환 깨짐→update 후 fetch 검수 필수.
+
+상세·**전체 참고 링크**: `memory/project_hwaseong_support_program_0716.md` §7/23 + `docs/구매물품_조사_0723.md`
 
 ---
 
@@ -362,7 +391,7 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 |-------|------|----------|------|
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | ✅ 완료 (5탭 UI + JWT 인증 + 3개 서버 운영) |
-| **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | ✅ 한솔 머지 5차 완료. 다음주 예승님 방문 시 실 출력 + 로봇 E2E 테스트 |
+| **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | ✅ 한솔 머지 5차 완료. ✅ **7/22 예승님 2차 교육 완료**(로봇 티칭+Modbus TCP, 오전만·오후 반차). 주희님 정리본으로 **펜던트 프로그래밍 UI 조작법 확보**(위치4방식·변수·로직명령·서브프로그램·그리퍼 `D_GEN_OUT_*`/`Reverse` 필수) → [[robot-teaching-0605]] §주희님 정리본. ⏭️ 실 출력+로봇 E2E는 다음 현장 |
 | **Phase 4** | 장비 모니터링 (세척+건조 중심) | 🟡 HIGH | ⭐⭐ **7/16 대표님 회의로 범위 재정의**([[ceo-meeting-0716]]): 로봇 자동화=**프린터+세척+건조**(건조 신규), **경화기는 자동화·Vision 대상 완전 제외**(ROI 안 나오면 사람이). 카메라=**OpenMV N6 전환**(AE3 폐기, 대표님 발주). 세척기 **idle/complete=빌드플레이트 유무** 확정. ⭐⭐**모델 방향전환=완료/대기는 OCR 아닌 영상분류**(idle/complete=형상 문제, running만 OCR/카운트다운). **7/16 진행**: MaixCAM 세척기 재촬영·크롭·분류→**분류 PoC 실행 완료**=같은세션 resnet18 F1 0.982(7종 비교 최고)지만 ⚠️**cross-session(다른날 테스트) 0.34~0.70 폭락=배경외우기, 지금 데이터로 실공정 배포 불가**. 데이터 진단=전처리(7/14통짜vs7/16크롭)+양(세션2개뿐) 둘 다 부족. 실공정 지표=cross-session macro-F1+per-class recall. 필요=여러세션 재촬영+crop통일. (태민님 지시 4=모델다돌려최고·데이터진단·최고모델기억·실공정지표) ⭐⭐**7/17 = 최고모델 resnet18 정식 학습·저장(이번주 마무리, best.pt=A100 wash_model_0717) + 분류모델 방향 뒤집힘**: 돌린 8개(수제특징5+딥러닝3) 결과가 알려준 것=①병목은 모델 아닌 데이터(모델 더 돌리기 무의미) ②cross-session만 진실 ③딥러닝이 얕은모델 대비 3%p뿐=문제 단순(상태3개=이진질문2개 뚜껑닫힘/플레이트유무) ④실패는 항상 idle→running(배경 붙잡음) ⑤전처리 섞이면 손해. **결론=분류모델 공정사용 애매→룰베이스+OCR 하이브리드**(running=OCR·카운팅 / idle↔complete=룰베이스 1차·분류 백업 2차, 팀 내 빛반사 룰기반 방향과 일치). **7/14~15 분석**: rapidocr 우승, OpenMV 완료판독 불가·MaixCAM급 필요, 완료판단=타이머(완료 IO 없음)→Vision 용도=검증+카운팅. 세척기 룰기반(빛반사) 가능성. 상세 `memory/project_ceo_meeting_0716.md`+`project_vision_state_detection_0715.md`+`project_hwaseong_support_program_0716.md` |
 | **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | ✅ 트랙 2 v2 **5모델 학습 + 분석 완료** (5/22 시작 → 자정 전 종료 → 5/26 분석). **🥇 yolov8n mAP50 0.9939 / 🥈 yolo11s 0.9910 / 🥉 yolov8m 0.9899**. Part2 회복 **v1 0.656 → v2 yolo11s 0.958 (+30%p)** ⭐. Part5 0.909 정체 = v3 보강 필요. 우승 후보 = yolov8n(6.3MB) or yolo11s(19.2MB), 5/27 ONNX + 도메인 갭 후 최종. 좌표 6요소 출력 코드 + PyTorch → ONNX → IPC-510 결정 완료. **🔥 5/22 대표님 통화: 빈피킹 = 가을(9~10월) 협력사 페이스, 우리 = 학습+카메라 완성도** — `project_yolo_v2_training_results_0522.md` + `project_binpicking_timeline_realignment_0522.md` |
 
@@ -484,7 +513,7 @@ v2의 두 약점을 v3가 푼다:
 
 ## 🎓 KAIST 부트캠프 3단계 6주 프로젝트 (6/2~7/9) ⭐⭐
 
-> ✅ **종료(2026-07-09, 🏆우수상·수료).** 최종 결과 = depth-only 부품 인식·식별, 27종 test100 **F1 0.684**(위치 0.88/종류 0.85). sim2real 여정(합성 5% 붕괴→real fine-tune→0.684→학습 종료=병목 센서 물리)·최종 발표·후속(논문 AAAI-27·특허·PoC) 전부 → **`memory/project_kaist_final_presentation_0709.md` + `memory/project_digital_twin_synth_data_research_0609.md`**. 아래 섹션은 **6/5~6/8 시점 역사 기록**(Visual Hull baseline 등)이며 이후 지도학습+합성데이터로 방향 재정의됨.
+> ✅ **종료(2026-07-09, 🏆우수상·수료).** 최종 결과 = depth-only 부품 인식·식별, 27종 test100 **F1 0.684**(위치 0.88/종류 0.85). sim2real 여정(합성 5% 붕괴→real fine-tune→0.684→학습 종료=병목 센서 물리)·최종 발표·후속 전부 → **`memory/project_kaist_final_presentation_0709.md` + `memory/project_digital_twin_synth_data_research_0609.md`**. ✅✅✅ **후속 논문 정식 투고(7/22, AAAI 2027, Submission #45391)** = "CADENCE: CAD-Aligned Depth Embeddings with Neural Codebook Encoding for Multi-Object Industrial Perception", **태민님 2저자**·5인 공저(임학수 1저자·주재걸 교수). abstract 등록 완료, 본문 PDF는 7/28경 조교님 업로드 예정. 아래 섹션은 **6/5~6/8 시점 역사 기록**(Visual Hull baseline 등)이며 이후 지도학습+합성데이터로 방향 재정의됨.
 
 > **⭐ 방향이 두 번 더 전환됨** — 6/2 미팅(CAD 각도 데이터셋+다객체)에서 다시 **6/5 미팅 = 실루엣 기반 3D 복원→부품 판별**로 대전환. 아래 6/2/5/28~29 정의는 역사. **최신 기준 = `memory/project_kaist_meeting_0605.md` + `memory/project_kaist_visualhull_baseline_0608.md`**.
 
