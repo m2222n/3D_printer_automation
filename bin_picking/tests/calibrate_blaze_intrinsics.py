@@ -38,10 +38,19 @@ ACE2는 이미 A단계에서 실측 완료(RMS 0.546px). Blaze도 같은 방식�
     python bin_picking/tests/calibrate_blaze_intrinsics.py \
         --images /tmp/blaze_calib --square-mm 25 --min-corners 15
 
+    # 3) 자동 채택 (권장) — SPACE 타이밍 없이
+    python bin_picking/tests/calibrate_blaze_intrinsics.py \
+        --ip 192.168.20.10 --square-mm 25 --exposure 400 --auto
+
 키:
-    SPACE   현재 프레임 채택 (코너 검출됐을 때만)
+    SPACE   현재 프레임 채택 (코너 검출됐을 때만. --auto면 불필요)
     s       현재 프레임 PNG 저장 (--save-dir 지정 시)
     q/ESC   종료 → 캘리브 계산·저장
+
+⭐ --auto 의 정지 판정 (7/28 추가)
+  코너가 직전 프레임 대비 거의 안 움직였을 때만 채택한다. 즉 사람이 하던
+  "0.5초 정지 후 SPACE"를 기계가 대신 판정하는 것이며, 손 감각보다 엄격하다.
+  → 모션블러 프레임이 원천적으로 안 섞이므로 RMS가 오히려 좋아진다.
 
 ⭐ 촬영 요령 (ACE2 A단계 교훈 = 모션블러가 RMS 주범)
   - SPACE 직전 0.5초 정지. 손 흔들리면 RMS 급등(2.98 → 0.546px 개선 사례).
@@ -163,6 +172,18 @@ def collect_from_live(args, board, detector):
 
     shots = []
     saved = 0
+    prev_pts = None      # 직전 프레임 코너 (정지 판정용)
+    still_count = 0      # 연속 정지 프레임 수
+    last_taken_pts = None  # 마지막 채택 시 코너 (자세 중복 방지)
+    hint = ""
+
+    if args.auto:
+        print(f"⚡ 자동 채택 모드: 코너 {args.min_corners}개 이상 + "
+              f"{args.auto_still}프레임 연속 정지(움직임 {args.auto_move_px:.1f}px 미만) + "
+              f"직전 채택과 {args.auto_diff_px:.0f}px 이상 다른 자세")
+        print(f"   목표 {args.auto_target}장. 보드를 여러 위치·각도로 '멈췄다 옮기기' 반복.")
+        print("   ⭐ 정지 판정이 모션블러를 걸러주므로 SPACE 타이밍을 맞출 필요가 없습니다.")
+
     try:
         while True:
             gray = grab_gray(cam, pylon)
@@ -178,19 +199,74 @@ def collect_from_live(args, board, detector):
                 for p in ch_corners.reshape(-1, 2).astype(int):
                     cv2.circle(disp, tuple(p), 4, (0, 255, 0), -1)
             ok = n >= args.min_corners
-            cv2.putText(disp, f"corners: {n}  shots: {len(shots)}  {'OK-SPACE' if ok else ''}",
+
+            # ⭐ 자동 채택 판정 (7/28 추가)
+            #    extrinsic의 자동 모드와 요건이 다르다. 여기서 막아야 할 것은
+            #    **모션블러**다(ACE2 A단계에서 RMS 2.98→0.546px를 만든 핵심 요인).
+            #    그래서 "코너가 직전 프레임 대비 거의 안 움직였는가"로 정지를 판정한다.
+            #    이 판정이 사람의 "0.5초 정지 후 SPACE"를 대체하며, 오히려 더 엄격하다.
+            take = False
+            if args.auto and ok:
+                pts = ch_corners.reshape(-1, 2)
+                moved = None
+                if prev_pts is not None and len(prev_pts) == len(pts):
+                    moved = float(np.abs(pts - prev_pts).max())
+                    if moved < args.auto_move_px:
+                        still_count += 1
+                    else:
+                        still_count = 0
+                else:
+                    # 코너 개수가 바뀌면 비교 불가 → 정지 카운트 초기화
+                    still_count = 0
+                prev_pts = pts
+
+                if still_count >= args.auto_still:
+                    if last_taken_pts is None:
+                        take = True
+                    else:
+                        # 직전 채택과 얼마나 다른 자세인가 (코너 위치 평균 이동량)
+                        if len(last_taken_pts) == len(pts):
+                            diff = float(np.linalg.norm(pts - last_taken_pts, axis=1).mean())
+                        else:
+                            diff = 1e9  # 코너 수가 다르면 확실히 다른 자세
+                        if diff >= args.auto_diff_px:
+                            take = True
+                        else:
+                            hint = f"자세 유사({diff:.0f}px) — 보드를 옮기세요"
+                else:
+                    hint = (f"정지 대기 {still_count}/{args.auto_still}"
+                            + (f" (움직임 {moved:.1f}px)" if moved is not None else ""))
+            elif args.auto:
+                still_count = 0
+                prev_pts = None
+                hint = ""
+
+            label = "OK-AUTO" if (args.auto and ok) else ("OK-SPACE" if ok else "")
+            cv2.putText(disp, f"corners: {n}  shots: {len(shots)}  {label}",
                         (8, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
                         (0, 255, 0) if ok else (0, 0, 255), 2)
-            cv2.putText(disp, "정지 0.5초 후 SPACE (모션블러가 RMS 주범)", (8, 52),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 200, 255), 1)
+            if args.auto:
+                if hint:
+                    cv2.putText(disp, hint[:52], (8, 52),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 200, 255), 1)
+            else:
+                cv2.putText(disp, "정지 0.5초 후 SPACE (모션블러가 RMS 주범)", (8, 52),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 200, 255), 1)
             cv2.imshow(win, disp)
 
             key = cv2.waitKey(1) & 0xFF
             if key in (27, ord("q")):
                 break
-            if key == ord(" ") and ok:
+            if (key == ord(" ") and ok) or take:
                 shots.append(gray.copy())
-                print(f"  채택 {len(shots)} (corners {n})")
+                print(f"  채택 {len(shots)} (corners {n}){' [자동]' if take else ''}")
+                if take:
+                    last_taken_pts = ch_corners.reshape(-1, 2).copy()
+                    still_count = 0
+                    hint = ""
+                    if len(shots) >= args.auto_target:
+                        print(f"  ✅ 목표 {args.auto_target}장 도달 → 자동 종료")
+                        break
             if key == ord("s") and save_dir:
                 cv2.imwrite(str(save_dir / f"blaze_{saved:03d}.png"), gray)
                 saved += 1
@@ -265,6 +341,16 @@ def main() -> int:
     ap.add_argument("--throughput", type=float, default=30.0)
     ap.add_argument("--min-corners", type=int, default=10,
                     help="채택 최소 코너. 재계산 시 15~20으로 올리면 나쁜 프레임 걸러짐")
+    ap.add_argument("--auto", action="store_true",
+                    help="SPACE 없이 자동 채택 (정지 판정으로 모션블러 배제)")
+    ap.add_argument("--auto-target", type=int, default=20,
+                    help="자동 모드 목표 장수 (기본 20)")
+    ap.add_argument("--auto-still", type=int, default=4,
+                    help="이만큼 연속 정지해야 채택 — 사람의 '0.5초 정지'를 대체 (기본 4프레임)")
+    ap.add_argument("--auto-move-px", type=float, default=1.5,
+                    help="정지 판정 임계: 코너 최대 이동이 이 값 미만이면 정지 (기본 1.5px)")
+    ap.add_argument("--auto-diff-px", type=float, default=25.0,
+                    help="직전 채택과 최소 이 정도는 달라야 채택 — 같은 자세 중복 방지 (기본 25px)")
     ap.add_argument("--images", type=Path, help="라이브 대신 이미지 폴더에서 재계산")
     ap.add_argument("--save-dir", type=Path, help="라이브 중 s키로 PNG 저장할 폴더")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
