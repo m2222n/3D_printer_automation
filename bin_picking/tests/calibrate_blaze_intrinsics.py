@@ -146,13 +146,25 @@ def open_blaze(ip: str, exposure_us: float, throughput_mbps: float):
 
 
 def grab_gray(cam, pylon):
+    """intensity 프레임 1장 → uint8 gray. 못 쓰는 프레임이면 None.
+
+    ⚠️ 7/28: Blaze가 간헐적으로 intensity가 아닌 컴포넌트(Range 등) 프레임을
+       섞어 보내면 `res.Array`가 ValueError("Pixel format currently not
+       supported")를 던진다. 초판은 이를 방어하지 않아 **수집 도중 스크립트가
+       죽고 17장을 통째로 날렸다**. 한 프레임 버리고 계속 가는 게 맞다.
+    """
     res = cam.RetrieveResult(2000, pylon.TimeoutHandling_Return)
     if res is None or not res.GrabSucceeded():
         if res is not None:
             res.Release()
         return None
-    arr = res.Array.copy()
-    res.Release()
+    try:
+        arr = res.Array.copy()
+    except Exception:
+        # 지원 안 되는 픽셀 포맷 등 = 이 프레임만 버리고 계속
+        return None
+    finally:
+        res.Release()
     if arr.dtype != np.uint8:
         arr = cv2.normalize(arr, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     if arr.ndim == 3:
@@ -169,6 +181,14 @@ def collect_from_live(args, board, detector):
     save_dir = args.save_dir
     if save_dir:
         save_dir.mkdir(parents=True, exist_ok=True)
+
+    # 채택분 자동 백업 폴더 — 수집 도중 사고가 나도 --images 로 재계산 가능.
+    autosave_dir = save_dir if save_dir else (args.out.parent / "blaze_calib_shots")
+    try:
+        autosave_dir.mkdir(parents=True, exist_ok=True)
+        print(f"  채택 사진 자동 백업: {autosave_dir}")
+    except Exception:
+        autosave_dir = None
 
     shots = []
     saved = 0
@@ -272,6 +292,10 @@ def collect_from_live(args, board, detector):
                 break
             if (key == ord(" ") and ok) or take:
                 shots.append(gray.copy())
+                # ⭐ 채택 즉시 디스크에도 백업 — 뒤에 무슨 일이 나도 --images 로
+                #    재계산할 수 있게. (7/28에 17장 날린 뒤 추가)
+                if autosave_dir is not None:
+                    cv2.imwrite(str(autosave_dir / f"shot_{len(shots):03d}.png"), gray)
                 print(f"  채택 {len(shots)} (corners {n}){' [자동]' if take else ''}")
                 if take:
                     last_taken_pts = {int(i): p.copy() for i, p in
@@ -285,8 +309,19 @@ def collect_from_live(args, board, detector):
                 cv2.imwrite(str(save_dir / f"blaze_{saved:03d}.png"), gray)
                 saved += 1
                 print(f"  저장 {saved}")
+    except KeyboardInterrupt:
+        print(f"\n  ⏹️ 중단됨 — 지금까지 모은 {len(shots)}장으로 계산합니다.")
+    except Exception as e:
+        # ⚠️ 7/28: 수집 도중 예외로 스크립트가 죽어 17장을 통째로 날린 사고.
+        #    캘리브 사진은 사람이 시간 들여 모으는 자산이라, 무슨 일이 있어도
+        #    이미 모은 것은 살려서 계산까지 간다.
+        print(f"\n  ⚠️ 수집 중 오류({type(e).__name__}: {e})")
+        print(f"     → 지금까지 모은 {len(shots)}장으로 계산을 진행합니다.")
     finally:
-        cam.StopGrabbing(); cam.Close()
+        try:
+            cam.StopGrabbing(); cam.Close()
+        except Exception:
+            pass
         cv2.destroyAllWindows()
     return shots
 
