@@ -277,3 +277,8 @@ docs/saas_plan_*.html
 # 지원사업 구매/장비 조사 문서 (사업비 한도·단가·거래처 담당자 연락처 포함, 로컬 전용)
 docs/구매물품_*.md
 docs/장비_리스트업_*.md
+
+# 카메라 캘리브 촬영 원본 (7/28) — 20장×수백KB, 코드 아님.
+# json 결과만 추적하고 사진은 로컬 상주(재계산 필요 시 --images 로 재사용).
+bin_picking/config/blaze_calib_shots/
+bin_picking/config/ace2_calib_shots/
