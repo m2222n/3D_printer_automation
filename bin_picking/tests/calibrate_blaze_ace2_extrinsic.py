@@ -198,9 +198,27 @@ def pose_from_corners_diag(ch_corners, ch_ids, board, K, dist, min_corners=6):
     obj_pts, img_pts = board.matchImagePoints(ch_corners, ch_ids)
     if obj_pts is None or len(obj_pts) < need:
         return None, "MATCH_FAIL"
-    ok, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, K, dist)
-    if not ok:
-        return None, "PNP_FAIL"
+
+    # ⚠️ 7/28 버그픽스: solvePnP 기본(ITERATIVE)은 코너가 **공선(한 줄)** 이면
+    #    평면 판정에 실패해 DLT로 빠지고, DLT는 최소 6점을 요구해 cv2.error로 죽는다.
+    #    --min-corners 4를 허용하고 있어서 실제로 본 정렬 중 스크립트가 튕겼다.
+    #    (--diag 경로는 사유만 찍고 넘어가 이 결함이 안 드러났음)
+    #    → 6점 미만은 평면 전용 IPPE로 푼다. ChArUco 코너는 전부 한 평면 위에 있어
+    #      평면 가정이 정확히 성립한다.
+    #    ⚠️ 단 IPPE는 공선 배치에서 **예외 없이 nan을 반환**한다(ok=True인데 값이 nan).
+    #      그대로 두면 조용히 extrinsic을 오염시키므로 유한성 검사가 필수.
+    n_pts = len(obj_pts)
+    flags = cv2.SOLVEPNP_IPPE if n_pts < 6 else cv2.SOLVEPNP_ITERATIVE
+    try:
+        ok, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, K, dist, flags=flags)
+    except cv2.error:
+        # 공선 등 축퇴 배치. 사유로 흡수해 스크립트가 죽지 않게 한다.
+        return None, f"PNP_DEGENERATE(n={n_pts})"
+    if not ok or rvec is None or tvec is None:
+        return None, f"PNP_FAIL(n={n_pts})"
+    if not (np.all(np.isfinite(rvec)) and np.all(np.isfinite(tvec))):
+        # IPPE가 공선 배치에서 내는 nan — 채택하면 extrinsic 전체가 오염된다.
+        return None, f"PNP_NAN(n={n_pts})"
     return (rvec, tvec, n), "OK"
 
 
@@ -239,6 +257,16 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--blaze-ip", default=os.environ.get("BASLER_BLAZE_IP", "192.168.20.10"))
     ap.add_argument("--ace2-ip", default=os.environ.get("BASLER_ACE2_IP", "192.168.20.20"))
+    ap.add_argument("--auto", action="store_true",
+                    help="BOTH OK면 SPACE 없이 자동 채택 (자세가 충분히 바뀌었을 때만)")
+    ap.add_argument("--auto-target", type=int, default=8,
+                    help="자동 모드에서 이만큼 모으면 종료 (기본 8)")
+    ap.add_argument("--auto-stable", type=int, default=3,
+                    help="BOTH OK가 이만큼 연속돼야 채택 — 검출 흔들림 배제 (기본 3프레임)")
+    ap.add_argument("--auto-min-move", type=float, default=30.0,
+                    help="직전 채택 대비 최소 이동 mm (기본 30). 같은 자세 중복 방지")
+    ap.add_argument("--auto-min-rot", type=float, default=8.0,
+                    help="직전 채택 대비 최소 회전 deg (기본 8). 이동·회전 중 하나만 넘으면 채택")
     ap.add_argument("--squares-x", type=int, default=7)
     ap.add_argument("--squares-y", type=int, default=5)
     ap.add_argument("--square-mm", type=float, default=25.0)
@@ -287,6 +315,14 @@ def main() -> int:
     cv2.resizeWindow(win_a, 640, 536)
 
     T_pairs = []  # (T_board_to_blaze, T_board_to_ace2)
+    stable_count = 0   # BOTH OK 연속 프레임 수 (자동 채택 안정성 판정용)
+    auto_hint = ""     # 자동 모드에서 "왜 아직 안 담기는지" 화면 안내
+    if args.auto and not args.diag:
+        print(f"⚡ 자동 채택 모드: BOTH OK가 {args.auto_stable}프레임 연속 + "
+              f"직전 대비 {args.auto_min_move:.0f}mm 이동 또는 "
+              f"{args.auto_min_rot:.0f}° 회전이면 자동 저장 "
+              f"(목표 {args.auto_target}쌍, q로 조기 종료)")
+        print("   → 보드를 천천히 여러 위치·각도로 옮기기만 하면 됩니다.")
     try:
         while True:
             gb = grab_gray(blaze, pylon, is_blaze=True)
@@ -328,17 +364,67 @@ def main() -> int:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
             # 양쪽 동시 성립이면 상단에 크게 표시(채택 타이밍 알림)
             if ok_b and ok_a:
-                cv2.putText(disp_b, "<< BOTH OK - SPACE >>", (8, 56),
+                banner = ("<< BOTH OK - AUTO >>" if args.auto and not args.diag
+                          else "<< BOTH OK - SPACE >>")
+                cv2.putText(disp_b, banner, (8, 56),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            # 자동 모드: 왜 아직 안 담기는지 알려줘야 사용자가 보드를 옮긴다
+            if args.auto and not args.diag and auto_hint:
+                cv2.putText(disp_a, auto_hint[:52], (8, 52),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1)
             cv2.imshow(win_b, disp_b)
             cv2.imshow(win_a, disp_a)
 
             key = cv2.waitKey(1) & 0xFF
             if key in (27, ord("q")):
                 break
-            if not args.diag and key == ord(" ") and ok_b and ok_a:
-                T_pairs.append((to_T(pb[0], pb[1]), to_T(pa[0], pa[1])))
-                print(f"  채택 {len(T_pairs)} (blaze {nb}, ace2 {na})")
+            if not args.diag and ok_b and ok_a:
+                Tb_now, Ta_now = to_T(pb[0], pb[1]), to_T(pa[0], pa[1])
+                take, why_take = False, ""
+
+                if args.auto:
+                    # ⭐ 자동 채택 — BOTH OK 순간이 짧아 SPACE 타이밍 맞추기가 어렵다는
+                    #    현장 피드백(7/28). 다만 무조건 담으면 **같은 자세만 쌓여**
+                    #    회전 평균이 한쪽으로 쏠리므로, 두 조건을 다 만족할 때만 담는다:
+                    #      ① 직전 채택과 충분히 다른 자세 (--auto-min-move)
+                    #      ② 연속 안정 프레임 (--auto-stable) — 손떨림·검출 흔들림 배제
+                    #    ②가 중요한 이유: BOTH OK가 깜빡이는 순간을 담으면 그 프레임이
+                    #    하필 코너가 튄 상태일 수 있다(7/20 교훈 "간헐 성공 ≠ 성공").
+                    stable_count += 1
+                    if stable_count >= args.auto_stable:
+                        if not T_pairs:
+                            take, why_take = True, "첫 채택"
+                        else:
+                            # 직전 채택 대비 보드의 이동/회전량
+                            Tb_prev = T_pairs[-1][0]
+                            move_mm = float(np.linalg.norm(
+                                Tb_now[:3, 3] - Tb_prev[:3, 3]) * 1000)
+                            R_rel = Tb_now[:3, :3] @ Tb_prev[:3, :3].T
+                            cos = (np.trace(R_rel) - 1) / 2
+                            rot_deg = float(np.degrees(
+                                np.arccos(np.clip(cos, -1.0, 1.0))))
+                            if move_mm >= args.auto_min_move or rot_deg >= args.auto_min_rot:
+                                take = True
+                                why_take = f"이동 {move_mm:.0f}mm / 회전 {rot_deg:.0f}°"
+                            else:
+                                why_take = (f"자세 유사(이동 {move_mm:.0f}mm "
+                                            f"< {args.auto_min_move:.0f} / 회전 "
+                                            f"{rot_deg:.0f}° < {args.auto_min_rot:.0f}) — 보드를 옮기세요")
+                elif key == ord(" "):
+                    take, why_take = True, "수동"
+
+                if take:
+                    T_pairs.append((Tb_now, Ta_now))
+                    stable_count = 0
+                    print(f"  채택 {len(T_pairs)} (blaze {nb}, ace2 {na}) {why_take}")
+                    if args.auto and len(T_pairs) >= args.auto_target:
+                        print(f"  ✅ 목표 {args.auto_target}쌍 도달 → 자동 종료")
+                        break
+                elif args.auto:
+                    auto_hint = why_take
+            elif not (ok_b and ok_a):
+                stable_count = 0
+                auto_hint = ""
     finally:
         blaze.StopGrabbing(); blaze.Close()
         ace2.StopGrabbing(); ace2.Close()
