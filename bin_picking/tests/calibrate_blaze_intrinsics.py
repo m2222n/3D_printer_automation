@@ -207,39 +207,52 @@ def collect_from_live(args, board, detector):
             #    이 판정이 사람의 "0.5초 정지 후 SPACE"를 대체하며, 오히려 더 엄격하다.
             take = False
             if args.auto and ok:
-                pts = ch_corners.reshape(-1, 2)
+                # ⚠️ 7/28 수정: 코너를 **ID로 매칭**해 비교한다.
+                #   초판은 배열 길이가 같을 때만 비교해서, 코너 수가 14↔13으로
+                #   깜빡이면(실제로 흔함) 정지 카운트가 매 프레임 리셋돼
+                #   영원히 채택되지 않는 결함이 있었다. ChArUco는 코너마다 고유 ID가
+                #   있으므로 공통 ID만 뽑아 비교하면 개수 변동에 영향받지 않는다.
+                cur = {int(i): p for i, p in
+                       zip(ch_ids.ravel(), ch_corners.reshape(-1, 2))}
                 moved = None
-                if prev_pts is not None and len(prev_pts) == len(pts):
-                    moved = float(np.abs(pts - prev_pts).max())
-                    if moved < args.auto_move_px:
-                        still_count += 1
+                if prev_pts:
+                    shared = cur.keys() & prev_pts.keys()
+                    if len(shared) >= 4:
+                        moved = max(float(np.abs(cur[k] - prev_pts[k]).max())
+                                    for k in shared)
+                        still_count = still_count + 1 if moved < args.auto_move_px else 0
                     else:
                         still_count = 0
-                else:
-                    # 코너 개수가 바뀌면 비교 불가 → 정지 카운트 초기화
-                    still_count = 0
-                prev_pts = pts
+                prev_pts = cur
 
                 if still_count >= args.auto_still:
-                    if last_taken_pts is None:
+                    if not last_taken_pts:
                         take = True
                     else:
-                        # 직전 채택과 얼마나 다른 자세인가 (코너 위치 평균 이동량)
-                        if len(last_taken_pts) == len(pts):
-                            diff = float(np.linalg.norm(pts - last_taken_pts, axis=1).mean())
+                        shared = cur.keys() & last_taken_pts.keys()
+                        if len(shared) >= 4:
+                            diff = float(np.mean([
+                                np.linalg.norm(cur[k] - last_taken_pts[k]) for k in shared]))
                         else:
-                            diff = 1e9  # 코너 수가 다르면 확실히 다른 자세
+                            diff = 1e9  # 겹치는 코너가 거의 없으면 확실히 다른 자세
                         if diff >= args.auto_diff_px:
                             take = True
                         else:
-                            hint = f"자세 유사({diff:.0f}px) — 보드를 옮기세요"
+                            hint = f"자세 유사({diff:.0f}px) — 카메라를 옮기세요"
                 else:
                     hint = (f"정지 대기 {still_count}/{args.auto_still}"
                             + (f" (움직임 {moved:.1f}px)" if moved is not None else ""))
             elif args.auto:
                 still_count = 0
                 prev_pts = None
-                hint = ""
+                hint = f"코너 {n}/{args.min_corners} — 보드가 더 크게/선명하게 보이도록"
+
+            # 과노출 경고 — 850nm 자체조명이라 가까이 가면 쉽게 포화되고,
+            # 포화되면 흑백 칸 대비가 사라져 코너가 안 잡힌다(7/20 관문).
+            sat = float(np.count_nonzero(gray >= 250)) / gray.size * 100
+            if sat > 15:
+                cv2.putText(disp, f"과노출 {sat:.0f}% - --exposure 낮추기", (8, 76),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 255), 2)
 
             label = "OK-AUTO" if (args.auto and ok) else ("OK-SPACE" if ok else "")
             cv2.putText(disp, f"corners: {n}  shots: {len(shots)}  {label}",
@@ -261,7 +274,8 @@ def collect_from_live(args, board, detector):
                 shots.append(gray.copy())
                 print(f"  채택 {len(shots)} (corners {n}){' [자동]' if take else ''}")
                 if take:
-                    last_taken_pts = ch_corners.reshape(-1, 2).copy()
+                    last_taken_pts = {int(i): p.copy() for i, p in
+                                      zip(ch_ids.ravel(), ch_corners.reshape(-1, 2))}
                     still_count = 0
                     hint = ""
                     if len(shots) >= args.auto_target:
