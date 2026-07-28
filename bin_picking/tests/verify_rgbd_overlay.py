@@ -55,8 +55,10 @@ from bin_picking.src.acquisition.rgbd_fusion import (  # noqa: E402
     load_blaze_intrinsics,
 )
 
-# 표시 크기 — 5MP 원본은 화면에 안 들어가므로 축소해서 다룬다.
-VIEW_W, VIEW_H = 1024, 856
+# 표시 폭 — 5MP 원본은 화면에 안 들어가므로 축소해서 다룬다.
+# ⚠️ 높이는 하드코딩하지 않고 **실제 intrinsic 해상도의 종횡비**로 계산한다.
+#    초판은 1024×856을 박아뒀는데 ACE2 실제는 2448×2048이라 종횡비가 어긋났다.
+VIEW_W = 1024
 
 
 def open_cam(ip, throughput_mbps=30.0):
@@ -174,8 +176,9 @@ def main() -> int:
     ap.add_argument("--ace2-ip", default=os.environ.get("BASLER_ACE2_IP", "192.168.30.20"))
     ap.add_argument("--near-mm", type=float, default=300.0, help="컬러맵 최소 거리")
     ap.add_argument("--far-mm", type=float, default=1200.0, help="컬러맵 최대 거리")
-    ap.add_argument("--dilate", type=int, default=2,
-                    help="정합 구멍 메우기 반경(px). Blaze가 저해상이라 기본 2")
+    ap.add_argument("--dilate", type=int, default=0,
+                    help="정합 구멍 메우기 반경(px). ⚠️검증 시엔 0 권장 — "
+                         "메우면 실제보다 커버리지가 부풀어 정합 판정이 흐려진다")
     ap.add_argument("--save-dir", type=Path,
                     default=PROJECT_ROOT / "bin_picking" / "config" / "overlay_shots")
     args = ap.parse_args()
@@ -195,11 +198,25 @@ def main() -> int:
         return 1
     print(f"Blaze intrinsic: fx={blaze_intr.fx:.1f} fy={blaze_intr.fy:.1f}")
 
-    # 표시 해상도에 맞춰 ACE2 intrinsic 스케일 (원본 5MP 그대로는 화면에 안 들어감)
+    # 표시 해상도 = intrinsic이 기록한 실제 해상도의 종횡비를 그대로 따른다.
+    # (하드코딩하면 종횡비가 어긋나 좌표가 축마다 다르게 밀린다)
+    view_h = int(round(VIEW_W * ace2_full.height / ace2_full.width))
     sx = VIEW_W / float(ace2_full.width)
-    sy = VIEW_H / float(ace2_full.height)
+    sy = view_h / float(ace2_full.height)
     ace2_view = ace2_full.scaled(sx, sy)
-    print(f"표시 해상도 {VIEW_W}×{VIEW_H} (intrinsic 스케일 {sx:.3f}, {sy:.3f})")
+    print(f"ACE2 캘리브 해상도 {ace2_full.width}×{ace2_full.height} "
+          f"(cx={ace2_full.cx:.1f} cy={ace2_full.cy:.1f})")
+    print(f"표시 해상도 {VIEW_W}×{view_h} (스케일 {sx:.4f}, {sy:.4f})")
+
+    # ⭐ 두 카메라 화각 비교 — 여기서 커버리지 기대치가 정해진다.
+    #   Blaze는 초광각(약 108°), ACE2 8mm는 약 46°라 Blaze가 2.4배 넓게 본다.
+    #   → Blaze depth의 상당 부분은 애초에 ACE2 화면 **밖** 장면이다.
+    #   이걸 모르면 "정합이 밀렸다"고 오판하기 쉽다(7/28 실제로 그랬음).
+    def _fov(f, n):
+        return 2 * np.degrees(np.arctan(n / (2 * f)))
+    print(f"화각: Blaze H={_fov(blaze_intr.fx, blaze_intr.width):.0f}° "
+          f"/ ACE2 H={_fov(ace2_full.fx, ace2_full.width):.0f}° "
+          f"→ ACE2 화면에 들어오는 Blaze 픽셀은 일부뿐인 게 정상")
 
     blaze, pylon = open_cam(args.blaze_ip)
     setup_blaze_range(blaze)
@@ -209,7 +226,7 @@ def main() -> int:
 
     win = "RGB-D overlay (a=on/off  [ ]=투명도  s=저장  q=종료)"
     cv2.namedWindow(win, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(win, VIEW_W, VIEW_H)
+    cv2.resizeWindow(win, VIEW_W, view_h)
     show_overlay, alpha, saved = True, 0.5, 0
     printed_cov = False
     depth_warn = ""   # depth가 이상할 때 화면에 계속 띄울 경고
@@ -226,7 +243,7 @@ def main() -> int:
             # ACE2: BayerRG8 → gray → 표시 크기
             gray = cv2.cvtColor(cv2.cvtColor(ca, cv2.COLOR_BayerRG2BGR),
                                 cv2.COLOR_BGR2GRAY)
-            gray = cv2.resize(gray, (VIEW_W, VIEW_H))
+            gray = cv2.resize(gray, (VIEW_W, view_h))
             base = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
             # Blaze depth(uint16 mm) → ACE2 격자로 정합
@@ -238,7 +255,7 @@ def main() -> int:
                     print(f"\n  {why}\n")
                     depth_warn = why[:60]
             aligned = align_depth_to_ace2(
-                db.astype(np.float32), (VIEW_H, VIEW_W),
+                db.astype(np.float32), (view_h, VIEW_W),
                 extrinsic=ext, ace2_intr=ace2_view, blaze_intr=blaze_intr,
                 dilate=args.dilate,
             )
