@@ -101,14 +101,42 @@ def open_cam(ip, throughput_mbps=30.0):
 
 
 def setup_blaze_range(cam):
-    """Blaze를 Range(depth) 컴포넌트로 — 여기선 intensity가 아니라 **거리**가 필요."""
+    """Blaze를 Range(depth) 컴포넌트로 — 여기선 intensity가 아니라 **거리**가 필요.
+
+    ⚠️ 7/28: 전환 실패를 경고만 하고 넘기면 **intensity(밝기)가 depth 자리에**
+       들어와 물체와 무관한 줄무늬 오버레이가 나온다(실제 발생). 실패는 크게 알린다.
+    """
     nm = cam.GetNodeMap()
+    ok = False
     try:
         cs, ce = nm.GetNode("ComponentSelector"), nm.GetNode("ComponentEnable")
         cs.FromString("Intensity"); ce.SetValue(False)
+        try:
+            cs.FromString("Confidence"); ce.SetValue(False)
+        except Exception:
+            pass
         cs.FromString("Range"); ce.SetValue(True)
+        ok = True
     except Exception as e:
-        print(f"  ⚠️ Blaze Range 전환 실패: {e}")
+        print(f"  🚨 Blaze Range 전환 실패: {e}")
+        print("     → depth가 아니라 밝기 영상이 올 수 있음. "
+              "diag_blaze_depth.py 로 확인할 것.")
+    return ok
+
+
+def sanity_check_depth(arr: np.ndarray) -> str:
+    """받은 배열이 정말 depth(mm)인지 1차 판정. 아니면 사유 문자열."""
+    if arr.dtype == np.uint8:
+        return ("🚨 uint8 = depth가 아님(밝기 영상). Range 전환 실패로 보임 "
+                "→ diag_blaze_depth.py 확인")
+    nz = arr[arr > 0]
+    if nz.size == 0:
+        return "⚠️ 유효 depth 0 — 카메라가 아무것도 못 재고 있음"
+    med = float(np.median(nz))
+    if not (150 <= med <= 5000):
+        return (f"⚠️ depth 중앙값 {med:.0f} — mm 거리로 보기 어려움"
+                f"(정상 150~5000mm). 단위/컴포넌트 확인 필요")
+    return ""
 
 
 def grab(cam, pylon):
@@ -184,6 +212,7 @@ def main() -> int:
     cv2.resizeWindow(win, VIEW_W, VIEW_H)
     show_overlay, alpha, saved = True, 0.5, 0
     printed_cov = False
+    depth_warn = ""   # depth가 이상할 때 화면에 계속 띄울 경고
 
     try:
         while True:
@@ -203,6 +232,11 @@ def main() -> int:
             # Blaze depth(uint16 mm) → ACE2 격자로 정합
             if db.ndim == 3:
                 db = db[..., 0]
+            if not printed_cov:
+                why = sanity_check_depth(db)
+                if why:
+                    print(f"\n  {why}\n")
+                    depth_warn = why[:60]
             aligned = align_depth_to_ace2(
                 db.astype(np.float32), (VIEW_H, VIEW_W),
                 extrinsic=ext, ace2_intr=ace2_view, blaze_intr=blaze_intr,
@@ -223,8 +257,12 @@ def main() -> int:
             cv2.putText(disp, f"overlay {'ON' if show_overlay else 'OFF'}  "
                               f"alpha {alpha:.1f}  coverage {cov:.1f}%",
                         (8, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-            cv2.putText(disp, "물체 경계와 색 경계가 겹치면 정합 OK / 밀려 있으면 그 축이 오류",
+            # ⚠️ OpenCV putText는 한글을 못 그린다(????로 깨짐) → 영문 고정
+            cv2.putText(disp, "edges match = OK / shifted = that axis is wrong",
                         (8, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1)
+            if depth_warn:
+                cv2.putText(disp, "DEPTH SUSPECT - see terminal", (8, 76),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
             cv2.imshow(win, disp)
 
             key = cv2.waitKey(1) & 0xFF
