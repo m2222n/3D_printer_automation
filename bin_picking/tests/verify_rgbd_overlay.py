@@ -102,6 +102,48 @@ def open_cam(ip, throughput_mbps=30.0):
     return cam, pylon
 
 
+def set_exposure(cam, exposure_us=None, auto=False):
+    """ACE2 노출 설정.
+
+    ⚠️ 7/29: 캘리브 때 쓴 노출(모션블러 방지용 3ms)이 카메라에 남아 있으면
+       실내 조명에선 **화면이 거의 검게** 나와 정합을 눈으로 판정할 수 없다.
+       캘리브와 검증은 요구가 반대다 — 캘리브는 짧은 노출(선명), 검증은 밝기.
+
+    auto=True면 카메라가 장면에 맞춰 알아서 맞춘다(검증용 기본).
+    """
+    nm = cam.GetNodeMap()
+
+    def _try(name, val):
+        try:
+            n = nm.GetNode(name)
+            if n is not None:
+                n.SetValue(val)
+                return True
+        except Exception:
+            pass
+        return False
+
+    if auto:
+        # Continuous면 장면 변화에 계속 따라간다 — 물체를 옮겨가며 볼 때 편하다.
+        ok = _try("ExposureAuto", "Continuous") or _try("ExposureAuto", "Once")
+        _try("GainAuto", "Continuous") or _try("GainAuto", "Once")
+        return "auto" if ok else "auto 실패"
+
+    if exposure_us is not None:
+        _try("ExposureAuto", "Off")
+        for name in ("ExposureTime", "ExposureTimeAbs"):
+            try:
+                n = nm.GetNode(name)
+                if n is not None:
+                    v = max(float(n.Min), min(float(exposure_us), float(n.Max)))
+                    n.SetValue(v)
+                    return f"{v/1000:.1f}ms"
+            except Exception:
+                continue
+        return "노출 설정 실패"
+    return "변경 없음"
+
+
 def setup_blaze_range(cam):
     """Blaze를 Range(depth) 컴포넌트로 — 여기선 intensity가 아니라 **거리**가 필요.
 
@@ -181,6 +223,11 @@ def main() -> int:
                          "메우면 실제보다 커버리지가 부풀어 정합 판정이 흐려진다")
     ap.add_argument("--save-dir", type=Path,
                     default=PROJECT_ROOT / "bin_picking" / "config" / "overlay_shots")
+    ap.add_argument("--ace2-exposure", type=float, default=None,
+                    help="ACE2 노출(us). 지정하면 자동노출 대신 이 값 고정. "
+                         "⚠️캘리브용 3ms(3000)가 남아 있으면 실내에선 화면이 검게 나온다")
+    ap.add_argument("--no-auto-exposure", action="store_true",
+                    help="자동노출을 켜지 않고 카메라 현재 설정을 그대로 사용")
     args = ap.parse_args()
 
     # --- 캘리브 로드 (여기서 막히면 앞 단계가 안 끝난 것) ---
@@ -221,6 +268,12 @@ def main() -> int:
     blaze, pylon = open_cam(args.blaze_ip)
     setup_blaze_range(blaze)
     ace2, _ = open_cam(args.ace2_ip)
+    # 검증은 "눈으로 경계를 보는" 작업이라 밝기가 확보돼야 한다(캘리브와 요구가 반대).
+    if args.ace2_exposure is not None:
+        print(f"ACE2 노출: {set_exposure(ace2, exposure_us=args.ace2_exposure)} (고정)")
+    elif not args.no_auto_exposure:
+        print(f"ACE2 노출: {set_exposure(ace2, auto=True)} "
+              f"(--ace2-exposure 로 고정 가능)")
     blaze.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
     ace2.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
 
