@@ -407,6 +407,7 @@ def main() -> None:
     parser.add_argument("--nms_iou_thresh", type=float, default=0.10)
     parser.add_argument("--nms_iou_type", choices=["mask", "box"], default="mask")
     parser.add_argument("--bbox_source", choices=["mask", "model"], default="mask", help="Which bbox to evaluate/save. mask aligns boxes with predicted masks; model uses detector box head.")
+    parser.add_argument("--no_angle", action="store_true", help="마스크에서 회전각(angle) 산출을 끈다. 기본은 켬 — 로봇 파지에 angle이 필수(2026-07-30).")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--max_files", type=int, default=None)
     parser.add_argument("--save_predictions", action="store_true")
@@ -497,6 +498,35 @@ def main() -> None:
                 ))
         row = {"file": depth_path.name, "label_json": str(label_ref), "num_predictions": len(preds), **metrics}
         rows.append(row)
+        # ⭐ 마스크를 버리기 전에 회전각을 뽑아 예측에 심는다 (2026-07-30 추가).
+        #    로봇 파지에는 angle이 필수인데(27종 중 22종·검출 82%가 종횡비 1.5 초과,
+        #    tests/survey_rotation_asymmetry.py) 아래 clean_inf가 masks를 버려서
+        #    6요소 단계에서 angle=0으로 고정돼 있었다.
+        #    ⚠️ 마스크 전체는 저장하지 않는다(100장×수십개면 무거움) — 각도·OBB만 남긴다.
+        if not args.no_angle:
+            try:
+                from bin_picking.src.pipeline.mask_to_angle import angles_from_masks
+                # 마스크는 모델 입력(crop·resize) 좌표계 → 원본 depth 좌표계로 되돌린다.
+                # ⚠️ 이 역변환을 빼먹으면 좌표가 밀린다(7/29에 141px 밀림 경험).
+                y0, x0, y1, x1 = inf["crop_bbox_yxyx"]
+                in_h, in_w = inf["input_shape_hw"]
+                sx = (x1 - x0) / max(in_w, 1)
+                sy = (y1 - y0) / max(in_h, 1)
+                ang = angles_from_masks(masks, offset_xy=(x0, y0), scale_xy=(sx, sy))
+                for p, a in zip(preds, ang):
+                    if a is None:
+                        p["angle_deg"] = None
+                        p["angle_note"] = "mask_angle_failed"
+                    else:
+                        p["angle_deg"] = a["angle"]
+                        p["angle_reliable"] = a["angle_reliable"]
+                        p["obb_edge"] = a["edge"]
+                        p["obb_aspect"] = a["aspect"]
+                        p["obb_fill"] = a["fill"]
+                        p["angle_note"] = a["angle_note"]
+            except Exception as e:
+                # 각도 산출 실패가 평가 자체를 죽이면 안 된다(F1 재현이 주 목적).
+                print(f"  ⚠️ angle 산출 건너뜀 ({type(e).__name__}: {e})")
         clean_inf = {k: v for k, v in inf.items() if k != "masks"}
         clean_inf["label_json"] = str(label_ref)
         clean_inf["ground_truth"] = gt_objects_to_jsonable(gt_objects)

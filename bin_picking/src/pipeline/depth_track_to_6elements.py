@@ -208,13 +208,33 @@ def convert(
         else:
             z, znote = 0.0, "depth_not_provided"
 
+        # ⭐ angle/edge — eval이 마스크에서 뽑아 심어준 값을 쓴다 (2026-07-30).
+        #    없으면(옛 예측 JSON) 종전대로 축정렬 bbox + angle=0으로 떨어진다.
+        #    🔴 angle이 필요한 이유 = 27종 중 22종·검출 82%가 종횡비 1.5 초과
+        #       (tests/survey_rotation_asymmetry.py). 0은 "회전 없음"이 아니라 "모름".
+        has_angle = p.get("angle_deg") is not None
+        if has_angle:
+            angle_val = float(p["angle_deg"])
+            edge_val = p.get("obb_edge") or bbox_to_edge_corners(bx1, by1, bx2, by2)
+            # ⚠️ reliable=False = 거의 정사각형(각도 무의미) 또는 마스크 깨짐.
+            #    값은 주되 로봇이 걸러쓸 수 있게 플래그를 그대로 넘긴다.
+            ang_note = ("angle=obb_minAreaRect"
+                        if p.get("angle_reliable")
+                        else f"angle=obb_unreliable({p.get('angle_note','')})")
+            edge_note = "edge_source=obb_rotated"
+        else:
+            angle_val = 0.0
+            edge_val = bbox_to_edge_corners(bx1, by1, bx2, by2)
+            ang_note = "angle=0_mask_not_saved"
+            edge_note = "edge_source=bbox_axis_aligned"
+
         det = {
             # --- 6요소 (필수) ---
             "x": int(round(cx)),
             "y": int(round(cy)),
             "z": round(z, 1),
-            "edge": bbox_to_edge_corners(bx1, by1, bx2, by2),
-            "angle": 0.0,          # ⚠️ 마스크 미저장 → 회전각 산출 불가
+            "edge": edge_val,
+            "angle": round(angle_val, 2),
             "label": _label_from(p),
             # --- 부가 ---
             "bbox_pixel": {
@@ -229,11 +249,15 @@ def convert(
             "cad_score": round(float(p.get("cad_score", 0.0)), 4),
             "mask_area": p.get("mask_area"),
         }
+        if has_angle:
+            # 로봇 쪽에서 각도를 믿을지 판단할 근거를 같이 넘긴다.
+            det["angle_reliable"] = bool(p.get("angle_reliable"))
+            det["obb_aspect"] = p.get("obb_aspect")
         if blaze_intrinsics is not None and z > 0:
             xc, yc, zc = pixel_to_camera_3d(cx, cy, z, blaze_intrinsics)
             det["camera_3d"] = {"Xc": round(xc, 1), "Yc": round(yc, 1), "Zc": round(zc, 1)}
-        det["notes"] = (f"depth_source={znote} | edge_source=bbox_axis_aligned "
-                        f"| angle=0_mask_not_saved | coord=source_depth_frame")
+        det["notes"] = (f"depth_source={znote} | {edge_note} "
+                        f"| {ang_note} | coord=source_depth_frame")
         detections.append(det)
 
     out = {
