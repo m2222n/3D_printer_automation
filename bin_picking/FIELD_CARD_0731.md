@@ -20,6 +20,37 @@
 
 ## 왜: F1 0.818은 학습에 쓴 세션으로 낸 값이라 **"처음 보는 환경에서 되는가"는 아직 답이 없다.** 리포 데이터로는 원리상 검증 불가 → 새 세션 촬영이 유일한 길.
 
+## 1-0. 🔴 맥으로 스크립트 받기 (5분) — **이걸 빼먹으면 촬영이 시작조차 안 된다**
+
+맥 터미널에서:
+```bash
+ls ~/3D_printer_automation          # ① 리포가 있나 확인
+```
+
+**있으면** (권장 — 오버레이 도구·캘리브 json까지 다 받아짐):
+```bash
+cd ~/3D_printer_automation && git pull
+cp bin_picking/depth_track/scripts/blaze_capture_crosssession.py ~/Desktop/
+```
+⚠️ `git pull`에서 **충돌·"local changes" 오류**가 나면 **덮어쓰지 말 것**(맥에 커밋 안 한
+변경이 있을 수 있음). 그때는 아래 scp 방법으로 우회.
+
+**없으면** (촬영만 가능 — 촬영 스크립트는 리포 import 0건이라 파일 1개로 돌아감):
+```bash
+scp <6000>:~/3D_printer_automation/bin_picking/depth_track/scripts/blaze_capture_crosssession.py ~/Desktop/
+```
+🔴 이 경우 `setup_camera_net.py`가 없으므로 카메라가 안 열리면 §문제 대응 A의 수동 절차를 쓸 것.
+
+### ⭐ 받았는지 반드시 확인
+```bash
+cd ~/Desktop && grep -c "raw_is_mm" blaze_capture_crosssession.py
+```
+🔴 **결과가 0이면 옛 파일이다**(7/30 단위 버그 fix 미포함). 그 상태로 찍으면 화면이 계속
+`NOT OK`로 떠서 시간을 다 쓴다. 0이 아니어야 진행.
+
+> ⚠️ 맥의 Claude Code에는 **PATH 캐싱 버그**가 있어 명령이 안 먹을 수 있다 →
+> **맥 터미널에서 직접 실행**할 것.
+
 ## 1-1. 카메라 네트워크 (1분)
 ```bash
 sudo python bin_picking/tests/setup_camera_net.py --apply
@@ -191,6 +222,7 @@ sudo python blaze_capture_crosssession.py --scale 2 --raw-is-mm
 ---
 
 # ✅ 최소 성공 기준
+- 🔴 **0순위: 맥으로 스크립트 받기**(§1-0) — 이게 안 되면 나머지가 전부 불가
 - 🥇 **새 세션 20장 이상 + `capture_meta.json`** → 6000 전송 완료
 - 🥈 IPC-510 뒷면 포트 사진 1장(랜포트 개수)
 - 나머지는 보너스
