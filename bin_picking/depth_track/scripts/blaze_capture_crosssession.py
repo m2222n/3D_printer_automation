@@ -138,6 +138,29 @@ def open_blaze(ip: str):
     return cam
 
 
+def to_mm(depth: np.ndarray) -> np.ndarray:
+    """Blaze raw uint16 → mm. 🔴 **raw는 mm가 아니다.**
+
+    ⚠️⚠️ 7/29에 이것 때문에 z가 6~7배 과대(3136mm)로 나왔다. 저장된 npy는 uint16이지만
+    단위가 mm가 아니라 **`depth_m = raw × 10 / 65535`** 다
+    (근거: `mentoring_new/eval_real_depth_vq_detector.py:135`,
+     `depth_preprocess.py:54` — 학습·평가가 쓰는 변환).
+
+    실측 검산: raw 3022 → 461mm ✅ (부품 대역 400~600 안)
+
+    🚨 **기존 `blaze_capture_100.py`도 같은 오류가 있었다** — `part_stats`가 raw를 그대로
+       쓰면서 화면에 `med=3022mm`로 표시했다(실제 461mm). 그 스크립트는 **상대 대역**
+       (중앙값 ±100)만 봤기 때문에 촬영 자체는 됐지만 **표시된 숫자는 틀렸다.**
+       이 스크립트는 **절대 대역 400~600mm**를 판정하므로 변환이 필수다.
+
+    ⚠️ 라이브 카메라가 주는 값도 동일 raw 스케일인지는 **현장 확인 필요**
+       (`Coord3D_C16` 픽셀 포맷 기준). 화면 DIST 값이 400~600 근처로 나오면 맞다.
+       만약 현장에서 DIST가 3000 근처로 뜨면 이 함수를 우회(raw가 이미 mm)해야 한다
+       → `--raw-is-mm` 플래그로 대응.
+    """
+    return depth.astype(np.float32) * 10.0 / 65535.0 * 1000.0
+
+
 def center_crop_view(depth):
     """평가와 동일한 center_crop 영역만 잘라낸다 (판정을 평가와 일치시키기 위함)."""
     h, w = depth.shape
@@ -155,15 +178,17 @@ def keep_range_stats(depth):
        때문(`--center_crop 1/6,5/6`). 가장자리에만 부품이 있으면 평가에서
        잘려 검출 0건이 되는데, 전체 화면으로 세면 그걸 못 잡아낸다.
     """
-    crop, _ = center_crop_view(depth)
-    valid = crop[crop > 0]
+    crop_raw, _ = center_crop_view(depth)
     all_pct = 100.0 * (depth > 0).sum() / depth.size
-    if valid.size == 0:
+    valid_mask = crop_raw > 0
+    if not valid_mask.any():
         return 0, 0.0, all_pct, 0
-    in_band = (crop >= KEEP_RANGE_MM[0]) & (crop <= KEEP_RANGE_MM[1])
+    # 🔴 mm로 변환한 뒤에 대역을 본다 (raw는 mm가 아님, to_mm 주석 참조)
+    crop_mm = to_mm(crop_raw)
+    in_band = valid_mask & (crop_mm >= KEEP_RANGE_MM[0]) & (crop_mm <= KEEP_RANGE_MM[1])
     n = int(in_band.sum())
-    pct = 100.0 * n / crop.size
-    med = int(np.median(valid))
+    pct = 100.0 * n / crop_raw.size
+    med = int(np.median(crop_mm[valid_mask]))
     return n, pct, all_pct, med
 
 
@@ -171,14 +196,16 @@ def colorize(depth):
     """⭐ 400~600mm 대역을 강조. 밖은 회색으로 죽여 '부품이 대역에 있나'를 즉시 보이게."""
     vis = np.zeros((*depth.shape, 3), np.uint8)
     lo, hi = KEEP_RANGE_MM
-    band = (depth >= lo) & (depth <= hi)
-    out = (depth > 0) & ~band
+    depth_mm = to_mm(depth)          # 🔴 raw는 mm가 아님
+    valid = depth > 0
+    band = valid & (depth_mm >= lo) & (depth_mm <= hi)
+    out = valid & ~band
     if out.any():
-        g = np.clip(depth.astype(np.float32) / 3000.0, 0, 1)
+        g = np.clip(depth_mm / 3000.0, 0, 1)
         gray = (60 + 60 * g).astype(np.uint8)
         vis[out] = np.stack([gray[out]] * 3, axis=-1)
     if band.any():
-        norm = np.clip((depth.astype(np.float32) - lo) / (hi - lo), 0, 1)
+        norm = np.clip((depth_mm - lo) / (hi - lo), 0, 1)
         c = cv2.applyColorMap((255 * (1 - norm)).astype(np.uint8), cv2.COLORMAP_TURBO)
         vis[band] = c[band]
     return vis
@@ -210,7 +237,16 @@ def main():
     ap.add_argument("--out", default=os.path.expanduser("~/Desktop/blaze_crosssession_0731"))
     ap.add_argument("--target", type=int, default=30, help="목표 장수 (조건 3종 x 10장)")
     ap.add_argument("--scale", type=float, default=2.0)
+    # 🔴 현장 탈출구: 라이브 값이 이미 mm면(DIST가 400~600 대신 3000 근처로 뜨면 반대 상황)
+    #    이 플래그로 변환을 끈다. 저장 원본(raw)은 어느 쪽이든 그대로 저장되므로 안전.
+    ap.add_argument("--raw-is-mm", action="store_true",
+                    help="라이브 depth가 이미 mm 단위일 때. 화면 DIST가 3000 근처로 "
+                         "뜨면(실제 50cm 촬영인데) 이 플래그를 켤 것")
     args = ap.parse_args()
+    if args.raw_is_mm:
+        global to_mm
+        to_mm = lambda d: d.astype(np.float32)   # noqa: E731
+        print("⚠️ --raw-is-mm: depth를 이미 mm로 취급한다")
     os.makedirs(args.out, exist_ok=True)
 
     meta_path = os.path.join(args.out, "capture_meta.json")
