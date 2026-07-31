@@ -89,9 +89,40 @@ def _try(label, fn):
         print(f"  · {label} 건너뜀 ({type(e).__name__})"); return False
 
 
-def open_blaze(ip: str):
+def _autodiscover_blaze(tl):
+    """--ip 미지정 시 열거로 Blaze를 찾는다.
+
+    🐛 7/31 현장: 환경변수 없이 sudo로 돌리면 IP가 비어 스크립트가 죽었다.
+    열거(브로드캐스트)는 대역이 어긋나도 되므로 여기서 실제 IP를 얻어 안내한다.
+    ⚠️ 단 **열기는 유니캐스트**라 대역이 맞아야 한다 → [[gige-camera-network-rule]]
+    """
+    found = []
+    for d in tl.EnumerateDevices():
+        try:
+            name, ip = d.GetModelName(), d.GetIpAddress()
+        except Exception:
+            continue
+        if "blaze" in (name or "").lower():
+            found.append((name, ip))
+    if not found:
+        raise SystemExit(
+            "❌ Blaze를 찾지 못했습니다.\n"
+            "   1) 카메라 전원·랜케이블 확인\n"
+            "   2) sudo python bin_picking/tests/setup_camera_net.py --apply\n"
+            "   3) 그래도 안 되면 --ip <주소> 로 직접 지정"
+        )
+    name, ip = found[0]
+    print(f"🔎 Blaze 자동 발견: {name} @ {ip}  (고정하려면 --ip {ip})")
+    if len(found) > 1:
+        print(f"   ⚠️ Blaze가 {len(found)}대 보입니다. 첫 번째를 씁니다 — 의도와 다르면 --ip로 지정하세요.")
+    return ip
+
+
+def open_blaze(ip: str | None):
     """blaze_capture_100.py와 **동일 설정**. 센서 설정은 고정이 원칙."""
     tl = pylon.TlFactory.GetInstance(); tl.CreateTl("BaslerGigE")
+    if not ip or ip.startswith("<"):
+        ip = _autodiscover_blaze(tl)
     di = pylon.CDeviceInfo(); di.SetIpAddress(ip); di.SetDeviceClass("BaslerGigE")
     cam = pylon.InstantCamera(tl.CreateDevice(di)); cam.Open()
     try:
@@ -233,7 +264,10 @@ def main():
     ap = argparse.ArgumentParser()
     # ⚠️ 내부 IP를 코드에 박지 않는다(리포는 한솔 미러로도 공유됨).
     #    환경변수 또는 --ip로 넘길 것. `blaze_capture_100.py:121`과 같은 규약.
-    ap.add_argument("--ip", default=os.environ.get("BASLER_BLAZE_IP", "<BLAZE_IP>"))
+    # 🐛 7/31 현장 버그: 환경변수가 없으면 플레이스홀더 문자열이 그대로 넘어가
+    #    `Failed to discover GigE device '<BLAZE_IP>'`로 죽었다(sudo라 셸 환경변수도 안 넘어감).
+    #    → 미지정이면 None으로 두고 아래에서 자동 탐색 + 안내.
+    ap.add_argument("--ip", default=os.environ.get("BASLER_BLAZE_IP"))
     ap.add_argument("--out", default=os.path.expanduser("~/Desktop/blaze_crosssession_0731"))
     ap.add_argument("--target", type=int, default=30, help="목표 장수 (조건 3종 x 10장)")
     ap.add_argument("--scale", type=float, default=2.0)
