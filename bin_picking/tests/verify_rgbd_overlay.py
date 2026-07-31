@@ -46,6 +46,7 @@ from bin_picking.src.acquisition.extrinsic_io import (  # noqa: E402
     describe,
     load_extrinsic,
 )
+from bin_picking.src.acquisition.depth_units import to_mm  # noqa: E402
 from bin_picking.src.acquisition.rgbd_fusion import (  # noqa: E402
     NO_DEPTH,
     FusionError,
@@ -216,6 +217,10 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--blaze-ip", default=os.environ.get("BASLER_BLAZE_IP", "192.168.20.10"))
     ap.add_argument("--ace2-ip", default=os.environ.get("BASLER_ACE2_IP", "192.168.30.20"))
+    # 🐛 7/31: 저장/스트림 raw는 mm가 아니다(raw × 10/65535 = m). 자동 판정하되
+    #    라이브가 이미 mm인 경우를 위한 탈출구를 둔다(촬영 스크립트와 같은 규약).
+    ap.add_argument("--raw-is-mm", action="store_true",
+                    help="Blaze 스트림이 이미 mm 단위일 때(자동 판정을 끔)")
     ap.add_argument("--near-mm", type=float, default=300.0, help="컬러맵 최소 거리")
     ap.add_argument("--far-mm", type=float, default=1200.0, help="컬러맵 최대 거리")
     ap.add_argument("--dilate", type=int, default=0,
@@ -299,16 +304,22 @@ def main() -> int:
             gray = cv2.resize(gray, (VIEW_W, view_h))
             base = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
-            # Blaze depth(uint16 mm) → ACE2 격자로 정합
+            # Blaze depth → ACE2 격자로 정합
+            # 🐛 7/31: 여기서 raw를 **그대로 mm로** 넣고 있었다. 실제 ~500mm 장면이
+            #    중앙값 7532(raw)로 들어와 유효범위(5000mm)에서 대부분 잘리고,
+            #    살아남은 일부가 902mm로 찍혀 정합 판정 자체가 무효였다.
+            #    → 변환을 depth_units 한 곳으로 모으고 여기서 호출한다.
             if db.ndim == 3:
                 db = db[..., 0]
+            db_mm, unit_msg = to_mm(db, raw_is_mm=args.raw_is_mm,
+                                    verbose=not printed_cov)
             if not printed_cov:
-                why = sanity_check_depth(db)
+                why = sanity_check_depth(db_mm)
                 if why:
                     print(f"\n  {why}\n")
                     depth_warn = why[:60]
             aligned = align_depth_to_ace2(
-                db.astype(np.float32), (view_h, VIEW_W),
+                db_mm, (view_h, VIEW_W),
                 extrinsic=ext, ace2_intr=ace2_view, blaze_intr=blaze_intr,
                 dilate=args.dilate,
             )
