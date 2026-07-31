@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
 
+import cv2
 import numpy as np
 
 from .extrinsic_io import Extrinsic, ExtrinsicError, load_extrinsic
@@ -70,12 +71,73 @@ class Intrinsics:
     cy: float
     width: Optional[int] = None
     height: Optional[int] = None
+    # 🐛 7/31 현장에서 드러난 결함: 이 필드가 아예 없어 **왜곡 보정이 통째로 빠져** 있었다.
+    #    화면 중앙은 맞는데 가장자리로 갈수록 밀려, 오버레이에서 상자 밖 천장까지
+    #    depth가 찍혔다. Blaze는 108° 초광각(k1=-0.043)이라 영향이 특히 크다.
+    #    ⚠️ None이면 왜곡 0으로 간주(구 캘리브 json 호환).
+    dist: Optional[Tuple[float, ...]] = None
 
     @property
     def K(self) -> np.ndarray:
         return np.array(
             [[self.fx, 0.0, self.cx], [0.0, self.fy, self.cy], [0.0, 0.0, 1.0]],
             dtype=np.float64,
+        )
+
+    @property
+    def D(self) -> np.ndarray:
+        """OpenCV 왜곡계수 벡터. 없으면 0(=보정 없음)."""
+        if not self.dist:
+            return np.zeros((5, 1), dtype=np.float64)
+        return np.asarray(self.dist, dtype=np.float64).reshape(-1, 1)
+
+    @property
+    def has_dist(self) -> bool:
+        return bool(self.dist) and any(abs(c) > 1e-12 for c in self.dist)
+
+    def dist_valid_radius(self) -> float:
+        """왜곡 다항식이 **단조증가**를 유지하는 최대 정규화 반지름 r.
+
+        🚨 7/31에 실측으로 드러난 함정: Blaze 캘리브 계수가 r≈1.05를 넘으면
+           r'(=r·(1+k1r²+k2r⁴+k3r⁶))이 되레 **줄어든다**. 단조가 깨지면 역변환
+           (undistortPoints)이 성립하지 않아, 반복을 100번 돌려도 엉뚱한 해로 수렴한다.
+           실제로 화면 구석 왕복 오차가 **168px**까지 났다(중앙은 0px).
+           원인 = 캘리브 보드가 화면 중앙 근처에만 있어 바깥이 전부 외삽.
+        ⭐ 그러므로 "왜곡계수가 있다"와 "그 계수를 이 픽셀에 써도 된다"는 다른 문제다.
+        """
+        if not self.has_dist:
+            return float("inf")
+        d = list(self.dist) + [0.0] * 8
+        k1, k2, k3 = d[0], d[1], d[4]
+        r = np.linspace(1e-3, 3.0, 3000)
+        rp = r * (1.0 + k1 * r**2 + k2 * r**4 + k3 * r**6)
+        bad = np.nonzero(np.diff(rp) <= 0)[0]
+        return float(r[bad[0]]) if bad.size else float("inf")
+
+    def max_image_radius(self) -> float:
+        """이미지 네 귀퉁이의 정규화 반지름(가장 먼 지점)."""
+        if not (self.width and self.height):
+            return float("nan")
+        corners = [(0, 0), (self.width, 0), (0, self.height), (self.width, self.height)]
+        return max(
+            float(np.hypot((u - self.cx) / self.fx, (v - self.cy) / self.fy))
+            for u, v in corners
+        )
+
+    def dist_usable(self) -> Tuple[bool, str]:
+        """이 intrinsic의 왜곡계수를 **이미지 전체에** 적용해도 되는가."""
+        if not self.has_dist:
+            return False, "왜곡계수 없음(보정 없이 핀홀로 처리)"
+        rmax, rok = self.max_image_radius(), self.dist_valid_radius()
+        if not np.isfinite(rmax):
+            return False, "이미지 크기 미기록 — 유효 범위를 판정할 수 없음"
+        if rmax <= rok:
+            return True, f"OK (이미지 최대 r={rmax:.2f} ≤ 유효 r={rok:.2f})"
+        return False, (
+            f"🚨 왜곡계수 유효범위 초과 — 이미지 최대 r={rmax:.2f} > 유효 r={rok:.2f}.\n"
+            f"     r>{rok:.2f}에서 왜곡 다항식이 단조가 아니라 역변환이 성립하지 않는다.\n"
+            f"     (켜면 화면 가장자리가 오히려 크게 어긋남 — 7/31 실측 168px)\n"
+            f"     → 보드를 **화면 구석까지** 옮겨가며 재캘리브할 것."
         )
 
     def to_dict(self) -> dict:
@@ -99,7 +161,30 @@ class Intrinsics:
             cx=self.cx * sx, cy=self.cy * sy,
             width=int(round(self.width * sx)) if self.width else None,
             height=int(round(self.height * sy)) if self.height else None,
+            # ⭐ 왜곡계수는 **정규화 좌표** 기준이라 리사이즈해도 그대로다(스케일 금지).
+            dist=self.dist,
         )
+
+
+_DIST_WARNED: set = set()
+
+
+def _use_dist(intr: Intrinsics, where: str) -> bool:
+    """왜곡 보정을 적용할지 판정. 유효범위를 벗어나면 **쓰지 않고 한 번만 경고**.
+
+    ⭐ 원칙 = "조용히 틀리지 말고 크게 실패하라". 다만 여기서 예외를 던지면
+       캘리브가 미비한 상태에서 정합 자체가 아예 안 되므로, **핀홀로 물러서되
+       이유를 반드시 알린다**(그냥 무시하면 7/31처럼 원인 규명에 시간이 든다).
+    """
+    ok, msg = intr.dist_usable()
+    if ok:
+        return True
+    if intr.has_dist:
+        key = (where, msg)
+        if key not in _DIST_WARNED:
+            _DIST_WARNED.add(key)
+            print(f"[rgbd_fusion:{where}] 왜곡 보정 **미적용** — {msg}")
+    return False
 
 
 def _load_intrinsics_json(path: Path, what: str) -> Intrinsics:
@@ -128,9 +213,20 @@ def _load_intrinsics_json(path: Path, what: str) -> Intrinsics:
             f"  (7/27 Blaze fx=553/fy=188 = 비율 2.94 사례와 동일 결함)"
         )
 
+    # 🐛 7/31: 여기서 dist_coeffs를 안 읽어 왜곡 보정이 통째로 빠져 있었다.
+    #    json에는 처음부터 들어 있었는데 로더가 버리고 있었던 것.
+    dist = d.get("dist_coeffs")
+    if dist is not None:
+        dist = tuple(float(x) for x in np.asarray(dist, dtype=np.float64).ravel())
+        if len(dist) not in (4, 5, 8, 12, 14):
+            raise FusionError(
+                f"{path}: dist_coeffs 길이 {len(dist)} — OpenCV 규약(4/5/8/12/14) 아님"
+            )
+
     return Intrinsics(
         fx=fx, fy=fy, cx=float(K[0, 2]), cy=float(K[1, 2]),
         width=d.get("image_width"), height=d.get("image_height"),
+        dist=dist,
     )
 
 
@@ -146,6 +242,10 @@ def depth_to_points_mm(depth_mm: np.ndarray, intr: Intrinsics) -> np.ndarray:
     """depth 이미지 → 카메라 좌표계 3D 점 (N,3), 단위 mm. 유효 픽셀만.
 
     핀홀 역투영: X = (u-cx)·Z/fx, Y = (v-cy)·Z/fy
+
+    ⭐ 7/31 수정: intr에 왜곡계수가 있으면 `undistortPoints`로 **먼저 왜곡을 편** 뒤
+       역투영한다. 이전에는 이 단계가 없어 Blaze 108° 초광각의 배럴 왜곡이
+       그대로 3D 좌표에 실렸고, 화면 가장자리일수록 어긋났다.
     """
     if depth_mm.ndim != 2:
         raise FusionError(f"depth는 2D여야 함 (shape={depth_mm.shape})")
@@ -157,8 +257,16 @@ def depth_to_points_mm(depth_mm: np.ndarray, intr: Intrinsics) -> np.ndarray:
 
     vs, us = np.nonzero(valid)
     zs = z[vs, us]
-    xs = (us - intr.cx) * zs / intr.fx
-    ys = (vs - intr.cy) * zs / intr.fy
+
+    if _use_dist(intr, "depth_to_points_mm"):
+        # undistortPoints(P=None) → 정규화 좌표(x', y')를 돌려준다. 즉 (u-cx)/fx 대응.
+        pts = np.stack([us, vs], axis=1).astype(np.float64).reshape(-1, 1, 2)
+        norm = cv2.undistortPoints(pts, intr.K, intr.D).reshape(-1, 2)
+        xs = norm[:, 0] * zs
+        ys = norm[:, 1] * zs
+    else:
+        xs = (us - intr.cx) * zs / intr.fx
+        ys = (vs - intr.cy) * zs / intr.fy
     return np.stack([xs, ys, zs], axis=1)
 
 
@@ -170,7 +278,11 @@ def transform_points(points: np.ndarray, T: np.ndarray) -> np.ndarray:
 
 
 def project_points(points_mm: np.ndarray, intr: Intrinsics) -> Tuple[np.ndarray, np.ndarray]:
-    """(N,3) 카메라 좌표 점 → 픽셀 (N,2) float + z (N,). 카메라 앞(z>0)만 반환."""
+    """(N,3) 카메라 좌표 점 → 픽셀 (N,2) float + z (N,). 카메라 앞(z>0)만 반환.
+
+    ⭐ 7/31 수정: 왜곡계수가 있으면 `projectPoints`로 **왜곡을 실어** 투영한다.
+       실제 카메라가 맺는 상이 왜곡된 상이므로, 겹쳐 보려면 같은 왜곡을 줘야 한다.
+    """
     if points_mm.size == 0:
         return np.empty((0, 2)), np.empty((0,))
 
@@ -178,6 +290,16 @@ def project_points(points_mm: np.ndarray, intr: Intrinsics) -> Tuple[np.ndarray,
     front = z > 0
     p = points_mm[front]
     z = z[front]
+    if z.size == 0:
+        return np.empty((0, 2)), np.empty((0,))
+
+    if _use_dist(intr, "project_points"):
+        zero = np.zeros(3, dtype=np.float64)
+        uv, _ = cv2.projectPoints(
+            p.reshape(-1, 1, 3).astype(np.float64), zero, zero, intr.K, intr.D
+        )
+        return uv.reshape(-1, 2), z
+
     u = p[:, 0] * intr.fx / z + intr.cx
     v = p[:, 1] * intr.fy / z + intr.cy
     return np.stack([u, v], axis=1), z
