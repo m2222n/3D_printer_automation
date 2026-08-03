@@ -2,12 +2,38 @@
 Hand-Eye Calibration for 3D Bin Picking System
 ===============================================
 
-Eye-to-Hand (고정 카메라) + Eye-in-Hand (로봇암 카메라) 캘리브레이션
-
 로봇: HCR-10L (Modbus TCP, 포트 502)
 
-설정 1 (Eye-to-Hand): Blaze-112 ToF 고정 카메라 → T_cam_to_base
-설정 2 (Eye-in-Hand): ace2 5MP RGB 로봇암 카메라 → T_cam_to_gripper
+⭐ 현행 구성 (2026-07-20 실물 확인, 이 파일 작성 시점 이후 확정)
+--------------------------------------------------------------
+**Blaze-112 + ace2 = L자 듀얼 브래킷으로 한 몸 → 로봇암 끝에 함께 장착 (eye-in-hand)**
+
+  - 두 카메라의 상대 위치가 고정이므로 Blaze↔ace2 extrinsic은 **1회만** 구하면 됨
+    → 7/28 실측 완료: translation [+44.7, -0.5, -2.1]mm · 회전 1.78° (산포 5.29mm)
+    → `config/blaze_ace2_extrinsic.json`, 7/31 오버레이 정합으로 실사용 거리에서 확증
+  - hand-eye도 **1회만** 필요: T_cam_to_gripper (아래 eye-in-hand 경로)
+  - 좌표 변환: P_base = T_gripper_to_base @ T_cam_to_gripper @ P_camera
+    (매 캡처 시 현재 로봇 포즈 T_gripper_to_base 필요)
+
+  실측 이월 항목:
+  - 광학중심이 그리퍼 플랜지 기준 위 ~212mm (협력사 검증값) → **그리퍼 교체 후 재측정 필요**
+  - 7/31 확보한 TCP `a_0115` Z=200mm와 대조하면 검산 가능
+  - ⚠️ Blaze는 108° 초광각 → 팔에 붙여 근접하면 부품이 화면 극일부가 됨
+    (7/29 재택에서 겪음). 촬영 거리 **45~50cm** 유지되는 자세로 티칭할 것
+
+🚫 폐기된 초기 설계 (2026-05 카메라 입고 전 가정, 현행 아님)
+--------------------------------------------------------------
+아래는 실물 입고 전에 세운 가정으로, **지금 구성과 다르니 따르지 말 것**:
+
+  ~~설정 1 (Eye-to-Hand): Blaze-112 ToF 고정 카메라 → T_cam_to_base~~
+  ~~설정 2 (Eye-in-Hand): ace2 5MP RGB 로봇암 카메라 → T_cam_to_gripper~~
+
+  두 카메라를 따로 두는 전제였으나, 실제로는 L자 브래킷으로 결합됨.
+  이 전제를 그대로 쓰면 **hand-eye를 2번 하게 되고, 7/28 extrinsic도 무의미해짐**
+  (한쪽이 고정·한쪽이 팔이면 둘의 상대 위치가 로봇 자세마다 변하기 때문).
+
+  ⚠️ eye-to-hand 지원 코드는 참고용으로 남겨둠 — 향후 고정 카메라를 별도로 두게 될
+  경우에만 사용. 현재 빈피킹 경로는 **eye-in-hand 단일**이다.
 
 캘리브레이션 원리 (Eye-to-Hand / Fixed Camera):
     AX = XB  (고전적 Hand-Eye 문제)
@@ -85,21 +111,30 @@ from scipy.spatial.transform import Rotation
 # 캘리브레이션 결과 저장 디렉토리
 CALIBRATION_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "calibration"
 
-# 카메라 프리셋 (카메라 입고 후 실측값으로 교체)
+# 카메라 프리셋
+# 🚫 아래 blaze-112 / ace2-5mp 값은 **입고 전 추정치(폐기)**다. 실측값을 쓸 것.
+#    실측 intrinsics: config/blaze_intrinsics.json (7/28, RMS 0.213px)
+#                     ACE2_5MP_SPEC 실측 반영분 (7/20, RMS 0.546px)
+#    ⚠️ 특히 blaze-112의 fy=188은 **65% 틀린 값**이었다 — 실측은 fx=309.3/fy=310.1
+#       (비율 1.003). 추정치 비율 2.94는 물리적으로 불가능한 값이었고,
+#       이것이 7/20·7/21 정렬 실패와 1차 extrinsic 산포 134.91mm의 진짜 원인이었다.
+#       (원인 규명 7/28 → 재측정 후 산포 5.29mm로 25배 개선)
 CAMERA_PRESETS = {
     "blaze-112": {
-        # 5/11 정정: FOV 75°×104° 기반 fx/fy 재계산 (460/460 → 417/188)
+        # 🚫 폐기 추정치 — 5/11 FOV 75°×104° 기반 역산. fy가 65% 오류.
+        #    실측 대체: config/blaze_intrinsics.json (fx=309.3, fy=310.1)
         "width": 640, "height": 480,
         "fx": 417.0, "fy": 188.0, "cx": 320.0, "cy": 240.0,
         "dist_coeffs": [0, 0, 0, 0, 0],
-        "description": "Basler Blaze-112 ToF (eye-to-hand, overhead)",
+        "description": "[폐기 추정치] Basler Blaze-112 ToF — 실측은 blaze_intrinsics.json",
     },
     "ace2-5mp": {
-        # 5/11 정정: a2A2448-23gcBAS 12mm 렌즈 가정 (3000 → 3478, IMX392 3.45µm 기반)
+        # 🚫 폐기 추정치 — 5/11 IMX392 3.45µm·12mm 렌즈 "가정".
+        #    실제는 IMX547·2.74µm·8mm 렌즈(7/20 스펙 정정) → 센서·화소·초점거리 전부 다름
         "width": 2448, "height": 2048,
         "fx": 3478.0, "fy": 3478.0, "cx": 1224.0, "cy": 1024.0,
         "dist_coeffs": [0, 0, 0, 0, 0],
-        "description": "Basler ace2 5MP RGB (eye-in-hand, arm-mounted)",
+        "description": "[폐기 추정치] Basler ace2 5MP RGB — 실측은 ACE2_5MP_SPEC",
     },
     "d435": {
         "width": 640, "height": 480,
@@ -108,6 +143,62 @@ CAMERA_PRESETS = {
         "description": "Intel RealSense D435 (development/test)",
     },
 }
+
+
+# ============================================================================
+# 실측 intrinsics 로더
+# ============================================================================
+
+# 7/28 실측 intrinsics 파일 (RMS 0.213px, 20장 전부 채택)
+BLAZE_INTRINSICS_JSON = (
+    Path(__file__).resolve().parent.parent.parent / "config" / "blaze_intrinsics.json"
+)
+
+
+def _load_measured_intrinsics(mode: str) -> Tuple[np.ndarray, np.ndarray]:
+    """실측 intrinsics를 로드한다. 없으면 **예외로 크게 실패**한다.
+
+    현행 구성은 Blaze+ace2가 L자 브래킷으로 결합된 eye-in-hand 단일 경로이며,
+    hand-eye는 depth(Blaze) 기준으로 수행한다.
+
+    ⚠️ 폐기 추정치(CAMERA_PRESETS)로 조용히 폴백하지 않는다.
+       추정치 fy=188은 실측(310.1) 대비 65% 오류였고, 그 값으로도 캘리브가
+       "그럴싸하게" 돌아가 원인 규명이 2주 늦어졌다. 틀린 값으로 도는 것보다
+       멈추는 편이 낫다. (원칙: "조용히 틀리지 말고 크게 실패하라")
+
+    Returns:
+        (camera_matrix 3x3, dist_coeffs)
+
+    Raises:
+        FileNotFoundError: 실측 intrinsics 파일이 없을 때
+    """
+    import json
+
+    if not BLAZE_INTRINSICS_JSON.exists():
+        raise FileNotFoundError(
+            f"실측 intrinsics를 찾을 수 없습니다: {BLAZE_INTRINSICS_JSON}\n"
+            f"  → 폐기 추정치(CAMERA_PRESETS)로 진행하면 조용히 틀린 결과가 나옵니다.\n"
+            f"  → calibrate_blaze_intrinsics 를 먼저 수행하거나 파일 경로를 확인하세요.\n"
+            f"  (테스트 목적이면 set_camera_preset('d435') 등을 명시적으로 호출할 것)"
+        )
+
+    with open(BLAZE_INTRINSICS_JSON, "r") as f:
+        data = json.load(f)
+
+    K = np.array(data["camera_matrix"], dtype=np.float64)
+    dist = np.array(data.get("dist_coeffs", [0, 0, 0, 0, 0]), dtype=np.float64).ravel()
+
+    # 물리 검산: fx/fy 비율이 1에서 크게 벗어나면 의심 (정사각 화소 센서 전제)
+    fx, fy = K[0, 0], K[1, 1]
+    ratio = fx / fy if fy else float("inf")
+    if not (0.8 < ratio < 1.25):
+        raise ValueError(
+            f"intrinsics fx/fy 비율이 비정상입니다: fx={fx:.1f}, fy={fy:.1f} (비율 {ratio:.2f})\n"
+            f"  → 정사각 화소 센서에서 비율은 1.0 근처여야 합니다.\n"
+            f"  → 과거 추정치 417/188(비율 2.94)이 이 검사에 걸리는 값이었습니다."
+        )
+
+    return K, dist
 
 
 # ============================================================================
@@ -211,17 +302,10 @@ class HandEyeCalibrator:
         self.cam_to_board_poses: List[np.ndarray] = []  # T_target_to_cam (4x4)
         self.images: List[np.ndarray] = []               # 원본 이미지 (검증용)
 
-        # 카메라 내부 파라미터 (모드별 기본값)
-        if mode == "eye-to-hand":
-            preset = CAMERA_PRESETS["blaze-112"]
-        else:
-            preset = CAMERA_PRESETS["ace2-5mp"]
-        self.camera_matrix = np.array([
-            [preset["fx"], 0.0, preset["cx"]],
-            [0.0, preset["fy"], preset["cy"]],
-            [0.0, 0.0, 1.0],
-        ], dtype=np.float64)
-        self.dist_coeffs = np.array(preset["dist_coeffs"], dtype=np.float64)
+        # 카메라 내부 파라미터
+        # ⭐ 실측 intrinsics를 우선 로드한다. 폐기 추정치로 조용히 돌아가지 않는다.
+        #    (fy 65% 오류가 "그럴싸한 값"으로 통과해 정렬 실패 원인을 2주간 못 찾았던 전례)
+        self.camera_matrix, self.dist_coeffs = _load_measured_intrinsics(mode)
 
         # HCR-10L TCP 오프셋 (그리퍼 장착 후 실측값으로 설정)
         self.tcp_offset: Optional[np.ndarray] = None  # 4x4, 플랜지→TCP
