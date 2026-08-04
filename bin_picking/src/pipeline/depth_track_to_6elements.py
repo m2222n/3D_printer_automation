@@ -178,11 +178,23 @@ def convert(
     depth: Optional[np.ndarray] = None,
     blaze_intrinsics: Optional[dict] = None,
     depth_window: int = 5,
+    require_intrinsics: bool = True,
 ) -> dict:
     """depth_track 예측 1장 → 6요소 dict.
 
     depth 가 주어지면 z와 camera_3d를 채운다. 없으면 z=0으로 두고 notes에 남긴다
     (형식 검증만 할 때 유용).
+
+    ⚠️ `depth`는 **raw uint16이든 mm float이든 그대로** 넘겨도 된다. 내부에서
+       `depth_units.to_mm()`으로 정규화한다(⭐7/31 신설한 단일 출처. dtype 기준
+       규약이라 추측하지 않는다). **호출자가 미리 변환할 필요 없다.**
+
+    🚨 `require_intrinsics=True`(기본)면 intrinsics가 없을 때 **예외를 던진다.**
+       ⭐8/5 발견 = 예전엔 조용히 `camera_3d`를 생략했고, 그러면 소켓 서버가
+       "camera_3d 없음"으로 **전건 거부**해 로봇에 좌표가 하나도 안 간다.
+       intrinsics는 `main()`에서만 로드되고 있어서 **라이브러리로 호출하면
+       무조건 None**이었다 → 실환경에서 조용히 실패하는 종류의 버그.
+       형식만 볼 때는 `require_intrinsics=False`.
     """
     crop = pred_json.get("crop_bbox_yxyx")
     inshape = pred_json.get("input_shape_hw")
@@ -191,20 +203,38 @@ def convert(
         raise BridgeError("예측 JSON에 crop_bbox_yxyx / input_shape_hw 가 없다 "
                           "— 좌표 역변환 불가(원본 좌표계로 되돌릴 수 없음)")
 
+    # ⭐ intrinsics를 여기서 자동 로드한다(호출자가 잊어도 되게).
+    if blaze_intrinsics is None:
+        blaze_intrinsics = _load_blaze_intr()
+    if blaze_intrinsics is None and depth is not None and require_intrinsics:
+        raise BridgeError(
+            "Blaze intrinsics를 로드할 수 없다 → camera_3d를 만들 수 없고, "
+            "그러면 로봇에 보낼 좌표가 없다(소켓 서버가 전건 거부한다). "
+            "config/blaze_intrinsics.json 확인. 형식만 볼 때는 "
+            "require_intrinsics=False.")
+
+    # 🔴 단위 정규화 — nan/mm/raw를 여기서 한 번만 정리한다.
+    #    ⚠️ 나흘에 네 번 밟은 그 버그다(raw를 mm로 착각 → z가 6~7배 과대).
+    #    8/5에 **다섯 번째**로 같은 자리를 밟았다: convert()가 raw를 그대로 써서
+    #    z=2976mm(실제 442mm)가 나왔고, 그 값이 유효범위를 벗어나 전건 거부됐다.
+    depth_mm, unit_note = None, "depth_not_provided"
+    if depth is not None:
+        depth_mm, unit_note = _to_mm_normalized(depth)
+
     detections = []
     for p in pred_json.get("predictions", []):
         bx1, by1, bx2, by2 = crop_to_source(p["bbox_xyxy"], crop, inshape)
         cx, cy = (bx1 + bx2) / 2.0, (by1 + by2) / 2.0
 
         if depth is not None:
-            z, znote = safe_depth_at(depth, int(round(cx)), int(round(cy)), depth_window)
+            z, znote = safe_depth_at(depth_mm, int(round(cx)), int(round(cy)), depth_window)
             if z <= 0:
                 # ⚠️ 7/29 실측: 중심 5x5가 비어도 **bbox 안에는 depth가 9~37% 남아 있다**
                 #    (Blaze ToF가 부품 경계·반사면에서 구멍을 낸다. 장면 전체 유효율이
                 #     3%까지 떨어지는 프레임도 있음). 이때 bbox median으로 살리면
                 #     490~500mm로 정상 복구된다 → 버리지 말고 fallback.
                 # ⚠️ 단 bbox median은 배경을 섞을 위험이 있으므로 출처를 notes에 남긴다.
-                z, znote = _bbox_median_depth(depth, bx1, by1, bx2, by2)
+                z, znote = _bbox_median_depth(depth_mm, bx1, by1, bx2, by2)
         else:
             z, znote = 0.0, "depth_not_provided"
 
@@ -278,6 +308,26 @@ def convert(
     if blaze_intrinsics is not None:
         out["intrinsics"] = dict(blaze_intrinsics)
     return out
+
+
+def _src_on_path() -> None:
+    """`bin_picking/src`를 import 경로에 넣는다(모듈 직접 실행/라이브러리 겸용)."""
+    import sys
+    root = Path(__file__).resolve().parents[1]   # .../bin_picking/src
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+
+def _to_mm_normalized(depth: np.ndarray) -> tuple[np.ndarray, str]:
+    """raw uint16 / mm float 무엇이 와도 mm로 정규화. → (mm 배열, 설명)
+
+    ⭐ 7/31 신설한 `depth_units.to_mm`을 단일 출처로 쓴다(dtype 기준 규약).
+       ⚠️ 폴백으로 자체 변환하지 않는다 — 그게 단위 버그의 원천이었다.
+       ⚠️ `to_mm`은 **(배열, 메시지) 튜플**을 돌려준다(시그니처 확인 필수).
+    """
+    _src_on_path()
+    from acquisition.depth_units import to_mm as _to_mm
+    return _to_mm(depth, verbose=False)
 
 
 def _load_blaze_intr() -> Optional[dict]:
