@@ -358,6 +358,11 @@ def main() -> int:
                     help="원본 .npy depth 디렉토리. 생략하면 예측 JSON의 file 경로를 쓴다")
     ap.add_argument("--no-depth", action="store_true", help="z 계산 생략(형식만 확인)")
     ap.add_argument("--depth-window", type=int, default=5)
+    # ⭐ 게이트는 **기본 적용**이다 — 껐을 때만 옵션이 필요하게 둔다.
+    #   8/5에 `depth_units.py`를 단일 출처로 만들었으나 호출자가 안 써서 좌표가
+    #   전건 무효였던 전례가 있다. "만들어두고 안 쓰는" 상태를 기본값으로 막는다.
+    ap.add_argument("--no-gate", action="store_true",
+                    help="입력·출력 게이트 끄기(부품 아닌 큰 예측 제거·장면 분포 판정)")
     args = ap.parse_args()
 
     intr = None if args.no_depth else _load_blaze_intr()
@@ -380,6 +385,21 @@ def main() -> int:
                 # ⚠️ uint16 → mm 변환 필수 (raw는 mm가 아니다)
                 depth = raw_to_mm(raw) if raw.dtype == np.uint16 else raw.astype(np.float32)
         res = convert(pj, depth=depth, blaze_intrinsics=intr, depth_window=args.depth_window)
+        if not args.no_gate:
+            # 이 모듈의 다른 곳(`depth_units`)과 같은 지연 import 방식.
+            try:
+                from . import input_gate  # type: ignore
+            except ImportError:
+                import input_gate  # type: ignore
+            # ⭐ 장면 판정에는 **원본 depth**가 필요하다(유효율은 0 여부만 보므로 단위 무관).
+            res = input_gate.apply(res, depth=depth)
+            s = res["gate_summary"]
+            if s["n_dropped"]:
+                print(f"  🛡️ {pred_path.name}: 게이트 제거 {s['n_dropped']}건 "
+                      f"(>{s['max_side_px']}px)")
+            sc = res.get("gate_scene")
+            if sc and not sc["trusted"]:
+                print(f"  ⚠️ {pred_path.name}: 장면 {sc['verdict']} — {sc['note']}")
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False))
         n = len(res["detections"])

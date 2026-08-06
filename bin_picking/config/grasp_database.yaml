@@ -1,3 +1,32 @@
+# ============================================================
+# 파지 가능성 태그 (pickability) — 2026-08-06 STL 전수 실측
+# ------------------------------------------------------------
+# 방침 = 그리퍼로 못 잡는 부품은 공정 대상에서 제외한다.
+#   ⭐ 단 학습에서는 빼지 않는다 — 빼면 다른 부품으로 오인해 잘못된
+#      벌림으로 집으려다 손상된다(7/9 병합이 F1 0.684→0.669 전례).
+#   → 학습은 전 종수 유지, 로봇 동작만 이 태그로 가른다.
+#
+# ✅ 그리퍼 확정 = 주강로보테크 JEGB-4285P-3MA (협력사 회신, 8/6)
+#   스트로크 85mm · 개폐 0~85mm(완전히 닫힘) · 파지력 15~150N 프로그래머블
+#   RS-485 + 디지털 I/O(입력5/출력3) · 위치·속도·힘 최대 15점 등록 · Self-lock
+#
+# 판정 기준선: 벌림 0.0~85.0mm · 조우 진입 최소 높이 5.0mm
+#   ⭐ 0mm까지 닫히므로 '얇아서 못 문다'는 제약이 없다 → 실질 제약은 두 개:
+#      ① 무는 변이 스트로크 85mm 안인가  ② 조우가 진입할 높이가 있는가
+#   ⚠️ [미확인] = 조우(finger) 실물 두께 → 확인 후 --min-height 로 재판정
+#   ✅ min_height 5~6mm 구간에서 제외 종수가 동일하고, 실측 높이 분포에
+#      4.8mm와 6.0mm 사이 간극이 있어 5mm 경계는 안정적이다.
+#
+# 판정 전제: 부품은 빈에 **눕혀 있다**(태민님 확정 8/6).
+#   무작위 적재는 안정 자세로 수렴하므로 가장 얇은 면이 바닥에 닿는다.
+#   ⇒ 무는 변 = 두 번째로 작은 변 / 조우 진입 높이 = 가장 작은 변.
+#   ⇒ '세워서 두께를 문다'는 경로는 이 전제에서 존재하지 않는다.
+#
+# ⚠️ 아래 `gripper_width_mm`(기존 값)은 방향이 섞여 작성돼 있다
+#   (20종은 중간변+여유, 7종은 최소변+여유). 눕힘 전제와 어긋나는 7종은
+#   티칭 때 실물로 교정할 것 — `grip_span_flat_mm`가 눕힘 기준 값이다.
+# ============================================================
+
 # 그래스프 데이터베이스 — 부품별 피킹 자세 정의
 # ================================================
 #
@@ -100,6 +129,10 @@ parts:
     gripper_width_mm: 20            # 11.5mm 폭 + 여유
     gripper_force_N: 15
     grasp_type: "parallel"          # 평행 그리퍼
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 45.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 11.5   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 45.0mm를 물고 높이 11.5mm로 조우 진입 가능
 
   02_sol_block_b:
     description: "솔레노이드 블록 B (55×9×45mm)"
@@ -109,6 +142,10 @@ parts:
     gripper_width_mm: 18
     gripper_force_N: 15
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 45.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 9.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 45.0mm를 물고 높이 9.0mm로 조우 진입 가능
 
   03_sol_block_front:
     description: "솔레노이드 블록 FRONT (55×30×52.9mm)"
@@ -118,6 +155,10 @@ parts:
     gripper_width_mm: 40
     gripper_force_N: 15
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 52.9   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 30.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 52.9mm를 물고 높이 30.0mm로 조우 진입 가능
 
   06_sol_block_back:
     description: "솔레노이드 블록 BACK (55×28.9×57.9mm)"
@@ -127,6 +168,10 @@ parts:
     gripper_width_mm: 38
     gripper_force_N: 15
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 55.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 28.85   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 55.0mm를 물고 높이 28.85mm로 조우 진입 가능
 
   # --- GUIDE PAPER 시리즈 ---
   07_guide_paper_l:
@@ -137,6 +182,10 @@ parts:
     gripper_width_mm: 80
     gripper_force_N: 12             # 넓은 부품 — 낮은 힘
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 69.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 25.5   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 69.0mm를 물고 높이 25.5mm로 조우 진입 가능
 
   08_r_guide_a:
     description: "R 가이드 A (271×40×34.5mm) — 길이가 길어 중심 잡기"
@@ -146,6 +195,10 @@ parts:
     gripper_width_mm: 50
     gripper_force_N: 15
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 40.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 34.5   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 40.0mm를 물고 높이 34.5mm로 조우 진입 가능
 
   09_guide_paper_r:
     description: "가이드 페이퍼 R (50×116×25.5mm)"
@@ -155,6 +208,10 @@ parts:
     gripper_width_mm: 60
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 50.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 25.5   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 50.0mm를 물고 높이 25.5mm로 조우 진입 가능
 
   10_guide_paper_roll_l:
     description: "가이드 페이퍼 롤 L (236×51.5×67.5mm) — 대형"
@@ -164,6 +221,10 @@ parts:
     gripper_width_mm: 60
     gripper_force_N: 15
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 67.5   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 51.5   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 67.5mm를 물고 높이 51.5mm로 조우 진입 가능
 
   # --- 소형 부품 ---
   11_sw_block:
@@ -174,6 +235,10 @@ parts:
     gripper_width_mm: 15
     gripper_force_N: 8              # 소형 — 약한 힘
     grasp_type: "parallel"
+    pickability: "needs_review"    # 인식만 — 좌표 전송 X (실물 파지 확인 전)
+    grip_span_flat_mm: 7.1   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 7.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 경계선: 높이 7.0mm(하한 5.0) · 벌림 7.1mm(상한 85.0) → 여유가 작아 실물 파지 확인 필요
 
   15_roller_bracket:
     description: "롤러 브래킷 (10×17.5×40mm)"
@@ -183,6 +248,10 @@ parts:
     gripper_width_mm: 25
     gripper_force_N: 10
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 17.5   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 10.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 17.5mm를 물고 높이 10.0mm로 조우 진입 가능
 
   16_cam_f_bracket:
     description: "캠 F 브래킷 (38×20×28mm)"
@@ -192,6 +261,10 @@ parts:
     gripper_width_mm: 30
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 28.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 20.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 28.0mm를 물고 높이 20.0mm로 조우 진입 가능
 
   17_mks_holder:
     description: "MKS 홀더 (131.3×11×82.5mm) — 길쭉한 형상"
@@ -201,6 +274,10 @@ parts:
     gripper_width_mm: 20
     gripper_force_N: 15
     grasp_type: "parallel"
+    pickability: "needs_review"    # 인식만 — 좌표 전송 X (실물 파지 확인 전)
+    grip_span_flat_mm: 82.5   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 11.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 경계선: 높이 11.0mm(하한 5.0) · 벌림 82.5mm(상한 85.0) → 여유가 작아 실물 파지 확인 필요
 
   18_button_function_niro:
     description: "버튼 기능 니로 (110×44×15.7mm) — 대형 평판"
@@ -210,6 +287,10 @@ parts:
     gripper_width_mm: 55
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 44.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 15.7   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 44.0mm를 물고 높이 15.7mm로 조우 진입 가능
 
   # --- 브래킷/센서 ---
   bracket_sensor1:
@@ -220,6 +301,10 @@ parts:
     gripper_width_mm: 30
     gripper_force_N: 10
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 26.1   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 15.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 26.1mm를 물고 높이 15.0mm로 조우 진입 가능
 
   bracket_sensor2:
     description: "브래킷 센서2 (4.8×2.5×34.8mm) — 매우 얇음"
@@ -229,6 +314,10 @@ parts:
     gripper_width_mm: 12
     gripper_force_N: 5              # 얇은 부품 — 최소 힘
     grasp_type: "parallel"
+    pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
+    grip_span_flat_mm: 4.8   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 2.5   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 조우 진입 불가: 눕힌 높이 2.5mm < 5.0mm (조우가 부품 옆으로 들어갈 공간이 없어 바닥을 긁는다)
 
   guide_paper_roll_cover_left:
     description: "가이드 롤 커버 L (28×48×59.2mm)"
@@ -238,6 +327,10 @@ parts:
     gripper_width_mm: 40
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 47.99   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 28.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 47.99mm를 물고 높이 28.0mm로 조우 진입 가능
 
   guide_paper_roll_cover_right:
     description: "가이드 롤 커버 R (22×48×59.2mm)"
@@ -247,6 +340,10 @@ parts:
     gripper_width_mm: 35
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 47.99   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 22.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 47.99mm를 물고 높이 22.0mm로 조우 진입 가능
 
   # --- 번호 시리즈 (13~14번대) ---
   13_variant:
@@ -257,6 +354,10 @@ parts:
     gripper_width_mm: 52
     gripper_force_N: 10
     grasp_type: "parallel"
+    pickability: "needs_review"    # 인식만 — 좌표 전송 X (실물 파지 확인 전)
+    grip_span_flat_mm: 42.24   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 6.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 경계선: 높이 6.0mm(하한 5.0) · 벌림 42.24mm(상한 85.0) → 여유가 작아 실물 파지 확인 필요
 
   13_x2_bcf8ccb4:
     description: "13번 v2 본체 (15×32.1×42.1mm)"
@@ -266,6 +367,10 @@ parts:
     gripper_width_mm: 42
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 32.1   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 15.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 32.1mm를 물고 높이 15.0mm로 조우 진입 가능
 
   "14_13":
     description: "14번 (6×42.2×45.9mm) — 얇은 판형, 13_variant 유사"
@@ -275,6 +380,10 @@ parts:
     gripper_width_mm: 52
     gripper_force_N: 10
     grasp_type: "parallel"
+    pickability: "needs_review"    # 인식만 — 좌표 전송 X (실물 파지 확인 전)
+    grip_span_flat_mm: 42.24   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 6.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 경계선: 높이 6.0mm(하한 5.0) · 벌림 42.24mm(상한 85.0) → 여유가 작아 실물 파지 확인 필요
 
   # --- 브래킷/케이스 추가 ---
   bracket_case:
@@ -285,6 +394,10 @@ parts:
     gripper_width_mm: 16
     gripper_force_N: 5
     grasp_type: "parallel"
+    pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
+    grip_span_flat_mm: 5.5   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 4.8   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 조우 진입 불가: 눕힌 높이 4.8mm < 5.0mm (조우가 부품 옆으로 들어갈 공간이 없어 바닥을 긁는다)
 
   bracket_sen_1:
     description: "센서 브래킷1 (15×53.1×56.1mm)"
@@ -294,6 +407,10 @@ parts:
     gripper_width_mm: 63
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 53.1   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 15.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 53.1mm를 물고 높이 15.0mm로 조우 진입 가능
 
   brkt_switch:
     description: "스위치 브래킷 (20×20.4×22.5mm) — 정육면체에 가까움"
@@ -303,6 +420,10 @@ parts:
     gripper_width_mm: 30
     gripper_force_N: 10
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 20.4   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 20.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 20.4mm를 물고 높이 20.0mm로 조우 진입 가능
 
   # --- 본체/플레이트 ---
   main_body:
@@ -313,6 +434,11 @@ parts:
     gripper_width_mm: 35
     gripper_force_N: 10
     grasp_type: "parallel"
+    pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
+    grip_span_flat_mm: 25.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 6.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: ⭐태민님 확정(8/6) — 계산상 경계선(높이 6.0mm)이었으나 **제외로 결정**.
+    #   나머지 경계선 4종(11_sw_block·13_variant·14_13·17_mks_holder)은 needs_review 유지(보류).
 
   plate_e:
     description: "E 플레이트 (20×45×56mm) — 중형 평판"
@@ -322,6 +448,10 @@ parts:
     gripper_width_mm: 55
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 45.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 20.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 45.0mm를 물고 높이 20.0mm로 조우 진입 가능
 
   # --- R 가이드 좌/우 ---
   r_guide_a_l:
@@ -332,6 +462,10 @@ parts:
     gripper_width_mm: 50
     gripper_force_N: 15
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 40.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 34.5   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 40.0mm를 물고 높이 34.5mm로 조우 진입 가능
 
   r_guide_a_r:
     description: "R 가이드 A 우측 (34.5×40×117.8mm) — 길쭉한 형상"
@@ -341,6 +475,10 @@ parts:
     gripper_width_mm: 50
     gripper_force_N: 15
     grasp_type: "parallel"
+    pickability: "pickable"    # 좌표 전송 O
+    grip_span_flat_mm: 40.0   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 34.5   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 눕힌 자세에서 짧은 변 40.0mm를 물고 높이 34.5mm로 조우 진입 가능
 
   # --- 시트류 ---
   top_inner_sheet:
@@ -351,6 +489,10 @@ parts:
     gripper_width_mm: 29
     gripper_force_N: 5
     grasp_type: "parallel"
+    pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
+    grip_span_flat_mm: 18.98   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 1.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 조우 진입 불가: 눕힌 높이 1.0mm < 5.0mm (조우가 부품 옆으로 들어갈 공간이 없어 바닥을 긁는다)
 
   top_inner_sheet004:
     description: "상단 내부 시트 v4 (1×89×303mm) — 극박 대형"
@@ -360,5 +502,10 @@ parts:
     gripper_width_mm: 99
     gripper_force_N: 12
     grasp_type: "parallel"
+    pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
+    grip_span_flat_mm: 88.98   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
+    lying_height_mm: 1.0   # 눕혔을 때 높이 (조우 진입 공간)
+    # 근거: 벌림 초과: 짧은 변 88.98mm > 스트로크 85.0mm (눕힌 자세에서 이 변을 물 수 없다)
+    # 근거: 조우 진입 불가: 눕힌 높이 1.0mm < 5.0mm (조우가 부품 옆으로 들어갈 공간이 없어 바닥을 긁는다)
 
   # ⚠️ 모든 값은 STL bbox 기반 추정치 — 카메라 입고 + 로봇 티칭 후 실측 교정 필요

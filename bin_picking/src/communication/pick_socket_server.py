@@ -60,6 +60,15 @@ try:
 except ImportError:  # 단독 실행 대비
     from pick_encoder import PickEncodeError, XY_PLAUSIBLE_MM, Z_PLAUSIBLE_MM
 
+# ⭐ 출력 게이트(부품이 아닌 예측 제거). `src/pipeline/`에 있어 경로가 한 단계 다르다.
+try:
+    from ..pipeline import input_gate
+except ImportError:  # 단독 실행 대비
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+    from pipeline import input_gate  # type: ignore
+
 
 # ============================================================
 # 설정
@@ -407,9 +416,45 @@ def _provider_vision(json_path: str, limit: int) -> Callable[[], list]:
         # ⚠️ 키 이름을 추측하지 않는다 — 7/31에 predictions를 detections로
         #    잘못 읽어 집계가 0건으로 나온 전례가 있다.
         if not dets:
+            # ⭐ 왜 비었는지를 함께 말한다 — "비어 있다"만 보면 원인을 찾으러
+            #   엉뚱한 데를 뒤진다. 게이트가 이미 걸러낸 파일일 수 있다.
+            hint = ""
+            gs = data.get("gate_scene")
+            if isinstance(gs, dict) and not gs.get("trusted", True):
+                hint = f" | 장면 게이트: {gs.get('note')}"
+            n_dropped = len(data.get("gate_dropped") or [])
+            if n_dropped:
+                hint += f" | 크기 게이트가 이미 {n_dropped}건을 제거했다"
             raise PickEncodeError(
-                f"{json_path}: detections/predictions 둘 다 비어 있다"
+                f"{json_path}: 보낼 검출이 없다{hint}"
             )
+
+        # ⭐⭐ 출력 게이트 = 부품이 아닌 예측(화면을 덮는 덩어리)을 로봇에 보내지 않는다.
+        #   근거(8/5 실측 → 8/6 정정) = 진짜 TP 예측 최대 223px인데 c2·c3의 오검출은
+        #   434~573px로 나온다. 230px 상한으로 **c1(실운영)은 무해(F1 변화 0)**,
+        #   c2 위치 precision 0.338→0.512, 전체 FP 194→117건.
+        #   🚨 만들어두고 호출하지 않으면 의미가 없다 — 8/5에 `depth_units.py`를 단일
+        #      출처로 만들었는데 `convert()`가 그걸 안 써서 좌표가 전건 무효였던 전례.
+        gated, dropped = input_gate.filter_detections(dets)
+        if dropped:
+            print(f"[pick-server] 크기 게이트 제거 {len(dropped)}건 "
+                  f"(>{input_gate.MAX_PART_SIDE_PX}px = 부품이 아니다)")
+            for d in dropped[:5]:
+                print(f"    - {d.get('label', '?')}: {d['gate']['reason']}")
+        if not gated:
+            raise PickEncodeError(
+                f"크기 게이트가 검출 {len(dets)}건을 전부 걸러냈다 — "
+                "장면이 학습 조건과 다를 가능성이 크다(빈 밖 물체·거리 이탈). "
+                "사람이 확인할 것."
+            )
+        dets = gated
+
+        # ⭐ 입력 게이트(장면) = 6요소 JSON에 장면 판정이 실려 있으면 경고한다.
+        #   🚨 여기서 조용히 멈추지 않는다 — 멈출지 말지는 운영 정책이고,
+        #      경고를 눈에 보이게 남기는 것이 이 계층의 역할이다.
+        scene = data.get("gate_scene")
+        if isinstance(scene, dict) and not scene.get("trusted", True):
+            print(f"[pick-server] ⚠️ 장면 게이트 경고: {scene.get('note')}")
         # ⭐ 건별로 걸러낸다 — 한 건이 신뢰불가라고 나머지 정상 검출까지
         #    버리면 안 된다(첫 구현이 그랬고, vision 모드가 통째로 실패했다).
         #    로봇은 집을 수 있는 것만 받으면 된다.
