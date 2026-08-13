@@ -21,6 +21,7 @@ from app.api.auth_routes import router as auth_router
 from app.local.routes import router as local_router
 from app.local.database import init_local_db
 from app.vision.routes import router as vision_router
+from app.binpick.routes import router as binpick_router
 from app.vision.camera_manager import get_camera_manager
 from app.vision.mqtt_client import get_mqtt_client
 
@@ -80,6 +81,9 @@ async def lifespan(app: FastAPI):
 
         # Vision 모델 등록 (init_local_db 전에 import해야 테이블 생성됨)
         from app.vision.models import VisionCamera, VisionEvent  # noqa: F401
+
+        # 빈피킹 모델 등록 (같은 이유 — import가 먼저여야 테이블이 생성됨)
+        from app.binpick.models import BinPickScene, BinPickDetection  # noqa: F401
 
         # Local API DB 초기화
         init_local_db()
@@ -189,6 +193,7 @@ Web API 기반 모니터링 시스템
     app.include_router(api_router, prefix="/api/v1")
     app.include_router(local_router, prefix="/api/v1/local")
     app.include_router(vision_router, prefix="/api/v1")
+    app.include_router(binpick_router, prefix="/api/v1")  # /api/v1/binpick/*
 
     # 프론트엔드 정적 파일 서빙
     frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"

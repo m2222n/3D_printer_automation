@@ -11,9 +11,13 @@ web-api 계약 테스트 공용 픽스처
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
+
+# 테스트 전용 SQLite 파일 (운영 presets.db와 절대 겹치지 않게 임시 디렉토리에 둔다)
+_TEST_DB_PATH = Path(tempfile.gettempdir()) / "orinu_webapi_test.db"
 
 # web-api/ 를 import 경로에 추가 (app.* 임포트용)
 WEB_API_ROOT = Path(__file__).resolve().parent.parent
@@ -43,6 +47,14 @@ def _test_env():
     # 외부 접속을 시도하지 않도록 더미 Formlabs 설정
     os.environ.setdefault("FORMLABS_CLIENT_ID", "test-client")
     os.environ.setdefault("FORMLABS_CLIENT_SECRET", "test-secret")
+
+    # 🚨🚨 **테스트 DB를 운영 DB와 분리한다** (2026-08-13 신설)
+    #   `LOCAL_DATABASE_URL` 기본값이 `sqlite:///./presets.db`인데 **상대 경로**라,
+    #   web-api/ 에서 pytest를 돌리면 **6000 운영 DB 파일을 그대로 쓴다.**
+    #   실제로 8/13 빈피킹 라우터 검증 때 테스트 행 24건이 운영 DB에 들어갔다
+    #   (운영 테이블은 무해했고 삭제했으나, 다음엔 운이 나쁠 수 있다).
+    #   ⭐ 교훈 = "테스트가 통과했다"와 "테스트가 격리돼 있다"는 다른 문제다.
+    os.environ["LOCAL_DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH}"
 
     get_settings.cache_clear()
     yield
