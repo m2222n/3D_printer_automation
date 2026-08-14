@@ -64,6 +64,16 @@ STL_DIR_DEFAULT = "/home/jtm/kaist_render/stl"
 #    나머지 경계선 4종은 "잠시 보류" = needs_review 유지.)
 MANUAL_OVERRIDES: dict[str, tuple[str, str]] = {
     "main_body": ("not_pickable", "태민님 확정(8/6) — 경계선이었으나 제외로 결정"),
+    # ⭐ 8/14 실물 확인 — 보류(needs_review) 4종 중 2종을 제외로 확정했다.
+    #    배경: 조우(finger) 실물 두께가 제조사 비공개라 사양서로는 판정 불가
+    #    (웹 검색·jrtfa.com 확인 결과 JEGB-4285 조우 규격 미공개).
+    #    ⇒ 계산으로 못 가르는 자리라 실물을 본 사람의 판단을 기준으로 삼는다.
+    "11_sw_block": ("not_pickable", "태민님 실물 확인(8/14) — 너무 작다(무는 변 7.1mm)"),
+    "17_mks_holder": ("not_pickable", "태민님 실물 확인(8/14) — 크고 높이가 없다"
+                                      "(무는 변 82.5mm = 스트로크 85mm에 여유 2.5mm)"),
+    # 🟢 유지 = 13_variant · 14_13
+    #    무는 변 42.2mm로 스트로크의 절반이라 벌림 여유가 크고, 걸린 것은 높이 6.0mm 하나뿐.
+    #    태민님 실물 판단도 "집을 만해 보인다" → needs_review 유지(좌표 전송은 아직 X).
 }
 
 

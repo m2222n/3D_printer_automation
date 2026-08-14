@@ -235,7 +235,7 @@ parts:
     gripper_width_mm: 15
     gripper_force_N: 8              # 소형 — 약한 힘
     grasp_type: "parallel"
-    pickability: "needs_review"    # 인식만 — 좌표 전송 X (실물 파지 확인 전)
+    pickability: "not_pickable"    # 인식만 — 사람에게 알림 (태민님 실물 확인(8/14) — 너무 작다)
     grip_span_flat_mm: 7.1   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
     lying_height_mm: 7.0   # 눕혔을 때 높이 (조우 진입 공간)
     # 근거: 경계선: 높이 7.0mm(하한 5.0) · 벌림 7.1mm(상한 85.0) → 여유가 작아 실물 파지 확인 필요
@@ -274,7 +274,7 @@ parts:
     gripper_width_mm: 20
     gripper_force_N: 15
     grasp_type: "parallel"
-    pickability: "needs_review"    # 인식만 — 좌표 전송 X (실물 파지 확인 전)
+    pickability: "not_pickable"    # 인식만 — 사람에게 알림 (태민님 실물 확인(8/14) — 크고 높이가 없다)
     grip_span_flat_mm: 82.5   # ⭐ 눕힌 자세에서 그리퍼가 무는 변
     lying_height_mm: 11.0   # 눕혔을 때 높이 (조우 진입 공간)
     # 근거: 경계선: 높이 11.0mm(하한 5.0) · 벌림 82.5mm(상한 85.0) → 여유가 작아 실물 파지 확인 필요
