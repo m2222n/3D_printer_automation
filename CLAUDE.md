@@ -102,6 +102,83 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ---
 
+## 🎉 IPC-510에서 빈피킹이 돈다 — 검출 "개수"는 성공의 증거가 아니다 (2026-08-14)
+
+> 8/11 화면 복구 → 8/12 원격 접속 → **8/14 모듈 구동.**
+> 8/5 산출물(모듈 3개) 중 **②빈피킹이 배포될 하드웨어에서 검증**됐다.
+
+✅ **IPC 추론이 6000과 소수점까지 일치**:
+```
+9
+  r_guide_a_r__82d6ea93        0.991
+  03_sol_block_front__b991ec0d 0.883
+  13_variant__105573ee         0.853
+```
+
+### 🚨🚨 플래그 하나를 빼면 조용히 틀린다 — 8/14 실측
+
+가이드에 명령을 쓰기 전 **6000에서 직접 돌려봤는데**, 플래그를 뺀 실행이 그럴싸하게 나왔다.
+
+| 실행 | 검출 수 | 1위 | 2위 |
+|---|---|---|---|
+| ✅ **플래그 있음** | **9건** | `r_guide_a_**r**` 0.991 | `03_sol_block_front` 0.883 |
+| ❌ 플래그 없음 | 10건 | `r_guide_a_**l**` 0.911 | `bracket_case` 0.910 |
+
+⭐⭐ **개수가 아니라 "어느 부품인가"가 다르다.** 좌우(`_l`/`_r`)가 뒤바뀌고 부품 종류 자체가
+달라지는데 **에러도 경고도 없다.**
+
+**원인** = `--real_uint16_max_depth_m` 기본값이 `None`이라 **raw uint16을 mm로 취급**
+(실제는 `raw×10/65535 = m`). z가 6~7배 뻥튀기돼 `--depth_keep_range`에서 엉뚱하게 걸러진다.
+
+📌 **7/30에 이미 겪은 버그다** — 같은 플래그 누락으로 검출이 **9건→2건**이 됐고,
+그때 *"못 잡았으면 cross-session 폭락으로 오진했을 것"*이라 적었다. **depth 단위 계열 여섯 번째.**
+
+⇒ ⭐ **그래서 IPC 검증 기준을 "9건 나옴"이 아니라 "부품 이름·score까지 대조"로 못 박았다.**
+이게 없었으면 **오늘 성공을 가짜로 선언**했을 수 있다.
+
+### 🚨 내 실수 — `requirements.txt`를 믿었다
+
+`ModuleNotFoundError: No module named 'PIL'`로 막혔다. `mentoring_new/requirements.txt`엔
+**numpy·torch·tqdm만** 있는데 **실제 import는 PIL·scipy가 더 있었다**
+(`depth_vq_detector/depth_preprocess.py:10`).
+
+⭐ **"파일을 읽은 것"과 "그게 진짜 의존성인지 확인한 것"은 다른 문제다** — 시그니처 추측 금지와
+같은 계열이다. 방어 = **import 전수 추출**:
+```bash
+grep -rhoE "^\s*(import|from)\s+[a-zA-Z_][a-zA-Z0-9_]*" depth_vq_detector/*.py infer_depth_vq_detector.py | sort -u
+```
+⭐ 다만 이건 `ModuleNotFoundError`로 **크게 실패**해서 즉시 잡혔다(좋은 실패).
+
+### 🎯 막고 있던 것 3개 — 전부 "설정은 됐는데 다른 게 가로챈다"
+
+| # | 증상 | 원인 | 해결 |
+|---|---|---|---|
+| ① | `python`이 Store 안내 메시지 | **앱 실행 별칭**이 가로챔 | 설정 → 앱 실행 별칭 끄기 |
+| ② | venv 활성화가 조용히 안 됨 | **실행 정책** | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`(영구) |
+| ③ | `ModuleNotFoundError: PIL` | requirements 불완전 | `pip install pillow scipy` |
+
+⭐ **①②는 8/12 TermService `Manual`과 같은 형태**다 — 설정은 돼 있는데 다른 계층이 막는다.
+⚠️ ②에서 *"업데이트했지만 재정의되었습니다"* 경고는 **실패가 아니다**(CurrentUser엔 저장됐고
+현재 창만 Process가 우선). 🚨`PermissionDenied`라는 단어 때문에 권한 문제로 보이지만 아니다.
+
+### ✅ 확정 구성
+
+**Python 3.12.8** · torch **+cpu** · numpy **1.26.4** · tqdm · **pillow** · **scipy** ·
+모델 **T100**(`T100_csblur_lr1e4_ep80/best.pt`) · 경로 `C:\ipc_bundle\`
+
+🚨 **c1plus(8/7 재학습분)를 쓰지 말 것** — holdout F1이 떨어져 배포하지 않았다.
+⭐ **CPU부터 한 이유** = 6000에서 **검증된 조합**이 CPU이고, GPU는 CUDA 빌드·드라이버 정합이라는
+**새 변수**를 들인다. **되는 것을 먼저 만들고 빨라지는 것은 그 다음.**
+
+📌 **전송 = IPC에서 직접 scp**(RDP 드래그&드롭은 막혀 있다). ⭐**md5 검증 필수** —
+깨진 체크포인트는 **로드는 되면서 엉뚱한 값**을 낸다.
+
+⏭️ **남은 것** = web-api를 IPC에서 기동(🔴8/13 라우터는 **서버 재시작 필요**) · pylon · 서비스 등록
+
+상세: `memory/project_ipc_binpick_running_0814.md` · 가이드 `bin_picking/docs/ipc_setup_0814.md`
+
+---
+
 ## ⭐⭐ 빈피킹 웹 라우터 — "통과하는 테스트"와 "실패할 수 있는 테스트"는 다르다 (2026-08-13)
 
 > 8/5 산출물 = **모듈 3개 + "결과를 우리 웹에 던져주는 것까지"**. 8/7에 **송신부만**
