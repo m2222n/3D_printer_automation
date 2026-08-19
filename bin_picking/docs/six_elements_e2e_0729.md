@@ -1,5 +1,9 @@
 # 6요소 좌표 E2E 완주 (depth_track → 협력사 규격, 2026-07-29)
 
+> ✅ **완료된 작업의 상세 기록.** 결론·교훈 요약은 `bin_picking/docs/P0_0728_0730_완료기록.md`에 4건을 합쳐 두었다.
+> 이 파일은 **세부 수치·실행 절차가 필요할 때** 본다.
+
+
 > **P0 #2** 완료. depth_track 추론 → 협력사 6요소(`x, y, z, edge, angle, label`) 변환을
 > 실측 100장에서 검증. **z 유효 801/801건(100%), 99%가 400~600mm 정상 범위.**
 > 신설 = `bin_picking/src/pipeline/depth_track_to_6elements.py`

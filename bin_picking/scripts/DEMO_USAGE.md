@@ -1,5 +1,10 @@
 # 라이브 인식 데모 사용 가이드
 
+> ⛔ **폐기 — 트랙1(Open3D FPFH) 시기 데모 가이드.**
+> 현행 인식은 `bin_picking/depth_track/`(depth-only + CAD codebook)이고
+> 실행은 `bin_picking/docs/ipc_setup_0814.md` 참조.
+
+
 **스크립트**: `bin_picking/scripts/demo_live_recognition.py`
 **UI 모듈**: `bin_picking/src/visualization/demo_ui.py`
 
