@@ -208,7 +208,7 @@
 - **Modbus INT16 재설계** (`a13b5ce`) — HCR-10L 실스펙 (Reg 130~, 1/10mm)
 - **Colored ICP 파이프라인** (`b33547b`) — 컬러 있으면 자동 활성화, multi-scale
 - **Basler 듀얼 캡처 모듈** (`6ad4668`) — Blaze-112 + ace2, main_pipeline `--basler` 옵션
-- 4/17 중간 보고서 작성 (`docs/binpicking_report_0417.md`)
+- 4/17 중간 보고서 작성 (`docs/archive_track1_202605/binpicking_report_0417.md`)
 
 ### W6 (4/21) — 카메라 도착 준비
 - 오전: D435 USB 3.2 20Gbps 케이블 테스트 PASS, 대표님 전화 (4/23 목 카메라 도착 예정)
@@ -576,7 +576,7 @@ Mac 렌더 확인으로 반영된 시각 개선:
 - ORINU-DEV-2026-002 (2026-03-18, PDF)
 - `CLAUDE.md` — 프로젝트 전체 상태
 - `CLAUDE.local.md` — 작업 이력
-- `docs/binpicking_report_0417.md` — 지난 보고서
+- `docs/archive_track1_202605/binpicking_report_0417.md` — 지난 보고서
 - `docs/meeting_0422.md` — 내일 회의 자료
 
 ### 13.2 외부 자료

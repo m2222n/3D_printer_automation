@@ -1,5 +1,10 @@
 # v3 학습 계획 (2026-05-27 수립)
 
+> ⛔ **폐기 — YOLO(RGB) 트랙에서 depth_track으로 전환되어 미실행.**
+> 현행 인식 트랙은 `bin_picking/depth_track/`(CAD codebook + depth-only).
+> 이 계획서는 **트랙 전환 전 기록**이다.
+
+
 > 북극성: 학습 잘 됨 → 카메라 잘 인식 → 로봇이 빈피킹 잘함
 > v3의 사명: **"외운 모델(0.99)"을 "현장에서 통하는 모델"로** — 도메인 일반화 + Part5 약점 해소
 > 작성 근거: `project_yolo_v2_training_results_0522.md` + `project_data_collection_long_term.md` §1-A

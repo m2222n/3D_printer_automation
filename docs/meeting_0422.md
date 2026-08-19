@@ -191,7 +191,7 @@
 - `CLAUDE.md` — 프로젝트 전체 상태
 - `CLAUDE.local.md` — 작업 이력
 - `docs/binpicking_summary.md` — Phase 5 전체 현황 총정리 (섹션 14개)
-- `docs/binpicking_report_0417.md` — 지난 보고서 (4/17)
+- `docs/archive_track1_202605/binpicking_report_0417.md` — 지난 보고서 (4/17)
 - `docs/basler_download_checklist.md` — 카메라 도착 전 드라이버 준비
 - `bin_picking/scripts/README.md` — 현장 설치 순서서
 - `bin_picking/` — Phase 5 소스 + 테스트 + 튜토리얼

@@ -1,5 +1,9 @@
 # 7/24(금) 사무실 작업 계획 — extrinsic 정렬 → 좌표 출력
 
+> ⛔ **폐기 — 7/31에 extrinsic 정렬·오버레이 검증 완료로 종료.**
+> 결과는 `config/blaze_intrinsics.json`(RMS 0.213px)과 CLAUDE.md 7/31 절 참조.
+
+
 > **목표(태민님 7/23)**: 실제 카메라 연동해서 빈피킹이 실환경에서 돌아가게. **순서 = ① extrinsic 정렬 먼저 → ② 좌표 출력.**
 > 북극성: 학습 잘 됨 → **카메라 잘 인식** → 로봇 빈피킹. 오늘은 "카메라 잘 인식"의 RGB-D 정합 + 좌표 단계.
 > ⚠️ 관련 메모리: `project_ace2_camera.md` §B단계 / `project_binpicking_overview.md` / `project_hansol_coord_spec_0520.md`(6요소)
