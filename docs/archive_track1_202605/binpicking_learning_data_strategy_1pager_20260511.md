@@ -446,9 +446,9 @@ label = {
 ### 문서 (4개 — pose_validation_protocol 신규)
 | 파일 | 역할 |
 |------|------|
-| `docs/binpicking_learning_data_strategy_1pager_20260511.md` (v2.4) | **본 1pager** (전략 + 6/2 마감) |
-| `docs/binpicking_capture_sop_20260511.md` (v1.1) | 데이터 수집 SOP + **§ 5.1 REVIEW 큐 처리 / § 1.3 조명 valid % / § 2.1 L4 강제 / § 4.1 흔들림 검증** |
-| `docs/binpicking_pose_validation_protocol.md` ⭐ 신규 (5/13) | **5/15 첫 30분 부품 던지기 검증 매뉴얼** (yaml null 채우기) |
+| `binpicking_learning_data_strategy_1pager_20260511.md` (v2.4) | **본 1pager** (전략 + 6/2 마감) |
+| `binpicking_capture_sop_20260511.md` (v1.1) | 데이터 수집 SOP + **§ 5.1 REVIEW 큐 처리 / § 1.3 조명 valid % / § 2.1 L4 강제 / § 4.1 흔들림 검증** |
+| `binpicking_pose_validation_protocol.md` ⭐ 신규 (5/13) | **5/15 첫 30분 부품 던지기 검증 매뉴얼** (yaml null 채우기) |
 | `docs/hansol_handover/bottom_vision_interface_notes_20260511.md` | 협력사 바텀비전 인터페이스 명세 |
 
 ### 메모리 (4개)
@@ -532,5 +532,5 @@ label = {
 - 이번주 계획: `memory/project_week_plan_0511.md`
 - 5/6 협력사 회의록: `memory/project_meeting_0506_hansol.md`
 - 바텀비전 인터페이스: `docs/hansol_handover/bottom_vision_interface_notes_20260511.md`
-- **데이터 수집 SOP**: `docs/binpicking_capture_sop_20260511.md` ⭐
+- **데이터 수집 SOP**: `binpicking_capture_sop_20260511.md` ⭐
 - 4/14 HCR 교육 (Modbus + 펜던트): `memory/reference_hcr_user_education.md`

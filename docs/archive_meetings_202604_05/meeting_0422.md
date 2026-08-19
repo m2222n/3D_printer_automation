@@ -33,7 +33,7 @@
 - **대표님 오전 전화**: 4/23(목) 카메라 도착 예정, 수·금 출근 → 목/금 조정 가능 (내일 회의에서 확정)
 
 ### 4/21 밤 (재택) — 카메라 도착 대비 3개 작업
-- **Basler 드라이버 다운로드 체크리스트** (`docs/basler_download_checklist.md`)
+- **Basler 드라이버 다운로드 체크리스트** (`docs/archive_202604/basler_download_checklist.md`)
 - **Basler 설치 자동화 스크립트** (`bin_picking/scripts/`)
   - `basler_setup.sh` — pylon + Blaze 자동 설치 + GigE 네트워크 튜닝
   - `basler_smoke_test.py` — 9단계 스모크 테스트
@@ -192,6 +192,6 @@
 - `CLAUDE.local.md` — 작업 이력
 - `docs/binpicking_summary.md` — Phase 5 전체 현황 총정리 (섹션 14개)
 - `docs/archive_track1_202605/binpicking_report_0417.md` — 지난 보고서 (4/17)
-- `docs/basler_download_checklist.md` — 카메라 도착 전 드라이버 준비
+- `docs/archive_202604/basler_download_checklist.md` — 카메라 도착 전 드라이버 준비
 - `bin_picking/scripts/README.md` — 현장 설치 순서서
 - `bin_picking/` — Phase 5 소스 + 테스트 + 튜토리얼

@@ -17,7 +17,7 @@
 
 ## 사전 준비 (홈에서 가능)
 
-1. **드라이버 다운로드** — `docs/basler_download_checklist.md` 참조
+1. **드라이버 다운로드** — `docs/archive_202604/basler_download_checklist.md` 참조
    - pylon Camera Software Suite 8.x (Linux x86_64)
    - Blaze Supplementary Package
 2. **USB 메모리에 백업**
@@ -140,7 +140,7 @@ python basler_smoke_test.py --out /tmp/my_dir # 저장 경로 지정
 
 ## 참고 문서
 
-- `docs/basler_download_checklist.md` — 드라이버 다운로드 체크리스트
-- `docs/meeting_0422.md` — 내일 회의 자료
+- `docs/archive_202604/basler_download_checklist.md` — 드라이버 다운로드 체크리스트
+- `docs/archive_meetings_202604_05/meeting_0422.md` — 내일 회의 자료
 - `docs/binpicking_summary.md` — Phase 5 전체 현황
 - `bin_picking/src/acquisition/basler_capture.py` — 캡처 모듈 본체

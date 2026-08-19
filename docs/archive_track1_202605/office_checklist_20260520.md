@@ -166,7 +166,7 @@ ACE2 어댑터 미도착 시 → Phase B 스킵 → C에 추가 시간 + 부품 
 - `bin_picking/yolo_track/camera/basler_wrapper.py` (5/19 작성)
 - `bin_picking/yolo_track/pipeline/bin_picking_main.py` (5/19 작성)
 - `scripts/friday_smoke_test.sh` (인프라 검증)
-- `docs/binpicking_friday_runbook_20260515.md` (5/15 runbook, 5/20 참고)
+- `binpicking_friday_runbook_20260515.md` (5/15 runbook, 5/20 참고)
 - `memory/project_basler_office_setup_0508.md` (어댑터 8단계 검증)
 - `memory/project_p5_pilot_blocked_0518.md` (5/22 재시도 조건)
 - `memory/project_roboflow_v1_setup_0518.md` (v1 학습 결과 + 약점)

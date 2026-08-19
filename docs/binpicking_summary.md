@@ -213,7 +213,7 @@
 ### W6 (4/21) — 카메라 도착 준비
 - 오전: D435 USB 3.2 20Gbps 케이블 테스트 PASS, 대표님 전화 (4/23 목 카메라 도착 예정)
 - **4/21 밤 (재택) — 3개 대비 작업**:
-  - **Basler 드라이버 다운로드 체크리스트** (`docs/basler_download_checklist.md`)
+  - **Basler 드라이버 다운로드 체크리스트** (`docs/archive_202604/basler_download_checklist.md`)
   - **Basler 설치 자동화 스크립트** (`bin_picking/scripts/`, `112d986`)
     - `basler_setup.sh`: pylon + Blaze 자동 설치 + GigE 네트워크 튜닝 (Jumbo Frame, UDP 버퍼, ufw)
     - `basler_smoke_test.py`: 9단계 스모크 테스트 (import→열거→식별→start→capture→통계→save/load→PointCloud)
@@ -577,7 +577,7 @@ Mac 렌더 확인으로 반영된 시각 개선:
 - `CLAUDE.md` — 프로젝트 전체 상태
 - `CLAUDE.local.md` — 작업 이력
 - `docs/archive_track1_202605/binpicking_report_0417.md` — 지난 보고서
-- `docs/meeting_0422.md` — 내일 회의 자료
+- `docs/archive_meetings_202604_05/meeting_0422.md` — 내일 회의 자료
 
 ### 13.2 외부 자료
 - Open3D 튜토리얼 (Registration 섹션)

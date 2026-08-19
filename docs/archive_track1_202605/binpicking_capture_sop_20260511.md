@@ -8,7 +8,7 @@
 > 어댑터 도착 후 매뉴얼대로 따라하면 1종당 1~2시간 안에 데이터셋 완성.
 >
 > **참고 문서**:
-> - 학습 데이터 전략 (이 SOP의 상위): `docs/binpicking_learning_data_strategy_1pager_20260511.md`
+> - 학습 데이터 전략 (이 SOP의 상위): `binpicking_learning_data_strategy_1pager_20260511.md`
 > - 안정 자세 yaml: `bin_picking/config/stable_poses.yaml`
 > - 어댑터 검증: `memory/project_basler_office_setup_0508.md` § 어댑터 도착 후 검증/셋업 절차
 
