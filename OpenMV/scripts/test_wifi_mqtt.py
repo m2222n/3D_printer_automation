@@ -17,7 +17,7 @@ WIFI_TIMEOUT_MS = 15000
 # MQTT 브로커 주소 (아래 중 하나가 작동할 것)
 # 같은 네트워크면 내부 IP, 아니면 외부 IP
 MQTT_BROKER_INTERNAL = "192.168.100.29"  # 서버 내부 IP
-MQTT_BROKER_EXTERNAL = "106.244.6.242"   # 서버 외부 IP
+MQTT_BROKER_EXTERNAL = "<DEV_SERVER_IP>"   # 서버 외부 IP
 MQTT_PORT = 1883
 
 # 카메라 식별

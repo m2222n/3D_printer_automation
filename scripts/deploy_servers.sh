@@ -15,7 +15,13 @@ set -e
 
 REPO_ROOT="/home/jtm/3D_printer_automation"
 KAKAO_KEY="$HOME/.ssh/kakao_key"
-KAKAO_HOST="ubuntu@61.109.239.142"
+# 🔒 서버 주소는 환경변수로 분리한다 (이 리포는 협력사 미러로 공유된다).
+#    실제 값은 ~/.deploy_env 또는 셸 환경에 둔다. 예:
+#      export KAKAO_HOST=ubuntu@<카카오VM_IP>
+#      export DEV_SERVER_HOST=<개발서버_IP>
+[ -f "$HOME/.deploy_env" ] && . "$HOME/.deploy_env"
+KAKAO_HOST="${KAKAO_HOST:?KAKAO_HOST 미설정 — ~/.deploy_env 에 export 할 것}"
+DEV_SERVER_HOST="${DEV_SERVER_HOST:?DEV_SERVER_HOST 미설정 — ~/.deploy_env 에 export 할 것}"
 KAKAO_PATH="/home/ubuntu/3D_printer_automation"
 
 SKIP_DEPS=false
@@ -166,13 +172,13 @@ verify_external() {
 
     if [ "$DEPLOY_6000" = true ]; then
         local code_6000
-        code_6000=$(curl -s -o /dev/null -w "%{http_code}" http://106.244.6.242:8085/api/v1/dashboard)
+        code_6000=$(curl -s -o /dev/null -w "%{http_code}" http://${DEV_SERVER_HOST}:8085/api/v1/dashboard)
         echo "  6000 서버:    $code_6000 $([ "$code_6000" = "401" ] && echo '✅' || echo '⚠️')"
     fi
 
     if [ "$DEPLOY_KAKAO" = true ]; then
         local code_kakao
-        code_kakao=$(curl -s -o /dev/null -w "%{http_code}" http://61.109.239.142:8085/api/v1/dashboard)
+        code_kakao=$(curl -s -o /dev/null -w "%{http_code}" http://${KAKAO_HOST#*@}:8085/api/v1/dashboard)
         echo "  카카오 VM:    $code_kakao $([ "$code_kakao" = "401" ] && echo '✅' || echo '⚠️')"
     fi
 

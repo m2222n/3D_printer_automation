@@ -139,4 +139,4 @@ done
 
 echo ""
 echo "=== 6000 회수 명령 (AICA에서 실행) ==="
-echo "  scp -P 22 -r $LOG_DIR jtm@106.244.6.242:/home/jtm/3D_printer_automation/bin_picking/yolo_track/runs/"
+echo "  scp -P 22 -r $LOG_DIR jtm@<DEV_SERVER_IP>:/home/jtm/3D_printer_automation/bin_picking/yolo_track/runs/"

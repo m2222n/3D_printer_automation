@@ -116,7 +116,7 @@ D435 라이브 연동 성공 (USB 3.2, pyrealsense2 v2.57.7 소스빌드). 프�
 ## 8. 웹 서비스 인프라
 
 - **systemd 자동시작**: formlabs-web.service (포트 8085, Restart=always, linger)
-- **카카오 VM 이전**: 61.109.239.142:8085 — Cloud API 폴링 + 프론트엔드 정상
+- **카카오 VM 이전**: <KAKAO_VM_IP>:8085 — Cloud API 폴링 + 프론트엔드 정상
 - **Basic Auth 구현**: Raw ASGI 미들웨어, HTTP+WebSocket 보호
 - **한솔 코드 머지 2차**: 자동화 CMD 프린터 할당 기능 (이예승 사원)
 - 공장 PC 연결은 도메인 확정 후 Cloudflare Tunnel로 진행 예정
