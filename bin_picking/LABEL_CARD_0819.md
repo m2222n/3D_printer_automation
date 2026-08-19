@@ -45,15 +45,23 @@ labelme . --labels labels.txt --output ./labelme_json --nodata
 
 ### 그룹별 후보 (이 목록 밖의 이름은 그 장에 없다)
 
-**B** `07_guide_paper_l` `09_guide_paper_r` `13_variant`×2 `13_x2_bcf8ccb4` `16_cam_f_bracket` `bracket_sensor1`
-**C** `06_sol_block_back` `03_sol_block_front` `plate_e` `r_guide_a_l` `r_guide_a_r` `08_r_guide_a` `brkt_switch`
+**B** `07_guide_paper_l` `09_guide_paper_r` `13_variant`×2 `13_x2_bcf8ccb4` **`brkt_switch`** `bracket_sensor1`
+**C** `06_sol_block_back` `03_sol_block_front` `plate_e` `r_guide_a_l` `r_guide_a_r` `08_r_guide_a` **`16_cam_f_bracket`**
 **A** `bracket_sen_1` `guide_paper_roll_cover_left` `guide_paper_roll_cover_right` `01_sol_block_a` `02_sol_block_b` `18_button_function_niro` `15_roller_bracket`
+
+## 🚨 8/19 정정 — `brkt_switch` ↔ `16_cam_f_bracket` 이 B/C 사이에서 바뀌어 있었다
+
+촬영 시 부품을 착각해 반대로 넣었다(태민님 확인). **위 표는 정정 후 기준**이다.
+실측 근거 = B(001–030)에 **25×22mm 물체가 25/30장**(`brkt_switch` 30×20)이고 47.7mm급은 없다.
+C(031–060)는 **38mm 미만이 205개 중 0개**이고 48mm급이 장당 1개.
+⇒ 정정 전 정답지대로 그렸으면 **B/C 각 30장에서 1개씩 총 60개**가 틀린 이름으로 들어갈 뻔했다.
+⭐ **"메모가 실물과 다를 수 있다" — 크기로 검산해서 잡았다.**
 
 ## 4. 🚨 헷갈리는 자리 3곳
 
 | 대상 | 판단 |
 |---|---|
-| ⭐⭐ **`13_variant` / `14_13`** | **둘 다 `13_variant`로 라벨** (병합 확정, 태민님 A안). 3mm=2.1px라 **물리적으로 구별 불가** ⇒ 🚨**B그룹은 `13_variant`가 장당 2개, `14_13` 라벨은 쓰지 않는다** |
+| ⭐⭐ **`13_variant` / `14_13`** | **둘 다 `13_variant`로 라벨** (병합 확정, 태민님 A안). 긴변 **1.65mm** 차뿐(≈1px)이라 **물리적으로 구별 불가** ⇒ 🚨**B그룹은 `13_variant`가 장당 2개, `14_13` 라벨은 쓰지 않는다** |
 | ⚠️ **`r_guide_a_l` / `r_guide_a_r` / `08_r_guide_a`** (C) | **구별 가능** — span·높이는 같고 **길이가 271 / 163 / 117.8mm**(70~100px 차) ⇒ **가장 긴 것 = `08_r_guide_a`** |
 | ⚠️ **`roll_cover_left` / `right`** (A) | **경계선** — XY 59x48 동일, 두께만 6mm(≈4px) 차. **병합 안 함.** 실제로 구별되는지 라벨링하며 확인하고, 안 되면 기록할 것 |
 

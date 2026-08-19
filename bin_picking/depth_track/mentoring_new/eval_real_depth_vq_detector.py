@@ -190,10 +190,39 @@ def infer_one(
     }
 
 
+# ⭐ 물리적으로 구별 불가능한 클래스를 채점에서 같은 것으로 취급한다.
+#
+# 🚨 왜 필요한가 — 없으면 "맞은 것을 틀렸다고 센다"
+#    13_variant 와 14_13 은 긴변 1.31mm / 중간변 1.65mm 차이뿐이고 두께 6.09mm 는
+#    완전히 동일하다. 450mm 거리에서 1px=1.45mm 이므로 **약 1픽셀 차이**다.
+#    사람도 모델도 구별할 수 없어 라벨을 13_variant 로 병합했는데(태민님 확정 2026-08-18),
+#    모델은 27종을 학습해 14_13 으로도 출력한다.
+#    → 그대로 채점하면 한 건이 **FP 와 FN 을 동시에 만들어 두 번 깎인다.**
+#    실측: 90장에서 21건이 이 경우였고 F1 이 0.036 낮게 나왔다.
+#
+# ⭐ 안전한 이유 = 파지 파라미터가 같다
+#    grasp_min 6.09 로 동일하고 mid 는 43.55 vs 41.90 이라, 어느 쪽으로 인식해도
+#    그리퍼 동작이 같다. label 은 벌림만 결정한다(8/7 원칙).
+#
+# ⚠️ 여기에 추가할 때는 "치수가 비슷하다"가 아니라 **"픽셀로 구별 불가능하고
+#    파지 파라미터가 같다"**를 실측으로 보인 쌍만 넣을 것. 아무거나 넣으면
+#    성능을 부풀리게 된다(7/9 에 구별 가능한 쌍을 병합해 F1 이 떨어진 전례가 있다).
+EQUIVALENT_CAD_NAMES: dict[str, str] = {
+    "14_13": "13_variant",
+}
+
+
+def apply_cad_equivalence(name: str | None) -> str | None:
+    """구별 불가능 클래스를 대표 이름으로 접는다."""
+    if name is None:
+        return None
+    return EQUIVALENT_CAD_NAMES.get(name, name)
+
+
 def pred_match_label(pred: dict[str, Any], match_key: str) -> str | None:
     if match_key == "cad_id":
         cad = pred.get("cad_id")
-        return canonical_cad_name(cad) if cad is not None else None
+        return apply_cad_equivalence(canonical_cad_name(cad)) if cad is not None else None
     if match_key == "class_id":
         return str(int(pred["class_id"])) if "class_id" in pred else None
     raise ValueError(match_key)
@@ -201,7 +230,8 @@ def pred_match_label(pred: dict[str, Any], match_key: str) -> str | None:
 
 def gt_match_label(gt: dict[str, Any], match_key: str) -> str | None:
     if match_key == "cad_id":
-        return canonical_cad_name(gt.get("cad_name", gt.get("raw_label", "")))
+        return apply_cad_equivalence(
+            canonical_cad_name(gt.get("cad_name", gt.get("raw_label", ""))))
     if match_key == "class_id":
         cid = int(gt.get("class_id", -1))
         return str(cid) if cid > 0 else None
