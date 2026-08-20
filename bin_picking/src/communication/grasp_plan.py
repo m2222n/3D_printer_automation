@@ -105,6 +105,30 @@ WIDTH_MISMATCH_WARN_MM = 10.0     # WIDTH_CHECK_ENABLED=True일 때만 의미
 GRIPPER_WIDTH_RANGE_MM = (0.0, 110.0)
 GRIPPER_FORCE_MAX_N = 40.0        # SLA 레진 보호 (DB robot.safety와 동일)
 
+# ⭐⭐ 안전여유 (2026-08-20 신설) — **DB 값이 아니라 런타임 동작이다**
+# ─────────────────────────────────────────────────────────────
+# DB `gripper_width_mm`은 8/20 교정으로 **부품의 진짜 무는 변**(`grip_span_flat_mm`,
+# 눕힌 자세의 중간변)이 됐다. 여기에 로봇이 **실제로 더 벌리는 양**을 얹는다.
+#
+# 🚨 왜 DB에 안 박고 여기서 더하는가 = 8/10·8/20에 두 번 밟은 함정:
+#    모든 부품 값에 같은 상수를 더하면 `used`와 `need`가 같이 올라가
+#    **차이가 그대로**다(동어반복). 여유는 *"예측한 벌림보다 N mm 더 벌린다"*는
+#    뜻이므로 **로봇이 벌리는 쪽에만** 적용돼야 의미가 있다.
+#
+# 📊 실측 근거 (8/18 90장 · 위치매칭 514쌍, `decompose_fatal_grasp_0820.py`):
+#      +0mm  치명 80 · 파지 84.4%
+#      +5mm  치명 46 · 파지 91.1%
+#    ⭐+10mm 치명 23 · 파지 **95.5%**  ← 채택 (8/7에도 최적점으로 판정)
+#      +15mm 치명  7 · 파지 98.6% (헐거움 77)
+#      +20mm 치명  3 · 파지 99.4% 이나 **헐거움 466건으로 폭증** = 미끄러짐 위험
+#
+# ✅ 물리 검산 = pickable 20종의 (span_flat + 10mm) 최대값 **79.0mm** ≤ 스트로크 85mm.
+#    85mm를 넘는 `17_mks_holder`(92.5)·`top_inner_sheet004`(99.0)는 둘 다
+#    `not_pickable`이라 로봇에 좌표가 나가지 않는다.
+#
+# ⚠️ 실물 티칭 때 재교정 대상 — DB 값이 STL 계산치이므로 여유도 함께 재본다.
+GRASP_SAFETY_MARGIN_MM = 10.0
+
 # ⭐ edge의 유효한 용도 ①: 보이는 짧은 변이 최대 벌림보다 크면 애초에 못 문다.
 #    (시선 방향과 무관하게 성립하는 판정 — 보이는 변조차 안 들어가는 경우)
 GRIPPER_MAX_OPEN_MM = 110.0
@@ -119,12 +143,17 @@ class GraspPlan:
     """포즈 1건에 대응하는 그리퍼 계획. 포즈 배열과 **인덱스가 1:1**."""
     index: int                      # 포즈 배열에서의 위치 — 정합의 근거
     label: str                      # 부품 종류 (6요소 label)
-    gripper_width_mm: float
+    gripper_width_mm: float         # ⭐ 로봇이 실제로 벌릴 값 = base + safety
     gripper_force_N: float
     approach_axis: list[float] = field(default_factory=lambda: [0.0, 0.0, -1.0])
     grasp_depth_mm: float = 15.0
     width_source: str = "db"        # db | db_default
     measured_width_mm: Optional[float] = None   # edge에서 실측한 폭
+    # ⭐ 8/20 신설 — 여유가 얼마나·어디에 붙었는지 **값 옆에 남긴다**.
+    #   이번 사고의 본질이 *"어떤 기준의 값인지 아무도 몰랐던 것"*이었으므로,
+    #   내려보내는 값에 근거를 동봉한다.
+    base_width_mm: Optional[float] = None       # DB 원값(= grip_span_flat_mm)
+    safety_margin_mm: float = 0.0               # 여기에 더해진 여유
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -209,11 +238,18 @@ def plan_for_detection(
     db: Optional[dict] = None,
     fx: Optional[float] = None,
     allow_db_default: bool = False,
+    safety_margin_mm: float = GRASP_SAFETY_MARGIN_MM,
 ) -> GraspPlan:
     """6요소 검출 1건 → GraspPlan.
 
     🚨 `allow_db_default=False`(기본)면 **DB에 없는 라벨은 예외**다.
        ⭐ 기본 벌림 40mm로 조용히 집으면 파지 실패의 원인이 안 보인다.
+
+    Args:
+        safety_margin_mm: ⭐ DB 원값에 더해 **로봇이 실제로 더 벌리는 양**(기본 10mm).
+            8/18 90장 실측에서 파지 가능률 84.4%→**95.5%**를 만드는 값이다.
+            🚨 DB에 박지 말 것 — 모든 값에 더하면 동어반복이 된다(위 상수 주석 참조).
+            `0.0`을 넘기면 여유 없이 DB 원값 그대로 벌린다(비교·회귀 검사용).
     """
     db = db if db is not None else load_grasp_db()
     label = det.get("label")
@@ -243,14 +279,21 @@ def plan_for_detection(
         raise GraspPlanError(
             f"[{index}] '{label}' 벌림/파지력을 DB에서 얻지 못했다")
 
-    width = float(width)
+    base_width = float(width)
     force = float(force)
+
+    # ── ⭐ 안전여유 적용 (2026-08-20) ──
+    # DB 값은 **부품의 진짜 무는 변**이고, 로봇은 거기에 여유를 얹어 벌린다.
+    # 🚨 여유를 더한 **뒤에** 물리 한계를 본다 — 실제로 벌리는 값이 한계를
+    #    넘는지가 중요하지, DB 원값이 넘는지는 중요하지 않다.
+    width = round(base_width + safety_margin_mm, 1)
 
     # ── 물리 한계 검증 (조용히 클램프하지 않는다) ──
     lo, hi = GRIPPER_WIDTH_RANGE_MM
     if not (lo <= width <= hi):
         raise GraspPlanError(
-            f"[{index}] '{label}' 벌림 {width}mm가 그리퍼 범위 {lo}~{hi}mm 밖")
+            f"[{index}] '{label}' 벌림 {width}mm(= DB {base_width} + 여유 "
+            f"{safety_margin_mm})가 그리퍼 범위 {lo}~{hi}mm 밖")
     if force > GRIPPER_FORCE_MAX_N:
         raise GraspPlanError(
             f"[{index}] '{label}' 파지력 {force}N > 한계 {GRIPPER_FORCE_MAX_N}N "
@@ -294,6 +337,8 @@ def plan_for_detection(
         grasp_depth_mm=float(entry.get("grasp_depth_mm", 15.0)),
         width_source=width_source,
         measured_width_mm=measured,
+        base_width_mm=base_width,
+        safety_margin_mm=safety_margin_mm,
         warnings=warnings,
     )
 
@@ -308,6 +353,7 @@ def build_poses_and_plans(
     allow_db_default: bool = False,
     fx: Optional[float] = None,
     skip_rejected: bool = True,
+    safety_margin_mm: float = GRASP_SAFETY_MARGIN_MM,
 ) -> tuple[list[list[float]], list[GraspPlan], list[str]]:
     """검출 목록 → (포즈 배열, 그리퍼 계획, 거부 사유).
 
@@ -332,7 +378,8 @@ def build_poses_and_plans(
                 det, require_reliable_angle=require_reliable_angle)
             plan = plan_for_detection(
                 det, index=len(poses), db=db, fx=fx,
-                allow_db_default=allow_db_default)
+                allow_db_default=allow_db_default,
+                safety_margin_mm=safety_margin_mm)
         except (PickEncodeError, GraspPlanError) as e:
             rejected.append(f"{label}: {e}")
             if skip_rejected:

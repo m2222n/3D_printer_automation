@@ -114,12 +114,21 @@ def main() -> int:
           f"{before['graspable_rate']} → {after['graspable_rate']}")
 
     # ── 3. ⭐⭐ 8/7 기록값 재현 — 이 검사가 내 실수 2건을 잡았다
-    print("\n[3] ⭐⭐ 8/7 실측 재현 (기준선이 살아있는가)")
+    #
+    # 🚨🚨 2026-08-20 — DB `gripper_width_mm`이 **교정**됐다(방향 혼재 → span_flat).
+    #   그래서 이 재현은 **보존해둔 옛 값**(`gripper_width_mm_legacy_0806`)으로 돌린다.
+    #   ⭐ 왜 지우지 않는가 = 8/7 기준선이 살아있어야 *"도구가 바뀐 건지 데이터가
+    #     바뀐 건지"*를 가를 수 있다. 숫자를 새 값으로 덮어쓰면 **재현 검사가
+    #     '지금 나오는 값'을 그대로 베끼는 동어반복**이 되어 아무것도 못 잡는다.
+    print("\n[3] ⭐⭐ 8/7 실측 재현 (옛 필드 기준 — 기준선이 살아있는가)")
+    db_legacy = {**db, "parts": {
+        k: {**v, "gripper_width_mm": v["gripper_width_mm_legacy_0806"]}
+        for k, v in db["parts"].items()}}
     # (여유mm, 치명, 헐거움, 파지가능률%)
     RECORD = [(0.0, 10, 13, 83.8), (10.0, 4, 14, 92.6),
               (20.0, 3, 59, 94.1), (43.0, 0, 64, 98.5)]
     for safety, fatal, loose, rate in RECORD:
-        r = judge_with_safety(pairs, db, safety)
+        r = judge_with_safety(pairs, db_legacy, safety)
         check(f"+{safety:.0f}mm → 치명 {fatal}",
               r["verdicts"]["fatal"] == fatal, f"실제 {r['verdicts']['fatal']}")
         check(f"+{safety:.0f}mm → 헐거움 {loose}",
@@ -129,9 +138,9 @@ def main() -> int:
               f"실제 {r['graspable_rate']*100:.1f}%")
 
     # 8/7의 핵심 주장 = +10mm가 최적점(치명은 크게 줄고 헐거움은 거의 안 는다)
-    r0 = judge_with_safety(pairs, db, 0.0)
-    r10 = judge_with_safety(pairs, db, 10.0)
-    r20 = judge_with_safety(pairs, db, 20.0)
+    r0 = judge_with_safety(pairs, db_legacy, 0.0)
+    r10 = judge_with_safety(pairs, db_legacy, 10.0)
+    r20 = judge_with_safety(pairs, db_legacy, 20.0)
     check("⭐ +10mm는 치명을 절반 이하로 줄인다",
           r10["verdicts"]["fatal"] <= r0["verdicts"]["fatal"] // 2)
     check("⭐ +10mm는 헐거움을 거의 안 늘린다(+2 이내)",
@@ -142,8 +151,12 @@ def main() -> int:
 
     # ── 4. 🚨 여유는 used에만 더해야 한다 (내 실수 ①)
     print("\n[4] 🚨 여유를 DB 전체에 더하면 무효가 되는가(실수 재발 방지)")
-    shifted = {k: v + 10.0 for k, v in widths.items()}
-    db_shift = apply_mapping(db, shifted)   # used·need 양쪽이 올라간 DB
+    # ⭐ r0가 legacy 기준이므로 여기도 **같은 기준**으로 비교한다
+    #   (다른 DB끼리 비교하면 "판정이 바뀌었다"가 여유 탓인지 필드 탓인지 못 가른다)
+    widths_legacy = {k: float(v["gripper_width_mm_legacy_0806"])
+                     for k, v in db["parts"].items()}
+    shifted = {k: v + 10.0 for k, v in widths_legacy.items()}
+    db_shift = apply_mapping(db_legacy, shifted)   # used·need 양쪽이 올라간 DB
     r_shift = judge_with_safety(pairs, db_shift, 0.0)
     check("⭐ DB 전체를 올리면 판정이 안 바뀐다(= 그렇게 하면 안 된다)",
           r_shift["verdicts"]["fatal"] == r0["verdicts"]["fatal"],
@@ -157,9 +170,25 @@ def main() -> int:
     print(f"     (초과: {[int(v) for v in over]} — 99mm는 top_inner_sheet004 = "
           "DB 전용이라 공정 대상 아님)")
 
+    # ── 5b. ⭐⭐ 8/20 교정본 기준선 (현행 필드) — 새 상태도 못박는다
+    #   [3]이 옛 기준선을 지키고, 여기가 **지금 운용하는 값**을 지킨다.
+    #   🚨 이 두 블록이 함께 있어야 "무엇이 바뀌었나"를 가릴 수 있다.
+    print("\n[5b] ⭐⭐ 8/20 교정본 재현 (현행 필드 = grip_span_flat_mm)")
+    RECORD_0820 = [(0.0, 12, 5), (10.0, 0, 14)]
+    for safety, fatal, loose in RECORD_0820:
+        r = judge_with_safety(pairs, db, safety)
+        check(f"[0820] +{safety:.0f}mm → 치명 {fatal}",
+              r["verdicts"]["fatal"] == fatal, f"실제 {r['verdicts']['fatal']}")
+        check(f"[0820] +{safety:.0f}mm → 헐거움 {loose}",
+              r["verdicts"]["loose"] == loose, f"실제 {r['verdicts']['loose']}")
+    # ⭐ 교정의 핵심 = 옛 필드보다 치명이 늘 수도 있다(여유 0에서). 그 사실을 박아둔다.
+    check("⭐ 교정 후 여유 0에서는 치명이 옛 필드보다 적지 않다",
+          judge_with_safety(pairs, db, 0.0)["verdicts"]["fatal"] >= r0["verdicts"]["fatal"],
+          "DB가 틀렸다≠결과가 좋아진다 — 여유와 함께 봐야 한다")
+
     # ── 6. 기존 analyze()와 어긋나지 않는가
     print("\n[6] 기존 도구와의 정합")
-    a = analyze(pairs, db)
+    a = analyze(pairs, db_legacy)   # ⭐ r0와 같은 기준(legacy)으로 대조
     check("여유 0일 때 analyze()와 치명 일치",
           a["verdicts"]["fatal"] == r0["verdicts"]["fatal"],
           f"{a['verdicts']['fatal']} vs {r0['verdicts']['fatal']}")

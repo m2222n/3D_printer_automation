@@ -282,3 +282,6 @@ docs/장비_리스트업_*.md
 # json 결과만 추적하고 사진은 로컬 상주(재계산 필요 시 --images 로 재사용).
 bin_picking/config/blaze_calib_shots/
 bin_picking/config/ace2_calib_shots/
+
+# 그래스프 DB 타임스탬프 백업 (git 이력이 곧 백업이므로 커밋 안 함)
+*.yaml.bak_*

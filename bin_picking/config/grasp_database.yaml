@@ -126,7 +126,9 @@ parts:
     approach_axis: [0, 0, -1]       # 위에서 아래로 접근 (-Z)
     grasp_center_mm: [0, 0, 0]      # 부품 중심 잡기
     grasp_depth_mm: 15              # 15mm 진입
-    gripper_width_mm: 20            # 11.5mm 폭 + 여유
+    gripper_width_mm: 45            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 20   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"          # 평행 그리퍼
     pickability: "pickable"    # 좌표 전송 O
@@ -139,7 +141,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 15
-    gripper_width_mm: 18
+    gripper_width_mm: 45            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 18   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -152,7 +156,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 40
+    gripper_width_mm: 52.9            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 40   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -165,7 +171,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 38
+    gripper_width_mm: 55            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 38   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -179,7 +187,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 80
+    gripper_width_mm: 69            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 80   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12             # 넓은 부품 — 낮은 힘
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -192,7 +202,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 50
+    gripper_width_mm: 40            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 50   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -205,7 +217,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 60
+    gripper_width_mm: 50            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 60   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -218,7 +232,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 25
-    gripper_width_mm: 60
+    gripper_width_mm: 67.5            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 60   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -232,7 +248,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 10
-    gripper_width_mm: 15
+    gripper_width_mm: 7.1            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 15   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 8              # 소형 — 약한 힘
     grasp_type: "parallel"
     pickability: "not_pickable"    # 인식만 — 사람에게 알림 (태민님 실물 확인(8/14) — 너무 작다)
@@ -245,7 +263,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 12
-    gripper_width_mm: 25
+    gripper_width_mm: 17.5            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 25   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 10
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -258,7 +278,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 15
-    gripper_width_mm: 30
+    gripper_width_mm: 28            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 30   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -271,7 +293,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 20
+    gripper_width_mm: 82.5            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 20   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"
     pickability: "not_pickable"    # 인식만 — 사람에게 알림 (태민님 실물 확인(8/14) — 크고 높이가 없다)
@@ -284,7 +308,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 12
-    gripper_width_mm: 55
+    gripper_width_mm: 44            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 55   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -298,7 +324,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 15
-    gripper_width_mm: 30
+    gripper_width_mm: 26.1            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 30   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 10
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -311,7 +339,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 10
-    gripper_width_mm: 12
+    gripper_width_mm: 4.8            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 12   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 5              # 얇은 부품 — 최소 힘
     grasp_type: "parallel"
     pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
@@ -324,7 +354,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 40
+    gripper_width_mm: 48            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 40   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -337,7 +369,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 35
+    gripper_width_mm: 48            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 35   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -351,7 +385,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 15
-    gripper_width_mm: 52
+    gripper_width_mm: 42.2            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 52   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 10
     grasp_type: "parallel"
     pickability: "needs_review"    # 인식만 — 좌표 전송 X (실물 파지 확인 전)
@@ -364,7 +400,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 12
-    gripper_width_mm: 42
+    gripper_width_mm: 32.1            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 42   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -377,7 +415,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 15
-    gripper_width_mm: 52
+    gripper_width_mm: 42.2            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 52   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 10
     grasp_type: "parallel"
     pickability: "needs_review"    # 인식만 — 좌표 전송 X (실물 파지 확인 전)
@@ -391,7 +431,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 10
-    gripper_width_mm: 16
+    gripper_width_mm: 5.5            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 16   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 5
     grasp_type: "parallel"
     pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
@@ -404,7 +446,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 18
-    gripper_width_mm: 63
+    gripper_width_mm: 53.1            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 63   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -417,7 +461,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 12
-    gripper_width_mm: 30
+    gripper_width_mm: 20.4            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 30   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 10
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -431,7 +477,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 12
-    gripper_width_mm: 35
+    gripper_width_mm: 25            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 35   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 10
     grasp_type: "parallel"
     pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
@@ -445,7 +493,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 18
-    gripper_width_mm: 55
+    gripper_width_mm: 45            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 55   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -459,7 +509,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 50
+    gripper_width_mm: 40            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 50   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -472,7 +524,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 20
-    gripper_width_mm: 50
+    gripper_width_mm: 40            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 50   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 15
     grasp_type: "parallel"
     pickability: "pickable"    # 좌표 전송 O
@@ -486,7 +540,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 10
-    gripper_width_mm: 29
+    gripper_width_mm: 19            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 29   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 5
     grasp_type: "parallel"
     pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)
@@ -499,7 +555,9 @@ parts:
     approach_axis: [0, 0, -1]
     grasp_center_mm: [0, 0, 0]
     grasp_depth_mm: 10
-    gripper_width_mm: 99
+    gripper_width_mm: 89            # ⭐0820 교정 = grip_span_flat_mm (여유 미포함)
+    width_basis: "grip_span_flat_mm"
+    gripper_width_mm_legacy_0806: 99   # 🚫폐기 — 방향 혼재(최소변/중간변). 판정에 쓰지 말 것
     gripper_force_N: 12
     grasp_type: "parallel"
     pickability: "not_pickable"    # 인식만 — 사람에게 알림 (사출 전환 후보)

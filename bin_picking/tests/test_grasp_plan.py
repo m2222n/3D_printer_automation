@@ -57,8 +57,24 @@ check("벌림이 라벨마다 다름", len(widths) > 5,
 print("\n=== 2. 정상 계획 생성 ===")
 p = GP.plan_for_detection(det(), 0, db=db, fx=309.3)
 check("계획 생성", p.label == "01_sol_block_a")
-check("DB 벌림 반영", p.gripper_width_mm == parts["01_sol_block_a"]["gripper_width_mm"],
-      f"{p.gripper_width_mm}mm (기본 40이 아님)")
+# ⭐ 8/20 계약 변경 — DB 값은 **부품의 진짜 무는 변**이고, 로봇이 벌리는 값은
+#   거기에 **안전여유가 얹힌 값**이다. 둘을 따로 검사한다.
+_base = parts["01_sol_block_a"]["gripper_width_mm"]
+check("DB 원값 보존", p.base_width_mm == _base, f"base {p.base_width_mm}mm")
+# 🚨 상수와 비교하면 **동어반복**이다(상수를 7로 바꿔도 통과한다 — 실제로 확인함).
+#   8/18 90장 실측이 최적점으로 지목한 **10.0** 이라는 값 자체를 못박는다.
+#   ⭐ 바꾸려면 근거(실측)를 새로 대고 이 숫자도 함께 고쳐야 한다.
+check("안전여유 = 실측이 정한 10.0mm", GP.GRASP_SAFETY_MARGIN_MM == 10.0,
+      f"현재 {GP.GRASP_SAFETY_MARGIN_MM}mm — 파지 95.5%의 근거값")
+check("안전여유 적용", p.safety_margin_mm == 10.0, f"+{p.safety_margin_mm}mm")
+check("로봇 벌림 = DB + 여유",
+      abs(p.gripper_width_mm - (_base + 10.0)) < 1e-6,
+      f"{p.gripper_width_mm}mm = {_base} + 10.0 (기본 40이 아님)")
+# 🚨 여유 0을 명시하면 DB 원값 그대로여야 한다 — 여유가 **실제로 인자로** 동작하는지
+#    (상수를 읽기만 하는 게 아니라) 확인. 이게 없으면 위 검사는 항상 통과한다.
+_p0 = GP.plan_for_detection(det(), 0, db=db, fx=309.3, safety_margin_mm=0.0)
+check("여유 0이면 DB 원값", _p0.gripper_width_mm == _base,
+      f"{_p0.gripper_width_mm}mm — 여유는 인자로 끌 수 있다")
 check("width_source=db", p.width_source == "db")
 check("실측 폭 계산됨", p.measured_width_mm is not None,
       f"{p.measured_width_mm}mm (edge 짧은변 → mm)")
@@ -88,9 +104,10 @@ p3 = GP.plan_for_detection(
     det(label="01_sol_block_a", edge=[[0, 0], [60, 0], [60, 120], [0, 120]]),
     0, db=db, fx=309.3)
 check("정상 크기는 경고 없음", not p3.warnings, f"경고 {len(p3.warnings)}건")
-check("DB 값을 덮어쓰지 않음",
-      p3.gripper_width_mm == parts["01_sol_block_a"]["gripper_width_mm"],
-      "벌림 근거는 DB(티칭 때 실물 교정)")
+check("DB 값을 덮어쓰지 않음(edge가 아니라 DB+여유가 근거)",
+      p3.base_width_mm == parts["01_sol_block_a"]["gripper_width_mm"]
+      and p3.gripper_width_mm == p3.base_width_mm + p3.safety_margin_mm,
+      "벌림 근거는 DB(티칭 때 실물 교정) + 런타임 여유")
 # ⭐ 유효한 판정 = 보이는 변조차 최대 벌림을 넘으면 거부
 try:
     GP.plan_for_detection(
