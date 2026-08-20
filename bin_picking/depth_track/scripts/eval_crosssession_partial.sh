@@ -73,7 +73,17 @@ cd "$EVAL_DIR"
 PYTHONPATH="$REPO" $VENV eval_real_depth_vq_detector.py \
   --checkpoint "$CKPT" --depth_dir "$WORK/npy" --out_dir "$OUT" \
   --glob 'shot*.npy' --match_key cad_id --eval_mode mask \
-  --iou_thresh 0.25 --score_thresh 0.45 --mask_thresh 0.5 --score_mode det \
+# ⭐⭐ score_thresh = 0.20 (2026-08-20 스윕으로 교체, 옛값 0.45)
+#   8/18 90장 실측 스윕 — 0.10/0.15/0.20/0.30/0.45 중 **0.20이 최적점**(양쪽으로 하락).
+#     0.45(옛) F1 0.5445 · R 0.500   |   ⭐0.20 F1 0.5838 · R 0.589   (+0.0393, 학습 불필요)
+#   🚨 판정 근거는 F1이 아니라 **"집을 수 있는 부품 수"**:
+#     GT 630개 중 집을 수 있는 것 **491 → 577개(+86)** = 77.9% → **91.6%(+13.7%p)**
+#     추가 치명은 +9건뿐 ⇒ **9.6 : 1**로 이득.
+#   ⚠️ 파지 "비율"은 95.5%→94.7%로 살짝 내려가는데 **분모(찾은 수)가 커져서**다.
+#      비율만 보면 후퇴로 보이지만 **건수로는 크게 이득** — 여기서 헷갈리지 말 것.
+#   📌 recall은 0.10에서 이미 포화(0.592) ⇒ **임계값을 더 낮춰도 안 나온다**
+#      = 남은 recall 손실은 threshold가 아니라 모델이 후보를 안 내는 것.
+  --iou_thresh 0.25 --score_thresh 0.20 --mask_thresh 0.5 --score_mode det \
   --nms_iou_thresh 0.5 --nms_iou_type mask --bbox_source mask \
   --center_crop '1/6,5/6' --depth_keep_range '0.40,0.60' \
   --save_predictions --label_dir "$LABEL_DIR" --diagnose_label_mismatch 2>&1 | tail -12
