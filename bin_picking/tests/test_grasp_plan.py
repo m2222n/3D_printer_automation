@@ -100,14 +100,37 @@ check("px→mm 변환", 55 < mm < 62, f"{mm:.1f}mm @z=450 fx=309.3")
 # 🚨 DB 벌림 비교는 폐기됨(8/5) — 두께가 시선 방향이라 오경보 309건.
 check("DB 벌림 비교 기본 비활성", GP.WIDTH_CHECK_ENABLED is False,
       "01_sol_block_a: STL 11.5mm 두께가 top-down에 안 보임 → edge 45mm는 다른 변")
+# 🚨 8/20 = 스트로크 상한을 실제값 85mm로 조이면서 이 fixture가 걸렸다.
+#   60px@z450 = 87.3mm 로 **85를 넘어** 거부된다. 즉 이 fixture는 "정상 크기"가
+#   아니었다(옛 상한 110 기준이라 통과하던 것). ⇒ 40px(58.2mm)로 낮춘다.
+#   ⭐ 테스트가 깨진 게 아니라 **테스트 데이터가 물리적으로 틀렸던 것**이다.
 p3 = GP.plan_for_detection(
-    det(label="01_sol_block_a", edge=[[0, 0], [60, 0], [60, 120], [0, 120]]),
+    det(label="01_sol_block_a", edge=[[0, 0], [40, 0], [40, 120], [0, 120]]),
     0, db=db, fx=309.3)
 check("정상 크기는 경고 없음", not p3.warnings, f"경고 {len(p3.warnings)}건")
 check("DB 값을 덮어쓰지 않음(edge가 아니라 DB+여유가 근거)",
       p3.base_width_mm == parts["01_sol_block_a"]["gripper_width_mm"]
       and p3.gripper_width_mm == p3.base_width_mm + p3.safety_margin_mm,
       "벌림 근거는 DB(티칭 때 실물 교정) + 런타임 여유")
+# ⭐⭐ 8/20 신설 — 스트로크 상한이 **실제 그리퍼 사양(85mm)** 인가
+#   🚨 8/6에 JEGB-4285P-3MA(스트로크 85)로 확정했는데 코드 상한은 110으로
+#     남아 있었다 = **물리적으로 못 벌리는 값을 통과**시키고 있었다.
+#   리터럴로 못박는다 — 상수끼리 비교하면 동어반복이라 아무것도 못 잡는다.
+check("벌림 상한 = 실제 스트로크 85mm", GP.GRIPPER_WIDTH_RANGE_MM == (0.0, 85.0),
+      f"{GP.GRIPPER_WIDTH_RANGE_MM}")
+check("보이는변 상한도 85mm", GP.GRIPPER_MAX_OPEN_MM == 85.0,
+      f"{GP.GRIPPER_MAX_OPEN_MM}")
+# 🚨 85를 넘는 벌림은 예외로 **크게 실패**해야 한다.
+#   `pickability`는 src/ 어디서도 안 읽으므로 이 상한이 유일한 방어다.
+_over = {**db, "parts": {**db["parts"],
+         "01_sol_block_a": {**db["parts"]["01_sol_block_a"],
+                            "gripper_width_mm": 80.0}}}   # 80+10=90 > 85
+try:
+    GP.plan_for_detection(det(), 0, db=_over, fx=309.3)
+    check("여유 포함 85 초과 → 거부", False, "예외가 나야 한다")
+except GP.GraspPlanError as e:
+    check("여유 포함 85 초과 → 거부", "85" in str(e), str(e)[:70])
+
 # ⭐ 유효한 판정 = 보이는 변조차 최대 벌림을 넘으면 거부
 try:
     GP.plan_for_detection(

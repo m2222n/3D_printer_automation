@@ -102,7 +102,14 @@ WIDTH_CHECK_ENABLED = False
 WIDTH_MISMATCH_WARN_MM = 10.0     # WIDTH_CHECK_ENABLED=True일 때만 의미
 
 # 그리퍼 물리 한계 — DB `robot.safety`와 어긋나면 예외
-GRIPPER_WIDTH_RANGE_MM = (0.0, 110.0)
+# 🚨 2026-08-20 정정 = 110.0 → **85.0**. 확정 그리퍼 JEGB-4285P-3MA의
+#    **스트로크가 85mm**인데 상한이 110으로 남아 있었다(그리퍼 확정 8/6 이전의 값).
+#    ⇒ 물리적으로 벌릴 수 없는 값을 **통과시키고 있었다.**
+#    ✅ 영향 확인 = 여유 10mm 포함해도 pickable 20종 최대는 **79.0mm**
+#       (`07_guide_paper_l`)라 실사용은 그대로다. 85를 넘는 2종
+#       (`17_mks_holder` 92.5 · `top_inner_sheet004` 99.0)은 **둘 다 not_pickable**이고,
+#       이제 예외로 **크게 실패**한다(조용히 로봇에 나가지 않는다).
+GRIPPER_WIDTH_RANGE_MM = (0.0, 85.0)
 GRIPPER_FORCE_MAX_N = 40.0        # SLA 레진 보호 (DB robot.safety와 동일)
 
 # ⭐⭐ 안전여유 (2026-08-20 신설) — **DB 값이 아니라 런타임 동작이다**
@@ -123,15 +130,21 @@ GRIPPER_FORCE_MAX_N = 40.0        # SLA 레진 보호 (DB robot.safety와 동일
 #      +20mm 치명  3 · 파지 99.4% 이나 **헐거움 466건으로 폭증** = 미끄러짐 위험
 #
 # ✅ 물리 검산 = pickable 20종의 (span_flat + 10mm) 최대값 **79.0mm** ≤ 스트로크 85mm.
-#    85mm를 넘는 `17_mks_holder`(92.5)·`top_inner_sheet004`(99.0)는 둘 다
-#    `not_pickable`이라 로봇에 좌표가 나가지 않는다.
+# 🚨 정정(8/20) = 처음엔 *"85 초과 2종은 not_pickable이라 로봇에 안 나간다"*고 적었으나
+#    **틀렸다.** `pickability`는 DB 태그일 뿐 **`src/` 어디에서도 읽지 않는다**
+#    (도구·테스트에만 있다). 즉 모델이 `17_mks_holder`로 오인하면 계획이 **만들어진다.**
+#    ⇒ 그래서 상한을 실제 스트로크 85로 조인 것이 **유일하게 실효 있는 방어**다
+#      (이제 92.5mm 계획은 예외로 크게 실패한다).
+#    ⏭️ 별건 ToDo = `pickability != pickable`이면 계획 단계에서 거부할 것인지 결정
 #
 # ⚠️ 실물 티칭 때 재교정 대상 — DB 값이 STL 계산치이므로 여유도 함께 재본다.
 GRASP_SAFETY_MARGIN_MM = 10.0
 
 # ⭐ edge의 유효한 용도 ①: 보이는 짧은 변이 최대 벌림보다 크면 애초에 못 문다.
 #    (시선 방향과 무관하게 성립하는 판정 — 보이는 변조차 안 들어가는 경우)
-GRIPPER_MAX_OPEN_MM = 110.0
+# 🚨 2026-08-20 정정 = 110.0 → **85.0** (위 GRIPPER_WIDTH_RANGE_MM과 같은 이유).
+#    보이는 변이 85mm를 넘으면 JEGB-4285P-3MA로는 **물 수 없다.**
+GRIPPER_MAX_OPEN_MM = 85.0
 
 
 class GraspPlanError(ValueError):
