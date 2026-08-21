@@ -280,6 +280,102 @@ else:
     print("  ⏭️ 예측 JSON 디렉토리 없음 — 건너뜀")
 
 # ---------------------------------------------------------------------------
+print("\n[6] 공정 화이트리스트 — 빈에 없는 부품 이름을 버리는가 (2026-08-21 신설)")
+# ---------------------------------------------------------------------------
+# 🎯 근거 = 모델은 27종을 학습했지만 빈에는 21종만 들어온다(8/14 제외 6종).
+#    8/18 90장 GT 630개에 제외 6종이 **0건** → 그 이름으로 나온 예측은 100% 오답.
+# 🚨 이 게이트는 **precision 전용**이다(평가기 TP는 라벨 일치가 조건).
+
+# --- 목록의 출처가 DB인가 (폴백이 조용히 쓰이면 목록이 낡아도 모른다) ---
+check("제외 목록을 DB에서 읽었다", IG.PROCESS_EXCLUDED_SOURCE.startswith("db("),
+      IG.PROCESS_EXCLUDED_SOURCE[:60])
+
+# --- DB와 코드가 갈라지지 않았는가 (8/20 "주석은 옳았는데 코드가 안 따랐다"의 방어) ---
+_db_excl, _src = IG.load_excluded_parts()
+check("DB의 not_pickable과 모듈 상수가 일치", _db_excl == IG.PROCESS_EXCLUDED_PARTS,
+      f"{len(_db_excl)}종")
+
+# 🚨 리터럴로 못박는다 — 상수끼리 비교하면 동어반복이라 목록이 비어도 통과한다(8/20 교훈).
+for _name in ("11_sw_block", "17_mks_holder", "main_body",
+              "bracket_case", "bracket_sensor2", "top_inner_sheet"):
+    check(f"제외 6종에 {_name} 포함", _name in IG.PROCESS_EXCLUDED_PARTS)
+
+# 🟢 공정 대상은 절대 버려지면 안 된다 (여기가 깨지면 부품을 영구히 못 찾는다)
+for _name in ("brkt_switch", "15_roller_bracket", "13_variant",
+              "09_guide_paper_r", "r_guide_a_r", "01_sol_block_a"):
+    check(f"공정 21종 {_name}은 통과", _name not in IG.PROCESS_EXCLUDED_PARTS)
+
+# --- 실제 필터 동작 ---
+_dets = [
+    {"label": "brkt_switch", "bbox_pixel": {"w": 40, "h": 30}},        # 유지
+    {"label": "11_sw_block", "bbox_pixel": {"w": 40, "h": 30}},        # 제외
+    {"cad_id": "main_body__b87d6063", "bbox_pixel": {"w": 40, "h": 30}},  # 제외(해시 붙은 형태)
+    {"label": "15_roller_bracket", "bbox_pixel": {"w": 40, "h": 30}},  # 유지
+]
+_kept, _drop = IG.filter_excluded_parts(_dets)
+check("제외종만 버린다", len(_kept) == 2 and len(_drop) == 2,
+      f"kept={[d['label'] if 'label' in d else d['cad_id'] for d in _kept]}")
+check("해시 붙은 cad_id도 잡는다",
+      any(d["gate"].get("excluded_part") == "main_body" for d in _drop))
+check("버린 이유를 남긴다", all("reason" in d["gate"] for d in _drop))
+
+# ⚠️ 판정 근거가 없으면 버리지 않는다(크기 게이트와 같은 원칙)
+_kept2, _drop2 = IG.filter_excluded_parts([{"bbox_pixel": {"w": 40, "h": 30}}])
+# ⚠️ 인덱싱을 조건 안에 두지 않는다 — 게이트가 잘못 버리면 IndexError로 죽어서
+#    "실패 1건"이 아니라 "테스트 전체 중단"이 된다(뒤 검사가 안 돌아 원인이 가려진다).
+check("이름 없는 검출은 통과시킨다", len(_kept2) == 1 and len(_drop2) == 0,
+      f"kept={len(_kept2)} dropped={len(_drop2)}")
+_kept3, _drop3 = IG.filter_excluded_parts([{"label": "class_7"}])
+check("class_N 폴백 라벨은 판정 불가로 통과", len(_kept3) == 1 and len(_drop3) == 0)
+
+# --- apply()에 물려 있는가 + 끌 수 있는가(되돌림 경로) ---
+_six = {"detections": [
+    {"label": "11_sw_block", "bbox_pixel": {"w": 40, "h": 30}},
+    {"label": "brkt_switch", "bbox_pixel": {"w": 40, "h": 30}},
+]}
+_out = IG.apply(_six)
+check("apply()가 기본적으로 화이트리스트를 적용", len(_out["detections"]) == 1,
+      f"dropped={_out['gate_summary']['excluded_parts_dropped']}")
+check("gate_summary에 출처를 남긴다",
+      _out["gate_summary"]["excluded_parts_source"].startswith("db("))
+_off = IG.apply(_six, drop_excluded_parts=False)
+check("drop_excluded_parts=False로 끌 수 있다(되돌림 경로)",
+      len(_off["detections"]) == 2 and _off["gate_summary"]["excluded_parts_enabled"] is False)
+
+# --- ⭐⭐ 실측 대조 = 8/18 90장에서 22건이 잡히는가 (변이 실험의 대상) ---
+PRED_0818 = Path("/data/jtm/synth_out/blaze_capture_0818_eval/all_predictions.json")
+GT_0818 = Path("/data/jtm/synth_out/blaze_capture_0818/label_png/labelme_json")
+if PRED_0818.exists():
+    _scenes = json.loads(PRED_0818.read_text())
+    _tot = _ex = 0
+    for _sc in _scenes.values():
+        for _p in _sc.get("predictions", []):
+            _tot += 1
+            if str(_p.get("cad_id", "")).split("__")[0] in IG.PROCESS_EXCLUDED_PARTS:
+                _ex += 1
+    # 🚨 기록값을 리터럴로 박는다 — 나중에 "도구가 바뀐 건지 데이터가 바뀐 건지" 가르기 위해
+    check("8/18 90장 예측 527건 (8/21 기록값 재현)", _tot == 527, f"{_tot}건")
+    check("그중 제외종 22건 (8/21 기록값 재현)", _ex == 22, f"{_ex}건 ({_ex/_tot*100:.1f}%)")
+else:
+    print("  ⏭️ 8/18 예측 JSON 없음 — 건너뜀")
+
+if GT_0818.exists():
+    # 🎯 이 게이트의 전제 = "제외 6종은 빈에 없다". GT로 직접 확인한다.
+    #    🚨 여기가 깨지면 게이트를 끄는 것이 맞다(8/14 표의 B 함정).
+    _gt_ex = 0
+    _gt_tot = 0
+    for _f in sorted(GT_0818.glob("*.json")):
+        for _sh in json.loads(_f.read_text()).get("shapes", []):
+            _gt_tot += 1
+            if str(_sh.get("label", "")).split("__")[0] in IG.PROCESS_EXCLUDED_PARTS:
+                _gt_ex += 1
+    check("GT 630개 재현", _gt_tot == 630, f"{_gt_tot}개")
+    check("⭐전제 검증 = GT에 제외 6종이 0건", _gt_ex == 0,
+          f"{_gt_ex}건 — 0이 아니면 게이트를 끌 것(8/14 B 함정)")
+else:
+    print("  ⏭️ 8/18 GT 라벨 없음 — 건너뜀")
+
+# ---------------------------------------------------------------------------
 print("\n[5] 경계·이상 입력에 조용히 실패하지 않는가")
 # ---------------------------------------------------------------------------
 kept, dropped = IG.filter_detections([])

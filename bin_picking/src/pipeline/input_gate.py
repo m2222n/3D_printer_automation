@@ -25,6 +25,7 @@
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
@@ -58,6 +59,80 @@ import numpy as np
 #      입력 576x320 이므로 **x 0.983 · y 1.000** = 실질 1:1이어서 같은 임계를 쓸 수 있다.
 #      🚨 단 이것은 현재 center_crop(1/6,5/6)에서 성립하는 것이다. crop이 바뀌면 다시 재라.
 MAX_PART_SIDE_PX = 230
+
+# ---------------------------------------------------------------------------
+# ⭐⭐ 공정 대상 화이트리스트 (2026-08-21 신설) — "빈에 없는 부품 이름"을 버린다
+# ---------------------------------------------------------------------------
+#
+# 🎯 근거 = **모델은 27종을 학습했지만 빈에는 21종만 들어온다**(8/14 제외 6종 확정).
+#    제외 6종으로 나온 예측은 **GT에 존재할 수 없으므로 100% 오답**이다.
+#
+#    ✅ 8/18 90장 실측으로 확인(8/21):
+#      - GT 630개에 제외 6종이 **0건** — "빈에 물리적으로 안 넣는다"가 라벨로 증명됨
+#      - 예측 527건 중 **22건(4.2%)** 이 제외종 = 전부 FP
+#      - 효과(thr 0.45) = FP 212 → 190, **F1 0.5445 → 0.5551** (P 0.598→0.624)
+#      - ⭐ 치명 오인 23건 중 **6건(26%)** 이 여기서 사라진다
+#        (`brkt_switch→11_sw_block` 5건 · `18_button_function_niro→main_body` 1건)
+#
+# 🚨🚨 recall은 오르지 않는다 — 평가기 TP는 **라벨이 일치해야** 성립하므로
+#    (`eval_real_depth_vq_detector.py:281` `g["label"] != p["label"]` → continue)
+#    이름이 틀린 예측은 애초에 TP가 아니었다. ⇒ **이 게이트는 precision 전용**이다.
+#    📌 *"5건이 정답으로 돌아온다"* 는 표현은 틀리다. **오답이 사라지는 것**이고,
+#       로봇 입장에서는 **"없는 부품을 집으러 가지 않는다"** 가 진짜 이득이다.
+#
+# 🚨 되돌릴 수 있게 만든 이유 = 이 게이트는 **"제외 6종이 빈에 없다"에 전부 의존**한다.
+#    사출 전환이 미뤄져 하나라도 빈에 들어오면 **그 부품을 영구히 못 찾는다**
+#    = 8/14 표의 **B 함정**(빈엔 있는데 학습만 뺌 → 다른 부품으로 오인)으로 되돌아간다.
+#    ⇒ **DB의 `pickability`에서 읽어** 사람이 yaml 한 줄로 되돌릴 수 있게 했다.
+#    ⭐ 8/6 원칙과 같은 방식 = *"사람 결정을 코드에 박되 사유와 함께"*.
+#
+# ⚠️ 하지 않는 것 = **not_pickable을 파지 계획에서 거부하는 것**. 그건 별건이다
+#    (8/20 발견 = `pickability`를 `src/` 어디서도 읽지 않는다). 여기서는
+#    **"인식 결과에서 버릴지"** 만 다루고, 파지 거부는 `grasp_plan` 쪽 결정으로 남긴다.
+
+# 공정 대상에서 제외된 부품 = 빈에 물리적으로 넣지 않는다 (8/14 확정)
+#
+# ⭐⭐ **DB(`grasp_database.yaml`의 `pickability`)에서 읽는다 — 여기에 목록을 박지 않는다.**
+#    🚨 이유 = 8/20에 *"주석은 정확히 옳았는데 코드가 그 필드를 안 읽어 8/19까지
+#       아무도 대조하지 않은"* 사고를 겪었다([[deprecated-design-must-be-marked]]).
+#       목록을 두 곳에 두면 **반드시 갈라진다.** DB가 유일한 정본이다.
+#    ⇒ 되돌리는 방법 = **yaml에서 `pickability`를 `pickable`로 바꾸면 끝**(재배포 불필요).
+#
+# ⚠️ 아래 폴백은 **DB를 못 읽을 때만** 쓴다. 폴백이 조용히 쓰이면 위험하므로
+#    `excluded_parts_source()`가 어디서 읽었는지를 반드시 알린다.
+_FALLBACK_EXCLUDED: frozenset[str] = frozenset({
+    "11_sw_block",        # 무는 변 7.1mm — 너무 작다 (태민님 실물 확인 8/14)
+    "17_mks_holder",      # 무는 변 82.5mm — 스트로크 85mm에 여유 2.5mm뿐 (8/14)
+    "bracket_sensor2",    # 높이 2.5mm (계산 8/6)
+    "bracket_case",       # 높이 4.8mm (계산 8/6)
+    "main_body",          # 높이 6.0mm (계산은 경계선이나 사람이 제외 확정, 8/6)
+    "top_inner_sheet",    # 높이 1.0mm (계산 8/6)
+})
+
+_GRASP_DB_PATH = Path(__file__).resolve().parents[2] / "config" / "grasp_database.yaml"
+
+
+def load_excluded_parts(db_path: Optional[Path] = None) -> tuple[frozenset[str], str]:
+    """공정 제외 부품 집합을 DB에서 읽는다. 반환 = (집합, 출처 문자열).
+
+    ⭐ 출처를 함께 돌려주는 이유 = 폴백이 조용히 쓰이면 목록이 낡아도 모른다.
+       호출자가 `gate_summary`에 남길 수 있게 한다("조용히 틀리지 말고 크게 실패하라").
+    """
+    p = Path(db_path) if db_path is not None else _GRASP_DB_PATH
+    try:
+        import yaml  # 지연 import — 이 모듈의 다른 기능은 yaml이 없어도 동작해야 한다
+        raw = yaml.safe_load(p.read_text(encoding="utf-8"))
+        parts = raw.get("parts", raw) if isinstance(raw, dict) else {}
+        got = {k for k, v in parts.items()
+               if isinstance(v, dict) and v.get("pickability") == "not_pickable"}
+        if not got:
+            return _FALLBACK_EXCLUDED, f"fallback(DB에 not_pickable 0건: {p})"
+        return frozenset(got), f"db({p})"
+    except Exception as exc:  # 파일 없음·yaml 없음·파싱 실패
+        return _FALLBACK_EXCLUDED, f"fallback({type(exc).__name__}: {exc})"
+
+
+PROCESS_EXCLUDED_PARTS, PROCESS_EXCLUDED_SOURCE = load_excluded_parts()
 
 # ⭐ 장면 유효 픽셀 비율(depth > 0)의 학습 분포 (원본 848x480 기준)
 #   실측 = 학습세션 100장 **2.0 ~ 23.8%** (중앙값 3.1% · p99 8.8%)
@@ -158,6 +233,70 @@ def detection_max_side_px(det: dict) -> Optional[float]:
     return None
 
 
+def detection_part_name(det: dict) -> Optional[str]:
+    """검출 1건의 부품 이름. 판정할 근거가 없으면 None.
+
+    ⭐ 6요소의 `label`은 `cad_id`에서 해시를 뗀 것(`depth_track_to_6elements.py:163`).
+       `cad_id`만 있는 원본 예측도 받을 수 있게 둘 다 본다.
+    ⚠️ `class_N` 같은 폴백 라벨은 부품 이름이 아니므로 None으로 본다(판정 불가 → 통과).
+    """
+    for key in ("label", "cad_id"):
+        v = det.get(key)
+        if v:
+            name = str(v).split("__")[0]
+            if name and not name.startswith("class_") and name != "unknown":
+                return name
+    return None
+
+
+def filter_excluded_parts(
+    detections: list[dict],
+    *,
+    excluded: Optional[frozenset[str]] = None,
+) -> tuple[list[dict], list[dict]]:
+    """공정 화이트리스트 게이트 = **빈에 없는 부품 이름으로 나온 예측을 버린다.**
+
+    🚨 이 게이트는 **precision 전용**이다 — 평가기 TP는 라벨이 일치해야 성립하므로
+       이름이 틀린 예측은 애초에 TP가 아니었다. recall은 변하지 않는다.
+       ⭐ 진짜 이득은 F1이 아니라 **로봇이 없는 부품을 집으러 가지 않는 것**이다.
+
+    반환: (통과, 버려진 것[gate에 이유 포함])
+
+    ⚠️ 이름을 못 구한 검출은 **버리지 않고 통과**시킨다(크기 게이트와 같은 원칙 —
+       판정 근거가 없을 때 임의로 버리면 정상 검출을 잃는다).
+    """
+    excl = PROCESS_EXCLUDED_PARTS if excluded is None else excluded
+    kept: list[dict] = []
+    dropped: list[dict] = []
+
+    for det in detections:
+        name = detection_part_name(det)
+        d = dict(det)
+        g = dict(d.get("gate") or {})
+        if name is None:
+            g["part_checked"] = False
+            g["note"] = "label·cad_id 둘 다 없음 — 공정 대상 판정 불가, 통과시킴"
+            d["gate"] = g
+            kept.append(d)
+            continue
+
+        g["part_checked"] = True
+        if name in excl:
+            g["dropped"] = True
+            g["excluded_part"] = name
+            g["reason"] = (
+                f"'{name}'은 공정 제외 6종 — 빈에 물리적으로 넣지 않는 부품이므로"
+                " 이 예측은 오답이다 (8/14 확정 · 8/18 90장 GT에 0건으로 확인)"
+            )
+            d["gate"] = g
+            dropped.append(d)
+        else:
+            d["gate"] = g
+            kept.append(d)
+
+    return kept, dropped
+
+
 def filter_detections(
     detections: list[dict],
     *,
@@ -210,6 +349,7 @@ def apply(
     *,
     max_side_px: float = MAX_PART_SIDE_PX,
     drop_untrusted_scene: bool = False,
+    drop_excluded_parts: bool = True,
 ) -> dict:
     """6요소 결과에 게이트를 적용한다. **원본을 바꾸지 않고 새 dict를 돌려준다.**
 
@@ -227,6 +367,15 @@ def apply(
     dets = list(six.get("detections", []))
 
     kept, dropped = filter_detections(dets, max_side_px=max_side_px)
+
+    # ⭐ 공정 화이트리스트는 **크기 게이트 다음**에 적용한다 — 순서가 결과를 바꾸지는
+    #    않지만(두 조건은 독립), `gate_dropped`에서 "왜 버려졌나"가 한 건에 하나로
+    #    남아야 원인 추적이 된다. 크기로 이미 버린 것은 여기서 다시 보지 않는다.
+    n_excluded = 0
+    if drop_excluded_parts:
+        kept, excl_dropped = filter_excluded_parts(kept)
+        n_excluded = len(excl_dropped)
+        dropped = dropped + excl_dropped
 
     scene: Optional[dict] = None
     if depth is not None:
@@ -247,12 +396,22 @@ def apply(
         "n_dropped": len(dropped),
         "max_side_px": max_side_px,
         "scene_verdict": scene["verdict"] if scene else "not_checked",
+        # ⭐ 화이트리스트가 켜졌는지·몇 건 버렸는지·목록을 **어디서 읽었는지**를 남긴다.
+        #   🚨 출처를 안 남기면 폴백이 쓰여 목록이 낡아도 알 수 없다(8/20 교훈).
+        "excluded_parts_dropped": n_excluded,
+        "excluded_parts_enabled": drop_excluded_parts,
+        "excluded_parts_source": PROCESS_EXCLUDED_SOURCE if drop_excluded_parts else "disabled",
     }
     return out
 
 
 __all__ = [
     "MAX_PART_SIDE_PX",
+    "PROCESS_EXCLUDED_PARTS",
+    "PROCESS_EXCLUDED_SOURCE",
+    "load_excluded_parts",
+    "detection_part_name",
+    "filter_excluded_parts",
     "VALID_RATIO_TRAIN_MIN",
     "VALID_RATIO_TRAIN_MAX",
     "VALID_RATIO_WARN",
