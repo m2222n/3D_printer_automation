@@ -212,6 +212,20 @@ EQUIVALENT_CAD_NAMES: dict[str, str] = {
 }
 
 
+def _self_sha256() -> str:
+    """이 평가기 파일 자신의 sha256(앞 12자). 버전 어긋남을 결과에 남기기 위한 것.
+
+    ⭐ mtime이 아니라 내용 해시를 쓰는 이유 = scp·git checkout으로 mtime은 쉽게 바뀌지만
+       **내용이 같으면 같은 평가기**다. 서버 간 대조에는 내용 해시가 맞다.
+    ⚠️ 읽기 실패는 평가를 막지 않는다(부가 정보이므로) — 다만 실패 사실을 남긴다.
+    """
+    import hashlib
+    try:
+        return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
+    except Exception as exc:  # 경로 문제·권한 등
+        return f"unavailable({type(exc).__name__})"
+
+
 def apply_cad_equivalence(name: str | None) -> str | None:
     """구별 불가능 클래스를 대표 이름으로 접는다."""
     if name is None:
@@ -594,6 +608,19 @@ def main() -> None:
         "bbox_source": args.bbox_source,
         "center_crop": args.center_crop,
         "depth_keep_range": args.depth_keep_range,
+        # ⭐⭐ 평가기 자신의 버전 (2026-08-21 신설)
+        #
+        # 🚨 왜 필요한가 = 8/21에 A100 평가기가 **7/6자로 낡아** 8/19 동치 처리
+        #    (`EQUIVALENT_CAD_NAMES`)가 빠져 있었고, 그 상태로 8/20 재학습 재판정
+        #    7모델×4조건을 측정했다. **c2 기준선이 0.0985→0.1281로 달라져**
+        #    *"C만 c1·c2 동반 상승"* 이라는 판정 근거가 무너졌다.
+        # ⭐ 발견 경로 = depth md5 동일 → 라벨 md5 동일 → 플래그 12개 동일 → **코드에서 갈림**.
+        #    데이터는 대조했는데 **코드는 대조하지 않은 것이 구멍**이었다.
+        # ⇒ 📌 **"같은 조건"의 범위에 코드 버전이 들어간다.** 특히 A100은 회사 공용이고
+        #    6000·A100·IPC 세 곳에 사본이 있어 **버전이 갈린다고 가정해야 한다.**
+        #    이 필드가 있으면 결과 JSON만 보고 "같은 평가기였나"를 즉시 가를 수 있다.
+        "evaluator_sha256": _self_sha256(),
+        "evaluator_equivalence": dict(EQUIVALENT_CAD_NAMES),
     })
     with (out_dir / "eval_real_metrics.json").open("w", encoding="utf-8") as f:
         json.dump({"summary": summary, "per_scene": rows}, f, indent=2)
