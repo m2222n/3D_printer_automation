@@ -430,7 +430,11 @@ def main() -> None:
     parser.add_argument("--depth_keep_range", default="0.40,0.60")
     parser.add_argument("--infer_avg_pool_kernel", type=int, default=1)
 
-    parser.add_argument("--score_thresh", type=float, default=0.25)
+    # ⭐ 0.25 → 0.20 (2026-08-21) — 8/18 90장 스윕 최적점. 근거·수치는
+    #    `mentoring_new/infer_depth_vq_detector.py`의 같은 인자 주석 참조.
+    #    🚨 `eval_crosssession*.sh`는 0.20을 명시로 넘기므로 이 기본값은 폴백이지만,
+    #       기본값을 옛 값으로 남겨두면 스크립트 없이 직접 부를 때 조용히 달라진다.
+    parser.add_argument("--score_thresh", type=float, default=0.20)
     parser.add_argument("--mask_thresh", type=float, default=0.5)
     parser.add_argument("--topk", type=int, default=100)
     parser.add_argument("--score_mode", choices=["det", "product", "cad"], default="det")

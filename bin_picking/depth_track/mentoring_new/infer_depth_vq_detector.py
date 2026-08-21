@@ -105,7 +105,19 @@ def main() -> None:
         default=1,
         help="Optional odd average-pooling kernel for inference depth input. Usually keep 1 for real shots.",
     )
-    parser.add_argument("--score_thresh", type=float, default=0.25)
+    # ⭐⭐ 기본값 0.25 → 0.20 (2026-08-21)
+    #
+    # 🚨 왜 여기를 고치는가 = 8/20에 스윕으로 0.20을 최적점으로 정하고
+    #    `eval_crosssession*.sh`에만 반영했는데, **운영 추론이 읽는 기본값은 여기**다.
+    #    ⇒ "측정한 값"과 "실제로 도는 값"이 달랐다(0.20 vs 0.25).
+    #    ⭐ 8/20 교훈의 재발 = *"주석·스크립트만 고치면 코드는 계속 옛 값을 쓴다"*.
+    #
+    # 근거 = 8/18 실측 90장 스윕(0.10/0.15/0.20/0.30/0.45), 0.20이 봉우리(양쪽으로 하락):
+    #    0.45(옛) F1 0.5445 · R 0.500  |  ⭐0.20 F1 0.5838 · R 0.589  (+0.0393, 학습 불필요)
+    # 🚨 판정 근거는 F1이 아니라 **집을 수 있는 부품 수** 491→577(+86) = GT 대비 77.9%→91.6%
+    #    (추가 치명은 +9뿐 = 9.6:1). 파지 *비율*은 95.5→94.7로 내려가나 **분모가 커진 탓**이다.
+    # 📌 recall은 0.10에서 포화(TP 373 vs 0.20의 371) ⇒ 더 낮추면 FP만 는다.
+    parser.add_argument("--score_thresh", type=float, default=0.20)
     parser.add_argument("--mask_thresh", type=float, default=0.5)
     parser.add_argument("--topk", type=int, default=100)
     parser.add_argument("--score_mode", choices=["det", "product", "cad"], default="det", help="Score used for filtering/ranking. det=class/object score; product=class*CAD; cad=CAD only.")

@@ -13,6 +13,9 @@ def postprocess_outputs(
     outputs: dict[str, torch.Tensor],
     image_size: tuple[int, int],
     cad_ids: list[str] | None = None,
+    # ⚠️ 이 기본값은 **운영 정책이 아니다**(라이브러리 폴백). 실제 값은 호출자가 넘긴다
+    #    — 현행 운영·평가 기준은 **0.20**(2026-08-21, `infer_depth_vq_detector.py` 주석 참조).
+    #    🚨 여기를 정책값으로 읽지 말 것. 전 호출자가 명시로 넘기는 것을 확인했다(8/21).
     score_thresh: float = 0.25,
     topk: int = 100,
     mask_thresh: float = 0.5,

@@ -162,12 +162,18 @@ python infer_depth_vq_detector.py `
   --checkpoint ..\models\T100_best.pt `
   --depth ..\sample\shot_001_g1.npy `
   --real_uint16_max_depth_m 10.0 `
-  --score_thresh 0.45 --mask_thresh 0.5 `
+  --score_thresh 0.20 --mask_thresh 0.5 `
   --center_crop "1/6,5/6" --depth_keep_range "0.40,0.60" `
   --out_dir C:\binpick_out\smoke
 ```
 
-**기대 = `Saved 9 predictions`**
+**기대 = `Saved 9 predictions` 이상** (⭐ **thr 0.20에서는 9건보다 많이 나온다**)
+
+> ⭐⭐ **2026-08-21 갱신 = `--score_thresh` 0.45 → 0.20**
+> 8/18 90장 스윕에서 0.20이 최적점(F1 0.5445→**0.5838**). 🚨판정 근거는 F1이 아니라
+> **집을 수 있는 부품 491→577개**(GT 대비 77.9%→**91.6%**, 추가 치명은 +9뿐 = 9.6:1).
+> 🚨 **그래서 "9건"은 더 이상 합격 기준이 아니다** — 아래 이름·score 대조가 기준이다.
+> 📌 옛 기준선(0.45에서 9건·`r_guide_a_r` 0.991)은 **thr을 0.45로 주면 재현된다**.
 
 ### 🔴 개수만 보지 말 것 — 부품 이름까지 대조
 
