@@ -40,8 +40,28 @@ D·E·F 전부 *"이 사슬 위에 얹는 것"* 이라 **먼저 있어야 얹을
   부품 이름이 바뀌는 것을 겪었다 — 사람이 매번 치면 또 틀린다)
 - ⏭️ A100에서 실왕복 검증 → IPC 이식
 
-### ⬜ T2. web-api 재시작 — 사슬 마지막 칸
-🔴 **태민님 승인 필요**(3개월 돈 프로세스). 지금 `/binpick/reports`가 **404**다.
+### ✅ T2. web-api 재시작 — 사슬 마지막 칸 **완료 (8/21)**
+7/10부터 42일 돈 프로세스(PID 257740)를 교체. **8/13 라우터가 처음 올라왔다.**
+- ✅ **binpick 경로 5개 등록**(openapi 확인) — `reports`(POST) · `health`/`scenes`/`scenes/latest`/`scenes/{pk}`(GET)
+- ✅ **실왕복 = HTTP 201**(A100 E2E 산출물 `shot_001_c1.six.json`을 6000 라우터로)
+- ✅ **조회로 끝까지 확인** = 검출 7건 · 부품 이름 4개 · 게이트 `in_distribution`(3.13%) ·
+  `trusted: true` · 지연 7452ms · `binpick_scenes 1 / binpick_detections 7`
+- ✅ **운영 데이터 보존** — presets 5 · print_jobs 7 · vision 4/5 전부 동일(백업도 떠둠)
+  ⭐ `notification_events` 282→290은 **기동 시 프린터 4대 OFFLINE 기록**(6000은 프린터 접근 불가).
+  7/31·7/16·7/10에도 같은 패턴이 있어 **정상 동작**임을 날짜별 집계로 확인했다.
+- 🐛 **로그에 `address already in use`** = nohup이 두 번 떠서 하나가 죽은 것.
+  ⚠️ **살아있는 프로세스는 1개**(PID 1035233)이고 포트도 정상 점유. 결과에는 영향 없다.
+- 🐛 **내 실수 1건** = 조회 응답에서 게이트를 **최상위 키로 추측해 읽어** `None`으로 보고
+  *"설계원칙 3이 깨졌다"* 고 오판했다. 실제로는 **`scene_gate` 중첩 객체에 정상 저장**돼 있었다.
+  ⇒ 🚨 **또 키 이름을 추측했다**([[never-state-unverified]])
+
+🚨 **재기동 명령(다음에도 이걸 쓴다)**
+```bash
+cd ~/3D_printer_automation/web-api
+kill <PID>   # ss -tlnp | grep 8085 으로 확인
+nohup ./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8085 > /tmp/webapi.log 2>&1 &
+```
+⚠️ **6000은 개발·데모 서버다.** 공장 PC는 NSSM `OrinuMain`이라 절차가 다르다([[deploy-bat]]).
 
 ### ⬜ T3. 🥇 **RGB 융합 D단계** — 궁극 목표의 유일한 "재택 가능" 조각
 **⭐ 여기가 궁극 목표의 실제 착수점이다.**
