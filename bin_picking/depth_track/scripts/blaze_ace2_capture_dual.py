@@ -94,7 +94,7 @@ KEEP_RANGE_MM = (400, 600)
 # 근거: reproduce_f1_0684.sh:53 --center_crop '1/6,5/6'
 CENTER_CROP = (1 / 6, 5 / 6)
 # 근거: blaze_capture_crosssession.py:333 — 학습셋 실측(부품 px 10k+)의 crop 환산
-BAND_PX_MIN = 8000
+BAND_PX_MIN = 5000   # 8/24 현장 보정: 8000은 8/18 통과분(4%≈7k)도 떨어뜨렸다
 
 
 def _try(label, fn):
@@ -256,7 +256,7 @@ def setup_ace2(cam, exposure_us: float | None = None):
 
     # 픽셀 포맷: 컬러를 원한다 — BGR8이 되면 변환이 불필요하다
     fmt = None
-    for cand in ("BGR8", "RGB8", "BayerRG8"):
+    for cand in ("BayerRG8", "BGR8", "RGB8"):
         if _set("PixelFormat", cand):
             fmt = cand; break
     if fmt is None:
@@ -369,7 +369,7 @@ def rgb_quality(bgr: np.ndarray) -> tuple[float, float, bool]:
     c = gray[h // 3: 2 * h // 3, w // 3: 2 * w // 3]
     sharp = float(cv2.Laplacian(c, cv2.CV_64F).var())
     # 🚨 임계값은 현장 첫 장으로 보정할 것 — 아래는 실내 형광등 기준 초안
-    ok = (30.0 <= bright <= 225.0) and (sharp >= 50.0)
+    ok = (30.0 <= bright <= 235.0) and (sharp >= 15.0)   # 8/24 현장 보정(초안 50은 과했다)
     return bright, sharp, ok
 
 
