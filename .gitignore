@@ -292,3 +292,6 @@ bin_picking/config/ace2_calib_shots/
 
 # 그래스프 DB 타임스탬프 백업 (git 이력이 곧 백업이므로 커밋 안 함)
 *.yaml.bak_*
+
+# 서버(6000) 백업 — 메모리/문서 사본. git 추적 대상 아님(로컬 보관용).
+_server_backup_*/
