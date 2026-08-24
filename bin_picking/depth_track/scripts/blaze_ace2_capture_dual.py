@@ -293,7 +293,11 @@ def to_bgr(arr: np.ndarray, fmt: str | None) -> np.ndarray:
         if fmt == "RGB8":
             return cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
         return arr                      # BGR8
-    return cv2.cvtColor(arr, cv2.COLOR_BayerRG2BGR)
+    # 🚨 8/24 현장 실측: Basler 'BayerRG8' ↔ OpenCV는 BayerBG2BGR가 맞다.
+    #    벤더 이름 그대로 COLOR_BayerRG2BGR로 읽으면 R/B가 뒤바뀌어
+    #    회색 부품이 주황빛으로 나온다(부품 픽셀 R240 vs B219 = 편차 21).
+    #    BG로 읽으면 편차 1.8~4.5 = 회색이 회색으로 나온다.
+    return cv2.cvtColor(arr, cv2.COLOR_BayerBG2BGR)
 
 
 def to_mm(depth: np.ndarray) -> np.ndarray:
