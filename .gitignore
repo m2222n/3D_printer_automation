@@ -269,6 +269,13 @@ bin_picking/yolo_track/runs/**/weights/
 # 학습 메타데이터 (CSV/summary)는 추적 OK
 # 가중치 파일 .pt만 ignore
 
+# depth_track 배포 체크포인트 (2026-08-25 추가)
+# 🚨 T100_best.pt = 70MB. git에 넣으면 리포가 무거워지고 개인 repo가
+#    한솔 미러로 나가므로 모델 가중치가 외부로 간다.
+# ⭐ 원본 = 6000 /data/jtm/a100_backup_0710/checkpoints/extracted/runs/T100_csblur_lr1e4_ep80/best.pt
+#    md5 = afcf73511be501ebd813a08bd91a1b65 (IPC/Thor 이식 시 이 값으로 대조)
+bin_picking/models/*.pt
+
 # 회사 내부 기획·검토 문서 (대표님 호칭 등 포함, 한솔 미러 노출 금지)
 docs/MES_ERP_ATS_*.md
 docs/SaaS_플랫폼_*.md
