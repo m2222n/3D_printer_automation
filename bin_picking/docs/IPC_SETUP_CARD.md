@@ -10,8 +10,9 @@
 ## 0. 접속 (10분)
 
 ```
-Tailscale IPC : 100.115.122.38   (맥 100.119.119.14 · tailnet jtm.flickdone@gmail.com)
-RDP 계정      : admin + 비번(8/12 신설)
+🔒 접속 정보(Tailscale IP · tailnet · RDP 계정/비번)
+   = memory/reference_dev_environment.md · memory/project_ipc510_remote_access_0812.md
+   🚨 이 파일은 git 추적 대상이라 여기 적지 않는다(개인 repo가 한솔 미러로 나간다)
 ```
 🚨 **잠금화면 상태에서도 접속된다**(8/12 검증). 안 되면:
 - 방화벽 ICMP → 3389 Listen 여부 → **`TermService`가 `Manual`이 아닌지**(8/12 원인 3개)
@@ -29,22 +30,46 @@ cd D:\...\3D_printer_automation ; git log --oneline -3
 **8/14에 설치해 둔 것**(기록) = Python **3.12.8** · torch **+cpu** · numpy **1.26.4** ·
 tqdm · pillow · scipy
 
-## 2. 새로 필요한 것 = **3개뿐** (20분)
+## 2. 새로 필요한 것 (20분)
 
-⭐ **import 전수 추출로 확인한 실제 의존성**(8/14 교훈 = *"requirements.txt를 믿지 않는다"*):
+### 🔬 8/25 재실측 — **E2E 러너 의존성은 5개, 전부 확인했다**
 
-| 패키지 | 왜 |
-|---|---|
-| **`opencv-python`** (`cv2`) | E2E 러너·전처리 |
-| **`pyyaml`** (`yaml`) | grasp DB·설정 로드 |
-| **`pypylon`** | 🚨 **카메라 실취득** — 이것만 금요일에 실물 검증이 필요 |
+`run_binpick_e2e.py`는 **`subprocess`로 추론기를 부른다**(6000에 torch가 없어도 되게 한
+설계). 그래서 **러너 파일만 보면 의존성이 안 나온다** — subprocess 대상까지 따라가야 한다.
+AST로 **리포 내부 13개 파일**을 재귀 추적해 뽑은 실제 외부 패키지:
+
+| 패키지 | 어디서 | IPC 상태 |
+|---|---|---|
+| `numpy` | 11개 파일(전처리·모델·후처리·게이트·6요소) | 🟢 8/14 설치(1.26.4) |
+| `torch` | `infer`·`model`·`postprocess`·`geometry`·`depth_preprocess` | 🟢 8/14 설치(+cpu) |
+| `PIL` | `depth_preprocess`·`real_labelme`·`visualization` | 🟢 8/14 설치 |
+| **`cv2`** | `rgbd_fusion` | 🔴 **설치 필요** |
+| **`yaml`** | `input_gate` | 🔴 **설치 필요** |
 
 ```powershell
-pip install opencv-python pyyaml pypylon
+pip install opencv-python pyyaml
 ```
+
+🚨 **`pypylon`은 E2E 의존성이 아니다** — 카메라 실취득 전용이라 §5(금요일)에서만 쓴다.
+카드 이전 판이 3개를 한 줄에 묶어둬서 갈랐다.
 
 ⚠️ `blenderproc`·`bpy`·`trimesh`·`h5py`·`pyrender`·`matplotlib`·`skimage`는
 **합성 데이터 생성용**이라 IPC에 불필요하다.
+
+### 🚨 체크포인트가 리포에 없다 — 따로 넣어야 한다
+
+`T100_best.pt`는 **git에 없다**(70MB). 러너 기본 경로는
+`bin_picking/models/T100_best.pt`이고, 6000 원본은
+`/data/jtm/a100_backup_0710/checkpoints/extracted/runs/T100_csblur_lr1e4_ep80/best.pt`.
+
+| 항목 | 값(8/25 실측) |
+|---|---|
+| **md5** | `afcf73511be501ebd813a08bd91a1b65` |
+| 크기 | 70,008,856 bytes |
+| 신원 | `input_mode=zv` · lr 1e-4 · ep80 · batch 2 · amp False · **첫 conv (32,2,3,3)** |
+
+🚨 **IPC에 넣은 뒤 md5를 반드시 대조한다** — *"ckpt가 로드는 되는데 값이 이상"* 은
+파일 손상이 원인인 알려진 유형이다(§막혔을 때 표).
 
 ## 3. 코드 최신화 (10분)
 
@@ -54,23 +79,79 @@ git pull        # origin/main = 60cdc00 이후 (8/24 push 완료)
 🚨 **8/24 교훈** — 6000에서 만든 것은 **push 안 하면 다른 데서 안 보인다.**
 지금은 push돼 있으니 pull로 최신이 온다.
 
-## 4. ⭐ 결과 대조 = **이 세팅의 합격 판정** (30분)
+## 4. ⭐⭐ 결과 대조 = **이 세팅의 합격 판정** (30분)
 
 🚨 **"돌아간다"가 아니라 "같은 답이 나온다"로 판정한다.**
-8/14에 6000과 **소수점까지 일치** 9건(`r_guide_a_r` 0.991)을 확인해 뒀고 **그것이 기준선**이다.
 
-```powershell
-python bin_picking\src\run_binpick_e2e.py --npy <8/18 샘플> --no-web
+### ✅ 정답표를 8/25에 미리 만들어 뒀다 (이전 판에는 "대조하라"만 있고 대조 대상이 없었다)
+
+```
+6000 기준선 = /data/jtm/e2e_reference_0825/
+   six/shot_00{1..5}_c1.six.json   ← 정답값 5장
+   env.json                        ← 환경 지문
 ```
 
-| 확인 | 기준 |
-|---|---|
-| 검출 **개수** | 🚨 개수만 보면 안 된다(8/14) |
-| ⭐ **부품 이름 + score** | **6000 결과와 대조** — 다르면 이식 오류 |
-| `evaluator_sha256` | 6000과 **해시 일치**(8/21에 넣은 방어) |
+**8/25 6000 실측 결과** (`T100_best.pt` · thr 0.20 · 화이트리스트 적용):
 
-🚨 **플래그를 빼면 조용히 틀린다** — `--real_uint16_max_depth_m` 누락 시
-**검출이 늘면서 좌우가 뒤바뀌는데 무경고**였다(8/14). E2E 러너는 **검증된 플래그 6개를 코드에 못박아** 뒀다.
+| shot | 검출 | 주요 부품 | 게이트 |
+|---|---|---|---|
+| 001 | **7** | `09_guide_paper_r`, `07_guide_paper_l`, `13_x2_bcf8ccb4`, `brkt_switch` | in_distribution 3.13% |
+| 002 | **7** | `09_guide_paper_r`, `brkt_switch`, `bracket_sensor1`, `07_guide_paper_l` | 2.64% |
+| 003 | **7** | `13_x2_bcf8ccb4`, `14_13`, `bracket_sensor1`, `r_guide_a_r` | 3.39% |
+| 004 | **8** | `09_guide_paper_r`, `07_guide_paper_l`, `brkt_switch`, `14_13` | 2.63% |
+| 005 | **6** | `14_13`, `r_guide_a_r`, `bracket_sensor1`, `07_guide_paper_l` | 2.73% · **제외종 −1** |
+
+⭐ shot_005에서 **화이트리스트가 실제로 1건을 걸러낸다**(`17_mks_holder`) — 이것까지 재현돼야 한다.
+
+### 🅰️ IPC에서 실행
+
+```powershell
+# 기준선과 **완전히 같은 명령**
+python bin_picking\src\run_binpick_e2e.py ^
+  --depth-dir <8/18 npy 폴더> --glob "shot_00[1-5]_c1.npy" ^
+  --out-dir ipc5
+
+# 환경 지문
+python bin_picking\depth_track\scripts\emit_env_fingerprint.py --out ipc5\env.json
+```
+
+### 🅱️ 자동 대조 — 사람이 눈으로 비교하지 않는다
+
+```powershell
+python bin_picking\depth_track\scripts\compare_e2e_results.py ^
+  --ref <6000에서 받은 e2e_reference_0825> --test ipc5
+```
+
+**무엇을 보나** (엄격한 순서):
+
+| # | 항목 | 허용 |
+|---|---|---|
+| ① | 장면 수 · 검출 개수 | 정확히 일치 |
+| ② | ⭐ **부품 이름 집합** | 정확히 일치 — **좌우 뒤바뀜을 여기서 잡는다** |
+| ③ | ⭐ **`confidence`·`cad_score`** | **1e-4** (같은 가중치면 비트 단위로 같아야) |
+| ④ | 좌표 `x,y,z` | **0.5mm** (1px≈1.45mm의 1/3) |
+| ⑤ | 게이트 `verdict`·`trusted`·유효율 | 일치 |
+| ⑥ | 환경 지문 (torch·numpy·ckpt md5·코드 sha256) | 다르면 표시 |
+
+### ✅ 이 대조 도구는 **작동을 검증했다** (8/25)
+
+🚨 **8/14 사고를 실제로 재현해서 잡히는지 확인**했다 —
+`--real_uint16_max_depth_m`를 빼고 돌리니 **검출 7건 → 1건**이 되었고, 도구가:
+
+```
+🔴 shot_001_c1
+     검출 개수 1 ≠ 기준 7
+     🚨기준에만 있는 부품 {'09_guide_paper_r': 1, '07_guide_paper_l': 1, ...}
+     🚨테스트에만 있는 부품 {'02_sol_block_b': 1}
+     🚨🚨 '09_guide_paper_r' — 좌우 접미사 부품이 어긋났다. 8/14에 정확히 이 증상
+     게이트 제외 1건 {'17_mks_holder': 1} ≠ 기준 0건
+🔴 이식 검증 실패 — 이 상태로 로봇에 연결하지 말 것
+```
+
+⭐ **동일 입력끼리는 통과**하고 **어긋난 입력은 거부**한다 — 양쪽을 다 봤다.
+
+🚨 **플래그를 빼면 조용히 틀린다** — E2E 러너는 **검증된 플래그 6개를 코드에 못박아** 뒀으니
+**러너를 쓰고 추론기를 직접 부르지 않는다.**
 
 ## 5. 🏭 금요일에만 되는 것 (원격 불가)
 
@@ -84,13 +165,34 @@ python bin_picking\src\run_binpick_e2e.py --npy <8/18 샘플> --no-web
 ⚠️ **카메라 네트워크는 맥에서 세 시간 걸렸다** — IPC는 Windows라 절차가 다르다.
 **IP 대역 = 랜포트 대역** 원칙은 같다 → `memory/reference_dual_camera_setup_0824.md`
 
+## 6. 📦 6000 → IPC 로 옮길 것 (git에 없는 것들)
+
+| 항목 | 6000 경로 | 크기 |
+|---|---|---|
+| **체크포인트** | `/data/jtm/a100_backup_0710/checkpoints/extracted/runs/T100_csblur_lr1e4_ep80/best.pt` | 70MB |
+| **대조 기준선** | `/data/jtm/e2e_reference_0825/` | 80KB |
+| **테스트 npy** | `/data/jtm/synth_out/blaze_capture_0818/shot_00{1..5}_c1.npy` | ~5MB |
+
+⚠️ **6000 → 맥 → IPC** 경로가 필요하다(6000에 Tailscale이 없어 IPC로 직접 못 보낸다).
+🚨 사무실 Wi-Fi는 **AP isolation**이라 맥→6000이 막힐 수 있다(7/16 확인).
+
 ## ✅ 완료 기준
 
 - [ ] RDP 접속 (잠금화면 상태 포함)
-- [ ] `import` 6개 전부 OK
+- [ ] `import` **5개**(`numpy`·`torch`·`PIL`·`cv2`·`yaml`) 전부 OK
 - [ ] `git pull` 최신
-- [ ] ⭐ **npy 추론 결과가 6000과 부품 이름·score까지 일치**
+- [ ] **ckpt md5 = `afcf73511be501ebd813a08bd91a1b65`** 대조
+- [ ] ⭐⭐ **`compare_e2e_results.py`가 "✅ 소수점까지 일치" 출력**
+      (부품 이름·score·좌표·게이트까지 — 개수만 보지 않는다)
 - [ ] (금) Blaze 실취득 · 로봇 소켓 · 그리퍼 개폐
+
+## 📊 참고 = 6000 실측 지연 (KTR 3초 대비)
+
+8/25 6000(CPU) 실측 = **장당 4.27~4.57초**. 8/21 A100 기록은 6.7~7.5초였다.
+🚨 **원인은 추론이 아니라 매번 모델을 다시 로드하는 것**(러너가 subprocess로 띄운다)
+⇒ ⭐ **상주 프로세스가 해법**이고, IPC는 **RTX 5060이 있어 더 빠를 수 있다**.
+📌 **[미확인]** IPC torch가 `+cpu` 빌드라 GPU를 안 쓴다 — GPU를 쓰려면 CUDA 빌드 재설치가 필요하다.
+   지금은 **되는 것이 먼저**이고(8/14 원칙) 속도는 그 다음이다.
 
 ## 📌 막혔을 때 — 8/12·8/14에 실제로 막았던 것
 
