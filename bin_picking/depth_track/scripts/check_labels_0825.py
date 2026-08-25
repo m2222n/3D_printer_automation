@@ -59,7 +59,27 @@ def load_key(path):
         expect = Counter(merge.get(p, p) for p in r["parts"])
         for n in range(lo, hi + 1):
             shot2rule[n] = (r["session"], r["group"], expect)
-    return shot2rule, merge, key
+
+    # ⭐ 장별 예외 — 정답지에 근거가 적힌 것만 인정한다
+    # 🚨 여기에 넣는 순간 그 장은 검사를 통과하므로, 정답지에 **실측 근거**가
+    #    없으면 넣지 않는다(예외가 쌓이면 검사기가 무의미해진다).
+    exceptions = {}
+    for k, v in (key.get("shot_exceptions") or {}).items():
+        n = int(k)
+        if n not in shot2rule:
+            continue
+        sess, group, expect = shot2rule[n]
+        expect = Counter(expect)
+        miss = v.get("missing")
+        if miss:
+            miss = merge.get(miss, miss)
+            if expect.get(miss):
+                expect[miss] -= 1
+                if expect[miss] == 0:
+                    del expect[miss]
+        shot2rule[n] = (sess, group, expect)
+        exceptions[n] = v
+    return shot2rule, merge, key, exceptions
 
 
 def main():
@@ -78,7 +98,7 @@ def main():
             f"   ⭐ '문제 없음'이 아니라 '아직 라벨링을 안 했다'는 뜻이다."
         )
 
-    shot2rule, merge, key = load_key(args.key)
+    shot2rule, merge, key, exceptions = load_key(args.key)
     official = {l.strip() for l in open(args.labels, encoding="utf-8") if l.strip()}
 
     bad_count = bad_name = bad_group = bad_merge = 0
@@ -113,9 +133,15 @@ def main():
         n = sum(got.values())
 
         msgs = []
-        if n != PARTS_PER_SHOT:
-            msgs.append(f"개수 {n} ≠ {PARTS_PER_SHOT}")
+        # ⭐ 예외 장은 기대 개수가 다르다(정답지 shot_exceptions 근거)
+        want_n = sum(expect.values())
+        if n != want_n:
+            msgs.append(f"개수 {n} ≠ {want_n}")
             bad_count += 1
+        elif num in exceptions:
+            ex = exceptions[num]
+            print(f"  ⚠️ {base} [s{sess}/{group}]  예외 인정 {n}개 "
+                  f"— {ex.get('missing')} 누락: {ex.get('reason', '')[:40]}")
         for lab, c in sorted(got.items()):
             if lab not in official:
                 msgs.append(f"🚨미지라벨 '{lab}' (labels.txt 없음 → GT에서 사라진다)")
@@ -159,7 +185,11 @@ def main():
         print(line)
 
     n_done = len(seen["A"]) + len(seen["B"])
-    print(f"  총 인스턴스   : {sum(all_labels.values())}  (기대 {n_done*PARTS_PER_SHOT})")
+    # 기대 총계 = 장별 expect 합(예외 반영). PARTS_PER_SHOT × 장수가 아니다.
+    want_total = sum(sum(shot2rule[n][2].values())
+                     for s in ("A", "B") for n in seen[s])
+    ex_note = f" · 예외 {len(exceptions)}장 반영" if exceptions else ""
+    print(f"  총 인스턴스   : {sum(all_labels.values())}  (기대 {want_total}{ex_note})")
     print(f"  개수 이상 {bad_count} / 이름 이상 {bad_name} / "
           f"그룹 이상 {bad_group} / 병합 이상 {bad_merge}")
 

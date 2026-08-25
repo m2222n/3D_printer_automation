@@ -10,7 +10,17 @@ import torch.nn.functional as F
 from PIL import Image
 
 
-VALID_INPUT_MODES = {"z", "zv", "xyzv", "xyznv"}
+# ⭐ 2026-08-25 추가 = RGB 융합 모드 (`zvrgb`, `zrgb`)
+#   태민님 8/21 궁극 목표 = *"Depth랑 RGB 무조건 연동"*.
+#   8/24에 체크포인트를 열어 첫 conv 가 (32,2,3,3) 2채널로 **물리적으로 박혀** 있음을
+#   확인했다 ⇒ 후처리로 얻는 이득이 아니라 **재학습이 필수**다.
+#
+# 🚨 기존 모드는 한 글자도 바꾸지 않았다 — depth-only 재현성이 걸려 있다
+#    (T100 배포 모델이 `zv` 로 학습됐고 그 값이 모든 기준선의 근거다).
+VALID_INPUT_MODES = {"z", "zv", "xyzv", "xyznv", "zrgb", "zvrgb"}
+
+# RGB 를 요구하는 모드 — 호출자가 rgb 를 안 주면 **조용히 0으로 채우지 않고 예외**를 던진다.
+RGB_INPUT_MODES = {"zrgb", "zvrgb"}
 
 
 def input_channels_for_mode(mode: str) -> int:
@@ -22,6 +32,10 @@ def input_channels_for_mode(mode: str) -> int:
         return 4
     if mode == "xyznv":
         return 7
+    if mode == "zrgb":      # z + R,G,B
+        return 4
+    if mode == "zvrgb":     # z + valid + R,G,B  ⭐ 기본 권장(zv 의 자연 확장)
+        return 5
     raise ValueError(f"Unknown input mode: {mode}. Choose one of {sorted(VALID_INPUT_MODES)}")
 
 
