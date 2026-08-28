@@ -78,7 +78,8 @@ class CapturedFrames:
         np.save(out / "depth.npy", self.depth_map)
         np.save(out / "color.npy", self.color_image)
         meta = {**self.intrinsics.to_dict(), "depth_scale": self.depth_scale}
-        (out / "meta.json").write_text(json.dumps(meta, indent=2))
+        (out / "meta.json").write_text(json.dumps(meta, indent=2),
+                                       encoding="utf-8")
 
 
 class RealSenseCapture:

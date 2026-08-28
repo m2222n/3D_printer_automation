@@ -401,7 +401,8 @@ def main() -> int:
             if sc and not sc["trusted"]:
                 print(f"  ⚠️ {pred_path.name}: 장면 {sc['verdict']} — {sc['note']}")
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False))
+        out_path.write_text(json.dumps(res, indent=2, ensure_ascii=False),
+                            encoding="utf-8")
         n = len(res["detections"])
         nz = sum(1 for d in res["detections"] if d["z"] > 0)
         return n, nz
@@ -429,4 +430,12 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # 🚨 Windows(cp949)에서 이모지 print가 UnicodeEncodeError로 죽는 것을 막는다
+    #    (8/28 IPC 실사고 — 추론은 됐는데 출력 단계에서 5/5 실패) → utils/console_utf8.py
+    try:
+        from bin_picking.src.utils.console_utf8 import enable_utf8_console
+
+        enable_utf8_console()
+    except Exception:
+        pass  # 콘솔 설정 실패가 본 작업을 막지 않는다
     raise SystemExit(main())

@@ -197,7 +197,8 @@ class BaslerFrames:
         }
         if self.color_intrinsics is not None:
             meta["color_intrinsics"] = self.color_intrinsics.to_dict()
-        (out / "meta.json").write_text(json.dumps(meta, indent=2))
+        (out / "meta.json").write_text(json.dumps(meta, indent=2),
+                                       encoding="utf-8")
 
 
 # ============================================================

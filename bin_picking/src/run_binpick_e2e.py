@@ -268,7 +268,8 @@ def main() -> int:
         "rows": rows,
     }
     sp = args.out_dir / "e2e_summary.json"
-    sp.write_text(json.dumps(summary, ensure_ascii=False, indent=2))
+    sp.write_text(json.dumps(summary, ensure_ascii=False, indent=2),
+                  encoding="utf-8")
     print(f"\n{'='*70}")
     print(f"성공 {len(rows)}/{len(files)} · 검출 합계 {summary['total_detections']}건 "
           f"· 웹 성공 {summary['web_ok']}/{len(rows)}")
@@ -278,6 +279,14 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # 🚨 Windows(cp949)에서 이모지 print가 UnicodeEncodeError로 죽는 것을 막는다
+    #    (8/28 IPC 실사고) → utils/console_utf8.py
+    try:
+        from bin_picking.src.utils.console_utf8 import enable_utf8_console
+
+        enable_utf8_console()
+    except Exception:
+        pass
     try:
         sys.exit(main())
     except E2EError as exc:
