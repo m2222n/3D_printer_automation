@@ -221,7 +221,7 @@ class RealSenseCapture:
         d = Path(frame_dir)
         depth_map = np.load(d / "depth.npy")
         color_image = np.load(d / "color.npy")
-        meta = json.loads((d / "meta.json").read_text())
+        meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
         depth_scale = meta.pop("depth_scale", 1000.0)
         intrinsics = RSIntrinsics.from_dict(meta)
         return CapturedFrames(

@@ -119,7 +119,8 @@ def step_infer(depth: Path, ckpt: Path, out_dir: Path, *, python: str) -> Path:
     cmd = [python, "infer_depth_vq_detector.py",
            "--checkpoint", str(ckpt), "--depth", str(depth),
            "--out_dir", str(pred_dir)] + INFER_FLAGS
-    r = subprocess.run(cmd, cwd=str(MENTORING), capture_output=True, text=True)
+    r = subprocess.run(cmd, cwd=str(MENTORING), capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise E2EError(
             f"[① 추론] 실패 (exit {r.returncode})\n"
@@ -148,7 +149,8 @@ def step_six(pred_json: Path, depth: Path, out_dir: Path, *, python: str) -> Pat
     cmd = [python, "-m", "bin_picking.src.pipeline.depth_track_to_6elements",
            "--pred", str(pred_json), "--out", str(six_path),
            "--depth-dir", str(depth.parent)]
-    r = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True)
+    r = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise E2EError(
             f"[② 6요소] 실패 (exit {r.returncode})\n"
@@ -168,7 +170,7 @@ def step_report(six_path: Path, *, web_url: Optional[str], out_dir: Path,
     """
     from bin_picking.src.communication import web_reporter as WR
 
-    six = json.loads(six_path.read_text())
+    six = json.loads(six_path.read_text(encoding="utf-8"))
     if web_url:
         transport = WR.http_transport(web_url)
         where = web_url
@@ -194,7 +196,7 @@ def run_one(depth: Path, ckpt: Path, out_dir: Path, *, python: str,
     six_path = step_six(pred, depth, out_dir, python=python)
     latency_ms = (time.perf_counter() - t0) * 1000.0
 
-    six = json.loads(six_path.read_text())
+    six = json.loads(six_path.read_text(encoding="utf-8"))
     dets = six.get("detections") or []
     gate = six.get("gate_summary") or {}
     scene = six.get("gate_scene") or {}

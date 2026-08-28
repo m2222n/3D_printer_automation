@@ -243,7 +243,7 @@ def load_frame(frame_dir: Path) -> Optional[dict]:
     depth = np.load(depth_path)
 
     if meta_path.exists():
-        meta = json.loads(meta_path.read_text())
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
     else:
         return None  # meta 없으면 intrinsics 모름 → skip
 

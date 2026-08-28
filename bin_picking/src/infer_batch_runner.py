@@ -169,7 +169,8 @@ def to_six(pred_json: Path, depth: Path, out_dir: Path, python: str) -> Path | N
     cmd = [python, "-m", "bin_picking.src.pipeline.depth_track_to_6elements",
            "--pred", str(pred_json), "--out", str(six_path),
            "--depth-dir", str(depth.parent)]
-    r = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True)
+    r = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
     if r.returncode != 0:
         print(f"  🔴 6요소 실패 {depth.name}: {r.stderr.strip()[-300:]}")
         return None

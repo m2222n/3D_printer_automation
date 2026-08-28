@@ -195,7 +195,7 @@ def _load_intrinsics_json(path: Path, what: str) -> Intrinsics:
             f"{'ace2' if what == 'ACE2' else 'blaze'}_intrinsics.py\n"
             f"  ⚠️ 캘리브 결과 json은 git에 없음(로컬 상주) — Mac에서 만든 뒤 옮길 것."
         )
-    d = json.loads(path.read_text())
+    d = json.loads(path.read_text(encoding="utf-8"))
     K = np.array(d["camera_matrix"], dtype=np.float64)
     if K.shape != (3, 3):
         raise FusionError(f"{path}: camera_matrix가 3×3이 아님 (shape={K.shape})")

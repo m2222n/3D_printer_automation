@@ -569,7 +569,7 @@ class BaslerCapture:
         """저장된 프레임 로드 (카메라 없는 환경용)."""
         d = Path(frame_dir)
         depth_map = np.load(d / "depth.npy")
-        meta = json.loads((d / "meta.json").read_text())
+        meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
 
         color_image = None
         color_path = d / "color.npy"

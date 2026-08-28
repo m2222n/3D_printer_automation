@@ -368,7 +368,7 @@ def main() -> int:
     intr = None if args.no_depth else _load_blaze_intr()
 
     def one(pred_path: Path, out_path: Path) -> tuple[int, int]:
-        pj = json.loads(pred_path.read_text())
+        pj = json.loads(pred_path.read_text(encoding="utf-8"))
         depth = None
         if not args.no_depth:
             dpath = None

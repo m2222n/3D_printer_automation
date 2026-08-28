@@ -157,7 +157,7 @@ def load_extrinsic(path: Optional[Path] = None, *, strict: bool = True) -> Extri
         )
 
     try:
-        d = json.loads(p.read_text())
+        d = json.loads(p.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         raise ExtrinsicError(f"{p}: json 파싱 실패 — {e}") from e
 
