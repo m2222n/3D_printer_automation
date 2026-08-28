@@ -1,4 +1,37 @@
-# 🖥️ IPC-510 세팅 카드 — 8/26(화) 재택 오전
+# 🖥️ IPC-510 세팅 카드
+
+## ✅✅ [2026-08-28 실행 완료] 이식 검증 통과 — 아래 실측 정정 4건
+
+**결과** = E2E **5/5** · `compare_e2e_results` **"✅ 소수점까지 일치"** · **장당 1.33초**
+⇒ 🎉 **KTR 3초 통과**(6000 4.3초 · A100 6.7초) · 상세 = `memory/project_ipc_e2e_verified_0828.md`
+
+**🔬 이 카드에서 틀렸던 것 4개 (다음에 안 헤매게)**
+
+| # | 카드 표기 | **실제** |
+|---|---|---|
+| 1 | (없음) | 🚨 **IPC에 git이 없었다** — `winget install --id Git.Git -e` 로 신설 설치. 설치 후 **새 창** 필요 |
+| 2 | (없음) | 🚨 **venv 실경로 = `C:\binpick_venv`** (`C:\ipc_bundle\` 아래가 아니다) |
+| 3 | *"**6000 → 맥 → IPC** 경로가 필요하다"* | ⭐ **불필요.** IPC에서 **`scp`로 6000을 당겨온다**(Windows에 OpenSSH·tar 내장) — *"6000이 못 보낸다"* 가 *"IPC가 못 가져온다"* 는 아니다 |
+| 4 | 리포 없이 `mentoring_new` 만 | 🚨 **E2E 러너는 리포 안에 있다** ⇒ `git clone`(HTTPS+브라우저 로그인, SSH 키 없음) |
+
+```powershell
+# 3번 실제 명령
+scp -P 5533 jtm@<6000_IP>:/data/jtm/ipc_transfer_0828.tar.gz C:\ipc_bundle\
+cd C:\ipc_bundle ; tar -xzf ipc_transfer_0828.tar.gz
+```
+
+**🚨 여기서 나온 새 버그 = cp949** — Windows 한글판에서 **이모지가 E2E를 죽였다**(5/5 실패).
+✅ 커밋 `bb38c59`·`78fa534` 로 **근본 수정 완료**(15곳 + `utils/console_utf8.py`) ⇒
+**지금은 환경변수 없이 그냥 돌아간다.** 회귀 = `python bin_picking\tests\test_console_utf8.py` **11/11**
+
+**🟡 남은 것** = `angle=0.0`(마스크 미저장 · **다음 재택**) · numpy가 **1.26.4→2.5.2**, opencv **4.11→5.0** 으로 바뀜(결과는 동일했으나 이상 시 첫 의심 대상)
+
+---
+
+<details>
+<summary>⛔ 이하 8/26 작성 원본 (이력 · 절차는 유효)</summary>
+
+# 원본 — 8/26(화) 재택 오전
 
 > 🎯 **목표** = 금요일(8/29)에 IPC에서 **로봇 + 카메라 + 인식**이 한 자리에서 돌게 만든다.
 > 🚨 **이것이 hand-eye의 선행조건**이다 — 로봇은 지금 공장 PC에 붙어 있고 배포 대상은 IPC다.
@@ -207,3 +240,5 @@ python bin_picking\depth_track\scripts\compare_e2e_results.py ^
 
 ⭐ **공통 형태 = "설정은 됐는데 다른 게 가로챈다"** — 8/12 TermService와 동형.
 🚨 **결정적 정보는 읽으면 바로 나온다** — 로그·`Get-Service` 출력을 먼저 본다.
+
+</details>
