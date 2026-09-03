@@ -124,7 +124,7 @@ var GRIP_REG = {
 var GRIP_TARGET_WIDTH = null;   // [mm 또는 제품 단위] 🚨 단위는 매뉴얼 확인
 var GRIP_TARGET_FORCE = null;   // [N 또는 제품 단위]
 
-// --- 드릴링 (MODE 'drill') — 🚨 [9/4 뼈대] 대표님 9/2 "하나를 집어서 드릴링까지". 9/4 현장 확인 3개로 채운다 ---
+// --- 드릴링 (MODE 'drill') — 🚨 [9/4 뼈대] 9/2 지시 "하나를 집어서 드릴링까지". 9/4 현장 확인 3개로 채운다 ---
 //   ①10L 펜던트에 협력사 드릴 프로그램이 있나 → 있으면 DRILL_SUBPROGRAM 에 이름을 적고 우리는 "집어서 넘기기"만 한다
 //   ②스핀들 ON 신호 = 펜던트 이름 `D_CONF_OUT_2`(14k 드릴 2개) / `_3`(24k 연마) — 🚨 Rodi-Script 함수명 [확인필요]:
 //     ko:53 I/O 종류 표 = General / Redundant(안전 이중화) / Tool / Safeguard 넷뿐이고 "Configurable"이 없다.
