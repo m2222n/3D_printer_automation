@@ -25,7 +25,7 @@
    ⇒ 📌 **해법 = 상주 프로세스(모델을 한 번 로드해 유지)로 바꾸는 것.**
      지금 구조를 택한 이유는 **6000에 torch가 없어도 나머지 단계를 돌릴 수 있게** 하려던 것이고,
      **"되는 것을 먼저"**(8/14 원칙)에 맞다. 🚨 **단 이 상태로 KTR을 재면 떨어진다.**
-   ⚠️ KTR 대상이 빈피킹 추론인지 통합 모니터링인지는 **미확인**(대표님 확인 항목 ④).
+   ⚠️ KTR 대상이 빈피킹 추론인지 통합 모니터링인지는 **미확인**(확인 항목 ④).
 
 ⚠️ 범위 = **웹 전달까지**다(8/5 회의: 로봇 제어는 이번 사업 전부 제외).
    소켓 좌표 전송(`pick_socket_server.py`)은 만들어져 있고 801건 왕복 검증됐으나
@@ -137,6 +137,90 @@ def step_infer(depth: Path, ckpt: Path, out_dir: Path, *, python: str) -> Path:
     return cands[-1]
 
 
+def step_angle(pred_json: Path) -> dict:
+    """①-B 회전각 주입 — 예측 JSON에 `angle_deg`·`obb_edge`를 심는다.
+
+    🚨🚨 **9/1 규명 = 이 단계가 러너에 아예 없었다.**
+    `angle=0_mask_not_saved` 는 *"마스크가 저장되지 않았다"* 는 뜻으로 읽혔지만,
+    실측하니 **추론기는 `predicted_masks.npz` 로 마스크를 이미 저장하고 있었다**
+    (`infer_depth_vq_detector.py:349`). 각도 산출 코드도 있었다(`mask_to_angle.py`).
+    ⇒ ⭐ **없던 것은 "마스크"도 "코드"도 아니라 *둘을 잇는 이 호출* 이었다.**
+       각도 주입은 **평가 스크립트(`eval_real_...:554~575`)에만** 있었고
+       러너는 **추론기**를 부르므로 그 경로를 안 탔다.
+    📌 8/21 *"평가 스크립트만 고쳤고 운영 추론은 옛 값이었다"* 와 **정확히 같은 계열**이다.
+
+    🔴 각도가 왜 필수인가 = **27종 중 22종(81%)·검출 82%가 종횡비 1.5 초과**
+       (`tests/survey_rotation_asymmetry.py`). 각도 없이 집을 수 있는 것은 1종뿐이다.
+       ⇒ `angle=0.0` 은 "회전 없음"이 아니라 **"모른다"** 이고, 그대로 집으면 어긋난 방향으로 문다.
+
+    ⚠️ **실패해도 예외를 던지지 않는다** — 각도가 없어도 나머지 6요소는 유효하다.
+       ⭐ 단 조용히 넘기지 않고 결과를 반환해 요약에 남긴다.
+    """
+    info = {"attempted": True, "injected": 0, "reliable": 0, "failed": 0,
+            "skipped_reason": None}
+    npz_path = pred_json.parent / "predicted_masks.npz"
+    if not npz_path.exists():
+        info["skipped_reason"] = f"predicted_masks.npz 없음: {npz_path}"
+        return info
+    try:
+        import numpy as np
+        from bin_picking.src.pipeline.mask_to_angle import angles_from_masks
+
+        pred = json.loads(pred_json.read_text(encoding="utf-8"))
+        preds = pred.get("predictions", [])
+        if not preds:
+            info["skipped_reason"] = "예측 0건"
+            return info
+
+        z = np.load(npz_path)
+        masks = z["masks"]
+
+        # 🚨 마스크는 **모델 입력 좌표계**(crop·resize)다. 원본 depth 좌표계로 되돌린다.
+        #    ⚠️ 이 역변환을 빼먹으면 좌표가 밀린다(7/29에 141px 밀림 실측).
+        #    ⭐ 평가 스크립트(:557~563)와 **같은 계산**을 쓴다 — 두 곳이 갈리면 값이 달라진다.
+        crop = pred.get("crop_bbox_yxyx")
+        in_h, in_w = pred.get("input_shape_hw", [0, 0])
+        if crop and in_h and in_w:
+            y0, x0, y1, x1 = crop
+            sx = (x1 - x0) / max(in_w, 1)
+            sy = (y1 - y0) / max(in_h, 1)
+            off = (x0, y0)
+        else:
+            # crop 없이 추론한 경우 = 좌표계가 이미 원본이다
+            sx = sy = 1.0
+            off = (0.0, 0.0)
+
+        # 🚨 마스크 개수와 예측 개수가 어긋나면 **짝이 밀린다**(엉뚱한 부품에 각도가 붙는다).
+        #    조용히 zip 하면 그 사고가 안 보이므로 여기서 막는다.
+        if len(masks) != len(preds):
+            info["skipped_reason"] = (
+                f"마스크 {len(masks)}개 ≠ 예측 {len(preds)}개 — 짝이 밀릴 수 있어 중단")
+            return info
+
+        ang = angles_from_masks(masks, offset_xy=off, scale_xy=(sx, sy))
+        for p, a in zip(preds, ang):
+            if a is None:
+                p["angle_deg"] = None
+                p["angle_note"] = "mask_angle_failed"
+                info["failed"] += 1
+            else:
+                p["angle_deg"] = a["angle"]
+                p["angle_reliable"] = a["angle_reliable"]
+                p["obb_edge"] = a["edge"]
+                p["obb_aspect"] = a["aspect"]
+                p["obb_fill"] = a["fill"]
+                p["angle_note"] = a["angle_note"]
+                info["injected"] += 1
+                if a["angle_reliable"]:
+                    info["reliable"] += 1
+        pred_json.write_text(json.dumps(pred, indent=2, ensure_ascii=False),
+                             encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        # 각도 실패가 E2E 를 죽이면 안 된다(좌표 x,y,z 는 여전히 유효하다).
+        info["skipped_reason"] = f"{type(e).__name__}: {e}"
+    return info
+
+
 def step_six(pred_json: Path, depth: Path, out_dir: Path, *, python: str) -> Path:
     """② 6요소 변환 + ③ 게이트(기본 적용).
 
@@ -193,6 +277,8 @@ def run_one(depth: Path, ckpt: Path, out_dir: Path, *, python: str,
     """depth 1장을 끝까지. 반환 = 사람이 읽을 요약 dict."""
     t0 = time.perf_counter()
     pred = step_infer(depth, ckpt, out_dir, python=python)
+    # ①-B 🚨 각도 주입 — 이 한 줄이 9/1까지 빠져 있어서 angle 이 전건 0.0 이었다
+    ang_info = step_angle(pred)
     six_path = step_six(pred, depth, out_dir, python=python)
     latency_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -211,6 +297,12 @@ def run_one(depth: Path, ckpt: Path, out_dir: Path, *, python: str,
         "scene_verdict": scene.get("verdict"),
         "scene_valid_pct": scene.get("valid_ratio_pct"),
         "latency_ms": round(latency_ms, 1),
+        # ⭐ 각도 현황을 요약에 드러낸다 — 안 보이면 또 "0.0 인데 왜?" 를 반복한다
+        "angle_injected": ang_info.get("injected"),
+        "angle_reliable": ang_info.get("reliable"),
+        "angle_failed": ang_info.get("failed"),
+        "angle_skipped": ang_info.get("skipped_reason"),
+        "angles": [d.get("angle") for d in dets],
         "six_json": str(six_path),
         "web": rep,
     }

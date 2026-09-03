@@ -283,6 +283,13 @@ def convert(
             # 로봇 쪽에서 각도를 믿을지 판단할 근거를 같이 넘긴다.
             det["angle_reliable"] = bool(p.get("angle_reliable"))
             det["obb_aspect"] = p.get("obb_aspect")
+            # ⭐ 9/1 추가 = 사유를 **별도 키로도** 남긴다.
+            #    🚨 사유가 `notes` 문자열에만 있어서 소켓 서버의 거부 메시지가
+            #      `angle_reliable=False — 각도를 신뢰할 수 없다 ()` 로 **빈 괄호**가 됐다.
+            #      ⇒ 현장에서 "왜 거부됐는지"를 알 수 없다(9/1 실측으로 발견).
+            #    📌 사람이 읽는 요약(notes)과 코드가 읽는 필드는 **따로 둔다.**
+            det["angle_note"] = p.get("angle_note")
+            det["obb_fill"] = p.get("obb_fill")
         if blaze_intrinsics is not None and z > 0:
             xc, yc, zc = pixel_to_camera_3d(cx, cy, z, blaze_intrinsics)
             det["camera_3d"] = {"Xc": round(xc, 1), "Yc": round(yc, 1), "Zc": round(zc, 1)}
