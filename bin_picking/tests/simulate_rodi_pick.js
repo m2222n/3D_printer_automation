@@ -150,6 +150,8 @@ function buildSandbox(R) {
         },
 
         setPayload: (p, c) => { rec('setPayload', [p, c || null]); R.payload = p; },
+        // ── 안전 이중화 DO (ko:53 §3.1.4) — MODE drill 스핀들 후보. 실제 D_CONF_OUT 이 이것인지는 9/4 확인
+        setRedundantDigitalOutput: (n, v) => { rec('setRedundantDigitalOutput', [n, v]); R.spindle = (v === 1); },
         setToolCenterPoint: (p) => rec('setToolCenterPoint', [p]),
 
         socketCreate: (...a) => rec('socketCreate', a),
@@ -451,6 +453,33 @@ console.log('\n⑯ 🚨 완료 신호가 "이미 High" — 전원 직후 IN_1 �
     const idxOpen = Redge.calls.findIndex(c => c.name === '__gripOpen');
     const idxDown = Redge.calls.map((c, i) => [c, i]).filter(([c]) => c.name === 'moveLinear').map(([, i]) => i)[1]; // 2번째 이동 = 하강
     check('열림 이벤트가 하강 이동보다 먼저 기록된다', idxOpen >= 0 && idxDown !== undefined && idxOpen < idxDown, `open@${idxOpen} down@${idxDown}`);
+}
+
+console.log('\n⑰ 🔩 MODE drill 뼈대 — 집은 뒤에만 스핀들, 후퇴 뒤에만 OFF, 함수명 미확정이면 호출 안 함');
+{
+    const T = { MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0], DRILL_POSE: [600, 100, 300, 180, 0, 0] };
+    // (a) 기본값 SPINDLE_API='none' → 스핀들 API 를 절대 부르지 않는다
+    const Rn = run(makeRobot(), T);
+    check("SPINDLE_API='none' 이면 스핀들 출력 호출 0건", !names(Rn).some(n => /RedundantDigitalOutput/.test(n)));
+    check('… 대신 "호출 안 함" 로그를 남긴다', Rn.log.some(l => l.includes('호출 안 함')));
+    check('진입 깊이 0 이면 드릴 진입 이동이 없다', !Rn.calls.some(c => c.name === 'moveLinear' && c.args[1][2] < 300 && c.args[1][0] === 600));
+    // (b) redundant 로 두면 ON→OFF 순서·타이밍이 맞아야 한다
+    const Rr = run(makeRobot(), Object.assign({ SPINDLE_API: 'redundant', DRILL_DEPTH_MM: 5 }, T));
+    const seq = Rr.calls.map(c => c.name === 'setRedundantDigitalOutput' ? `S${c.args[1]}` : (c.name === '__gripClose' ? 'C' : c.name === '__gripOpen' ? 'O' : (c.name === 'moveLinear' ? `M${c.args[1][2]}` : null))).filter(Boolean);
+    const iC = seq.indexOf('C'), iOn = seq.indexOf('S1'), iOff = seq.indexOf('S0'), iIn = seq.indexOf('M295'), iBack = seq.lastIndexOf('M300');
+    check('스핀들 ON 은 그리퍼 닫기(집기) 뒤', iC >= 0 && iOn > iC, seq.join(' '));
+    check('진입(z 295)은 스핀들 ON 뒤 · 후퇴(z 300)는 진입 뒤', iOn < iIn && iIn < iBack, seq.join(' '));
+    check('스핀들 OFF 는 후퇴 뒤', iOff > iBack, seq.join(' '));
+    check('스핀들 채널 = D_CONF_OUT_2', Rr.calls.filter(c => c.name === 'setRedundantDigitalOutput').every(c => c.args[0] === 2));
+    check('DONE_BIN_POSE 없음 → 그리퍼를 열지 않고 물고 정지', !seq.slice(iOff).includes('O'), seq.slice(iOff).join(' '));
+    check('✅ 완료 로그', Rr.log.some(l => l.includes('집어서 드릴링까지 완료')));
+    // (c) 안전 가드
+    const Rp = run(makeRobot(), Object.assign({ PLACE_POSE: [1, 2, 3, 180, 0, 0] }, T));
+    check('PLACE_POSE 가 있으면 drill 을 거부한다(먼저 놓아버리므로)', Rp.log.some(l => l.includes('PLACE_POSE 를 비워라')) && !names(Rp).includes('moveLinear'));
+    const Rd = run(makeRobot(), { MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
+    check('DRILL_POSE 없으면 집기까지만 하고 드릴 이송을 하지 않는다', Rd.log.some(l => l.includes('DRILL_POSE 가 비어 있다')) && !Rd.calls.some(c => c.name === 'moveLinear' && c.args[1][0] === 600));
+    const Rf = run(makeRobot({ graspWillSucceed: false }), Object.assign({ SPINDLE_API: 'redundant' }, T));
+    check('🚨 파지 실패면 스핀들을 절대 켜지 않는다', !Rf.calls.some(c => c.name === 'setRedundantDigitalOutput'));
 }
 
 console.log('\n' + '='.repeat(62));

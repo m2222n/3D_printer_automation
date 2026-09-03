@@ -124,6 +124,22 @@ var GRIP_REG = {
 var GRIP_TARGET_WIDTH = null;   // [mm 또는 제품 단위] 🚨 단위는 매뉴얼 확인
 var GRIP_TARGET_FORCE = null;   // [N 또는 제품 단위]
 
+// --- 드릴링 (MODE 'drill') — 🚨 [9/4 뼈대] 대표님 9/2 "하나를 집어서 드릴링까지". 9/4 현장 확인 3개로 채운다 ---
+//   ①10L 펜던트에 협력사 드릴 프로그램이 있나 → 있으면 DRILL_SUBPROGRAM 에 이름을 적고 우리는 "집어서 넘기기"만 한다
+//   ②스핀들 ON 신호 = 펜던트 이름 `D_CONF_OUT_2`(14k 드릴 2개) / `_3`(24k 연마) — 🚨 Rodi-Script 함수명 [확인필요]:
+//     ko:53 I/O 종류 표 = General / Redundant(안전 이중화) / Tool / Safeguard 넷뿐이고 "Configurable"이 없다.
+//     ⇒ D_CONF_OUT 이 setRedundantDigitalOutput(ko:53 §3.1.4)인지 setGeneralDigitalOutput 의 다른 번호인지 펜던트 I/O 모니터에서 갈라야 한다.
+//     ⇒ 📌 그래서 기본값 SPINDLE_API='none' = **호출하지 않고 로그만 남긴다.** 추측 함수로 스핀들을 돌리지 않는다.
+//   ③드릴 비트(ø3.0 · 데모 부품 02_sol_block_b = 관통 수직 홀 10개 · 리그립 불필요) — 콜렛이 비어 있었다(9/2)
+var DRILL_SUBPROGRAM = null;       // 협력사 드릴 프로그램 이름(있으면) — 서브프로그램 호출 함수명도 [확인필요]
+var SPINDLE_API      = 'none';     // 'none'(로그만) | 'redundant'(setRedundantDigitalOutput) | 'general'(setGeneralDigitalOutput)
+var SPINDLE_CH       = 2;          // D_CONF_OUT_2 = 14k 드릴 스핀들 2개(모터 1개에 묶임 · 8/31 협력사 확인)
+var SPINDLE_SPINUP_S = 3.0;        // ON 뒤 정속까지 [확인필요 — 인버터 가속 시간]
+var DRILL_POSE       = null;       // 드릴 스테이션 위 대기 자세(부품을 물고) — 🚨 티칭으로 채운다
+var DRILL_DEPTH_MM   = 0;          // 진입 깊이(0 = 진입 안 함 · 스핀들 ON/OFF 만 시험)
+var DRILL_FEED_V     = 5, DRILL_FEED_A = 20;   // 진입 속도 — 매우 느리게 [확인필요]
+var DONE_BIN_POSE    = null;       // 완료 빈 — 티칭
+
 // --- 모션 ---
 var V_FAST = 100, A_FAST = 1000;   // 이동
 var V_SLOW = 20,  A_SLOW = 100;    // ⭐ 접근/후퇴 — 협력사 예시 값(검증됨)
@@ -479,6 +495,85 @@ function runGripperOnly() {
     console.log('✅ 개폐 3회 — 눈으로 확인: 열고 닫히나');
 }
 
+/* ---------------------------------------------------------------------------
+ * 3-B. 드릴링 뼈대 (MODE 'drill') — 🚨 9/4 확인 3개(협력사 프로그램·스핀들 함수명·비트)로 채운다
+ * ------------------------------------------------------------------------- */
+
+/** 스핀들 ON/OFF — 🚨 SPINDLE_API 가 'none' 이면 **호출하지 않고 로그만**(함수명 미확정 상태에서 스핀들을 돌리지 않는다) */
+function spindle(on) {
+    var v = on ? 1 : 0;
+    if (SPINDLE_API === 'redundant') {
+        setRedundantDigitalOutput(SPINDLE_CH, v);              // ko:53 §3.1.4 — D_CONF_OUT 이 이것인지 [확인필요]
+    } else if (SPINDLE_API === 'general') {
+        setGeneralDigitalOutput(SPINDLE_CH, v);                // §3.1.1 — 다른 번호일 수 있다 [확인필요]
+    } else {
+        console.log('⚠️ 스핀들 ' + (on ? 'ON' : 'OFF') + ' — SPINDLE_API="none" 이라 호출 안 함(로그만). 펜던트 I/O 모니터로 함수명 확정 후 바꾼다');
+        return false;
+    }
+    console.log('스핀들 ' + (on ? 'ON' : 'OFF') + ' (' + SPINDLE_API + ' ch' + SPINDLE_CH + ')');
+    return true;
+}
+
+/**
+ * 집은 부품을 드릴 스테이션으로 가져가 (스핀들 ON → 진입 → 후퇴 → OFF) 완료 빈에 놓는다.
+ * 🚨 pickOne 이 성공(부품을 물고 상승)한 직후에만 부른다. DRILL_POSE 가 없으면 아무것도 하지 않는다.
+ * ⭐ 안전 순서 = 스핀들은 **부품을 문 상태에서만 ON**, **후퇴가 끝난 뒤 OFF**, 그리퍼는 **OFF 뒤에만 연다**.
+ */
+function drillOne() {
+    if (!DRILL_POSE) {
+        console.log('🔴 DRILL_POSE 가 비어 있다 — 드릴 스테이션 위 자세를 티칭해 넣어라. 추측값 금지.');
+        return false;
+    }
+    if (DRILL_SUBPROGRAM) {
+        console.log('ℹ️ 협력사 드릴 프로그램 "' + DRILL_SUBPROGRAM + '" 이 있다 — 서브프로그램 호출 함수명 [확인필요]. 아래 자체 시퀀스는 건너뛴다.');
+        return false;
+    }
+    console.log('⑧ 드릴 스테이션 상공으로 이송');
+    if (!safeMoveLinear(liftZ(DRILL_POSE, RETREAT_DZ), V_FAST, A_FAST, '드릴이송')) return false;
+    if (!safeMoveLinear(DRILL_POSE, V_SLOW, A_SLOW, '드릴대기자세')) return false;
+
+    console.log('⑨ 스핀들 ON → 정속 대기 ' + SPINDLE_SPINUP_S + 's');
+    var spinning = spindle(true);
+    sleep(SPINDLE_SPINUP_S);
+
+    if (DRILL_DEPTH_MM > 0) {
+        console.log('⑩ 진입 ' + DRILL_DEPTH_MM + 'mm (느리게 v' + DRILL_FEED_V + ')');
+        var inPose = liftZ(DRILL_POSE, -DRILL_DEPTH_MM);        // 🚨 콜렛이 위를 향한다(9/2 사진) = 부품을 아래로 내린다 [현장 재확인]
+        if (!safeMoveLinear(inPose, DRILL_FEED_V, DRILL_FEED_A, '드릴진입')) { spindle(false); return false; }
+        console.log('⑪ 후퇴');
+        if (!safeMoveLinear(DRILL_POSE, DRILL_FEED_V, DRILL_FEED_A, '드릴후퇴')) { spindle(false); return false; }
+    } else {
+        console.log('⑩ DRILL_DEPTH_MM=0 — 진입 없이 스핀들 ON/OFF 만 시험(의도된 동작)');
+    }
+
+    console.log('⑫ 스핀들 OFF');
+    if (spinning) spindle(false);
+    if (!safeMoveLinear(liftZ(DRILL_POSE, RETREAT_DZ), V_SLOW, A_SLOW, '드릴상공')) return false;
+
+    if (DONE_BIN_POSE) {
+        console.log('⑬ 완료 빈에 놓기');
+        if (!safeMoveLinear(liftZ(DONE_BIN_POSE, RETREAT_DZ), V_FAST, A_FAST, '완료빈이송')) return false;
+        if (!safeMoveLinear(DONE_BIN_POSE, V_SLOW, A_SLOW, '완료빈하강')) return false;
+        gripperOpen();
+        setPayload(PAYLOAD_TOOL);
+        safeMoveLinear(liftZ(DONE_BIN_POSE, RETREAT_DZ), V_SLOW, A_SLOW, '완료빈후퇴');
+    } else {
+        console.log('⑬ DONE_BIN_POSE 없음 — 부품을 물고 정지(의도된 동작)');
+    }
+    return true;
+}
+
+function runDrill() {
+    console.log('=== MODE 4: 집어서 드릴링까지 (티칭 좌표 · 인식 없음) ===');
+    if (!TEACH_POSE) { console.log('🔴 TEACH_POSE 가 비어 있다.'); return; }
+    if (PLACE_POSE) { console.log('🔴 MODE drill 에서는 PLACE_POSE 를 비워라 — pickOne 이 먼저 놓아버린다.'); return; }
+    gripperInit();
+    setPayload(PAYLOAD_TOOL);
+    if (!pickOne(TEACH_POSE)) { console.log('🔴 파지 실패 — 드릴링 진행 안 함'); return; }
+    var ok = drillOne();
+    console.log(ok ? '✅ 집어서 드릴링까지 완료' : '🔴 드릴링 단계 실패/미완');
+}
+
 function runTeach() {
     console.log('=== MODE 2: 티칭 좌표로 파지 (인식 없음) ===');
     if (!TEACH_POSE) {
@@ -533,6 +628,7 @@ console.log('MODE = ' + MODE + ' / 그리퍼 = ' + GRIPPER_MODE);
 if (MODE === 'iomap')        runIoMap();
 else if (MODE === 'gripper') runGripperOnly();
 else if (MODE === 'teach')   runTeach();
+else if (MODE === 'drill')   runDrill();
 else if (MODE === 'vision')  runVision();
 else console.log('🔴 MODE 오류: ' + MODE);
 
