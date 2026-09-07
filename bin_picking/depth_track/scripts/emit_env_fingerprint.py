@@ -59,7 +59,9 @@ def git_head(repo):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
-    ap.add_argument("--ckpt", default="bin_picking/models/T100_best.pt")
+    # 🚨 [9/7] 기본값을 없앴다 — T100 기본값이 있던 탓에 9/4 OVN2 기준선의 env.json 에 T100 md5 가 적혔다
+    #    (결과는 OVN2 로 맞았고 지문만 틀림). "지문이 있다"≠"지문이 맞는 것을 가리킨다" ⇒ 실제 쓴 체크포인트를 반드시 넘긴다
+    ap.add_argument("--ckpt", required=True, help="E2E 에 실제로 넘긴 --checkpoint 경로 (기본값 없음)")
     ap.add_argument("--repo", default=".")
     args = ap.parse_args()
 

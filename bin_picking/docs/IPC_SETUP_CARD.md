@@ -16,7 +16,7 @@
 
 ```powershell
 # 3번 실제 명령
-scp -P 5533 jtm@<6000_IP>:/data/jtm/ipc_transfer_0828.tar.gz C:\ipc_bundle\
+scp -P 5533 <user>@<6000_IP>:/data/jtm/ipc_transfer_0828.tar.gz C:\ipc_bundle\
 cd C:\ipc_bundle ; tar -xzf ipc_transfer_0828.tar.gz
 ```
 
@@ -145,7 +145,7 @@ python bin_picking\src\run_binpick_e2e.py ^
   --out-dir ipc5
 
 # 환경 지문
-python bin_picking\depth_track\scripts\emit_env_fingerprint.py --out ipc5\env.json
+python bin_picking\depth_track\scripts\emit_env_fingerprint.py --out ipc5\env.json --ckpt <E2E에 넘긴 --checkpoint 경로>   # 🚨 9/7: --ckpt 필수(기본값 제거)
 ```
 
 ### 🅱️ 자동 대조 — 사람이 눈으로 비교하지 않는다
