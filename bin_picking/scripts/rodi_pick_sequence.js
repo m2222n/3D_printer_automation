@@ -66,6 +66,8 @@ var GRIPPER_MODE = 'gen_dio';  // 'gen_dio'(교안 기준·기본) | 'dio'(툴 I
 var GRIP_OUT_CH = [0, 1, 2, 3];                          // OUT-1..OUT-4 → D_GEN_OUT_n  ← 🅐 iomap 결과로 고친다
 var GRIP_IN_CH  = { ready: 0, grasped: 1, error: 2 };    // IN_1(원점·대기 완료)→DI0 · IN_2(파지 완료)→DI1 · IN_3(에러)→DI2
 var IOMAP_DO_CANDIDATES = [0, 1, 2, 3];                  // MODE 'iomap' 이 올려볼 DO — 🚨 단자대 추적 후 그리퍼 선만 남긴다
+// 🚨 Rodi sleep(ms) 는 밀리초다(매뉴얼 §sleep · 9/7 확인). 이 스크립트의 *_S 상수는 초 ⇒ 반드시 sleepS 로 대기한다
+function sleepS(s) { sleep(Math.round(s * 1000)); }
 var IOMAP_DWELL_S = 1.5;                                 // 한 채널 High 유지 시간(눈으로 볼 시간)
 // 🥇🥇 기본값(1번) 그대로 27종을 커버한다 — 9/3 DB 전수 대조로 확인. GUI 설정 없이 금요일 진행 가능.
 //   교안:18 공장 기본값 = 설정위치 3.05 / 외측파지범위 85.00 / 내측 0.00 / 속도 80 / 토크 80 / 입력시간 50ms
@@ -238,7 +240,7 @@ function gripCommand(row, doneKey, label) {
     var wasHigh = gripReadIn(doneKey);
     var sawLow  = !wasHigh;
     gripSetCombo(row);
-    sleep(GRIP_INPUT_TIME_S);
+    sleepS(GRIP_INPUT_TIME_S);
     var waited = 0;
     while (waited < GRIP_TIMEOUT_S) {
         if (gripReadIn('error')) {
@@ -249,7 +251,7 @@ function gripCommand(row, doneKey, label) {
         if (!hi) sawLow = true;
         // 인정 조건 = High 이고 (한 번 Low 를 봤거나 · 최소 동작시간이 지났거나)
         if (hi && (sawLow || waited >= GRIP_MIN_MOTION_S)) return true;
-        sleep(0.05);
+        sleepS(0.05);
         waited += 0.05;
     }
     console.log('⚠️ 그리퍼 완료 신호(' + doneKey + ') 대기 초과 ' + GRIP_TIMEOUT_S + 's — ' + label
@@ -289,7 +291,7 @@ function gripperClose() {
         console.log('🔴 알 수 없는 GRIPPER_MODE: ' + GRIPPER_MODE);
         return false;
     }
-    sleep(GRIP_CLOSE_S);
+    sleepS(GRIP_CLOSE_S);
     return true;
 }
 
@@ -319,7 +321,7 @@ function gripperOpen() {
         console.log('🔴 알 수 없는 GRIPPER_MODE: ' + GRIPPER_MODE);
         return false;
     }
-    sleep(GRIP_OPEN_S);
+    sleepS(GRIP_OPEN_S);
     return true;
 }
 
@@ -462,15 +464,15 @@ function runIoMap() {
         // 전부 Low 로 시작 — 겹치면 조합이 되어 판정이 흐려진다
         var j;
         for (j = 0; j < IOMAP_DO_CANDIDATES.length; j++) setGeneralDigitalOutput(IOMAP_DO_CANDIDATES[j], 0);
-        sleep(GRIP_INPUT_TIME_S);
+        sleepS(GRIP_INPUT_TIME_S);
         console.log('--- DO' + ch + ' 만 High (' + IOMAP_DWELL_S + 's) — 👁️ 그리퍼가 열리나 / 닫히나 / 가만히 있나 ---');
         setGeneralDigitalOutput(ch, 1);
-        sleep(IOMAP_DWELL_S);
+        sleepS(IOMAP_DWELL_S);
         r1 = gripReadIn('ready'); r2 = gripReadIn('grasped'); r3 = gripReadIn('error');
         console.log('    DI 상태: IN_1(대기완료)=' + (r1 ? 1 : 0) + ' IN_2(파지완료)=' + (r2 ? 1 : 0) + ' IN_3(에러)=' + (r3 ? 1 : 0));
         console.log('    해석: IN_1↑=열림(OUT_1 또는 OUT_2) · 빈손이면 IN_3↑=닫힘(OUT_3 또는 OUT_4) · 셋 다 0 이고 안 움직임=그리퍼 아님');
         setGeneralDigitalOutput(ch, 0);
-        sleep(GRIP_INPUT_TIME_S);
+        sleepS(GRIP_INPUT_TIME_S);
     }
     console.log('✅ 끝 — 열림 DO 두 개를 GRIP_OUT_CH[0],[1] 에, 닫힘 DO 두 개를 [2],[3] 에 적고 MODE=gripper 로 간다');
     console.log('   ⚠️ 마지막으로 대기1(열림)을 한 번 보내 조우를 열어 둔다');
@@ -534,7 +536,7 @@ function drillOne() {
 
     console.log('⑨ 스핀들 ON → 정속 대기 ' + SPINDLE_SPINUP_S + 's');
     var spinning = spindle(true);
-    sleep(SPINDLE_SPINUP_S);
+    sleepS(SPINDLE_SPINUP_S);
 
     if (DRILL_DEPTH_MM > 0) {
         console.log('⑩ 진입 ' + DRILL_DEPTH_MM + 'mm (느리게 v' + DRILL_FEED_V + ')');

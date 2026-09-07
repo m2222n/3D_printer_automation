@@ -6,24 +6,25 @@
 var STEP = 'iomap';            // 'iomap' = DO 하나씩 판정  |  'grip' = 열기·닫기 3회
 var CH   = [0, 1, 2, 3];       // 올려볼 DO (iomap) / OUT-1~4 배정 (grip) ← iomap 결과로 채운다: 열림 둘, 닫힘 둘
 var DI   = [0, 1, 2];          // IN_1(대기완료) IN_2(파지완료) IN_3(에러)
-var DWELL = 1.5, MIN_MOVE = 1.0, TMO = 3.0;
+var DWELL = 1.5, MIN_MOVE = 1.0, TMO = 3.0;   // 초
+function sleepS(s) { sleep(Math.round(s * 1000)); }   // 🚨 Rodi sleep(ms) 는 밀리초 — 초→ms 변환 (9/7 매뉴얼 확인)
 
 function din() {
     return 'IN_1=' + getGeneralDigitalInput(DI[0]) + ' IN_2=' + getGeneralDigitalInput(DI[1]) + ' IN_3=' + getGeneralDigitalInput(DI[2]);
 }
-function allLow() { var i; for (i = 0; i < CH.length; i++) setGeneralDigitalOutput(CH[i], 0); sleep(0.05); }
+function allLow() { var i; for (i = 0; i < CH.length; i++) setGeneralDigitalOutput(CH[i], 0); sleepS(0.05); }
 
 // 조합 출력 → 완료신호(doneDi) 대기. IN_1 이 전원 후 이미 High 일 수 있어 "한 번 Low 를 봤거나 MIN_MOVE 경과" 후에만 인정
 function cmd(row, doneDi, label) {
     var sawLow = getGeneralDigitalInput(doneDi) !== 1, i, t = 0, hi;
     for (i = 0; i < 4; i++) setGeneralDigitalOutput(CH[i], row[i]);
-    sleep(0.05);
+    sleepS(0.05);
     while (t < TMO) {
         if (getGeneralDigitalInput(DI[2]) === 1) { console.log('🔴 ' + label + ' 에러(IN_3) — 빈손 파지면 정상'); return false; }
         hi = getGeneralDigitalInput(doneDi) === 1;
         if (!hi) sawLow = true;
         if (hi && (sawLow || t >= MIN_MOVE)) { console.log('✅ ' + label + ' 완료 ' + t.toFixed(2) + 's'); return true; }
-        sleep(0.05); t += 0.05;
+        sleepS(0.05); t += 0.05;
     }
     console.log('⚠️ ' + label + ' 대기 초과 — 채널 배정·배선 의심 · ' + din()); return false;
 }
@@ -33,7 +34,7 @@ if (STEP === 'iomap') {
     for (k = 0; k < CH.length; k++) {
         allLow();
         console.log('--- DO' + CH[k] + ' 만 High ' + DWELL + 's — 👁️ 열리나 / 닫히나 / 가만히? ---');
-        setGeneralDigitalOutput(CH[k], 1); sleep(DWELL);
+        setGeneralDigitalOutput(CH[k], 1); sleepS(DWELL);
         console.log('    ' + din() + '   (IN_1↑=열림=OUT1/2 · 빈손 IN_3↑=닫힘=OUT3/4 · 전부0+무반응=그리퍼 아님)');
     }
     allLow();

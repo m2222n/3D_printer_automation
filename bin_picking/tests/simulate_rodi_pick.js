@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'rodi_pick_sequence.js');
+const SLEEP_UNIT_VIOLATIONS = [];   // [9/7] sleep() 에 1 미만/비정수 인수(=초 단위 호출) 가 들어오면 기록 → 마지막 그물 검사
 
 // ── 가짜 로봇 상태 ────────────────────────────────────────────────────────
 function makeRobot(opts) {
@@ -96,7 +97,13 @@ function buildSandbox(R) {
         // ⭐ 시간이 흐를 때(sleep) 가짜 그리퍼가 DO 패턴을 읽는다 = 교안:18·24 "입력시간"(패턴이 유지된 뒤 판정) 모델.
         //    🚨 DO 를 한 채널씩 쓰는 도중의 과도 패턴(예: 1111→0111 가는 길의 0110=파지5)이 먹히면 안 된다 —
         //    9/3 시뮬이 실제로 이 오작동을 잡았고, 그래서 판정 시점을 "쓸 때"가 아니라 "입력시간이 흐른 뒤"로 뒀다.
-        sleep: (s) => { rec('sleep', [s]); applyGripCombo(R); },
+        // 🚨 [9/7] Rodi 실물 sleep(ms) 는 **밀리초**다(rodi_script_api_manual_ko §sleep). 9/7 이전 시뮬은 초로 가정해
+        //    스크립트의 같은 오해(sleep(0.05)·sleep(1.5))를 통과시켰다 = "테스트와 코드가 같은 오타를 공유"(8/7 형태).
+        //    ⇒ 스텁은 ms 를 받아 초로 환산해 기록(아래 검사들은 초 단위 유지) · 1 미만/비정수 인수 = 초 단위 호출 의심 ⇒ 위반 기록
+        sleep: (ms) => {
+            if (!(ms >= 1) || ms !== Math.round(ms)) SLEEP_UNIT_VIOLATIONS.push(ms);
+            rec('sleep', [ms / 1000]); applyGripCombo(R);
+        },
         halt: () => { rec('halt', []); throw new Error('__HALT__'); },
 
         // ── 툴 플랜지 I/O (ko:58~60) — 비교용 'dio' 모드. 개폐 이벤트를 __gripClose/__gripOpen 으로 남긴다
@@ -483,6 +490,11 @@ console.log('\n⑰ 🔩 MODE drill 뼈대 — 집은 뒤에만 스핀들, 후퇴
 }
 
 console.log('\n' + '='.repeat(62));
+console.log('\n⑯ 🚨 [9/7] sleep 단위 — Rodi sleep(ms) 는 밀리초. 스크립트는 *_S(초) 상수를 sleepS() 로 변환해야 한다');
+check('sleep() 인수는 전부 ms(정수·≥1) — 초 단위 호출(0.05·1.5 등) 0건',
+      SLEEP_UNIT_VIOLATIONS.length === 0,
+      `위반 ${SLEEP_UNIT_VIOLATIONS.length}건: ${SLEEP_UNIT_VIOLATIONS.slice(0, 5).join(', ')} · 실물에선 50ms 가 0.05ms 로 무너져 "대기 초과"가 난다`);
+
 console.log(`  통과 ${pass} / 실패 ${fail}`);
 if (fail === 0) {
     console.log('  ✅ 로직 검증 통과 — 🚨 단 실제 좌표·그리퍼 물리 동작은 현장에서만 확인된다');
