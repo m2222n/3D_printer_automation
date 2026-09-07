@@ -29,7 +29,7 @@ var MODE = 'gripper';          // 'iomap' | 'gripper' | 'teach' | 'vision'  ← 
 
 // --- 소켓 (MODE 'vision') ---
 var SOCK      = 'vision';      // ⭐ 매뉴얼 예제의 소켓명이 실제로 'vision' (ko:172,175,178)
-var SERVER_IP = 'SET_ME';      // 🚨 IPC 의 IP — 금요일에 `ipconfig` 로 확인해 채운다
+var SERVER_IP = 'SET_ME';      // 🚨 IPC 로봇용 포트 IP — ✅ 9/7 실물 확정값은 CLAUDE.local.md / memory robot-network-0907 참조 (리포엔 넣지 않는다)
                                //    (플레이스홀더다. 실제 값을 이 파일에 커밋하지 않는다)
 var SERVER_PORT = 5000;        // pick_socket_server.py DEFAULT_PORT
 var READ_TIMEOUT = 10000;      // 협력사 예시와 동일 10초
