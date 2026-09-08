@@ -198,6 +198,28 @@ function run(R, overrides) {
 }
 
 const names = (R) => R.calls.map(c => c.name);
+
+// ── 스크립트 상수 읽기 ───────────────────────────────────────────────────
+// 🚨 [9/8] 여기 있던 페이로드 기대값(1.5·1.55)이 **하드코딩**이라, 스크립트의 상수를 실제
+//    무게로 고치자 6건이 깨졌다. 값을 두 곳에서 따로 들고 있으면 "상수를 고치는 것"이
+//    "테스트를 깨는 것"이 된다 ⇒ 📌 기대값은 스크립트에서 읽어온다.
+//    ⭐ 단 관계(도구 → 도구+부품 → 도구)는 그대로 검사한다. 그것이 이 검사의 본질이다.
+function constOf(name) {
+    const src = fs.readFileSync(SCRIPT, 'utf8');
+    const m = src.match(new RegExp(`^var ${name}\\s*=\\s*([0-9.]+)\\s*;`, 'm'));
+    if (!m) throw new Error(`상수 ${name} 을 스크립트에서 못 찾음`);
+    return parseFloat(m[1]);
+}
+const PAY_TOOL = constOf('PAYLOAD_TOOL');
+const PAY_PART = constOf('PAYLOAD_PART');
+const PAY_BOTH = Math.round((PAY_TOOL + PAY_PART) * 1e9) / 1e9;
+// 🚨 전제 못박기 — PAYLOAD_PART 가 0 이면 "도구+부품"과 "도구만"이 같아져서
+//    아래 페이로드 검사들이 **통과하면서 아무것도 검증하지 않는다**(훼손 시험에서 실제로 확인).
+//    ⇒ 값을 스크립트에서 읽어오게 만든 대가로 이 전제가 필요해졌다.
+if (!(PAY_PART > 0)) {
+    console.error(`🔴 PAYLOAD_PART=${PAY_PART} — 0 이면 페이로드 증가 검사가 무력화된다. 부품 무게는 0보다 커야 한다.`);
+    process.exit(1);
+}
 // 개폐 이벤트(모드 무관): dio 는 setToolDigitalOutput 에서, gen_dio 는 조합 판정에서 남긴다
 const gripEvents = (R) => R.calls.filter(c => c.name === '__gripOpen' || c.name === '__gripClose');
 let pass = 0, fail = 0;
@@ -217,7 +239,7 @@ console.log('① MODE gripper — 로봇이 움직이지 않아야 한다 (기�
     check('개폐 6회 (닫기3+열기3)', ev.filter(c => c.name === '__gripClose').length === 3
                                    && ev.filter(c => c.name === '__gripOpen').length === 3,
           `이벤트 ${ev.map(c => c.name).join(',')}`);
-    check('setPayload 로 도구 무게 설정', R.payload === 1.5);
+    check('setPayload 로 도구 무게 설정', R.payload === PAY_TOOL, `실제 ${R.payload} / 기대 ${PAY_TOOL}`);
     check('파지 입력(IN_2=DI1) 조회 ≥3회',
           R.calls.filter(c => c.name === 'getGeneralDigitalInput' && c.args[0] === 1).length >= 3);
     check('🚨 기본 모드는 툴 I/O 를 건드리지 않는다', !n.includes('setToolDigitalOutput'),
@@ -238,14 +260,14 @@ console.log('\n③ MODE teach + 좌표 — 파지 순서가 맞아야 한다');
     const iOpen  = R.calls.findIndex(c => c.name === '__gripOpen');
     const iDown  = R.calls.findIndex((c, k) => c.name === 'moveLinear' && k > iOpen);
     const iClose = R.calls.findIndex(c => c.name === '__gripClose');
-    const iPay   = R.calls.findIndex(c => c.name === 'setPayload' && c.args[0] > 1.5);
+    const iPay   = R.calls.findIndex(c => c.name === 'setPayload' && c.args[0] > PAY_TOOL);
     const iLift  = R.calls.findIndex((c, k) => c.name === 'moveLinear' && k > iPay);
 
     check('열기 → 하강 → 닫기 순서', iOpen < iDown && iDown < iClose,
           `open=${iOpen} down=${iDown} close=${iClose}`);
     check('⭐ setPayload 가 닫기 뒤 · 상승 앞 (ko:129)', iClose < iPay && iPay < iLift,
           `close=${iClose} pay=${iPay} lift=${iLift}`);
-    check('페이로드 = 도구+부품 = 1.55', Math.abs(R.payload - 1.55) < 1e-9, `실제 ${R.payload}`);
+    check(`페이로드 = 도구+부품 = ${PAY_BOTH}`, Math.abs(R.payload - PAY_BOTH) < 1e-9, `실제 ${R.payload}`);
     check('매 이동마다 checkRunnableMotion',
           n.filter(x => x === 'checkRunnableMotion').length === n.filter(x => x === 'moveLinear').length);
     check('파지 성공 로그', R.log.some(l => l.includes('🟢 잡았다')));
@@ -265,7 +287,7 @@ console.log('\n④ 🚨 파지 실패 — 페이로드 복원 + 그리퍼 열기
     const R = run(makeRobot({ graspWillSucceed: false }),
                   { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
     check('실패 로그', R.log.some(l => l.includes('🔴 놓쳤다')));
-    check('⭐ 페이로드가 도구만으로 복원', R.payload === 1.5, `실제 ${R.payload}`);
+    check('⭐ 페이로드가 도구만으로 복원', R.payload === PAY_TOOL, `실제 ${R.payload} / 기대 ${PAY_TOOL}`);
     const last = gripEvents(R).pop();
     check('마지막 그리퍼 동작 = 열기(교안:25 대기위치 복귀)', last && last.name === '__gripOpen');
     check('에러(IN_3)를 로그로 알린다', R.log.some(l => l.includes('그리퍼 에러(IN_3)')),
@@ -293,7 +315,7 @@ console.log('\n⑥ 🚨 도달 불가 — 멈추고 진행하지 않아야 한�
     check('닫기(파지) 시도 안 함',
           !R.calls.some(c => c.name === '__gripClose'),
           '하강이 막혔는데 그리퍼를 닫으면 허공에서 닫는다');
-    check('페이로드 증가 없음', R.payload === 1.5);
+    check('페이로드 증가 없음', R.payload === PAY_TOOL, `실제 ${R.payload} / 기대 ${PAY_TOOL}`);
 }
 
 console.log('\n⑦ MODE vision — 소켓 골격이 협력사 예시와 같아야 한다');
@@ -400,7 +422,7 @@ console.log('\n⑫ 🚨 gen_dio 파지 실패 — 그리퍼가 IN_3(에러)를 �
     const ev = gripEvents(R);
     check('마지막 동작 = 대기 조합(열기) — 에러 후 대기위치 복귀', ev.length > 0 && ev[ev.length - 1].name === '__gripOpen',
           `이벤트 ${ev.map(c => c.args[2] || c.args[0]).join(',')}`);
-    check('페이로드 복원 1.5', R.payload === 1.5);
+    check(`페이로드 복원 ${PAY_TOOL}`, R.payload === PAY_TOOL, `실제 ${R.payload}`);
     check('놓기(PLACE) 이동을 하지 않았다', R.calls.filter(c => c.name === 'moveLinear').length === 3,
           `moveLinear ${R.calls.filter(c => c.name === 'moveLinear').length}회 (접근·하강·상승만이어야)`);
 }
