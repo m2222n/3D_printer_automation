@@ -544,12 +544,16 @@ A100 평가기가 **7/6자**로 **8/19 동치 처리(`14_13`→`13_variant`)가 
 
 > 8/19에 md 문서를 정리했다. **지운 것보다 "무엇이 대체했고 무엇이 뒤집혔는지"를
 > 적어둔 것이 핵심**이다. 되돌림 = `git tag pre-md-cleanup-0819`.
+> 🆕 **9/8 `memory/` 재구성** — `MEMORY.md`가 27.7KB로 **절단선 24.9KB를 넘어 뒤쪽 두 섹션이 세션에 안 보이고 있었다** ⇒ 파일당 한 줄 포인터(14.3KB)로 · 4건 `archive/` 이동(삭제 0) · `[[링크]]` 불일치 113→0 · 백업 `memory/archive/MEMORY_backup_0908_before_restructure.md` · 상세 `memory/project_memory_restructure_plan_0906.md` §6.
+> 📌 **규율** = 인덱스 한 줄 ≤150B · 내용은 파일에 · **오래 고민한 판정·오류 수정 기록·feedback/reference는 삭제하지 않는다**(태민님 9/6·9/8).
 
 ### 현행 문서 위치
 
 | 용도 | 정본 |
 |---|---|
 | **판단·현황 전체** | `CLAUDE.md`(이 파일) + `CLAUDE.local.md`(주간) + `memory/` |
+| 🆕 **작업 상태·이번 주 계획·절대 금지·회신 대기** | **`CLAUDE.local.md` 「W36 계획」**(전량 로드) — 9/8부터 `MEMORY.md`에는 두지 않는다 |
+| 🆕 **현장 실행표(현행)** | `/data/jtm/handover_0908/실행표_다음출근일.md` — 🚨 `handover_0831/현장카드_0902`는 9/7 이전 전제라 폐기 |
 | 촬영 현장 카드 | `bin_picking/FIELD_CARD_0818.md` |
 | 라벨링 | `bin_picking/LABEL_CARD_0819.md` |
 | P0 완료 기록(7/28~30) | `bin_picking/docs/P0_0728_0730_완료기록.md` |
@@ -3456,25 +3460,26 @@ T100_csblur_lr1e4_ep80/best.pt
 
 ---
 
-## ⭐ Notion 마스터 페이지 — Robot Arm Factory (2026-05-26 전면 갱신)
+## ⭐ Notion 마스터 페이지 — Robot Arm Factory (2026-09-08 최신화 · 이전 8/24)
 
 > ⚠️ **2026-06-09 개편 → 2026-08-21 재확정**(위 § 보고 체계 참조 = **일일 폐지·주간만**).
-> 아래 Robot Arm Factory 페이지는 프로젝트 개요용으로 유지.
+> 아래 Robot Arm Factory 페이지는 프로젝트 개요용으로 유지 — **회의·보고의 참조 페이지**이므로 큰 진척마다 갱신한다.
 
-**위치**: `notion.so/orinu/Robot-Arm-Factory-60d973ebb99942c8852017d39d58e6f6`
-- 부모: orinu HQ > Physical AI Engineering Hub
-- 5/26 MCP 복구 + 일괄 갱신 완료
+**위치(9/8 fetch 기준)**: `app.notion.com/p/453e6ea732a982cb89f7818ce97544cd` · 경로 `orinu new / PROJECT / Project Dashboard / Physical AI Engineering Hub`
+- 🚨 **ID는 항상 fetch로 확인하고 쓴다** — 메모리에 적힌 옛 ID(`be3a7d64…`·`60d973eb…`)는 워크스페이스 이전 뒤 이 페이지가 아니다. 현재 ID 전부 = `memory/project_notion_company_pages.md`
 
-**구성**:
-- 본문 callout 8섹션: 전체 프로젝트 구조 / Hardware / Phase 별 현황 / 후공정 빈피킹 학습 진척 / 데이터 수집 전략 / KAIST / 향후 로드맵 / Operational
-- Plans & Roadmap DB: 9 rows (Phase 1~3 완료 + 전공정 그리퍼/시연 + 후공정 학습/카메라/좌표/시연)
-- Tasks DB: 20 rows (5/26~28 P0 6건 + 5/29 P0/P1 6건 + 6월~ 백로그 8건)
-- Issues & Risks DB: 10 rows (도메인 갭 High + Part5 정체 + ACE2 + IPC-510 + 등)
+**구성(9/8)**:
+- 본문 콜아웃 = 0 목표(완성물 6·정량목표 5 · 상태 9/8) / 0.1 현재 상태(🎯 **성공 정의 ①②③④ 표** · 산출물 3 진행도 · 모델 확정 수치 + 경고 병기 · 확인 대기) / 0.2 공정·범위(8/5 개발 범위 vs 9/2 시연 목표 · 8/28 레이아웃 Fix · 9/2 회의 · 발주·테바 종결) / 1 Hardware / 2 Phase 현황 / 3 빈피킹 상세(3.5 리그립 판정 · 3.6 허용하중 정정 · 3.7 9/7 실물 연동) / 4 로드맵 / 5~6 / 7 이력(11·12절 추가)
+- **Plans & Roadmap** 19 rows — 9/8 8갱신·3신설(취소였던 **빈피킹 실물 연동 → 진행** · 위험이던 **인식 정확도 → 완료 F1 0.8798** · 치수검사 위험→진행 · 웹 전달·발주·좌표 인터페이스 완료 · 신설 = 테바 종결·카메라 팔 장착·Lite MES ⑤)
+- **Tasks** 50 rows — 9/8 8갱신·16신설(**P0 = ③ 한 개 집기 9/9 · ④ 드릴까지 9/18** · 완료 10건 기록 · 범위 밖이던 hand-eye는 P1 할 일로)
+- **Issues & Risks** 28 rows — 9/8 3갱신·12신설(해결 6 = 통신 주소·대기 단위·각도 0·허용하중·파지 도구 여유·레이아웃 / 열림 = 리그립 공정 결정·카메라 랜선·공차·무동작 원인 / Thor 조사→완화)
+- 하위 페이지 = 「공장 현재 상태 — 장비·치수·사진(테바 전달용)」 + 「설계 요구」 · 구매 물품 · 자동화 기획
 
-**명명 규칙 (사용자 5/26 결정)**:
-- ✅ Notion = **"한솔코에버"** 실명 OK
+**명명·보안 규칙 (5/26 → 9/4 갱신)**:
+- ✅ Notion = **업체 실명 OK**(한솔코에버·테바·재원텍·주강로보테크·와이티솔루션) · 🔴 **인물은 익명**("협력사 담당자") · 🔴 **IP·도메인·경로·금액 ✗**(9/8 DB 행 1건 정정)
 - ❌ GitHub/README/외부 출력물 = "협력사" 유지 (보안 원칙 그대로)
 - 메모리/CLAUDE.md = 자유
+- 📌 **편집 규율** = `replace_content`는 하위 DB·자식 페이지 블록을 `new_str`에 그대로 포함 · **큰 교체 후 fetch 검수 필수**(9/8엔 자동변환 깨짐 0건이었으나 **내 오타**를 잡았다) · DB는 `update_properties`/`create-pages`(한 콜 16건 OK) · 검수는 SQL `substr(Notes,1,120)` · 기존 행 삭제 0(경위는 이름·Notes로)
 
 **Notion MCP 연결**:
 - VSCode `claude.ai Notion` MCP 활성
