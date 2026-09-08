@@ -3678,7 +3678,7 @@ v2의 두 약점을 v3가 푼다:
 
 ### ⭐ 대표님 빈피킹 2시나리오 (6/1) + 개발 전략
 - **① 정렬형**(occlusion 약함) **먼저** YOLO bbox/seg+4DoF로 E2E → **② 적재형**(occlusion 심함)은 seg+depth+grasp로 단계 확장 → [[binpicking-two-scenarios-0601]]
-- 본인 생존 전략(지시 아님): **빈피킹 = 회사 ↔ KAIST 연계 개발** (1인+화/목 부재, 두 트랙 한 작업으로) → [[feedback-binpicking-kaist-linkage]]
+- 본인 생존 전략(지시 아님): **빈피킹 = 회사 ↔ KAIST 연계 개발** (1인+화/목 부재, 두 트랙 한 작업으로) → [[binpicking-two-scenarios-0601]]
 
 ### 한솔 머지 6·7차 — ✅ 공장 배포 완료
 - 6차 `310087d`(시뮬 동결 fix, 6/4) / 7차 `5288396`(robot.py 실 TCP I/O, 6/8). ⚠️ 예승님 커밋은 **personal/hansol-dev**에 올라옴 → 머지 시 personal 먼저 확인 → [[hansol-merge-issues]]
@@ -4248,7 +4248,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 - `src/main_pipeline.py` — L1~L6 통합
 - `tests/test_e2e_redwood.py` + `tests/test_e2e_cad_matching.py`
 
-상세 파일 목록 / 줄 수 / 역할: `memory/project_binpicking_overview.md` + `memory/project_binpicking_e2e_history.md`
+상세 파일 목록 / 줄 수 / 역할: `memory/project_binpicking_overview.md` + `memory/archive/project_binpicking_e2e_history.md`
 
 ### 남은 개발 작업
 
@@ -4461,7 +4461,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-03 (W11~W13) | Phase 4 (OpenMV→MaixCAM) + 한솔 PR + WireGuard | 🔄 MaixCAM 후순위 |
 | 2026-03-27 | 한솔코에버 최종 시연 | ✅ 한솔 자체 진행 |
 | 2026-04-03 | 한솔 머지 1차 (`9c161dc`) — 김기원 코드 통합 | ✅ — `memory/project_hansol_merge_issues.md` |
-| 2026-04-06~10 | 빈피킹 W3+ 파이프라인 완성 (L1~L6 + 그래스프 DB 29종) | ✅ — `memory/project_binpicking_overview.md` + `memory/project_binpicking_e2e_history.md` |
+| 2026-04-06~10 | 빈피킹 W3+ 파이프라인 완성 (L1~L6 + 그래스프 DB 29종) | ✅ — `memory/project_binpicking_overview.md` + `memory/archive/project_binpicking_e2e_history.md` |
 | 2026-04-13~14 | RealSense D435 라이브 연동 + Full Pipeline PASS | ✅ — `memory/project_realsense_d435.md` |
 | 2026-04-14 | HCR-10L 로봇 교육 1회차 (펜던트 + Modbus TCP) | ✅ — `memory/reference_hcr_user_education.md` |
 | 2026-04-15 | Modbus INT16 재설계 + Colored ICP + Basler 듀얼 캡처 모듈 | ✅ — 카메라 입고 전 SW 마무리 |
