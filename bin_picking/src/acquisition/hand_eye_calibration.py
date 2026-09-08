@@ -54,7 +54,20 @@ Hand-Eye Calibration for 3D Bin Picking System
 카메라 입고 후 이 코드를 바로 실행하여 캘리브레이션 수행
 (카메라 입고 예상: 2026년 5월)
 
-HCR-10L 로봇 포즈 읽기 (Modbus TCP):
+🚨🚨 [2026-09-08 정정] 아래 Modbus 절은 **참고 예시이고 이 파일의 전제가 아니다.**
+    이 모듈은 `pymodbus` 를 import 하지 않고 로봇에 접속하지도 않는다.
+    포즈는 `add_measurement(robot_pose_4x4, image)` 의 **인자로 받는다** ⇒ 통신 방식과 무관하다.
+
+    ⚠️ 이 주석 때문에 `docs/HAND_EYE_CARD.md` 가 *"기존 파일은 Modbus 전제라 못 쓴다"* 로
+    적었고 그것이 판단을 흐렸다. **빈피킹 좌표에 Modbus 를 쓰지 않기로 한 결정(7/31)은
+    이 파일을 무효화하지 않는다** — 계산 코어는 통신 중립이라 그대로 살아난다.
+
+    🥇 현행 경로(9/7 실물 검증) = **로봇 펜던트가 클라이언트로 IPC:5000 에 접속**한다.
+    즉 PC 가 로봇에게 물어볼 수 없고 **로봇이 보고해야 한다** ⇒ 펜던트에서
+    `getCurrentPose('tcp')`(ko:203) → `socketSendLine` 으로 보내는 경로가 필요하다.
+    📌 부품은 셋 다 검증됐다(`getCurrentPose` 사용중 · `socketSendLine` 왕복 2/2) ⇒ **신설이 아니라 조립**.
+
+[참고 · 미사용] HCR-10L 로봇 포즈 읽기 (Modbus TCP):
     - 통신: Modbus TCP, 포트 502
     - 관절 각도: Input Register 영역
     - 레지스터 레이아웃 (HCR-10L, 6축):
@@ -638,8 +651,19 @@ class HandEyeCalibrator:
 
         Returns:
             재투영 오차 (pixels), 체커보드 미검출 시 None
+
+        🚨🚨 [2026-09-08] 이 함수는 **hand-eye 결과를 검증하지 않는다.**
+            아래 계산은 solvePnP -> projectPoints 왕복이라 **카메라 intrinsic 만 검증**하고
+            self.T_cam_to_base / T_cam_to_gripper 를 실제로 쓰지 않는다
+            (T_base_to_cam 을 구해놓고 투영에 넣지 않는다).
+            ⇒ 이 값이 작다고 캘리브가 맞은 것이 아니다. **오해를 막으려고 이 주석을 남긴다.**
+            🥇 진짜 검증은 `docs/HAND_EYE_CARD.md` §4 검산② = **캘리브에 쓰지 않은 새 점 하나**를
+            예측 vs 실측으로 대조하는 것이고, 그것은 로봇 앞에서만 된다.
         """
-        if self.T_cam_to_base is None:
+        # 🐛 [2026-09-08 수정] eye-in-hand 모드에서는 T_cam_to_base 가 영구히 None 이라
+        #    기존 조건이 **항상 예외**를 던졌다(calibrate/transform_to_base/save 에는 모드 분기가
+        #    있는데 여기만 빠져 있었다). 두 모드의 산출물 중 하나라도 있으면 통과시킨다.
+        if self.T_cam_to_base is None and self.T_cam_to_gripper is None:
             raise RuntimeError("캘리브레이션이 수행되지 않았습니다.")
 
         if len(camera_image.shape) == 3:
@@ -655,10 +679,9 @@ class HandEyeCalibrator:
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
         corners_refined = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
 
-        # 체커보드 3D 좌표 → 베이스 → 카메라로 변환하여 투영
-        # 경로: board → gripper → base → camera
-        # T_cam_to_base 역행렬 = T_base_to_cam
-        T_base_to_cam = np.linalg.inv(self.T_cam_to_base)
+        # 🐛 [2026-09-08] 여기 있던 `T_base_to_cam = inv(self.T_cam_to_base)` 를 제거했다 —
+        #    계산해놓고 아래 투영에 쓰지 않았고(죽은 코드), eye-in-hand 에서는 None 이라 터졌다.
+        #    ⇒ 아래는 intrinsic 재투영 검사다. hand-eye 검증이 아니다(docstring 참조).
 
         # solvePnP로 실제 카메라-보드 변환 구하기
         success, rvec, tvec = cv2.solvePnP(
