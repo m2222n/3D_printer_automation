@@ -304,3 +304,14 @@ $ python src/acquisition/work_coord_3point.py
 ⇒ 🎯 **전환 시점 판단** = **코드 준비는 지금 재택으로 가능**하고(위 전부 로봇 없이 된다),
 **현장 실행은 ③ 한 개 집기가 선행**이다. 🅿️ **③이 되기 전에 이 트랙을 벌리지 않는다.**
 ✅ **[9/9] ③ 달성 → [9/10] 위 2건 코드 완료** ⇒ 트랙이 열렸다. 순서 = 9/11 카메라 팔 장착 + 왕복 시험 → 9/14 샘플 채집 → 계산.
+
+### 🥇 [9/10 저녁] 더 짧은 길 — **촬영 자세를 하나로 고정하면 이 카드의 3점법(§3)이 그대로 쓰인다**
+카메라가 팔에 달려도 **항상 같은 `P_capture` 에서만 찍으면 카메라는 사실상 고정**이다 ⇒ 체커보드·`calibrateHandEye`·자세 15개·scipy 가 필요 없고,
+**8/8 검증된 `work_coord_3point.solve_rigid_transform`** 으로 끝난다. eye-in-hand 일반해(`T_tcp_cam`)는 나중에 `T_base_tcp(P_capture)⁻¹ × T_cam_base` 로 뽑으면 된다.
+🚨 대가 = **`P_capture` 를 바꾸면 캘리브 무효**(재실행 3분). 촬영 자세가 하나뿐인 지금 단계엔 이게 맞다.
+
+**§3 🅑 "카메라로 같은 점 보기" 의 실제 도구** = **`tests/find_calib_blobs.py`**(9/10 신설 · self-test 7/7)
+- 테이프 십자는 depth 에 안 보인다 ⇒ **각진 작은 블록 3~4개**를 바닥에 놓는다(높이 ≥ 8mm · 윗면 평평)
+- `P_capture` 에서 grab → `python bin_picking/tests/find_calib_blobs.py --depth shot.npy` → 블록별 **윗면 중심의 카메라 3D(mm)** 표 + json
+- 같은 블록 **윗면 중심에 TCP 를 대고** `getCurrentPose` 를 id 순서대로 적는다 → §3 🅒 그대로 → 잔차 RMS < 3mm 통과
+⇒ 📌 **9/14 계획 = 이 경로(3점법 + 블록)가 1순위**, `calib_pose_server` 샘플 채집은 P_capture 를 여러 개 쓰게 될 때의 일반해용으로 남긴다.
