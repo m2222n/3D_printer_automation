@@ -41,9 +41,15 @@ function makeRobot(opts) {
         // rs485 시나리오: 스크립트에 넣은 GRIP_REG 와 같은 값을 스텁도 알아야 한다
         regCmd: opts.regCmd !== undefined ? opts.regCmd : 0x0100,
         regCloseVal: opts.regCloseVal !== undefined ? opts.regCloseVal : 1,
+        // [9/10] MODE calib 시나리오 — 서버가 돌려주는 한 줄(기본은 vision 모드용 포즈 배열)
+        socketReply: opts.socketReply,
         log: [],
     };
 }
+
+// ⭐ [9/10] 9/9 실물 = 완료 신호를 못 쓴다(IN_1 안 뜸 · IN_2 는 물어도 뜸) ⇒ 스크립트 기본이 GRIP_FEEDBACK='none'.
+//    아래 "신호 판정" 검사들은 GUI 재설정 뒤 되살릴 경로이므로 'signal' 을 명시해 돌린다. 기본값 경로는 ⑱·⑲ 에서 따로 검사한다.
+const SIG = { GRIP_FEEDBACK: 'signal' };
 
 // ── 교안:6 신호조합표 (시뮬 독립 사본 · 스크립트 표와 별개로 옮겼다) ────────
 const JRT_STANDBY = ['1000', '0100', '1100', '1110', '1111'];                       // 대기 1~5
@@ -164,7 +170,7 @@ function buildSandbox(R) {
         socketCreate: (...a) => rec('socketCreate', a),
         socketOpen: (...a) => rec('socketOpen', a),
         socketWaitConnection: (...a) => rec('socketWaitConnection', a),
-        socketReadLine: () => JSON.stringify([[400, 50, 250, 180, 0, 0]]),
+        socketReadLine: (...a) => { rec('socketReadLine', a); return R.socketReply !== undefined ? R.socketReply : JSON.stringify([[400, 50, 250, 180, 0, 0]]); },
         socketSendLine: (...a) => rec('socketSendLine', a),
         socketDisconnect: (...a) => rec('socketDisconnect', a),
     };
@@ -229,9 +235,9 @@ function check(label, cond, detail) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-console.log('① MODE gripper — 로봇이 움직이지 않아야 한다 (기본 = gen_dio · 교안 신호조합)');
+console.log('① MODE gripper — 로봇이 움직이지 않아야 한다 (gen_dio · 교안 신호조합 · 신호 판정 경로)');
 {
-    const R = run(makeRobot(), { MODE: 'gripper' });
+    const R = run(makeRobot(), Object.assign({ MODE: 'gripper' }, SIG));
     const n = names(R);
     check('moveLinear 호출 0건', !n.includes('moveLinear'),
           `실제 ${n.filter(x => x === 'moveLinear').length}건`);
@@ -253,9 +259,9 @@ console.log('\n② MODE teach — TEACH_POSE 가 없으면 아무것도 하지 �
     check('경고 출력', R.log.some(l => l.includes('TEACH_POSE 가 비어')));
 }
 
-console.log('\n③ MODE teach + 좌표 — 파지 순서가 맞아야 한다');
+console.log('\n③ MODE teach + 좌표 — 파지 순서가 맞아야 한다 (신호 판정 경로)');
 {
-    const R = run(makeRobot(), { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
+    const R = run(makeRobot(), Object.assign({ MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] }, SIG));
     const n = names(R);
     const iOpen  = R.calls.findIndex(c => c.name === '__gripOpen');
     const iDown  = R.calls.findIndex((c, k) => c.name === 'moveLinear' && k > iOpen);
@@ -285,7 +291,7 @@ console.log('\n③ MODE teach + 좌표 — 파지 순서가 맞아야 한다');
 console.log('\n④ 🚨 파지 실패 — 페이로드 복원 + 그리퍼 열기까지 해야 한다');
 {
     const R = run(makeRobot({ graspWillSucceed: false }),
-                  { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
+                  Object.assign({ MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] }, SIG));
     check('실패 로그', R.log.some(l => l.includes('🔴 놓쳤다')));
     check('⭐ 페이로드가 도구만으로 복원', R.payload === PAY_TOOL, `실제 ${R.payload} / 기대 ${PAY_TOOL}`);
     const last = gripEvents(R).pop();
@@ -297,7 +303,7 @@ console.log('\n④ 🚨 파지 실패 — 페이로드 복원 + 그리퍼 열기
 console.log('\n⑤ 🚨 파지 센서 배선 없음 — "놓쳤다"로 오판하지 않아야 한다');
 {
     const R = run(makeRobot({ hasGraspSensor: false }),
-                  { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
+                  Object.assign({ MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] }, SIG));
     // 상태선(IN_1~3)이 없으면 완료 신호가 영원히 안 와서 "놓쳤다"가 된다 —
     // 이것이 실제 위험이라 드러내는 것이 목적이다
     const missed = R.log.some(l => l.includes('🔴 놓쳤다'));
@@ -387,20 +393,23 @@ console.log('\n⑩ GRIPPER_MODE serial — 열기·닫기 둘 다 나가야 한�
           'serial 은 피드백 경로가 없다 — "놓쳤다"로 오판하면 안 된다');
 }
 
-console.log('\n⑪ ⭐⭐ GRIPPER_MODE gen_dio — 교안:6 신호조합으로 개폐한다 (단일 채널 토글이 아니다)');
+console.log('\n⑪ ⭐⭐ GRIPPER_MODE gen_dio — 교안:6 신호조합으로 개폐한다 (단일 채널 토글이 아니다 · 신호 판정 경로)');
 {
-    const R = run(makeRobot(), { MODE: 'gripper', GRIPPER_MODE: 'gen_dio' });
+    const R = run(makeRobot(), Object.assign({ MODE: 'gripper', GRIPPER_MODE: 'gen_dio' }, SIG));
     const g  = R.calls.filter(c => c.name === 'setGeneralDigitalOutput');
     const ev = gripEvents(R);
     check('OUT-1~4 = DO0~3 네 채널만 쓴다',
           g.length > 0 && g.every(c => c.args[0] >= 0 && c.args[0] <= 3)
                        && new Set(g.map(c => c.args[0])).size === 4,
           `사용 채널 ${[...new Set(g.map(c => c.args[0]))].join(',')}`);
-    check('명령 1회 = 4채널 쓰기 (6회 명령 = 24회)', g.length === 24, `실제 ${g.length}회`);
-    check('닫기 3회 = 파지1 조합(0010)', ev.filter(c => c.name === '__gripClose' && c.args[1] === '0010').length === 3,
+    // [9/10] 펄스 = 전부Low(4) + High(1) + 전부Low(4) = 9회/명령 ⇒ 6회 명령 = 54회 (9/9 GUI Reverse 와 같은 형태)
+    check('명령 1회 = 펄스 9회 쓰기 (전부Low4 + High1 + 전부Low4) · 6회 명령 = 54회', g.length === 54, `실제 ${g.length}회`);
+    // [9/9 실물] 포인트 2 = 대기2(0100) · 파지2(0001) — 협력사 GUI 설정으로 대기1·파지1 은 쓰지 않는다
+    check('닫기 3회 = 파지2 조합(0001) [9/9 실물값]', ev.filter(c => c.name === '__gripClose' && c.args[1] === '0001').length === 3,
           `이벤트 ${ev.map(c => c.args[2]).join(',')}`);
-    check('열기 3회 = 대기1 조합(1000)', ev.filter(c => c.name === '__gripOpen' && c.args[1] === '1000').length === 3);
+    check('열기 3회 = 대기2 조합(0100) [9/9 실물값]', ev.filter(c => c.name === '__gripOpen' && c.args[1] === '0100').length === 3);
     check('마지막은 열기', ev[ev.length - 1].name === '__gripOpen');
+    check('🚨 펄스 뒤 DO 는 전부 Low 로 돌아온다(잔류 High 0)', R.gripOut.join('') === '0000', `최종 DO ${R.gripOut.join('')}`);
     check('교안:24 입력시간 50ms 를 조합 출력 뒤에 둔다',
           R.calls.some(c => c.name === 'sleep' && Math.abs(c.args[0] - 0.05) < 1e-9));
     check('파지 완료는 IN_2 = DI1 로 읽는다',
@@ -413,10 +422,10 @@ console.log('\n⑪ ⭐⭐ GRIPPER_MODE gen_dio — 교안:6 신호조합으로 �
     check('파지 입력이 true 로 읽힌다(가짜 그리퍼가 IN_2 를 올림)', R.log.some(l => l.includes('파지 입력 = true')));
 }
 
-console.log('\n⑫ 🚨 gen_dio 파지 실패 — 그리퍼가 IN_3(에러)를 올리면 교안:25 대로 대기위치로 복귀해야 한다');
+console.log('\n⑫ 🚨 gen_dio 파지 실패 — 그리퍼가 IN_3(에러)를 올리면 교안:25 대로 대기위치로 복귀해야 한다 (신호 판정 경로)');
 {
     const R = run(makeRobot({ graspWillSucceed: false }),
-                  { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
+                  Object.assign({ MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] }, SIG));
     check('에러(IN_3) 감지 로그', R.log.some(l => l.includes('그리퍼 에러(IN_3)')));
     check('"놓쳤다" 판정', R.log.some(l => l.includes('🔴 놓쳤다')));
     const ev = gripEvents(R);
@@ -461,7 +470,11 @@ console.log('\n⑮ 🥇 MODE iomap — DO 를 하나씩만 올려 채널을 판�
     check('🚨 어느 시점에도 High 인 DO 는 1개 이하', maxHigh <= 1, `최대 동시 High ${maxHigh}`);
     check('DO0~3 을 각각 한 번씩 올렸다', [0, 1, 2, 3].every(ch => highs.filter(h => h === ch).length >= 1), `High 순서 ${highs.join(',')}`);
     check('각 채널마다 DI 세 개를 읽어 기록한다', R.log.filter(l => l.includes('IN_1(대기완료)=')).length === 4);
-    check('마지막은 대기1(열림)으로 조우를 열어 둔다', R.gripOut.join('') === '1000', `최종 DO ${R.gripOut.join('')}`);
+    // [9/10] 마지막 gripperOpen 은 펄스 → 이벤트는 대기2(0100) 로 남고 DO 는 0000 으로 돌아온다
+    const lastEv = gripEvents(R).pop();
+    check('마지막은 대기2(열림) 펄스로 조우를 열어 둔다', lastEv && lastEv.name === '__gripOpen' && lastEv.args[1] === '0100',
+          lastEv ? `${lastEv.name} ${lastEv.args[1]}` : '개폐 이벤트 없음');
+    check('펄스 뒤 DO 는 전부 Low', R.gripOut.join('') === '0000', `최종 DO ${R.gripOut.join('')}`);
     check('로그에 열림/닫힘/무반응 해석 안내가 있다', R.log.some(l => l.includes('그리퍼 아님')));
 }
 
@@ -470,13 +483,15 @@ console.log('\n⑯ 🚨 완료 신호가 "이미 High" — 전원 직후 IN_1 �
     // 가짜 그리퍼는 대기 명령에도 IN_1 을 계속 High 로 둔다(에지 없음) ⇒ 스크립트는 최소 동작시간을 채워야만 인정해야 한다
     // ⭐ 이 상황이 실제로 물리는 곳 = pickOne 의 첫 동작 "② 그리퍼 열기" (MODE gripper 는 닫기부터라 안 걸린다 — 첫 시도에서 그렇게 배웠다)
     const sumSleep = (R) => R.calls.filter(c => c.name === 'sleep').reduce((a, c) => a + c.args[0], 0);
-    const T = { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] };
+    const T = Object.assign({ MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] }, SIG);   // 신호 판정 경로에서만 의미가 있다
     const Rnorm = run(makeRobot(), T);
     const Redge = run(makeRobot({ readyHighAtStart: true }), T);
     const Rtear = run(makeRobot({ readyHighAtStart: true }), Object.assign({ GRIP_MIN_MOTION_S: 0 }, T));
-    check('평상시(IN_1 Low 로 시작)는 즉시 인정 — 총 대기 < 1.0s', sumSleep(Rnorm) < 1.0, `${sumSleep(Rnorm).toFixed(2)}s`);
-    check('⭐ IN_1 이 이미 High 면 최소 동작시간(1.0s)을 채운 뒤에만 하강한다 — 총 대기 ≥ 1.0s', sumSleep(Redge) >= 1.0, `${sumSleep(Redge).toFixed(2)}s`);
-    check('🧪 그물 확인: GRIP_MIN_MOTION_S=0 이면 방어가 사라져 닫힌 조우로 즉시 하강한다(< 1.0s)', sumSleep(Rtear) < 1.0, `${sumSleep(Rtear).toFixed(2)}s`);
+    // [9/10] 펄스(갭 0.3 + High 0.5)가 매 명령에 붙으므로 절대값이 아니라 **평상시 대비 차이**로 본다
+    const PULSE = constOf('GRIP_GAP_S') + constOf('GRIP_PULSE_S') + constOf('GRIP_INPUT_TIME_S');
+    check(`평상시(IN_1 Low 로 시작)는 즉시 인정 — 총 대기 < 펄스 2회(${(2 * PULSE).toFixed(2)}s) + 0.5s`, sumSleep(Rnorm) < 2 * PULSE + 0.5, `${sumSleep(Rnorm).toFixed(2)}s`);
+    check('⭐ IN_1 이 이미 High 면 최소 동작시간(1.0s)을 채운 뒤에만 하강한다 — 평상시보다 ≥ 0.95s 더 기다림', sumSleep(Redge) - sumSleep(Rnorm) >= 0.95, `차이 ${(sumSleep(Redge) - sumSleep(Rnorm)).toFixed(2)}s`);
+    check('🧪 그물 확인: GRIP_MIN_MOTION_S=0 이면 방어가 사라져 닫힌 조우로 즉시 하강한다(평상시와 차이 < 0.5s)', sumSleep(Rtear) - sumSleep(Rnorm) < 0.5, `차이 ${(sumSleep(Rtear) - sumSleep(Rnorm)).toFixed(2)}s`);
     check('에지 상황에서도 파지는 결국 성공한다', Redge.log.some(l => l.includes('✅ 파지 성공')));
     // 순서 검증: 열기 인정(대기 완료) 이 하강 moveLinear 보다 먼저인가 — 열기 전에 내려가면 충돌
     const idxOpen = Redge.calls.findIndex(c => c.name === '__gripOpen');
@@ -486,7 +501,8 @@ console.log('\n⑯ 🚨 완료 신호가 "이미 High" — 전원 직후 IN_1 �
 
 console.log('\n⑰ 🔩 MODE drill 뼈대 — 집은 뒤에만 스핀들, 후퇴 뒤에만 OFF, 함수명 미확정이면 호출 안 함');
 {
-    const T = { MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0], DRILL_POSE: [600, 100, 300, 180, 0, 0] };
+    // 드릴 자동 사슬은 파지 판정 신호가 있어야 성립한다 ⇒ 신호 경로로 검사하고, 신호 없는 기본 경로는 (d) 에서 가드를 본다
+    const T = Object.assign({ MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0], DRILL_POSE: [600, 100, 300, 180, 0, 0] }, SIG);
     // (a) 기본값 SPINDLE_API='none' → 스핀들 API 를 절대 부르지 않는다
     const Rn = run(makeRobot(), T);
     check("SPINDLE_API='none' 이면 스핀들 출력 호출 0건", !names(Rn).some(n => /RedundantDigitalOutput/.test(n)));
@@ -505,10 +521,74 @@ console.log('\n⑰ 🔩 MODE drill 뼈대 — 집은 뒤에만 스핀들, 후퇴
     // (c) 안전 가드
     const Rp = run(makeRobot(), Object.assign({ PLACE_POSE: [1, 2, 3, 180, 0, 0] }, T));
     check('PLACE_POSE 가 있으면 drill 을 거부한다(먼저 놓아버리므로)', Rp.log.some(l => l.includes('PLACE_POSE 를 비워라')) && !names(Rp).includes('moveLinear'));
-    const Rd = run(makeRobot(), { MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
+    const Rd = run(makeRobot(), Object.assign({ MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0] }, SIG));
     check('DRILL_POSE 없으면 집기까지만 하고 드릴 이송을 하지 않는다', Rd.log.some(l => l.includes('DRILL_POSE 가 비어 있다')) && !Rd.calls.some(c => c.name === 'moveLinear' && c.args[1][0] === 600));
     const Rf = run(makeRobot({ graspWillSucceed: false }), Object.assign({ SPINDLE_API: 'redundant' }, T));
     check('🚨 파지 실패면 스핀들을 절대 켜지 않는다', !Rf.calls.some(c => c.name === 'setRedundantDigitalOutput'));
+    // (d) [9/10] 판정 신호가 없는 기본 모드(GRIP_FEEDBACK none) = 로봇이 빈손을 모른다 ⇒ 가드가 스핀들을 막아야 한다
+    const Tn = { MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0], DRILL_POSE: [600, 100, 300, 180, 0, 0], SPINDLE_API: 'redundant' };
+    const Rg = run(makeRobot({ graspWillSucceed: false }), Tn);
+    check('🚨 신호 없는 기본 모드에서는 빈손이어도 스핀들을 켜지 않는다(가드)', !Rg.calls.some(c => c.name === 'setRedundantDigitalOutput'));
+    check('… 이유를 로그로 남기고 부품을 물고 정지', Rg.log.some(l => l.includes('스핀들을 켜지 않는다')) && !Rg.calls.some(c => c.name === 'moveLinear' && c.args[1][0] === 600));
+    const Ro = run(makeRobot(), Object.assign({ DRILL_REQUIRE_GRASP_SIGNAL: false }, Tn));
+    check('🧪 그물 확인: DRILL_REQUIRE_GRASP_SIGNAL=false 로 명시하면 눈 판정으로 드릴까지 간다', Ro.calls.some(c => c.name === 'setRedundantDigitalOutput' && c.args[1] === 1));
+}
+
+console.log('\n⑱ 🥇 [9/9 실물] 기본 = GRIP_FEEDBACK none — 완료 신호를 읽지 않고, 판정은 눈으로 넘긴다');
+{
+    const src = require('fs').readFileSync(SCRIPT, 'utf8');
+    check("스크립트 기본값 GRIP_FEEDBACK='none' (9/9: IN_1 안 뜸 · IN_2 는 물어도 뜸)", /^var GRIP_FEEDBACK\s*=\s*'none'/m.test(src));
+    check("스크립트 기본값 대기2 · 파지2 (9/9 실물 채널 DO1/DO3)", /^var GRIP_STANDBY_PT\s*=\s*2;/m.test(src) && /^var GRIP_GRASP_PT\s*=\s*2;/m.test(src));
+    // 🚨 가짜 그리퍼는 "물어도 IN_2 High" 를 그대로 재현할 필요가 없다 — 기본 경로가 DI 를 **읽지 않는 것** 자체가 검사 대상
+    // 가짜 그리퍼를 닫힌 채로 시작시킨다(readyHighAtStart) — 열림 이벤트가 상태 변화로 기록되게(열린 채 시작하면 열기 이벤트가 안 남는다)
+    const R = run(makeRobot({ graspWillSucceed: false, readyHighAtStart: true }), { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
+    check('완료 신호(DI) 조회 0건 — 읽으면 성공을 실패로 오판한다', !R.calls.some(c => c.name === 'getGeneralDigitalInput'),
+          `DI 조회 ${R.calls.filter(c => c.name === 'getGeneralDigitalInput').length}건`);
+    check('"눈으로" 판정 안내 로그', R.log.some(l => l.includes('눈으로')));
+    check('가짜 그리퍼가 실패 신호를 올려도 "놓쳤다"로 읽지 않는다(신호를 안 보니까)', !R.log.some(l => l.includes('🔴 놓쳤다')));
+    check(`페이로드 = 도구+부품 ${PAY_BOTH} (들어올리기 전 갱신은 그대로)`, Math.abs(R.payload - PAY_BOTH) < 1e-9, `실제 ${R.payload}`);
+    const ev = gripEvents(R);
+    check('개폐 이벤트 = 대기2 → 파지2 (열기→닫기)', ev.length === 2 && ev[0].args[2] === '대기2' && ev[1].args[2] === '파지2',
+          `이벤트 ${ev.map(c => c.args[2]).join(',')}`);
+    check('펄스 뒤 정착 대기(GRIP_SETTLE_S)가 매 명령에 있다', R.calls.filter(c => c.name === 'sleep' && Math.abs(c.args[0] - constOf('GRIP_SETTLE_S')) < 1e-9).length === 2);
+    // 🧪 그물: 'signal' 로 바꾸면 DI 를 읽어야 한다 — 이 대조가 없으면 위 "0건" 검사는 우연히 통과할 수 있다
+    const Rs = run(makeRobot(), Object.assign({ MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] }, SIG));
+    check("🧪 그물 확인: GRIP_FEEDBACK='signal' 이면 DI 를 읽는다", Rs.calls.some(c => c.name === 'getGeneralDigitalInput'));
+}
+
+console.log('\n⑲ 🥇 [9/9 실물] 펄스 형태 — 9/9 GUI `set + Reverse 0.5s` 와 같아야 한다: 전부Low → 갭 → High 하나 → 유지 → 전부Low');
+{
+    const R = run(makeRobot(), { MODE: 'gripper' });
+    // 첫 명령(닫기 = 파지2 = DO3) 의 DO 쓰기·sleep 시퀀스를 그대로 뽑는다
+    const seq = R.calls.filter(c => c.name === 'setGeneralDigitalOutput' || c.name === 'sleep')
+                       .map(c => c.name === 'sleep' ? `S${c.args[0]}` : `D${c.args[0]}=${c.args[1]}`);
+    const first = seq.slice(0, 11).join(' ');
+    const expect = `D0=0 D1=0 D2=0 D3=0 S${constOf('GRIP_GAP_S')} D3=1 S${constOf('GRIP_PULSE_S')} D0=0 D1=0 D2=0 D3=0`;
+    check('첫 명령 = 전부Low → 갭 → DO3 High → 펄스 → 전부Low', first === expect, `실제 "${first}"`);
+    // 어느 High 쓰기 뒤에도 같은 채널의 Low 쓰기가 다음 High 전에 온다 = 잔류 High 가 다음 조합에 섞이지 않는다
+    const sets = R.calls.filter(c => c.name === 'setGeneralDigitalOutput');
+    let live = [0, 0, 0, 0], leaked = false;
+    for (const c of sets) { if (c.args[1] === 1 && live.some(v => v === 1)) leaked = true; live[c.args[0]] = c.args[1]; }
+    check('🚨 어떤 High 도 다른 채널이 High 인 채로 켜지지 않는다(잔류 High 0)', !leaked);
+    check('개폐 6회 그대로', gripEvents(R).length === 6, `이벤트 ${gripEvents(R).map(c => c.args[2]).join(',')}`);
+}
+
+console.log('\n⑳ 🎥 [9/10 신설] MODE calib — 현재 TCP 포즈를 한 줄 보고하고 끝난다 (로봇 안 움직임)');
+{
+    const R = run(makeRobot({ socketReply: 'OK 3' }), { MODE: 'calib' });
+    const n = names(R);
+    check('moveLinear 0건 · setPayload 0건 · 그리퍼 DO 0건', !n.includes('moveLinear') && !n.includes('setPayload') && !n.includes('setGeneralDigitalOutput'));
+    check('getCurrentPose(tcp) 를 읽는다', R.calls.some(c => c.name === 'getCurrentPose' && c.args[0] === 'tcp'));
+    const sent = R.calls.find(c => c.name === 'socketSendLine');
+    let obj = null; try { obj = JSON.parse(sent.args[1]); } catch (e) { obj = null; }
+    check('보낸 한 줄이 JSON 이고 kind=calib · unit=mm_deg', obj && obj.kind === 'calib' && obj.unit === 'mm_deg', sent ? sent.args[1] : '전송 없음');
+    check('tcp 6요소가 getCurrentPose 원값 그대로(×1000 같은 변환 없음)', obj && JSON.stringify(obj.tcp) === JSON.stringify([300, 0, 400, 180, 0, 0]), obj ? JSON.stringify(obj.tcp) : '-');
+    const order = ['socketCreate', 'socketOpen', 'socketWaitConnection', 'socketSendLine', 'socketReadLine', 'socketDisconnect'];
+    let ok = true, at = -1; for (const s of order) { const i = n.indexOf(s); if (i < at) ok = false; at = i; }
+    check('Create → Open → Wait → Send → Read → Disconnect 순서', ok, n.filter(x => x.startsWith('socket')).join(' '));
+    check("서버 'OK n' 이면 성공 로그", R.log.some(l => l.includes('✅ 서버 응답 OK 3')));
+    const Rbad = run(makeRobot({ socketReply: 'ERR unit m suspected' }), { MODE: 'calib' });
+    check("서버 'ERR …' 면 경고 로그(조용히 넘어가지 않는다)", Rbad.log.some(l => l.includes('⚠️ 서버 응답이 OK 가 아니다')));
 }
 
 console.log('\n' + '='.repeat(62));

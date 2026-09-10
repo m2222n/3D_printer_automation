@@ -25,7 +25,8 @@
  * 0. 설정 — 🚨 금요일에 실물로 채울 자리
  * ------------------------------------------------------------------------- */
 
-var MODE = 'gripper';          // 'iomap' | 'gripper' | 'teach' | 'vision'  ← 단계별로 바꿔 실행 (9/4 첫 실행은 'iomap')
+var MODE = 'gripper';          // 'iomap' | 'gripper' | 'teach' | 'drill' | 'vision' | 'calib'  ← 단계별로 바꿔 실행
+                               //   'calib' = [9/10 신설] hand-eye 샘플용 — 현재 TCP 포즈를 서버에 보고만 한다(로봇 안 움직임)
 
 // --- 소켓 (MODE 'vision') ---
 var SOCK      = 'vision';      // ⭐ 매뉴얼 예제의 소켓명이 실제로 'vision' (ko:172,175,178)
@@ -69,16 +70,32 @@ var IOMAP_DO_CANDIDATES = [0, 1, 2, 3];                  // MODE 'iomap' 이 올
 // 🚨 Rodi sleep(ms) 는 밀리초다(매뉴얼 §sleep · 9/7 확인). 이 스크립트의 *_S 상수는 초 ⇒ 반드시 sleepS 로 대기한다
 function sleepS(s) { sleep(Math.round(s * 1000)); }
 var IOMAP_DWELL_S = 1.5;                                 // 한 채널 High 유지 시간(눈으로 볼 시간)
-// 🥇🥇 기본값(1번) 그대로 27종을 커버한다 — 9/3 DB 전수 대조로 확인. GUI 설정 없이 금요일 진행 가능.
-//   교안:18 공장 기본값 = 설정위치 3.05 / 외측파지범위 85.00 / 내측 0.00 / 속도 80 / 토크 80 / 입력시간 50ms
-//   교안:22 파지완료 판정 = 설정위치 < 파지위치 < 외측파지범위  (= 3.05 ~ 85.00 구간)
-//   ✅ grasp_database.yaml 실측: pickable 20종 파지폭 17.50~69.00mm ⇒ 전부 이 구간 안 (상한까지 16mm 여유)
-//      · 3.05 이하 0종(최소 4.80 bracket_sensor2) · 85.00 초과는 top_inner_sheet004 88.98 하나뿐이나 not_pickable+DB전용
-//   ⇒ 📌 8/10 "벌림 19가지→15점 묶기"는 불필요해 보인다. 단 근거가 바뀌었다:
-//        ~~rs485로 폭 지정~~(교안상 RS-485는 GUI 전용이라 닫힘) → **판정 창이 이미 전 구간이라서**
+// 🚨🚨 [9/9 실물로 뒤집힘] ~~기본값(1번) 그대로 27종을 커버한다~~ — **실물은 기본값이 아니었다.**
+//   협력사가 GUI로 파지1(OUT_3)·파지2(OUT_4)의 설정위치(빈손 정지)를 **약 40mm**로, 외측파지범위도 좁게 바꿔 놓았고
+//   대기1(OUT_1) 벌림도 45mm 부품에 부족했다. 대기2(OUT_2)만 기본 84mm 였다.
+//   ⇒ 9/9 실측 채널 = **OPEN = 대기2 = D_GEN_OUT_1 단독 High · CLOSE = 파지2 = D_GEN_OUT_3 단독 High**
+//      (조합표 그대로: 대기2 = 0100 · 파지2 = 0001 ⇒ GRIP_OUT_CH 는 [0,1,2,3] 유지, **포인트 번호만 2로**)
+//   ⇒ 🚨 폭 40mm 이하 부품은 조우가 닿기 전 멈춘다 = GUI(RS-485 컨버터 + JRT_Gripper_SetUp) 재설정 전까지 **45mm 이상만**
+//   ⇒ 🚨 9/3 "GUI 불필요" 결론 폐기. 8/10 15점 묶기 불필요는 유지되나 근거가 또 바뀐다("판정창이 넓어서" → "GUI 재설정 시 같이 정한다")
+//   교안:18 공장 기본값 = 설정위치 3.05 / 외측파지범위 85.00 / 속도 80 / 토크 80 / 입력시간 50ms — 📌 **기본값은 실물에서 확인할 때까지 가정이다**
 //   🚨 "판정 통과"가 "집힌다"는 뜻은 아니다 — 힘·얇은 판 눌림은 실물에서만 답난다(교안:18 = 무른 물체는 속도·토크를 낮춘다)
-var GRIP_STANDBY_PT = 1;        // 열기 = 대기위치 번호 1~5  (GUI 설정값 · 기본 85.00mm = 완전 개방)
-var GRIP_GRASP_PT   = 1;        // 닫기 = 파지위치 번호 1~10 (설정위치 = "파지 못하고 멈추는" 에러 위치 · 기본 3.05mm)
+var GRIP_STANDBY_PT = 2;        // 열기 = 대기위치 번호 1~5  ← 🥇 9/9 실물 = 2 (대기1 은 협력사 설정으로 벌림 부족)
+var GRIP_GRASP_PT   = 2;        // 닫기 = 파지위치 번호 1~10 ← 🥇 9/9 실물 = 2 (파지1·2 둘 다 설정위치 ≈40mm · 2가 동작 확인됨)
+
+// 🥇 [9/9 실물] 그리퍼 본체 **빨간 버튼 1회 = 불 켜짐 = DO 제어 모드**. 불이 꺼져 있으면 IN_1(대기 완료)만 High 이고 **DO 명령을 전부 무시**한다
+//   ⇒ 9/7 `gripper_test` 무동작의 원인. 스크립트가 아무리 맞아도 불이 꺼져 있으면 안 움직인다 ⇒ 실행 전 첫 확인 항목.
+//   2회 누르면 원점(0mm)으로 오므라짐 · 컨트롤러 재부팅 중에도 불이 안 꺼짐(24V 별도 전원).
+// 🥇 [9/9 실물] 명령은 **펄스**로 준다 — 펜던트 GUI set 노드 `Reverse 0.5s`(High → 0.5s 뒤 자동 Low) 로 개폐가 됐다.
+//   ⇒ 조합을 계속 유지할 필요가 없다(그리퍼가 명령을 래치한다). 아래 gripSetCombo 가 같은 형태(전부 Low → 갭 → High → 펄스 → 전부 Low)로 낸다.
+//   ⭐ 펄스 뒤 all-Low 로 돌려두므로 **잔류 High 로 조합이 바뀌는 사고**(rodi_gripper_tiny 주석)도 함께 막힌다.
+var GRIP_PULSE_S = 0.5;         // High 유지 시간 = 9/9 GUI Reverse 값 그대로
+var GRIP_GAP_S   = 0.3;         // 전부 Low 뒤 다음 명령까지 갭 — 컨트롤러가 0000 을 확실히 보게(교안 입력시간 50ms 의 6배) [9/9 미검증 · 9/7 tiny 는 이 값으로 동작]
+var GRIP_SETTLE_S = 2.0;        // 펄스 뒤 조우가 이동을 마칠 때까지 기다리는 시간 — 9/9 GUI 는 wait 5 를 썼다(넉넉히). 실측 후 줄인다 [확인필요]
+
+// 🚨🚨 [9/9 실물] 완료 신호가 **쓸 수 없는 상태**다 — IN_1(대기 완료)은 한 번도 안 올라왔고, IN_2 는 **부품을 물었는데도 High**(교안:22 의 "파지 실패 = 설정위치에서 정지"로 판정됨 —
+//   협력사 GUI 가 외측파지범위를 좁혀 놓아 정상 파지가 창 밖으로 나간다). ⇒ 신호로 판정하면 **성공을 실패로 읽는다.**
+//   ⇒ GRIP_FEEDBACK = 'none' 이 기본 = **시간만 기다리고 판정은 사람이 눈으로**(9/9 방식). GUI 재설정 뒤 'signal' 로 되돌린다.
+var GRIP_FEEDBACK = 'none';     // 'none'(9/9 실물 · 눈으로 판정) | 'signal'(IN_1/IN_2/IN_3 로 판정 — GUI 재설정 후)
 var GRIP_INPUT_TIME_S = 0.05;   // 교안:24 입력시간 기본 50ms — 조합 출력 후 이만큼 유지한 뒤 완료 신호를 본다
                                 //   ⭐ 교안:24 = 대기[1],[2]/파지[1],[2]는 단일 비트라 "신호조합이 필요 없어 입력시간을 낮게" ⇒ 우리(대기1·파지1)는 0ms 도 된다
 var GRIP_TIMEOUT_S    = 3.0;    // 완료 신호(IN_1/IN_2) 대기 상한 [확인필요 — 교안에 값 없음, 실측 후 조정]
@@ -141,6 +158,9 @@ var DRILL_POSE       = null;       // 드릴 스테이션 위 대기 자세(부�
 var DRILL_DEPTH_MM   = 0;          // 진입 깊이(0 = 진입 안 함 · 스핀들 ON/OFF 만 시험)
 var DRILL_FEED_V     = 5, DRILL_FEED_A = 20;   // 진입 속도 — 매우 느리게 [확인필요]
 var DONE_BIN_POSE    = null;       // 완료 빈 — 티칭
+// 🚨 [9/10] GRIP_FEEDBACK='none' 이면 로봇이 파지 실패를 **모른다** ⇒ 빈손으로 스핀들을 켤 수 있다.
+//    기본 true = 판정 신호 없이는 스핀들을 켜지 않는다(집기까지만 하고 물고 정지). 사람이 눈으로 보며 진행하려면 false 로 명시.
+var DRILL_REQUIRE_GRASP_SIGNAL = true;
 
 // --- 모션 ---
 var V_FAST = 100, A_FAST = 1000;   // 이동
@@ -230,12 +250,22 @@ function rs485MapReady() {
 
 /* ---- gen_dio: 교안:5~6 신호조합 방식 ------------------------------------ */
 
-/** OUT-1~4 에 조합 한 행을 쓴다 (§3.1.1 ko:53) */
+/**
+ * OUT-1~4 에 조합 한 행을 **펄스**로 쓴다 (§3.1.1 ko:53) — 9/9 GUI `set + Reverse 0.5s` 와 같은 형태.
+ *   전부 Low → 갭 → 조합의 High 비트만 올림 → GRIP_PULSE_S 유지 → 전부 Low
+ * ⭐ 전부 Low 를 먼저 하는 이유 = 미사용 DO 의 잔류 High 가 조합을 바꾼다(1000→1001 = 대기1→파지4).
+ * ⭐ 끝에 전부 Low 로 돌려두는 이유 = 다음 명령이 깨끗한 0000 에서 시작하고, 과도 패턴(예 0101=파지6)이 남지 않는다.
+ * 🚨 한 채널씩 쓰는 순간의 µs 과도는 교안 입력시간(50ms) 아래라 무시된다 — 시뮬은 sleep 시점에만 판정한다(같은 모델).
+ */
 function gripSetCombo(row) {
     var i;
+    for (i = 0; i < 4; i++) setGeneralDigitalOutput(GRIP_OUT_CH[i], 0);
+    sleepS(GRIP_GAP_S);
     for (i = 0; i < 4; i++) {
-        setGeneralDigitalOutput(GRIP_OUT_CH[i], row[i]);
+        if (row[i]) setGeneralDigitalOutput(GRIP_OUT_CH[i], 1);
     }
+    sleepS(GRIP_PULSE_S);
+    for (i = 0; i < 4; i++) setGeneralDigitalOutput(GRIP_OUT_CH[i], 0);
 }
 
 /** IN_1~3 읽기 (§3.1.2 ko:54) — key = 'ready' | 'grasped' | 'error' */
@@ -249,6 +279,13 @@ function gripReadIn(key) {
  * 🚨 IN_3(에러)가 서면 즉시 false — 교안:25 "에러 시 반드시 대기위치로 이동 후 다음 동작"은 호출자가 gripperOpen()으로 수행.
  */
 function gripCommand(row, doneKey, label) {
+    if (GRIP_FEEDBACK !== 'signal') {
+        // 🥇 9/9 실물 방식 = 펄스 → 정해진 시간 대기 → 판정은 사람 눈. 완료 신호는 읽지 않는다(읽으면 성공을 실패로 오판한다).
+        gripSetCombo(row);
+        sleepS(GRIP_SETTLE_S);
+        console.log('   ' + label + ' 펄스 완료 — 👁️ 판정은 눈으로 (GRIP_FEEDBACK=' + GRIP_FEEDBACK + ')');
+        return true;
+    }
     // ⭐ 명령 전에 완료 신호가 이미 서 있는지 본다 — 서 있으면 "내려갔다 오르는 에지"를 기다려야 진짜 완료다
     var wasHigh = gripReadIn(doneKey);
     var sawLow  = !wasHigh;
@@ -349,6 +386,8 @@ function isGrasped() {
         return getToolDigitalInput(GRIP_DI_CH) === 1;
     }
     if (GRIPPER_MODE === 'gen_dio') {
+        // 🚨 [9/9 실물] IN_2 는 부품을 물어도 High(협력사 GUI 가 외측파지범위를 좁힘) ⇒ 신호 판정은 GUI 재설정 뒤에만
+        if (GRIP_FEEDBACK !== 'signal') return null;   // ⭐ 판단 불가 → null (사람이 눈으로) — 거짓과 구분
         return gripReadIn('grasped');               // 교안:5 IN_2 "파지 완료" = DI1(손글씨) · §3.1.2 ko:54
     }
     if (GRIPPER_MODE === 'rs485' && GRIP_REG.status !== null) {
@@ -413,7 +452,7 @@ function pickOne(target) {
     // ⑥ 집었는지 확인 — 🚨 성공/실패를 여기서 가른다
     var ok = isGrasped();
     if (ok === null) {
-        console.log('⑥ 파지 확인: ⚠️ 배선 없음 — 사람이 눈으로 판정');
+        console.log('⑥ 파지 확인: 👁️ 신호 판정 없음(GRIP_FEEDBACK=' + GRIP_FEEDBACK + ' 또는 배선 없음) — 사람이 눈으로 판정');
     } else if (ok) {
         console.log('⑥ 파지 확인: 🟢 잡았다');
     } else {
@@ -585,6 +624,11 @@ function runDrill() {
     gripperInit();
     setPayload(PAYLOAD_TOOL);
     if (!pickOne(TEACH_POSE)) { console.log('🔴 파지 실패 — 드릴링 진행 안 함'); return; }
+    if (GRIP_FEEDBACK !== 'signal' && DRILL_REQUIRE_GRASP_SIGNAL) {
+        console.log('🚨 파지 판정 신호가 없다(GRIP_FEEDBACK=' + GRIP_FEEDBACK + ') — 빈손일 수 있어 스핀들을 켜지 않는다. 부품을 물고 정지.');
+        console.log('   눈으로 확인하며 진행하려면 DRILL_REQUIRE_GRASP_SIGNAL=false (사람이 정지 버튼에 손을 두고).');
+        return;
+    }
     var ok = drillOne();
     console.log(ok ? '✅ 집어서 드릴링까지 완료' : '🔴 드릴링 단계 실패/미완');
 }
@@ -600,6 +644,34 @@ function runTeach() {
     setPayload(PAYLOAD_TOOL);
     var ok = pickOne(TEACH_POSE);
     console.log(ok ? '✅ 파지 성공' : '🔴 파지 실패');
+}
+
+/**
+ * MODE 5 'calib' — 🎥 [9/10 신설] hand-eye(eye-in-hand) 샘플 채집: **현재 TCP 포즈를 서버에 보고**하고 끝난다.
+ * 🚨 로봇은 안 움직인다. 한 번 실행 = 샘플 하나. 사람이 로봇을 다음 자세로 옮기고(직접교시/조그) 다시 실행한다.
+ *   ⇒ socketReadLine 상한이 15000ms(9/7 실측)라 "다음 자세까지 기다리는" 설계가 안 되고, 한 자세 = 한 실행이 맞다.
+ *   ⭐ GUI 로 하려면 = 프로그램에 [move P1 → script(이 파일) → move P2 → script …] 로 같은 script 노드를 복붙한다.
+ * 서버 = `python -m bin_picking.src.communication.calib_pose_server --out <dir> [--capture blaze]`
+ *   서버가 포즈를 받는 순간 카메라를 트리거해 (pose, image) 쌍을 적재하고 'OK n' 을 돌려준다.
+ * 🚨 단위 = getCurrentPose('tcp')(ko:203) 가 주는 값 그대로(mm · deg). 변환은 서버가 한다 — 여기서 ×1000 같은 것을 하지 않는다.
+ * 🚨 오일러 규약(rx,ry,rz 가 ZYX 인지)은 [미확인] — 서버가 원값을 그대로 저장하므로 규약은 계산 단계에서 정한다(값이 훼손되지 않는다).
+ */
+function runCalib() {
+    console.log('=== MODE 5: hand-eye 샘플 — 현재 TCP 포즈 보고 (로봇 안 움직임) ===');
+    while (!isSteady()) sleep(10);                   // 정지 상태에서만 읽는다(ko:205)
+    var p = getCurrentPose('tcp');                   // ko:203 · [x,y,z,rx,ry,rz] mm/deg
+    var line = JSON.stringify({ kind: 'calib', tcp: [p[0], p[1], p[2], p[3], p[4], p[5]], unit: 'mm_deg' });
+
+    socketCreate(SOCK, SERVER_IP, SERVER_PORT);      // ko:172
+    socketOpen(SOCK);
+    socketWaitConnection(SOCK, READ_TIMEOUT);        // ko:173
+    socketSendLine(SOCK, line);                      // ⭐ 신설분 — 지금까지 socketSendLine 은 'DONE' 한 곳만 썼다
+    var ack = socketReadLine(SOCK, READ_TIMEOUT);    // 서버 'OK n' — n = 지금까지 쌓인 샘플 수
+    socketDisconnect(SOCK);
+
+    console.log('보낸 포즈: ' + line);
+    if (ack && String(ack).indexOf('OK') === 0) console.log('✅ 서버 응답 ' + ack + ' — 다음 자세로 옮기고 다시 실행');
+    else console.log('⚠️ 서버 응답이 OK 가 아니다: ' + ack + ' — 서버 콘솔을 볼 것(거부 사유가 찍힌다)');
 }
 
 function runVision() {
@@ -645,6 +717,7 @@ else if (MODE === 'gripper') runGripperOnly();
 else if (MODE === 'teach')   runTeach();
 else if (MODE === 'drill')   runDrill();
 else if (MODE === 'vision')  runVision();
+else if (MODE === 'calib')   runCalib();
 else console.log('🔴 MODE 오류: ' + MODE);
 
 /* ============================================================================
@@ -662,16 +735,18 @@ else console.log('🔴 MODE 오류: ' + MODE);
  *
  *   교안:5~6·22·24~25  그리퍼 배선·신호조합·파지 판정·입력시간·에러 규칙 (주강로보테크 Quick Guide)
  *
- * 🚨 9/4 현장에서 채울 [확인필요]
- *   1. 🥇 채널 배정 (GRIP_OUT_CH / GRIP_IN_CH) — 교안:5 한 장에 번호 체계 3개(인쇄 배선도·손글씨 표·손글씨 여백)가 겹쳐 문서로 확정 불가
- *      판정법 = ①제어반 단자대(IN-1~3 · DO 0~4 라벨)에서 그리퍼 6페어가 물린 DO 를 눈으로 추적 ②MODE 'iomap' 으로 그 DO 만 하나씩 High
- *      ⭐ 열림 DO 둘 → [0],[1] / 닫힘 DO 둘 → [2],[3] (조합표가 대칭이라 둘 사이 순서는 무관) / 무반응 = 그리퍼 아님
- *   2. GUI 설정값 = 🟢 기본값(대기 85.00 · 파지 설정위치 3.05 · 80/80 · 50ms)이면 27종 커버 확인(9/3 DB 대조) ⇒ GUI 없이 진행 가능
- *      🟡 단 협력사가 값을 바꿨을 수 있다 — 열림 폭이 눈에 띄게 좁으면 그때 GUI(RS-485 컨버터+JRT_Gripper_SetUp.exe) 필요
- *   2'. GRIP_MIN_MOTION_S(1.0s) — IN_1 이 전원 후 계속 High 인지·명령 시 내려갔다 오르는지 [확인필요] → 실측 후 줄인다
- *   3. IPC IP                                              (SERVER_IP)
- *   4. TEACH_POSE · PLACE_POSE 티칭값
- *   5. 부품 무게 실측                                       (PAYLOAD_PART)
+ * ✅ 9/7·9/9 현장에서 채워진 것
+ *   1. ✅ 채널 배정 = GRIP_OUT_CH [0,1,2,3] 그대로(9/7 iomap: DO0 열림·DO2 닫힘 확인) · 🥇 9/9 = 대기2(DO1)·파지2(DO3) 로 포인트 변경
+ *   2. 🚨 GUI 설정값 = **기본값이 아니었다**(9/9) — 파지1·2 설정위치 ≈40mm · 대기1 벌림 부족 ⇒ 45mm 이상 부품만 · GUI 재설정 필요(예승님 문의 9/10)
+ *   2'. GRIP_MIN_MOTION_S — 🚨 IN_1 이 **한 번도 안 올라옴**(9/9) ⇒ 신호 판정 자체를 보류(GRIP_FEEDBACK='none')
+ *   3. ✅ IPC IP = 9/7 확정(리포엔 넣지 않는다 · CLAUDE.local 참조)
+ *   5. ✅ 부품 무게 = 0.05kg (태민님 9/8)
+ *
+ * 🚨 아직 채울 [확인필요]
+ *   4. TEACH_POSE · PLACE_POSE · DRILL_POSE 티칭값 — 9/9 는 GUI 노드(pick_test)로 했고 스크립트 좌표는 미채움
+ *   6. GRIP_SETTLE_S 2.0 / GRIP_GAP_S 0.3 — 9/9 GUI 는 wait 5 로 성공. 줄여도 되는지는 실측
+ *   7. SPINDLE_API — D_CONF_OUT 의 Rodi 함수명(펜던트 I/O 모니터에서 갈라야 한다)
+ *   8. MODE 'calib' 은 시뮬만 통과 — 실물 왕복은 9/11 이후 · 오일러 규약(ZYX?)은 계산 단계에서 결정
  *
  * ⚠️ 아직 하지 않은 것 = setToolCenterPoint / setToolBoundingBox 호출.
  *    TCP 는 펜던트에 이미 a_0115(Z=200)가 등록돼 있어 **덮어쓰면 위험**하므로

@@ -269,14 +269,18 @@ $ python src/acquisition/work_coord_3point.py
 - **실측 intrinsic 자동 로드**(`:158`) — 폐기 추정치 `fx=553/fy=188`로 **조용히 돌아가지 않게** 방어돼 있다.
 - **부품 3개 검증됨** = `getCurrentPose('tcp')` 사용중 · `isSteady()` 사용중 · `socketSendLine` 왕복 2/2(9/7 실물).
 
-### 🔴 신설해야 하는 것 2건 — 여기가 진짜 작업이다
-1. **펜던트 → PC 포즈 보고** (`MODE 'calib'`)
-   🚨 현행 경로는 **로봇이 클라이언트**라 PC가 물어볼 수 없다 ⇒ 로봇이 보고해야 한다.
-   골격은 `runIoMap()`(로봇 안 움직임 + 하나씩 기록) 패턴을 그대로 쓴다.
-   📌 **`socketSendLine`은 지금 `'DONE'` 한 곳에서만 쓰인다** ⇒ 포즈를 실어 보내는 것이 신설분.
-2. **서버 수신부** (`pick_socket_server.py --mode calib`)
-   포즈 라인을 읽고 **그 순간 카메라를 트리거**해 `(pose, image)` 쌍을 적재.
-   현행 `_serve_once`는 **보내고 DONE 기다리는** 구조라 방향이 반대다.
+### ✅ [9/10 재택] 신설 2건 — 코드 완료 · 시뮬·자체 테스트 통과 · **실물 0회**
+1. ✅ **펜던트 → PC 포즈 보고** = `rodi_pick_sequence.js` **`MODE 'calib'`**(`runCalib()`) + 타이핑용 **`rodi_calib_tiny.js`(12줄)**
+   한 실행 = 샘플 하나. `getCurrentPose('tcp')` 원값(mm·deg)을 `{"kind":"calib","tcp":[…],"unit":"mm_deg"}` 한 줄로 보내고 `OK n` 을 받는다.
+   🚨 "다음 자세까지 연결을 열어 두는" 설계는 안 된다 — `socketReadLine` 상한 15000ms(9/7 실측). 사람이 로봇을 옮기고 다시 ▶.
+   ⭐ GUI 로는 `[move P1 → script → move P2 → script …]` 로 같은 script 노드를 복붙하면 한 프로그램으로 된다.
+   시뮬 ⑳(`simulate_rodi_pick.js`) = 로봇 안 움직임 · 원값 그대로 · 순서 · OK/ERR 로그 분기.
+2. ✅ **서버 수신부** = **`src/communication/calib_pose_server.py`**(별도 모듈 · `pick_socket_server` 는 그대로)
+   포즈 한 줄을 받는 순간 카메라 트리거(`--capture blaze` = Blaze Range + 선택 ACE2) → `<out>/samples.json` + `NNN_depth.npy`.
+   거부 7종(6요소 아님·NaN·**m 단위 의심**·도달 밖·각도>360·JSON 아님·unit 다름) · **카메라 실패면 포즈만 남기지 않고 ERR**(OK 받은 사람이 다음 자세로 넘어가는 사고 방지) · 이어받기.
+   자체 테스트 `tests/test_calib_pose_server.py` **22/22**(numpy 없는 python3 에서도) · 🧪 검증 무력화 시 m 단위 줄이 통과함을 확인(거부 주체 = 검증 함수).
+   📌 오일러 규약은 **채집 단계에서 판단하지 않는다** — 원값 저장 · 계산 단계에서 정한다(규약이 틀려도 데이터는 훼손되지 않는다).
+   🔴 남은 것 = 실물 왕복(9/11 STEP 8) → 샘플 10~15개(9/14) → `hand_eye_calibration.py` 계산(scipy 필요 · A100 또는 IPC)
 
 ### 🚨 조용히 틀릴 자리 3개 (전부 과거에 당한 유형)
 | 위험 | 왜 |
@@ -299,3 +303,4 @@ $ python src/acquisition/work_coord_3point.py
 
 ⇒ 🎯 **전환 시점 판단** = **코드 준비는 지금 재택으로 가능**하고(위 전부 로봇 없이 된다),
 **현장 실행은 ③ 한 개 집기가 선행**이다. 🅿️ **③이 되기 전에 이 트랙을 벌리지 않는다.**
+✅ **[9/9] ③ 달성 → [9/10] 위 2건 코드 완료** ⇒ 트랙이 열렸다. 순서 = 9/11 카메라 팔 장착 + 왕복 시험 → 9/14 샘플 채집 → 계산.
