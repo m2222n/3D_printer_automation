@@ -44,6 +44,13 @@
 
   ⭐ 실수를 그대로 보낸다 → 7/30에 만든 INT16 1/10mm 인코딩은 **불필요**(폐기).
      단 `pick_encoder`의 **범위 검증 로직은 그대로 유효**하므로 재사용한다.
+
+🆕 [2026-09-17] 카메라→base 변환 계층이 물렸다 (`cam_to_base.py`)
+----------------------------------------------------------------
+  9/16 확인 = 이 서버는 `camera_3d`(카메라 좌표)를 **그대로** 보내고 있었다. 9/1 "값 일치" 왕복은 카메라 좌표가
+  그대로 왕복한 것이다. ⇒ `--mode vision` 은 이제 **`--calib <cam_to_base.json>` 이 없으면 시작조차 하지 않는다.**
+  소켓에 실리는 값은 전부 **base 좌표**이고, `validate_pose(frame="base")` 가 그 기준(도달 1800 · 원점 100 이상)으로 검사한다.
+  `six_elements_to_pose()` 는 카메라 좌표 함수로 남긴다(측정·분석용 · `frame="camera"`) — 로봇 전송 경로에서는 더 이상 쓰지 않는다.
 """
 from __future__ import annotations
 
@@ -68,6 +75,20 @@ except ImportError:  # 단독 실행 대비
     from pathlib import Path as _Path
     _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
     from pipeline import input_gate  # type: ignore
+
+# 🆕 카메라→base 변환 계층 (9/17). numpy 가 필요하다 — 없으면 vision 모드가 첫 줄에서 크게 실패한다(handshake·teach 는 무관).
+try:
+    from . import cam_to_base
+except ImportError:
+    try:
+        import cam_to_base  # type: ignore
+    except ImportError:  # numpy 없는 환경 — vision 모드에서만 문제
+        cam_to_base = None  # type: ignore
+
+# 🆕 base 좌표 물리 범위 — cam_to_base 와 같은 숫자(두 곳이 갈리면 한쪽이 조용히 틀린다)
+REACH_MM = 1800.0             # HCR-10L 공식 도달
+MIN_FROM_ORIGIN_MM = 100.0    # m 단위(0.4 같은 값) 방어
+BASE_Z_RANGE_MM = (-500.0, 1200.0)
 
 
 # ============================================================
@@ -97,12 +118,21 @@ class PickSocketError(RuntimeError):
 # ============================================================
 # 좌표 검증 — 로봇에는 방어가 없으므로 여기가 마지막 관문
 # ============================================================
-def validate_pose(pose: Sequence[float], idx: int = 0) -> list[float]:
+def validate_pose(pose: Sequence[float], idx: int = 0, frame: str = "base") -> list[float]:
     """6DoF 포즈를 물리 범위로 검증한다. 통과하면 float 리스트를 돌려준다.
 
     ⭐ 클램프하지 않고 예외를 던진다. 범위를 벗어나는 값은 센서 고장이나
        단위 착오이므로, 잘라서 보내면 "엉뚱한 데로 가는데 에러는 없는" 상태가 된다.
+
+    frame (9/17 신설 — 두 좌표계의 "정상 범위"가 다르다)
+      "base"   : 로봇에 보내는 값. |p| ≤ 1800(도달) · |p| ≥ 100(m 단위 방어) · z −500~1200.
+                 🚨 소켓에 실리는 포즈는 전부 이 프레임이다(serve_cycle 기본값).
+      "camera" : Blaze 카메라 좌표. z 400~600 이 정상(7/29 실측)이라 Z_PLAUSIBLE(200~1500)로 본다.
+                 base 로 바뀐 값(z≈100)을 이 규칙으로 보면 정상을 거부하고, 카메라 값(z≈450)을 base 규칙으로 보면
+                 통과한다 — 그래서 프레임을 인자로 못박았다.
     """
+    if frame not in ("base", "camera"):
+        raise PickEncodeError(f"validate_pose frame={frame!r} — 'base' | 'camera'")
     if pose is None:
         raise PickEncodeError(f"pose[{idx}]: None")
 
@@ -128,20 +158,34 @@ def validate_pose(pose: Sequence[float], idx: int = 0) -> list[float]:
 
     x, y, z, rx, ry, rz = out
 
-    # z = 작업 거리. 7/29 실측 100장에서 99%가 400~600mm.
-    # 🚨 3136mm(uint16 단위 착오)를 여기서 잡는다.
-    zlo, zhi = Z_PLAUSIBLE_MM
-    if not (zlo <= z <= zhi):
-        raise PickEncodeError(
-            f"pose[{idx}].z={z}mm 가 물리 범위 {zlo}~{zhi}mm 밖 "
-            f"— depth 단위 착오(raw×10/65535=m)를 의심할 것"
-        )
-
-    for name, value in (("x", x), ("y", y)):
-        if abs(value) > XY_PLAUSIBLE_MM:
+    if frame == "camera":
+        # z = 작업 거리. 7/29 실측 100장에서 99%가 400~600mm.
+        # 🚨 3136mm(uint16 단위 착오)를 여기서 잡는다.
+        zlo, zhi = Z_PLAUSIBLE_MM
+        if not (zlo <= z <= zhi):
             raise PickEncodeError(
-                f"pose[{idx}].{name}={value}mm 가 물리 범위 ±{XY_PLAUSIBLE_MM}mm 밖"
+                f"pose[{idx}].z={z}mm 가 물리 범위 {zlo}~{zhi}mm 밖 "
+                f"— depth 단위 착오(raw×10/65535=m)를 의심할 것"
             )
+        for name, value in (("x", x), ("y", y)):
+            if abs(value) > XY_PLAUSIBLE_MM:
+                raise PickEncodeError(
+                    f"pose[{idx}].{name}={value}mm 가 물리 범위 ±{XY_PLAUSIBLE_MM}mm 밖"
+                )
+    else:
+        # base = 로봇이 실제로 갈 곳. 도달 반경 · 원점 근접(m 단위) · 높이.
+        norm = math.sqrt(x * x + y * y + z * z)
+        if norm > REACH_MM:
+            raise PickEncodeError(
+                f"pose[{idx}] |xyz|={norm:.0f}mm > 로봇 도달 {REACH_MM:.0f}mm "
+                f"— 변환/단위 오류(z=3136 사고 형태)를 의심할 것"
+            )
+        if norm < MIN_FROM_ORIGIN_MM:
+            raise PickEncodeError(
+                f"pose[{idx}] |xyz|={norm:.1f}mm < {MIN_FROM_ORIGIN_MM}mm — TCP 가 베이스 원점 안에 올 수 없다(m 단위 의심)"
+            )
+        if not (BASE_Z_RANGE_MM[0] <= z <= BASE_Z_RANGE_MM[1]):
+            raise PickEncodeError(f"pose[{idx}].z={z}mm 가 base 높이 범위 {BASE_Z_RANGE_MM} 밖")
 
     for name, value in (("rx", rx), ("ry", ry), ("rz", rz)):
         if abs(value) > 360.0:
@@ -167,7 +211,9 @@ def six_elements_to_pose(
       - `x`·`y`는 **픽셀 좌표**다. 로봇에 보낼 것은 `camera_3d`(mm)다.
 
     ⚠️ 이 함수가 주는 좌표는 **카메라 좌표계**다. hand-eye 캘리브로 로봇
-       베이스 좌표로 바꾸지 않으면 로봇이 엉뚱한 데로 간다. 변환은 상위에서 한다.
+       베이스 좌표로 바꾸지 않으면 로봇이 엉뚱한 데로 간다.
+    🚨 [9/17] 로봇 전송 경로(`_provider_vision`)는 이 함수를 **더 이상 쓰지 않는다** —
+       `cam_to_base.det_to_base_pose()` 가 대신한다. 이 함수는 측정·분석(grasp_plan · latency)용으로만 남는다.
     """
     cam = det.get("camera_3d")
     if not cam:
@@ -204,7 +250,7 @@ def six_elements_to_pose(
         )
 
     xc, yc, zc = (float(v) for v in xyz)
-    return validate_pose([xc, yc, zc, rx, ry, float(angle)])
+    return validate_pose([xc, yc, zc, rx, ry, float(angle)], frame="camera")
 
 
 # ============================================================
@@ -403,12 +449,34 @@ def _provider_teach(pose: Sequence[float]) -> Callable[[], list]:
     return provider
 
 
-def _provider_vision(json_path: str, limit: int) -> Callable[[], list]:
-    """3단계: 6요소 인식 결과 → 포즈.
+def _provider_vision(
+    json_path: str,
+    limit: int,
+    calib_path: Optional[str] = None,
+    hover_mm: float = 0.0,
+    rz_mode: str = "fixed",
+) -> Callable[[], list]:
+    """3단계: 6요소 인식 결과 → **base 포즈**(cam_to_base 변환 계층 경유).
 
-    🚨 hand-eye 캘리브 완료 후에만 쓸 것. 카메라 좌표를 그대로 보내면
-       로봇 베이스 기준이 아니라서 엉뚱한 위치로 간다.
+    🚨 [9/17] `calib_path` 가 없으면 **여기서 즉시 예외** — provider 를 만들 수조차 없다.
+       (로봇이 접속한 뒤가 아니라 서버를 띄우는 순간 실패해야 현장에서 원인이 보인다.)
+       9/16까지는 camera_3d 를 그대로 보냈다 — 그 경로는 이제 없다.
     """
+    if cam_to_base is None:
+        raise PickEncodeError("cam_to_base 모듈을 못 불러왔다(numpy 필요) — vision 모드는 이 환경에서 못 돈다")
+    if not calib_path:
+        raise PickEncodeError(
+            "vision 모드에 --calib(cam_to_base 캘리브 파일)가 없다 — 카메라 좌표를 그대로 로봇에 보내는 경로는 폐기됐다(9/17). "
+            "hand-eye(3점법) → cam_to_base build 로 파일을 먼저 만들 것"
+        )
+    # 파일 검증(스키마·SE(3)·잔차·스케일)은 로드 시점에 끝난다 — 로봇 접속 전에 실패한다
+    try:
+        calib = cam_to_base.load_calibration(calib_path)
+    except cam_to_base.CamToBaseError as e:
+        raise PickEncodeError(f"캘리브 파일 거부: {e}") from e
+    print("[pick-server] " + calib.report().replace("\n", "\n[pick-server] "))
+    print(f"[pick-server] 변환 = camera_3d → base · hover {hover_mm}mm · rz_mode {rz_mode}")
+
     def provider() -> list:
         with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
@@ -463,8 +531,12 @@ def _provider_vision(json_path: str, limit: int) -> Callable[[], list]:
             if len(poses) >= limit:
                 break
             try:
-                poses.append(six_elements_to_pose(det))
-            except PickEncodeError as e:
+                # ⭐ 여기서 좌표계가 바뀐다: camera_3d(카메라) → base. 이 한 줄이 9/16까지 없었다.
+                pose = cam_to_base.det_to_base_pose(det, calib, hover_mm=hover_mm, rz_mode=rz_mode)
+                poses.append(validate_pose(pose, i, frame="base"))
+                cam = det.get("camera_3d")
+                print(f"[pick-server] #{i} {det.get('label', '?')}: cam={cam} → base={[round(v, 1) for v in pose]}")
+            except (PickEncodeError, cam_to_base.CamToBaseError) as e:
                 skipped.append(f"#{i}({det.get('label', '?')}): {e}")
         if skipped:
             print(f"[pick-server] 건너뜀 {len(skipped)}건")
@@ -498,6 +570,12 @@ def main() -> int:
                     help="vision 모드에서 보낼 최대 포즈 개수 (기본 1)")
     ap.add_argument("--cycles", type=int, default=1,
                     help="처리할 사이클 수. 0=무한")
+    ap.add_argument("--calib",
+                    help="🆕 vision 모드 필수 — cam_to_base 캘리브 파일(카메라→base 변환 · P_capture 고정)")
+    ap.add_argument("--hover-mm", type=float, default=0.0,
+                    help="vision: 변환 결과 z 에 더한다(위로). '집기 없이 이동 1회' 시험 = 50 권장")
+    ap.add_argument("--rz-mode", choices=("fixed", "angle"), default="fixed",
+                    help="vision: fixed=캘리브의 rz_ref 그대로(위치만 시험) / angle=부품 각도 반영(부호·오프셋 실측 후)")
     args = ap.parse_args()
 
     if args.mode == "handshake":
@@ -516,10 +594,17 @@ def main() -> int:
     else:
         if not args.six_json:
             ap.error("--mode vision 에는 --six-json 이 필요하다")
-        provider = _provider_vision(args.six_json, args.limit)
-        print("── 3단계: 인식 결과 전송 ──")
-        print("🚨 hand-eye 캘리브가 끝나지 않았다면 좌표계가 달라 "
-              "로봇이 엉뚱한 데로 간다. 확인 후 진행할 것.")
+        if not args.calib:
+            ap.error("--mode vision 에는 --calib <cam_to_base.json> 이 필요하다 — "
+                     "카메라 좌표를 그대로 보내는 경로는 9/17에 폐기됐다(hand-eye 3점법 → cam_to_base build)")
+        try:
+            provider = _provider_vision(args.six_json, args.limit, calib_path=args.calib,
+                                        hover_mm=args.hover_mm, rz_mode=args.rz_mode)
+        except PickEncodeError as e:
+            print(f"🔴 vision 모드 시작 불가: {e}")
+            return 2
+        print("── 3단계: 인식 결과 전송 (camera_3d → base 변환 · 캘리브 파일 검증 통과) ──")
+        print("🚨 로봇이 캘리브 때의 P_capture 에서 찍은 장면인가 · 사람이 정지 버튼에 손을 두고 진행할 것.")
 
     max_cycles = None if args.cycles == 0 else args.cycles
     with PickSocketServer(args.host, args.port) as server:

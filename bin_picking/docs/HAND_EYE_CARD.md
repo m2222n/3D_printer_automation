@@ -315,3 +315,26 @@ $ python src/acquisition/work_coord_3point.py
 - `P_capture` 에서 grab → `python bin_picking/tests/find_calib_blobs.py --depth shot.npy` → 블록별 **윗면 중심의 카메라 3D(mm)** 표 + json
 - 같은 블록 **윗면 중심에 TCP 를 대고** `getCurrentPose` 를 id 순서대로 적는다 → §3 🅒 그대로 → 잔차 RMS < 3mm 통과
 ⇒ 📌 **9/14 계획 = 이 경로(3점법 + 블록)가 1순위**, `calib_pose_server` 샘플 채집은 P_capture 를 여러 개 쓰게 될 때의 일반해용으로 남긴다.
+
+---
+
+## 9. 🆕 [9/17] 변환 계층이 서버에 물렸다 — `src/communication/cam_to_base.py` (§5 그림의 "🆕 이 카드" 칸이 실제 코드가 됐다)
+
+🚨 **9/16 코드 확인 = §5 그림의 `camera_point_to_robot` 칸이 실제로는 비어 있었다.** `pick_socket_server._provider_vision` 은 `camera_3d` 를 그대로 보냈고,
+`work_coord_3point` 를 부르는 코드가 0건이었다 ⇒ 9/1 "소켓 왕복 값 일치"는 **카메라 좌표의 왕복**. 📌 *"짜여 있다"≠"호출된다"* 네 번째 사례.
+
+| 조각 | 9/17 이후 |
+|---|---|
+| **캘리브 파일** | `cam_to_base build --blobs <find_calib_blobs 출력> --robot-points "x,y,z; …"(또는 @파일) --capture-pose X Y Z RX RY RZ --rz-ref RZ --out <json>` — 내부는 §3 🅒 의 `solve_rigid_transform` 그대로(잔차·스케일·반사 검사) + **P_capture · 작업영역(로봇 점 상자 ±150/−80/+150) · 자세 파라미터**를 함께 저장 |
+| **로드 검증** | 스키마 · 단위 mm · SE(3) · **잔차 ≤5 · 스케일 ±5%** · 저장 잔차 vs T 재계산 일치(부분 수정 방지) — 하나라도 어긋나면 서버가 **시작을 거부** |
+| **변환** | `det_to_base_pose(det, calib, hover_mm, rz_mode)` = camera_3d → T·p → 도달·원점·**작업영역** 검사 → [x,y,z(+z_offset+hover), rx, ry, rz] |
+| **서버** | `pick_socket_server --mode vision --six-json … --calib <json> [--hover-mm 50] [--rz-mode fixed|angle]` · `--calib` 없으면 `ap.error` · `run_live_pick` 도 `--calib` 필수(`--no-server` 제외) |
+| **검산** | `cam_to_base check --calib <json> --six <six.json> --hover-mm 50 --actual-tcp <지금 TCP 6값> --cam-point "x,y,z"(§4 검산 ② 새 블록)` — 로봇 안 움직임 |
+| **펜던트** | `scripts/rodi_vision_tiny.js` **15줄** = 받은 첫 포즈로 `moveLinear` 만(그리퍼 ✗ · `checkRunnableMotion` 가드) — §4 검산 ③ 을 소켓으로 |
+| **테스트** | `tests/test_cam_to_base.py` **78/78**(`/data/jtm/depth_venv/bin/python`) — 9/16 실물 six.json 4건 변환 · 거부 9종 · 🥇 **배선 검사 "보낸 값 ≠ camera_3d"** · 소켓 왕복 · 🧪 그물(변환을 통과시키면 배선 검사가 실패함을 확인) |
+
+**회전(rz)은 위치와 분리했다** — `rz_mode='fixed'`(기본) = 캘리브 `rz_ref`(P_capture 의 RZ) 그대로 ⇒ 9/22 첫 시험은 **위치만**.
+`'angle'` = 이미지 긴 축 각 → `R_cam_to_base` 로 base yaw → `rz = rz_sign×(yaw+90)+rz_offset` · 🚨 **`rz_sign`(HCR 오일러 규약) · `rz_offset`(조우가 툴 X 인지 Y 인지) · `z_offset`(파지 깊이)은 문서로 확정 불가 = 현장 1회 시험**(부품 30° 돌려 rz 부호 · 조우가 짧은 변에 오나). 파일 `grasp._unverified` 에 적혀 있다.
+
+🚨 **유효 조건 = P_capture 하나** — 카메라가 팔에 있어도 항상 같은 자세에서 찍으면 T 는 상수(§8 "더 짧은 길"). **P_capture 를 다시 티칭하면 파일도 다시 만든다**(3분). 파일에 P_capture 6값이 있어 `--actual-tcp` 로 대조한다.
+📌 9/22 현장 절차 전문 = `/data/jtm/handover_0917/실행표_0922_v5.md` STEP 4·5.

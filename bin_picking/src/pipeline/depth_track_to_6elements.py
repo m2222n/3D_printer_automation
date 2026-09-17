@@ -309,7 +309,8 @@ def convert(
             "depth_track(depth-only) 추론 결과를 협력사 6요소로 변환. "
             "좌표는 crop/resize 역변환으로 원본 depth 프레임(848x480) 기준. "
             "⚠️ angle=0·edge=축정렬 bbox = 예측 마스크가 저장되지 않아서(mask_area만 있음). "
-            "⚠️ camera_3d는 Blaze 카메라 좌표계이며 로봇 Base 변환(hand-eye)은 미착수."
+            "⚠️ camera_3d는 Blaze 카메라 좌표계다. 로봇 Base 변환은 소켓 서버의 cam_to_base 계층이 "
+            "캘리브 파일(P_capture 고정 · 3점법)로 수행한다 — 이 파일의 값을 로봇에 직접 보내면 안 된다(9/17)."
         ),
     }
     if blaze_intrinsics is not None:

@@ -120,6 +120,7 @@ nohup ./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8085 > /tmp/webapi.l
 맞을 수도 있고 **그건 붙여봐야 안다**. ⚠️**train-on-test 금지** — 90장은 재학습 C의 학습 데이터.
 
 ### ⬜ T4. hand-eye 캘리브레이션 (E) — 로봇 필요
+> 🆕 **[9/17] 코드 쪽은 닫혔다** — 카메라→base 변환 계층 `src/communication/cam_to_base.py`(캘리브 파일 생성·검증·변환 · 서버 `--calib` 필수 · 78/78) + 12줄 이동 스크립트 `scripts/rodi_vision_tiny.js`. 🔴 **현장 실행 0회** — 9/22 3점법(블록 4+1) → 이동 1회. 절차 = `docs/HAND_EYE_CARD.md` §9 · `/data/jtm/handover_0917/실행표_0922_v5.md`.
 카메라로 보드를 찍으며 로봇을 움직여 **카메라↔플랜지 변환**을 구한다.
 - 🟢 준비됨 = `hand_eye_calibration.py`(8/3에 eye-in-hand 단일로 정정) · ChArUco 보드 자체 제작
 - 🚨 **선행** = IPC 세팅(8/5 지적: PC 없으면 성립 안 함) · 브래킷 장착(5분)

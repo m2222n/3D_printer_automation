@@ -1,4 +1,4 @@
-"""
+r"""
 빈피킹 라이브 1사이클 — **촬영 → 추론 → 6요소 → 소켓 대기** 를 한 명령으로 (2026-09-04)
 =====================================================================================
 
@@ -19,8 +19,8 @@
 사용 (IPC · C:\binpick_venv):
   # 촬영 없이 기존 npy 로 (연습·재택)
   python -m bin_picking.src.run_live_pick --depth shot_001_c1.npy --checkpoint <OVN2 best.pt> --out-dir C:\live\r1
-  # 실촬영 → 소켓 대기 (현장)
-  python -m bin_picking.src.run_live_pick --capture --checkpoint <OVN2 best.pt> --out-dir C:\live\r1
+  # 실촬영 → 소켓 대기 (현장) — 🆕 9/17: --calib 필수(카메라→base 변환) · 첫 시험은 --hover-mm 50(집기 없이 위에서 멈춤)
+  python -m bin_picking.src.run_live_pick --capture --checkpoint <OVN2 best.pt> --out-dir C:\live\r1 --calib <cam_to_base.json> --hover-mm 50
   # 촬영만 확인
   python -m bin_picking.src.run_live_pick --capture --no-server --checkpoint <OVN2 best.pt> --out-dir C:\live\cap
 
@@ -118,12 +118,19 @@ def run_e2e(depth: Path, out_dir: Path, ckpt: Path, python: str) -> Path:
 # ---------------------------------------------------------------------------
 # ③ 소켓 서버 — 로봇(펜던트 MODE vision)이 붙어 좌표를 읽고 DONE 을 보낼 때까지 기다린다
 # ---------------------------------------------------------------------------
-def serve(six: Path, host: str, port: int, limit: int, cycles: int, python: str) -> int:
+def serve(six: Path, host: str, port: int, limit: int, cycles: int, python: str,
+          calib: Path, hover_mm: float, rz_mode: str) -> int:
+    # 🆕 9/17: --calib 없이는 서버가 시작을 거부한다(카메라 좌표를 그대로 보내던 경로 폐기). 여기서도 먼저 막는다.
+    if not calib or not Path(calib).exists():
+        raise SystemExit(f"🔴 캘리브 파일이 없다: {calib} — hand-eye(3점법) → cam_to_base build 가 선행이다. "
+                         "촬영·추론만 점검하려면 --no-server")
     cmd = [python, "-m", "bin_picking.src.communication.pick_socket_server",
-           "--mode", "vision", "--six-json", str(six),
+           "--mode", "vision", "--six-json", str(six), "--calib", str(calib),
+           "--hover-mm", str(hover_mm), "--rz-mode", rz_mode,
            "--host", host, "--port", str(port), "--limit", str(limit), "--cycles", str(cycles)]
     print("[소켓] " + " ".join(cmd[2:]))
-    print(f"[소켓] 펜던트에서 MODE='vision' 실행 → 로봇이 {port} 포트로 접속하면 좌표 {limit}건을 보낸다")
+    print(f"[소켓] 펜던트에서 MODE='vision' 실행 → 로봇이 {port} 포트로 접속하면 base 좌표 {limit}건을 보낸다"
+          f" (hover {hover_mm}mm · rz {rz_mode})")
     return subprocess.call(cmd, cwd=str(REPO))
 
 
@@ -143,8 +150,16 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=1, help="로봇에 보낼 포즈 수 (데모 = 1)")
     ap.add_argument("--cycles", type=int, default=1)
     ap.add_argument("--no-server", action="store_true", help="six.json 까지만 만들고 끝(촬영·추론 점검용)")
+    ap.add_argument("--calib", type=Path, default=None,
+                    help="🆕 cam_to_base 캘리브 파일 — 서버를 띄우려면 필수(카메라→base 변환 · P_capture 고정)")
+    ap.add_argument("--hover-mm", type=float, default=0.0,
+                    help="변환 결과 z 에 더한다(위로). 9/22 '집기 없이 이동 1회' = 50")
+    ap.add_argument("--rz-mode", choices=("fixed", "angle"), default="fixed",
+                    help="fixed=캘리브 rz_ref 그대로(위치만) / angle=부품 각도 반영(부호·오프셋 실측 후)")
     ap.add_argument("--python", default=sys.executable)
     args = ap.parse_args()
+    if not args.no_server and not args.calib:
+        ap.error("--calib <cam_to_base.json> 이 필요하다 (서버 없이 촬영·추론만 보려면 --no-server)")
 
     if not args.checkpoint.exists():
         raise SystemExit(f"🔴 체크포인트 없음: {args.checkpoint}")
@@ -163,7 +178,8 @@ def main() -> int:
     if args.no_server:
         print("[소켓] --no-server 로 종료. six =", six)
         return 0
-    return serve(six, args.host, args.port, args.limit, args.cycles, args.python)
+    return serve(six, args.host, args.port, args.limit, args.cycles, args.python,
+                 args.calib, args.hover_mm, args.rz_mode)
 
 
 if __name__ == "__main__":

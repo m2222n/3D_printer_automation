@@ -525,24 +525,25 @@ console.log('\n⑰ 🔩 MODE drill 뼈대 — 집은 뒤에만 스핀들, 후퇴
     check('DRILL_POSE 없으면 집기까지만 하고 드릴 이송을 하지 않는다', Rd.log.some(l => l.includes('DRILL_POSE 가 비어 있다')) && !Rd.calls.some(c => c.name === 'moveLinear' && c.args[1][0] === 600));
     const Rf = run(makeRobot({ graspWillSucceed: false }), Object.assign({ SPINDLE_API: 'redundant' }, T));
     check('🚨 파지 실패면 스핀들을 절대 켜지 않는다', !Rf.calls.some(c => c.name === 'setRedundantDigitalOutput'));
-    // (d) [9/10] 판정 신호가 없는 기본 모드(GRIP_FEEDBACK none) = 로봇이 빈손을 모른다 ⇒ 가드가 스핀들을 막아야 한다
-    const Tn = { MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0], DRILL_POSE: [600, 100, 300, 180, 0, 0], SPINDLE_API: 'redundant' };
+    // (d) [9/10] 판정 신호가 없는 모드(GRIP_FEEDBACK none · 9/17부터 명시 옵션) = 로봇이 빈손을 모른다 ⇒ 가드가 스핀들을 막아야 한다
+    const Tn = { MODE: 'drill', TEACH_POSE: [400, 0, 250, 180, 0, 0], DRILL_POSE: [600, 100, 300, 180, 0, 0], SPINDLE_API: 'redundant', GRIP_FEEDBACK: 'none' };
     const Rg = run(makeRobot({ graspWillSucceed: false }), Tn);
-    check('🚨 신호 없는 기본 모드에서는 빈손이어도 스핀들을 켜지 않는다(가드)', !Rg.calls.some(c => c.name === 'setRedundantDigitalOutput'));
+    check("🚨 GRIP_FEEDBACK 'none' 에서는 빈손이어도 스핀들을 켜지 않는다(가드)", !Rg.calls.some(c => c.name === 'setRedundantDigitalOutput'));
     check('… 이유를 로그로 남기고 부품을 물고 정지', Rg.log.some(l => l.includes('스핀들을 켜지 않는다')) && !Rg.calls.some(c => c.name === 'moveLinear' && c.args[1][0] === 600));
     const Ro = run(makeRobot(), Object.assign({ DRILL_REQUIRE_GRASP_SIGNAL: false }, Tn));
     check('🧪 그물 확인: DRILL_REQUIRE_GRASP_SIGNAL=false 로 명시하면 눈 판정으로 드릴까지 간다', Ro.calls.some(c => c.name === 'setRedundantDigitalOutput' && c.args[1] === 1));
 }
 
-console.log('\n⑱ 🥇 [9/9 실물] 기본 = GRIP_FEEDBACK none — 완료 신호를 읽지 않고, 판정은 눈으로 넘긴다');
+console.log("\n⑱ 🥇 GRIP_FEEDBACK 'none'(9/9 방식 · 9/17부터 명시 옵션) — 완료 신호를 읽지 않고, 판정은 눈으로 넘긴다 / 기본은 'signal'(9/16)");
 {
     const src = require('fs').readFileSync(SCRIPT, 'utf8');
-    check("스크립트 기본값 GRIP_FEEDBACK='none' (9/9: IN_1 안 뜸 · IN_2 는 물어도 뜸)", /^var GRIP_FEEDBACK\s*=\s*'none'/m.test(src));
+    // [9/17] 9/16 GUI 재설정으로 신호(IN_0 열림 · IN_1 물음 · IN_2 빈손)가 살아나 기본이 'signal' 로 돌아왔다. 아래 'none' 시나리오는 명시 옵션으로 검증한다.
+    check("스크립트 기본값 GRIP_FEEDBACK='signal' (9/16 실물: 열림 IN_0 · 물음 IN_1 · 빈손 IN_2 확정)", /^var GRIP_FEEDBACK\s*=\s*'signal'/m.test(src));
     check("스크립트 기본값 대기2 · 파지2 (9/9 실물 채널 DO1/DO3)", /^var GRIP_STANDBY_PT\s*=\s*2;/m.test(src) && /^var GRIP_GRASP_PT\s*=\s*2;/m.test(src));
     // 🚨 가짜 그리퍼는 "물어도 IN_2 High" 를 그대로 재현할 필요가 없다 — 기본 경로가 DI 를 **읽지 않는 것** 자체가 검사 대상
     // 가짜 그리퍼를 닫힌 채로 시작시킨다(readyHighAtStart) — 열림 이벤트가 상태 변화로 기록되게(열린 채 시작하면 열기 이벤트가 안 남는다)
-    const R = run(makeRobot({ graspWillSucceed: false, readyHighAtStart: true }), { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0] });
-    check('완료 신호(DI) 조회 0건 — 읽으면 성공을 실패로 오판한다', !R.calls.some(c => c.name === 'getGeneralDigitalInput'),
+    const R = run(makeRobot({ graspWillSucceed: false, readyHighAtStart: true }), { MODE: 'teach', TEACH_POSE: [400, 0, 250, 180, 0, 0], GRIP_FEEDBACK: 'none' });
+    check("'none' 이면 완료 신호(DI) 조회 0건 — 신호가 안 뜨는 세팅에서 읽으면 성공을 실패로 오판한다", !R.calls.some(c => c.name === 'getGeneralDigitalInput'),
           `DI 조회 ${R.calls.filter(c => c.name === 'getGeneralDigitalInput').length}건`);
     check('"눈으로" 판정 안내 로그', R.log.some(l => l.includes('눈으로')));
     check('가짜 그리퍼가 실패 신호를 올려도 "놓쳤다"로 읽지 않는다(신호를 안 보니까)', !R.log.some(l => l.includes('🔴 놓쳤다')));
