@@ -573,7 +573,7 @@ A100 평가기가 **7/6자**로 **8/19 동치 처리(`14_13`→`13_variant`)가 
 |---|---|
 | **판단·현황 전체** | `CLAUDE.md`(이 파일) + `CLAUDE.local.md`(주간) + `memory/` |
 | 🆕 **작업 상태·이번 주 계획·절대 금지·회신 대기** | **`CLAUDE.local.md` 「W36 계획」**(전량 로드) — 9/8부터 `MEMORY.md`에는 두지 않는다 |
-| 🆕 **현장 실행표(현행)** | **`/data/jtm/handover_0915/실행표_다음출근일_v4.md`**(9/15 · ③' 먼저 → 브라켓 실측 Q1~Q8 → G → pick_test → 180° → 5분짜리 → hand-eye) + **`handover_0915/브라켓_설계입력_대장_0915.md`** — 🚨 v3(`handover_0908/실행표_0911_v3.md`)·v2·`현장카드_0902`는 폐기 표기 |
+| 🆕 **현장 실행표(현행)** | **`/data/jtm/handover_0917/실행표_0922_v5.md`**(9/17 작성 · 9/18 리허설 갱신 · git pull → 장착·핏 → grab → P_capture 재티칭(`capture_meta.json` DIST) → 3점법 블록 4+1 → 🥇 인식 좌표로 이동 1회) — 🚨 v4(`handover_0915/실행표_다음출근일_v4.md`)·v3·v2·`현장카드_0902`는 폐기 표기 |
 | 촬영 현장 카드 | `bin_picking/FIELD_CARD_0818.md` |
 | 라벨링 | `bin_picking/LABEL_CARD_0819.md` |
 | P0 완료 기록(7/28~30) | `bin_picking/docs/P0_0728_0730_완료기록.md` |
@@ -3115,7 +3115,7 @@ JRT 박스의 NEXTU USB-RS485 컨버터(COM13) + USB 메모리 `JRT_Gripper_SetU
 🐛 첫 실행에서 작업영역 하한이 **9/16 실물(Zc 482~511 · 뷰어 450)을 거부** → 하한 80 · 원인 [미확인](골판지 처짐·RY −2.6°·헐거운 마스크) ⇒ 📌 **캘리브 블록은 부품과 같은 바닥에**. argparse 가 `-560,20,130`을 옵션으로 오해 ⇒ 점은 `"x,y,z; …"` 또는 `@파일`.
 📁 **9/22 정본 = `/data/jtm/handover_0917/실행표_0922_v5.md`**(git pull → 장착·핏 → grab → P_capture 재티칭 → 3점법 블록 4+1 · RMS <3 · 검산 ② <5 → 🥇 이동 1회 hover 50 · 어긋남 <10mm) · `docs/HAND_EYE_CARD.md` §9. 🔄 **16:2x 정정 2** = ACE2는 **Basler 브라켓으로 Blaze에 한 덩어리**(레진 채널은 Blaze만 잡음) ⇒ 9/14 "편하중" 오판 철회 · **7/28 extrinsic 유효 → RGB 금지 해제** · 리스크 = 플랜지 118 끝 ↔ Basler 판 0.2 여유(걸리면 6mm 절단).
 
-#### ✅ [9/18 휴가 중 재택] 9/22 실행표 리허설 — STEP 4-3 에서 죽었을 크래시를 실물 파일로 찾아 고쳤다 (실물 0회) → `memory/project_rehearsal_0922_findings_0918.md`
+#### ✅ [9/18 휴가 중 재택] 9/22 실행표 리허설 — STEP 4-3 에서 죽었을 크래시를 실물 파일로 찾아 고쳤다 (실물 0회) → `memory/project_cam_to_base_layer_0917.md` §9/18
 실행표 v5 STEP 4-3~5 명령을 **9/16 실물 npy + 가상 로봇 점**으로 6000 에서 순서대로 실행(블롭 → build 잔차 0 → check → OVN2 재추론 4건 동일 → check --six 4/4 → `run_live_pick --calib` + fake_robot 왕복 · 로봇이 받은 값 == base 예측 ≠ camera_3d). **잡은 것 4** = 🥇 **`find_calib_blobs.py` 가 실물 raw npy 에서 크래시**(`to_mm` 튜플 언패킹 누락 · 9/10 자체 테스트가 float 합성만 돌려 uint16 경로 0회) · 🥇 **팔 카메라 화면의 16% 가 그리퍼·브라켓**(113~163mm · 좌우 세로 띠 u<106·u>636 ⇒ 바닥 중앙값 180 으로 붕괴 → 근접 컷 300) · 🥇 **골판지 바닥은 depth 에 거의 없다**(ROI 유효 2~4% ⇒ "바닥보다 8mm 위" 판정 불성립 → 바닥 무효 모드) · 🥈 `--cam-point "-12.3,45,482"` argparse 함정('-' 시작+공백 없음만 옵션 오해 · 9/17 `-560,20,130` 동일 원리 → `--opt=value` 자동 결합 · 테스트 78→82) · 🥉 cp949 방어를 CLI 3곳에. **9/17 [미확인] 해소** = "뷰어 450 vs Zc 482~511" 은 **저장 프레임의 뷰어 기록이 `median_mm 502 · all_valid 17.7%`** 라 데이터 불일치가 아니라 메모 불일치 ⇒ DIST 는 `capture_meta.json` 으로 확정(실행표 STEP 3') · all_valid 15~20% 가 정상. 📌 ***"자체 테스트 통과" ≠ "실물 파일 경로를 탔다"* — 실행표 명령은 실물 파일 하나로 리허설한다**(8/24·9/1 계열). 🚫 재택에서 못 한 것 = rz_sign·rz_offset·z_offset · 브라켓 핏 · 3점법 실물 잔차(9/22 그대로).
 같은 날 = **IRIS 9월 3주차 연구노트**(단일 통합본 11절 · 웹 Claude 인계) · **W37 주간보고 노션 게시**(한/영 · 성과 8 · 리스크 2 · 상태 Done) — 🚨 Notion MCP는 claude.ai 커넥터 재연결로는 안 뜨고 **터미널 `/mcp`로 로컬 `notion` 서버를 인증하면 떠 있던 세션에도 즉시 주입**된다(`memory/project_notion_mcp_setup_pending.md` §9/18).
 
