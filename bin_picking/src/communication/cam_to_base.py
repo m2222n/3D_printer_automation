@@ -64,6 +64,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -84,6 +85,15 @@ except ImportError:  # 단독 실행 대비
         MAX_RESIDUAL_MM, SCALE_TOLERANCE, WorkCoordError,
         apply_transform, solve_rigid_transform, RigidTransformResult,
     )
+
+try:
+    from ..utils.console_utf8 import enable_utf8_console
+except ImportError:  # 단독 실행 대비 (위에서 src/ 를 sys.path 에 넣었다)
+    try:
+        from utils.console_utf8 import enable_utf8_console  # type: ignore
+    except ImportError:
+        def enable_utf8_console() -> bool:  # type: ignore
+            return False
 
 SCHEMA = "orinu_cam_to_base_v1"
 
@@ -596,7 +606,31 @@ def _cmd_check(a: argparse.Namespace) -> int:
     return 0 if n_ok else 1
 
 
+_POINT_OPTS = ("--cam-point", "--robot-points", "--camera-points")
+
+
+def _join_negative_point_values(argv: Sequence[str]) -> list[str]:
+    """argparse 함정 방어 — '-12.3,45,482' 처럼 **'-' 로 시작하고 공백이 없는** 점 값은 옵션으로 오해되어
+    `expected one argument` 로 죽는다(9/17 `-560,20,130` · 9/18 재현 `--cam-point "-12.3,45.0,482.0"`).
+    공백이 섞이면("x,y,z; x,y,z") argparse 가 값으로 보기 때문에 --robot-points 는 우연히 통과했었다.
+    카메라 x 는 화면 중앙 기준 ± 라 절반은 음수 ⇒ 점 옵션 뒤의 그런 토큰을 `--opt=value` 로 붙여 준다."""
+    out: list[str] = []
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        nxt = argv[i + 1] if i + 1 < len(argv) else None
+        if tok in _POINT_OPTS and nxt is not None and nxt.startswith("-") and "," in nxt:
+            out.append(f"{tok}={nxt}")
+            i += 2
+            continue
+        out.append(tok)
+        i += 1
+    return out
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    enable_utf8_console()                       # IPC(cp949) 에서 🔴🟢 출력이 죽지 않게 (8/28 사고)
+    argv = _join_negative_point_values(list(argv) if argv is not None else sys.argv[1:])
     ap = argparse.ArgumentParser(description="카메라→base 변환 계층: 캘리브 파일 만들기 / 검산")
     sub = ap.add_subparsers(dest="cmd", required=True)
 

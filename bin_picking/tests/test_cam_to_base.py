@@ -266,6 +266,25 @@ def main() -> int:
     else:
         check("⑦⑧ 실물 six.json 없음 — 배선·소켓 검사 생략", False, str(REAL_SIX))
 
+    print("\n⑨ CLI 음수 점 값 — argparse 가 '-x,y,z' 를 옵션으로 오해하던 함정(9/17 · 9/18)")
+    joined = c2b._join_negative_point_values(["check", "--calib", "x.json", "--cam-point", "-12.3,45.0,482.0", "--hover-mm", "50"])
+    check("'-x,y,z' 가 --cam-point=… 로 붙는다", "--cam-point=-12.3,45.0,482.0" in joined and joined[-2:] == ["--hover-mm", "50"], str(joined))
+    check("음수 단일 값(-50)·양수 점은 건드리지 않는다",
+          c2b._join_negative_point_values(["--hover-mm", "-50", "--cam-point", "12,3,480"]) == ["--hover-mm", "-50", "--cam-point", "12,3,480"])
+
+    def run_cli(args):
+        try:
+            return c2b.main(args)
+        except SystemExit as e:       # argparse 오류 = 2
+            return int(e.code) if e.code is not None else 0
+    rc = run_cli(["check", "--calib", str(tmp / "ok.json"), "--cam-point", "-12.3,45.0,482.0"])
+    check("check --cam-point \"-12.3,45.0,482.0\" 이 argparse 에서 죽지 않는다(rc 0)", rc == 0, f"rc={rc}")
+    rc2 = run_cli(["build", "--camera-points", "1,2,480;100,2,480;1,100,480;100,100,481",
+                   "--robot-points", "-500,200,50;-400,200,50;-500,300,50;-400,300,51",
+                   "--capture-pose", "-440.12", "222.68", "413.41", "-178.85", "-2.6", "-90.03", "--rz-ref", "-90.03",
+                   "--out", str(tmp / "neg.json")])
+    check("build --robot-points 공백 없는 음수 시작 문자열 + --capture-pose 음수 6개 통과", rc2 == 0 and (tmp / "neg.json").exists(), f"rc={rc2}")
+
     print(f"\n{'✅' if FAIL == 0 else '🔴'} 통과 {PASS} / 실패 {FAIL}")
     return 0 if FAIL == 0 else 1
 

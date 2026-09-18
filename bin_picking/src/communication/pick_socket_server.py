@@ -551,6 +551,15 @@ def _provider_vision(
 
 
 def main() -> int:
+    try:                                        # IPC(cp949) 에서 이모지 배너가 죽지 않게 (8/28 사고 · run_live_pick 은 이미 적용)
+        from ..utils.console_utf8 import enable_utf8_console
+    except ImportError:
+        try:
+            from utils.console_utf8 import enable_utf8_console  # type: ignore
+        except ImportError:
+            def enable_utf8_console() -> bool:  # type: ignore
+                return False
+    enable_utf8_console()
     ap = argparse.ArgumentParser(
         description="빈피킹 좌표 소켓 서버 (로봇=클라이언트)"
     )
