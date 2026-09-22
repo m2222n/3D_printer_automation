@@ -265,6 +265,10 @@ export const MOCK: MockState = {
       node_id: 'RK-WSH-DONE-01', slot_no: 2, pos_no: 3, status: 'DONE',
       contents: [{ part_no: 'PN-A-2026', qty: 5 }, { part_no: 'PN-B-1180', qty: 2 },
                  { part_no: 'PN-C-770', qty: 1 }] },                   // 3종
+    // 🆕 내용 미상 배치 — 주문도 프리셋도 없이 /local/print 로 태어난 형태 (order_id 없음 · contents 0행).
+    //    S5 ④ 에서 작업자가 R12 목록으로 부품을 직접 추가해야 완료할 수 있다. FIFO 라 앞 3장 뒤에 차례가 온다.
+    { unit_id: 'u-22', unit_kind: 'BATCH', display_id: 'U-9c41d0e2',
+      node_id: 'RK-WSH-DONE-01', slot_no: 1, pos_no: 4, status: 'DONE', contents: [] },
     { unit_id: 'u-14b', unit_kind: 'BATCH', display_id: 'P14-W14', order_id: 'SIM-0045',
       node_id: 'RK-WSH-DONE-01', slot_no: 2, pos_no: 4, status: 'DONE',
       contents: [{ part_no: 'PN-A-2026', qty: 6 }] },                  // 1종
