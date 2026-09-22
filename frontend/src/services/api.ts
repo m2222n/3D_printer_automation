@@ -3,7 +3,7 @@
  * 백엔드와 REST API 통신
  */
 
-import type { DashboardData, Printer, PrinterSummary, PrintHistoryResponse } from '../types/printer';
+import type { DashboardData, Printer, PrinterSummary, PrintHistoryResponse, SystemConfig } from '../types/printer';
 import { authFetch } from './auth';
 
 const API_BASE = '/api/v1';
@@ -33,6 +33,10 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
 }
 
 // 대시보드 데이터 조회
+export async function getSystemConfig(): Promise<SystemConfig> {
+  return fetchApi<SystemConfig>('/system/config');
+}
+
 export async function getDashboard(): Promise<DashboardData> {
   return fetchApi<DashboardData>('/dashboard');
 }

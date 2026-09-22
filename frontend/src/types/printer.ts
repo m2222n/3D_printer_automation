@@ -294,3 +294,14 @@ export function formatResinAmount(ml: number | null): string {
   if (ml === null) return '-';
   return `${ml.toFixed(0)}ml`;
 }
+
+/** GET /api/v1/system/config — 시리얼은 코드에 박지 않고 여기서 받는다 */
+export interface SystemConfig {
+  app_name: string;
+  app_version: string;
+  polling_interval_seconds: number;
+  monitored_printers: number;
+  printer_serials: string[];
+  /** 제어의 target_printer(문자열 "1"~"4") → 시리얼 */
+  printer_serial_map: Record<string, string>;
+}
