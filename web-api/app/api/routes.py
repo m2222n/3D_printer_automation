@@ -376,6 +376,8 @@ async def get_system_config():
         "polling_interval_seconds": settings.POLLING_INTERVAL_SECONDS,
         "monitored_printers": len(settings.PRINTER_SERIALS),
         "printer_serials": settings.PRINTER_SERIALS,
+        # 제어의 target_printer(1~4) ↔ 시리얼. FE 가 셀렉트 라벨을 여기서 만든다 — 코드에 시리얼을 박지 않기 위해.
+        "printer_serial_map": {str(k): v for k, v in sorted(settings.PRINTER_SERIAL_MAP.items())},
         "notifications": {
             "on_print_complete": settings.NOTIFY_ON_PRINT_COMPLETE,
             "on_print_error": settings.NOTIFY_ON_PRINT_ERROR,

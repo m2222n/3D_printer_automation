@@ -6,7 +6,7 @@ Formlabs Web API 시스템 설정
 - 알림 설정
 """
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
@@ -60,13 +60,17 @@ class Settings(BaseSettings):
     # ===========================================
     # 프린터 설정
     # ===========================================
-    # Form 4 프린터 4대 시리얼 번호 (실제 값으로 교체 필요)
-    PRINTER_SERIALS: list[str] = [
-        "PRINTER_SERIAL_1",
-        "PRINTER_SERIAL_2", 
-        "PRINTER_SERIAL_3",
-        "PRINTER_SERIAL_4"
-    ]
+    # 프린터 번호(제어의 target_printer) ↔ 시리얼. 🚨 유일한 손 편집 지점은 .env 다 — 코드 기본값을 두지 않는다.
+    #   sequence_service 도 같은 .env(../web-api/.env)를 읽고, topo_sync 도 이 키를 읽어 node.external_ref 를 채운다.
+    PRINTER_SERIAL_MAP: dict[int, str] = {}
+    # 모니터링 대상 시리얼. 비어 있으면 PRINTER_SERIAL_MAP 의 값(번호 순)으로 파생된다 — 두 출처를 만들지 않기 위해.
+    PRINTER_SERIALS: list[str] = []
+
+    @model_validator(mode="after")
+    def _derive_printer_serials(self):
+        if not self.PRINTER_SERIALS and self.PRINTER_SERIAL_MAP:
+            self.PRINTER_SERIALS = [self.PRINTER_SERIAL_MAP[k] for k in sorted(self.PRINTER_SERIAL_MAP)]
+        return self
     
     # ===========================================
     # 데이터베이스 설정
