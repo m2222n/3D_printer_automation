@@ -73,12 +73,10 @@ class Settings(BaseSettings):
     PRINT_START_RETRIES: int = 3
     PRINT_DISPATCH_RETRY_SECONDS: float = 5.0
     PRINT_DISPATCH_MAX_RETRIES: int = 5
-    PRINTER_SERIAL_MAP: dict[int, str] = {
-        4: 'Form4-CapableGecko',
-        3: 'Form4-HeavenlyTuna',
-        2: 'Form4-CorrectPelican',
-        1: 'Form4-ShrewdStork',
-    }
+    # 프린터 번호 ↔ 시리얼. 🚨 값은 .env(PRINTER_SERIAL_MAP, JSON)에서만 온다 — 코드 기본값 없음.
+    #   시리얼은 인프라 식별자라 git 에 두지 않는다(CLAUDE.md). web-api 와 같은 .env 를 읽으므로 출처가 하나다.
+    #   비어 있으면 _resolve_printer_serial 이 '' 를 돌려 'printer serial not configured' 로 크게 실패한다(조용히 안 돈다).
+    PRINTER_SERIAL_MAP: dict[int, str] = {}
 
 
 @lru_cache()

@@ -17,7 +17,7 @@ def _parse(data: dict) -> Printer:
 
 # 실제 Formlabs API 응답 구조를 본뜬 샘플
 SAMPLE = {
-    "serial": "Form4-CapableGecko",
+    "serial": "Form4-TestGecko",
     "alias": "테스트기",
     "machine_type": "FORM-4-0",
     "firmware_version": "1.16.1-2955",
@@ -51,7 +51,7 @@ SAMPLE = {
 
 def test_parse_basic_fields():
     p = _parse(SAMPLE)
-    assert p.serial == "Form4-CapableGecko"
+    assert p.serial == "Form4-TestGecko"
     assert p.machine_type == "FORM-4-0"
     assert p.firmware_version == "1.16.1-2955"
 
