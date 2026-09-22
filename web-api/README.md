@@ -11,7 +11,7 @@ Formlabs Form 4 3D프린터 4대를 실시간 모니터링하고 원격으로 �
 - **Phase 3**: 자동화 셀 제어 UI 백엔드 — sequence_service 제어 DB(MariaDB)에 CMD 생성·셀 START/STOP·수동 I/O·Modbus
 - **Phase 4**: 세척기/경화기 비전 상태 감시 — 카메라 MQTT 수신, 상태 전이 저장, WebSocket 푸시
 - **Phase 5**: 빈피킹 인식 결과 수신 — 인식 모듈이 HTTP POST 한 장면/검출을 저장·조회
-- **공통**: JWT 로그인(loopback 호출은 면제), 프린터 벤더 어댑터(`PRINTER_VENDOR`), 라인 MES(PostgreSQL) 배치 발행 — `POST /api/v1/local/print` 전송 성공 시 1건(`LINE_DSN` 설정 시)
+- **공통**: JWT 로그인(loopback 호출은 면제), 프린터 벤더 어댑터(`PRINTER_VENDOR`), 라인 MES(PostgreSQL) 배치 발행 — `POST /api/v1/local/print` 전송 성공 시 1건(`LINE_DSN` 설정 시) · 배치 내용물 = 프리셋 `part_type`
 - **라인 MES v2 API** (`new`, 예정): 라인 모니터링·공정 제어 탭이 쓰는 `/api/v2/*` 17개 — 아직 미구현, 프런트는 목업으로 동작 (`frontend/src/services/lineApi.ts`)
 
 ## 프로젝트 구조
@@ -170,6 +170,7 @@ docker compose logs -f
 | `POST` | `/api/v1/local/notifications/mark-read` | 알림 읽음 처리 |
 
 > `POST /api/v1/local/print` 는 응답을 즉시 돌려주고 실제 전송은 백그라운드에서 한다. 전송 성공 시 라인 MES에 배치 1건을 발행한다(`LINE_DSN` 설정 시). 발행이 실패해도 출력은 이미 시작됐으므로 작업의 `error_message` 에 `LINE_UNTRACKED:` 로만 남긴다.
+> 배치 내용물은 **프리셋의 `part_type`** 에서 온다 — 프리셋으로 건 출력이면 `unit_content` 에 그 부품 1개(플레이트 한 장 = STL 1회 import)가 실리고, 프리셋 없이 직접 설정으로 걸면 내용 미상(0행)이다. `part_type` 이 부품 마스터에 없으면 그 이름으로 생성한다.
 
 ### 인증 (3 routes)
 
