@@ -8,9 +8,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  getGroups, getRackSlots, getSlotQueue, getSourceRacks, getNodes, postMove, postSplit,
+  getGroups, getParts, getRackSlots, getSlotQueue, getSourceRacks, getNodes, postMove, postSplit,
 } from '../services/lineApi';
-import type { GroupRow, NodeStatusRow, RackRow, SlotQueueRow, SlotRow } from '../types/line';
+import type { GroupRow, NodeStatusRow, PartRow, RackRow, SlotContent, SlotQueueRow, SlotRow } from '../types/line';
 import { MOCK, NG_REASONS_OF } from '../mocks/lineMock';
 import { ControlLayout, ControlSidePanel, interlockOk } from './ControlSidePanel';
 import {
@@ -19,10 +19,13 @@ import {
 
 interface JudgeInput { ok: number; ng: number; reason: string }
 
-/** 파트별 판정 행 — 화면이 만든다(부품 unit 이 아직 없으므로). */
-function rowsOf(batch: SlotQueueRow | null, input: Record<string, JudgeInput>) {
+/** 파트별 판정 행 — 화면이 만든다(부품 unit 이 아직 없으므로).
+ *  contents 가 비어 있으면(내용 미상 배치) 작업자가 R12 목록으로 추가한 extra 가 행이 된다.
+ *  🚨 contents 가 있으면 extra 는 쓰지 않는다 — 기록된 내용물이 정본이다. */
+function rowsOf(batch: SlotQueueRow | null, input: Record<string, JudgeInput>, extra: SlotContent[]) {
   if (!batch) return [];
-  return batch.contents.map((c) => {
+  const contents = batch.contents.length ? batch.contents : extra;
+  return contents.map((c) => {
     const s = input[c.part_no];
     return {
       part_no: c.part_no,
@@ -50,6 +53,11 @@ export function BatchSplitScreen({ nodeId, actor }: { nodeId: string; actor: str
   const [slot, setSlot] = useState<number | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [input, setInput] = useState<Record<string, JudgeInput>>({});
+  // 내용 미상 배치용 — 작업자가 추가한 부품. 배치를 바꾸면 비운다.
+  const [extra, setExtra] = useState<SlotContent[]>([]);
+  const [parts, setParts] = useState<PartRow[]>([]);
+  const [addPart, setAddPart] = useState('');
+  const [addQty, setAddQty] = useState(1);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [ask, setAsk] = useState<null | { kind: 'split' } | { kind: 'handoff'; group: GroupRow; to: NodeStatusRow }>(null);
   const [tick, setTick] = useState(0);
@@ -70,6 +78,7 @@ export function BatchSplitScreen({ nodeId, actor }: { nodeId: string; actor: str
   }, [nodeId]);
 
   useEffect(() => { reload(); }, [reload, tick]);
+  useEffect(() => { getParts().then((r) => setParts(r.parts)); }, []);
 
   useEffect(() => {
     if (racks.length && (!rack || !racks.some((r) => r.node_id === rack))) setRack(racks[0].node_id);
@@ -95,7 +104,8 @@ export function BatchSplitScreen({ nodeId, actor }: { nodeId: string; actor: str
   }, [queue, open]);
 
   const batch = queue.find((b) => b.unit_id === open) ?? null;
-  const rows = rowsOf(batch, input);
+  const unknownContents = !!batch && batch.contents.length === 0;
+  const rows = rowsOf(batch, input, extra);
   const sum = rows.reduce((a, r) => ({ qty: a.qty + r.qty, ok: a.ok + r.ok, ng: a.ng + r.ng }), { qty: 0, ok: 0, ng: 0 });
   const bad = rows.filter((r) => !rowValid(r));
   const canDone = rows.length > 0 && lock && bad.length === 0;
@@ -193,7 +203,7 @@ export function BatchSplitScreen({ nodeId, actor }: { nodeId: string; actor: str
             <button
               key={b.unit_id}
               disabled={!b.retrievable}
-              onClick={() => { setOpen(b.unit_id); setInput({}); }}
+              onClick={() => { setOpen(b.unit_id); setInput({}); setExtra([]); }}
               className={`${ROW} w-full text-left flex items-center gap-3 ${
                 b.unit_id === open ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200'} ${
                 b.retrievable ? '' : 'opacity-50 cursor-not-allowed'}`}
@@ -208,6 +218,9 @@ export function BatchSplitScreen({ nodeId, actor }: { nodeId: string; actor: str
                       {c.part_no} ×{c.qty}
                     </span>
                   ))}
+                  {b.contents.length === 0 && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">내용 미상</span>
+                  )}
                 </span>
               </span>
               <span className="text-right">
@@ -226,6 +239,32 @@ export function BatchSplitScreen({ nodeId, actor }: { nodeId: string; actor: str
             {!lock && (
               <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700 mb-3">
                 인터록 미충족 — 판정 입력이 잠겨 있습니다.
+              </div>
+            )}
+            {unknownContents && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 mb-3">
+                <p className="text-sm text-amber-800 font-medium">내용 미상 배치 — 주문·프리셋 없이 걸린 출력이라 부품 기록이 없습니다.</p>
+                <p className={`${HINT} mt-0.5`}>플레이트의 부품을 보고 종류와 개수를 추가하세요. 추가한 개수가 투입 수량이 됩니다.</p>
+                <div className={`flex items-center gap-2 mt-2 ${lock ? '' : 'opacity-40 pointer-events-none'}`}>
+                  <select value={addPart} onChange={(e) => setAddPart(e.target.value)}
+                    className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 text-sm">
+                    <option value="">- 부품 선택 -</option>
+                    {parts.filter((p) => !extra.some((x) => x.part_no === p.part_no)).map((p) => (
+                      <option key={p.part_no} value={p.part_no}>{p.part_no}{p.name !== p.part_no ? ` · ${p.name}` : ''}</option>
+                    ))}
+                  </select>
+                  <input type="number" min={1} value={addQty} onChange={(e) => setAddQty(Math.max(1, Number(e.target.value) || 1))}
+                    className={`${INPUT} w-20`} />
+                  <button className={BTN} disabled={!addPart}
+                    onClick={() => {
+                      const p = parts.find((x) => x.part_no === addPart);
+                      if (!p) return;
+                      setExtra((xs) => [...xs, { part_no: p.part_no, part_name: p.name, qty: addQty, qty_scrapped: 0 }]);
+                      setAddPart(''); setAddQty(1);
+                    }}>
+                    추가
+                  </button>
+                </div>
               </div>
             )}
             <button
@@ -252,6 +291,15 @@ export function BatchSplitScreen({ nodeId, actor }: { nodeId: string; actor: str
                         <p className={HINT}>
                           {r.name} · 투입 {r.qty}개
                           {mismatch && <span className="text-red-600 font-medium"> · 합계 불일치</span>}
+                          {unknownContents && (
+                            <button className="ml-2 text-xs text-gray-400 hover:text-red-600 underline"
+                              onClick={() => {
+                                setExtra((xs) => xs.filter((x) => x.part_no !== r.part_no));
+                                setInput((s) => { const n = { ...s }; delete n[r.part_no]; return n; });
+                              }}>
+                              빼기
+                            </button>
+                          )}
                         </p>
                       </div>
                       <div className="w-20">

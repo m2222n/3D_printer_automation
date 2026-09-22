@@ -387,3 +387,20 @@ export interface RobotCommandListResponse {
   protocol: string | null;
   commands: RobotCommandRow[];
 }
+
+// ── R12 · GET /parts ────────────────────────────────────────
+// 내용 미상 배치(unit_content 0행)의 파트별 판정에서 작업자가 부품을 고를 목록.
+// unit_content.part_no 가 part FK 라 자유 입력이 아니라 여기서 고른다.
+
+export interface PartRow {
+  part_no: string;
+  name: string;
+  revision: string | null;
+  cad_ref: string | null;
+  attrs: Record<string, unknown> | null;
+  is_active: boolean;
+}
+
+export interface PartListResponse {
+  parts: PartRow[];
+}

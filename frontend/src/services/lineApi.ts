@@ -9,6 +9,7 @@
  *   R2 GET /api/v2/lines/{line_id}/transporters
  *   R3 GET /api/v2/lines/{line_id}/wip
  *   R4 GET /api/v2/lines/{line_id}/control-menu
+ *   R12 GET /api/v2/parts                      (부품 마스터 · 내용 미상 배치용)
  *
  * 🚨 목업이 채우지 못하는 값은 **0 이나 null 로 정직하게 비운다.** 그럴싸한 값을 지어내면
  *    실 API 로 바꿨을 때 화면이 달라진 이유를 못 찾는다.
@@ -21,7 +22,7 @@ import type {
   CommandRequest, GroupListResponse, GroupRow, JudgementRequest,
   PartJudgeListResponse, PartJudgeRow, RackListResponse, RackRow,
   SlotListResponse, SlotQueueResponse, SlotQueueRow, SlotRow, SplitRequest,
-  RobotCommandListResponse,
+  RobotCommandListResponse, PartListResponse,
 } from '../types/line';
 import * as mock from '../mocks/lineMock';
 
@@ -384,6 +385,14 @@ export async function postSplit(unitId: string, req: SplitRequest): Promise<Writ
   if (!batch) {
     return { ok: false, event_ids: [], unit_ids: [], group_id: null, message: '배치를 찾을 수 없습니다', warnings: [] };
   }
+  // 내용 미상 배치(contents 0행) — 명세 W1: outputs + scraps 의 파트별 합을 unit_content.qty 로 먼저 채운다.
+  // qty 는 "투입 수량" 이고 이 경우 작업자가 센 값이 그것이다. 실 엔진도 같은 순서로 구현한다.
+  if (batch.contents.length === 0) {
+    const qty: Record<string, number> = {};
+    req.outputs.forEach((o) => { qty[o.part_no] = (qty[o.part_no] ?? 0) + o.qty; });
+    req.scraps.forEach((o) => { qty[o.part_no] = (qty[o.part_no] ?? 0) + o.qty; });
+    batch.contents = Object.entries(qty).map(([part_no, q]) => ({ part_no, qty: q }));
+  }
   // outputs/scraps 를 판정 행으로 되돌린다 — 목업 엔진이 쓰는 모양
   const rows = batch.contents.map((c) => ({
     part_no: c.part_no,
@@ -460,6 +469,18 @@ export async function getRobotCommands(transporterId: string): Promise<RobotComm
       send: c.send, span_mm: c.span_mm, source: c.source, verified: c.verified, risk: c.risk,
     })),
   };
+}
+
+// ── R12 · 부품 마스터 ───────────────────────────────────────
+// 내용 미상 배치(contents 0행)에서 작업자가 부품을 고를 목록. part 테이블을 그대로 돌려준다.
+
+export async function getParts(all = false): Promise<PartListResponse> {
+  if (!USE_MOCK) throw new Error('v2 미구현');
+  void all;   // 목업엔 비활성 부품이 없다
+  const parts = Object.entries(mock.MOCK.part)
+    .map(([part_no, p]) => ({ part_no, name: p.name, revision: null, cad_ref: p.cad_ref, attrs: p.attrs, is_active: true }))
+    .sort((a, b) => a.part_no.localeCompare(b.part_no));
+  return { parts };
 }
 
 // ── W6 · 로봇 명령 실행 ─────────────────────────────────────
