@@ -130,6 +130,105 @@ class InboundQueueResponse(BaseModel):
     inbound: list[InboundRow]
 
 
+# ── R6 · source-racks ───────────────────────────────────────
+class RackRow(BaseModel):
+    node_id: str
+    label: str
+    capacity: int
+    occupancy: int
+    slot_count: int
+
+
+class RackListResponse(BaseModel):
+    racks: list[RackRow]
+
+
+# ── R7 · rack slots ─────────────────────────────────────────
+class SlotRow(BaseModel):
+    slot_no: int
+    capacity: int
+    occupancy: int
+    head_display_id: Optional[str] = None
+    contents: list[str]
+
+
+class SlotListResponse(BaseModel):
+    slots: list[SlotRow]
+
+
+# ── R8 · slot queue ─────────────────────────────────────────
+class SlotContent(BaseModel):
+    part_no: str
+    part_name: str
+    qty: int
+    qty_scrapped: int
+
+
+class SlotQueueRow(BaseModel):
+    unit_id: str
+    display_id: str
+    pos_no: int
+    retrievable: bool
+    total_qty: int
+    kinds: int
+    contents: list[SlotContent]
+
+
+class SlotQueueResponse(BaseModel):
+    queue: list[SlotQueueRow]
+
+
+# ── R9 · groups ─────────────────────────────────────────────
+class GroupSourceRow(BaseModel):
+    parent_display_id: str
+    parts: dict[str, int]
+
+
+class GroupRow(BaseModel):
+    group_id: str
+    node_id: str
+    unit_qty: int
+    capacity: int                      # 뷰가 NULL 이면 0 — 정원이 정의되지 않은 자리
+    closed: bool
+    sources: list[GroupSourceRow]
+
+
+class GroupListResponse(BaseModel):
+    groups: list[GroupRow]
+
+
+# ── R10 · node parts ────────────────────────────────────────
+class PartJudgeRow(BaseModel):
+    unit_id: str
+    display_id: str
+    group_id: Optional[str] = None
+    part_no: str
+    part_name: str
+    measure_spec: Optional[dict] = None
+    tol: Optional[dict] = None
+    verdict: Optional[str] = None      # OK | NG | RETEST
+    value: Optional[dict] = None
+    judged_at: Optional[str] = None
+
+
+class PartJudgeListResponse(BaseModel):
+    parts: list[PartJudgeRow]
+
+
+# ── R12 · parts (부품 마스터) ───────────────────────────────
+class PartRow(BaseModel):
+    part_no: str
+    name: str
+    revision: Optional[str] = None
+    cad_ref: Optional[str] = None
+    attrs: Optional[dict] = None
+    is_active: bool
+
+
+class PartListResponse(BaseModel):
+    parts: list[PartRow]
+
+
 class WriteResult(BaseModel):
     """쓰기 API 공통 응답 (명세 §1-3). 엔진 거부는 여기가 아니라 409 다."""
     ok: bool

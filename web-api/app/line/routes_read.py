@@ -19,7 +19,8 @@ from fastapi import APIRouter, HTTPException
 
 from app.line import db
 from app.line.schemas import (
-    ControlMenuResponse, InboundQueueResponse, NodeListResponse, RobotCommandListResponse,
+    ControlMenuResponse, GroupListResponse, InboundQueueResponse, NodeListResponse, PartJudgeListResponse,
+    PartListResponse, RackListResponse, RobotCommandListResponse, SlotListResponse, SlotQueueResponse,
     TransporterListResponse, WipListResponse,
 )
 
@@ -49,13 +50,15 @@ def control_menu(line_id: str) -> ControlMenuResponse:
     return ControlMenuResponse(menu=rows)  # type: ignore[arg-type]
 
 # R2 — 라인의 반송 자원. 자원은 라인에 안 묶여 있어 "그 라인 노드를 담당하는 자원" 으로 건다.
-#      DB kind ROBOT_ARM → API ROBOT (FE TransporterKind) · 상태 행이 없으면 IDLE — 이름 바꾸기만, 계산 없음
+#      DB kind ROBOT_ARM → API ROBOT · 상태 MOVING(엔진·시뮬 어휘) → BUSY(FE) · 행 없으면 IDLE — 이름 바꾸기만, 계산 없음
 @router.get("/lines/{line_id}/transporters", response_model=TransporterListResponse, summary="R2 반송 자원")
 def transporters(line_id: str) -> TransporterListResponse:
     rows = _rows(
         """SELECT v.transporter_id, v.label,
                   CASE v.kind WHEN 'ROBOT_ARM' THEN 'ROBOT' ELSE v.kind END AS kind,
-                  v.auto_dispatch, coalesce(v.status, 'IDLE') AS status, v.queued, v.avg_wait_s, v.max_wait_s
+                  v.auto_dispatch,
+                  CASE coalesce(v.status, 'IDLE') WHEN 'MOVING' THEN 'BUSY' ELSE coalesce(v.status, 'IDLE') END AS status,
+                  v.queued, v.avg_wait_s, v.max_wait_s
              FROM v_transporter_load v
             WHERE v.transporter_id IN (SELECT DISTINCT n.transporter_id FROM node n
                                          JOIN v_node_order o USING (node_id)
@@ -131,4 +134,104 @@ def inbound(node_id: str) -> InboundQueueResponse:
     )
     return InboundQueueResponse(inbound=rows)  # type: ignore[arg-type]
 
-# 다음 = R6 R7 R8 R9 R10 R12 (계획 하위 §6 P2)
+# R6 — 직전 출처 랙. "직전 MAIN · 활성 · 같은 라인" 은 v_node_prev 가, 적재량은 v_rack_load 가. 여기서는 AS 만(§5-5).
+#      라인 인자가 없는 경로라 활성 라인의 route 만 본다(비활성 라인의 재배치 후 경로가 섞이지 않게).
+@router.get("/nodes/{node_id}/source-racks", response_model=RackListResponse, summary="R6 직전 출처 랙")
+def source_racks(node_id: str) -> RackListResponse:
+    rows = _rows(
+        """SELECT DISTINCT l.node_id, l.label, l.slot_capacity AS capacity, l.unit_qty AS occupancy, l.slots AS slot_count
+             FROM v_node_prev p
+             JOIN line ln ON ln.line_id = p.line_id AND ln.is_active
+             JOIN v_rack_load l ON l.node_id = p.prev_node
+            WHERE p.node_id = %(node_id)s AND p.prev_kind = 'RACK'
+            ORDER BY l.node_id""",
+        node_id=node_id,
+    )
+    return RackListResponse(racks=rows)  # type: ignore[arg-type]
+
+
+# R7 — 랙 칸 목록. v_rack_slot 그대로(used → occupancy 이름만).
+@router.get("/racks/{node_id}/slots", response_model=SlotListResponse, summary="R7 랙 칸 목록")
+def rack_slots(node_id: str) -> SlotListResponse:
+    rows = _rows(
+        """SELECT slot_no, capacity, used AS occupancy, head_display_id, contents
+             FROM v_rack_slot WHERE node_id = %(node_id)s ORDER BY slot_no""",
+        node_id=node_id,
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail={"code": "RACK_NOT_FOUND", "message": f"{node_id} 에 칸이 없다(랙이 아니거나 비활성)"})
+    return SlotListResponse(slots=rows)  # type: ignore[arg-type]
+
+
+# R8 — 칸 FIFO 대기열. 4개 조인이지만 계산은 없다 — retrievable 은 v_retrievable 에 있는 행인지(LEFT JOIN),
+#      파트 구성은 unit_content 원본 행. 판정 로직을 API 가 다시 쓰지 않는다(명세 §3-R8).
+@router.get("/racks/{node_id}/slots/{slot_no}/queue", response_model=SlotQueueResponse, summary="R8 칸 FIFO 대기열")
+def slot_queue(node_id: str, slot_no: int) -> SlotQueueResponse:
+    rows = _rows(
+        """SELECT sm.unit_id::text AS unit_id, sm.display_id, sm.pos_no,
+                  (rt.unit_id IS NOT NULL)            AS retrievable,
+                  coalesce(vc.total_qty, 0)           AS total_qty,
+                  coalesce(vc.kinds, 0)::int          AS kinds
+             FROM v_slot_map sm
+             LEFT JOIN v_retrievable rt ON rt.unit_id = sm.unit_id
+             LEFT JOIN v_unit_content vc ON vc.unit_id = sm.unit_id
+            WHERE sm.node_id = %(node_id)s AND sm.slot_no = %(slot_no)s
+              AND sm.unit_id IS NOT NULL                  -- v_slot_map 은 빈 자리도 낸다(generate_series) — 대기열은 든 것만
+            ORDER BY sm.pos_no""",
+        node_id=node_id, slot_no=slot_no,
+    )
+    if rows:
+        ids = [r["unit_id"] for r in rows]
+        contents: dict[str, list[dict]] = {i: [] for i in ids}
+        for c in _rows(
+            """SELECT uc.unit_id::text AS unit_id, uc.part_no, p.name AS part_name, uc.qty, uc.qty_scrapped
+                 FROM unit_content uc JOIN part p USING (part_no)
+                WHERE uc.unit_id::text = ANY(%(ids)s) ORDER BY uc.part_no""",
+            ids=ids,
+        ):
+            contents[c["unit_id"]].append({k: c[k] for k in ("part_no", "part_name", "qty", "qty_scrapped")})
+        for r in rows:
+            r["contents"] = contents[r["unit_id"]]
+    return SlotQueueResponse(queue=rows)  # type: ignore[arg-type]
+
+
+# R9 — 노드의 묶음. 작업대 묶음과 랙 박스가 같은 모양이라 뷰 하나. sources 는 뷰가 jsonb 로 낸다(§5-6).
+@router.get("/nodes/{node_id}/groups", response_model=GroupListResponse, summary="R9 노드의 묶음")
+def groups(node_id: str) -> GroupListResponse:
+    rows = _rows(
+        """SELECT group_id, node_id, unit_qty, coalesce(capacity, 0) AS capacity, closed, sources
+             FROM v_group_at_node WHERE node_id = %(node_id)s ORDER BY group_id""",
+        node_id=node_id,
+    )
+    return GroupListResponse(groups=rows)  # type: ignore[arg-type]
+
+
+# R10 — 부품 판정 목록. 최신 판정 + 측정 스펙(뷰) + 공차. tol 은 두 컬럼을 이름 붙여 묶기만(§5-7).
+@router.get("/nodes/{node_id}/parts", response_model=PartJudgeListResponse, summary="R10 부품 판정 목록")
+def node_parts(node_id: str) -> PartJudgeListResponse:
+    rows = _rows(
+        """SELECT unit_id::text AS unit_id, display_id, group_id, part_no, part_name, measure_spec,
+                  nominal_mm, tol_mm, verdict, judge_value AS value,
+                  to_char(judged_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS judged_at
+             FROM v_node_parts WHERE node_id = %(node_id)s ORDER BY group_id, display_id""",
+        node_id=node_id,
+    )
+    for r in rows:
+        tol = {k: float(r.pop(k)) for k in ("nominal_mm", "tol_mm") if r.get(k) is not None}
+        for k in ("nominal_mm", "tol_mm"):
+            r.pop(k, None)
+        r["tol"] = tol or None
+    return PartJudgeListResponse(parts=rows)  # type: ignore[arg-type]
+
+
+# R12 — 부품 마스터. 내용 미상 배치의 부품 추가용(S5). all=true 면 비활성도.
+@router.get("/parts", response_model=PartListResponse, summary="R12 부품 마스터")
+def parts(all: bool = False) -> PartListResponse:
+    rows = _rows(
+        """SELECT part_no, name, revision, cad_ref, attrs, is_active
+             FROM part WHERE is_active OR %(all)s ORDER BY part_no""",
+        all=all,
+    )
+    return PartListResponse(parts=rows)  # type: ignore[arg-type]
+
+# 읽기 12개 끝. 다음 = 쓰기 W3 W2 W1 W4 W5 (계획 하위 §6 P3) — routes_write.py
