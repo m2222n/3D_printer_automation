@@ -129,7 +129,7 @@ docker compose logs -f
 | `GET` | `/api/v1/printers/{serial}/prints` | 특정 프린터 이력 |
 | `GET` | `/api/v1/statistics` | 프린트 통계 |
 | `GET` | `/api/v1/system/token-status` | Formlabs API 토큰 상태 |
-| `GET` | `/api/v1/system/config` | 시스템 설정 조회 |
+| `GET` | `/api/v1/system/config` | 시스템 설정 조회. 9/23 `printer_serial_map`·`line_id`·`line_mes`(LINE_DSN 유무 — FE 라인 화면이 실 API/목업을 이걸로 가른다) 추가 |
 | `WS` | `/api/v1/ws` | WebSocket 실시간 업데이트 `TODO` 라인 모니터링 탭은 이 WS 를 쓰지 않는다(v2 는 폴링). 같은 프린터가 두 화면에서 다른 주기로 갱신됨 — 값이 엇갈려 보이면 여기가 원인 |
 
 ### Phase 2: Local API 원격 제어 (32 routes)
