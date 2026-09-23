@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     #   시리얼은 인프라 식별자라 git 에 두지 않는다(CLAUDE.md). web-api 와 같은 .env 를 읽으므로 출처가 하나다.
     #   비어 있으면 _resolve_printer_serial 이 '' 를 돌려 'printer serial not configured' 로 크게 실패한다(조용히 안 돈다).
     PRINTER_SERIAL_MAP: dict[int, str] = {}
+    # 라인 MES(PostgreSQL). 비어 있으면 관측 발행(cell/line_events.py) 전부 no-op. web-api 와 같은 .env 키
+    LINE_DSN: str = ''
+
 
 
 @lru_cache()
