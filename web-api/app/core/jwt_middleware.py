@@ -37,8 +37,14 @@ PUBLIC_API_PATHS = {
 LOOPBACK_EXEMPT_PREFIXES = ("/api/v1/",)
 
 
+# OpenAPI 문서 경로. /api/ 밖이라 지금까지 무인증이었다 — v2 쓰기 스키마 전문이 공개된다 (API 개발 계획 D8)
+DOCS_PATHS = ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect")
+
+
 def _is_protected_path(path: str) -> bool:
-    """API 경로만 보호. 프론트 정적 파일은 누구나 로드 가능 (어차피 API 호출 시 401 받음)."""
+    """API 경로 + OpenAPI 문서만 보호. 프론트 정적 파일은 누구나 로드 가능 (어차피 API 호출 시 401 받음)."""
+    if path in DOCS_PATHS:
+        return True
     if not path.startswith("/api/"):
         return False
     if path in PUBLIC_API_PATHS:
