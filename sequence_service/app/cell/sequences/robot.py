@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 
+from app.cell import line_events
 from app.cell.ctx import RobotTask
 from app.cell.enums import CmdStatus, PostProcStage, LogType
 from app.cell.modbus_protocol import ModbusHandshakeClient
@@ -208,6 +209,10 @@ class RobotSequence(Sequence):
         if job is None:
             self.ctx.robot_acks[task.ack_key] = True
             return
+
+        # 라인 MES 관측(Moved) — 논블로킹 put 1줄. SW/P 는 to_unit 이 'wash' 로만 적혀 있어(병존 ④-3) 실제 목적지를 allocated_data 에서
+        to_unit = f"wash-{int(job.allocated_data.get('wash_id') or 0)}" if task.task_type in {'SW', 'P'} else task.to_unit
+        line_events.robot_moved(task.cmd_id, task.from_unit, to_unit)
 
         if task.task_type in {'SW', 'P'}:
             # SW/P: printing finished -> move plate from printer to washing machine.
