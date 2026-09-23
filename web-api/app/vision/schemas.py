@@ -35,7 +35,7 @@ class MQTTStatusMessage(BaseModel):
     device_id: int
     status: str
     confidence: float = 0.0
-    timestamp: str
+    timestamp: float | str            # 카메라는 epoch float 을 보낸다 — str 만 받으면 ValidationError 로 실물 메시지가 전건 버려졌다(병존 ②-1)
     consecutive_count: int = 0
     fps: float = 0.0
     mem_free: int = 0
