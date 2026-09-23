@@ -17,9 +17,10 @@ const ok = (msg: string) => { n += 1; console.log('  ✓', msg); };
 // ── R4 · 제어 서브 메뉴 ─────────────────────────────────────
 {
   const { menu } = await getControlMenu();
-  assert.equal(menu.length, 6, `서브 탭 6개여야 한다: ${menu.length}`);
-  assert.equal(menu[0].menu_label, '출력 · 세척', '첫 탭은 공정 순서 첫 번째');
-  assert.equal(menu[0].node_count, 6, '프린터 4 + 세척기 2 가 한 탭');
+  // 🚨 개수·이름은 토폴로지(라인)마다 다르다 — 목업(RESIN-1)은 6개, 실물(RESIN-1-ASIS)은 3개. 구조만 단정한다.
+  assert.ok(menu.length > 0, '서브 탭이 하나도 없다');
+  assert.ok(menu.every((r) => r.menu_label.trim().length > 0), '빈 이름의 탭이 있다');
+  assert.ok(menu.every((r) => r.node_count > 0), 'node_count 0 인 탭이 있다');
   const steps = menu.map((r) => r.step_order);
   assert.deepEqual(steps, [...steps].sort((a, b) => a - b), '공정 순서대로여야 한다');
   assert.ok(menu.every((r) => r.node_ids.length === r.node_count), 'node_count 와 node_ids 가 어긋난다');
