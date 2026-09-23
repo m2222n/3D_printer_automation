@@ -1,0 +1,373 @@
+# ============================================================
+#  공정 자동화 토폴로지 정의 (원본 = 이 파일, Git 관리)
+#  topo_sync.py 가 이 파일을 읽어 DB에 반영합니다.
+#  설비 접속정보(IP/포트/태그)는 sources.yaml 로 분리되어 있습니다.
+# ============================================================
+
+topology_version: 1
+updated: 2026-09-07
+
+# ------------------------------------------------------------
+# 라인
+#   현행·재배치 후 두 라인을 병행 등록합니다. node 는 공유하고 route 만 갈라집니다.
+#   plate_count = 보유 빌드플레이트 수 = 동시 진행 배치 수의 상한.
+# ------------------------------------------------------------
+lines:
+  # 현행 라인 — 코드가 실제로 밟는 경로 (조사 S4 기준)
+  #   되주차(세척 -> 빈 프린터 -> 경화)가 있다. 경화 뒤는 완료 랙으로 바로 간다 —
+  #   프린터/세척 완료 랙과 부품 분리 이후 공정(분리·서포트·검사·빔피킹)이 없다.
+  #   경화기는 1대만 활성 (mainSequence.py:33 에서 2호기 주석 처리됨).
+  - id: RESIN-1-ASIS
+    label: 레진 라인 (현행)
+    process_family: SLA
+    plate_count: 6               # 보유 빌드플레이트. 동시 진행 배치 수의 상한
+    active: true
+
+  # 목표 라인 — 10월 재배치 후. 신규 unit 만 이쪽으로 발급한다.
+  - id: RESIN-1
+    label: 레진 라인 (재배치 후)
+    process_family: SLA
+    plate_count: 6
+    active: true
+
+  # --- FDM 도입 시 예시 (지금은 주석) ---
+  # - id: FDM-1
+  #   label: FDM 라인 1
+  #   process_family: FDM
+  #   active: true
+
+# ------------------------------------------------------------
+# 노드 타입
+#   동작 차이는 전부 여기 속성으로 표현합니다.
+#   코드에 'WASHER' 같은 문자열을 쓰지 않기 위한 장치입니다.
+#
+#   id_prefix        : display_id 채번 접두. 없으면 채번하지 않음.
+#   post_delay_s     : 완료 후 반출 가능해지기까지 대기 (냉각 등)
+#   count_by_group   : 트레이 랙 — 묶음(group_id) 단위로 용량 계산
+#   splits_batch     : 배치가 부품으로 분해되는 노드. 배치는 통과 불가, Split 만 가능
+#   ui_kind          : 조작 화면 종류. BATCH_SPLIT | PART_JUDGE | MONITOR | TRANSPORT
+#                      공정 타입이 아니라 화면 종류다 — 서포트제거와 치수검사는 같은 화면
+#   group_label      : 제어 화면 서브 메뉴 이름. 같은 값끼리 한 탭
+#   slot_access      : FIFO(기본) | LIFO | RANDOM
+#   slot_fill        : SEQUENTIAL(기본) | BALANCED
+# ------------------------------------------------------------
+node_types:
+  PRINTER:
+    kind: STATION
+    ui_kind: MONITOR
+    group_label: 프린터
+    default_capacity: 1
+    default_cycle_s: 5400
+    id_prefix: P
+    post_delay_s: 0
+
+  WASHER:
+    kind: STATION
+    ui_kind: MONITOR
+    group_label: 세척기
+    default_capacity: 1
+    default_cycle_s: 600
+    id_prefix: W
+    post_delay_s: 300          # 세척 후 건조 대기
+
+  CURER:
+    kind: STATION
+    ui_kind: MONITOR
+    group_label: 경화기
+    default_capacity: 12         # 한 번에 여러 부품을 함께 경화
+    default_cycle_s: 1800
+    id_prefix: C
+    post_delay_s: 0
+
+  # 같은 작업대에서 두 단계로 나뉜다. 논리 노드는 둘, 물리 작업대는 하나.
+  #   1) 분리   — 플레이트에서 부품을 떼어낸다. 여기서 배치가 부품으로 분해된다
+  #   2) 서포트 — 떼어낸 부품을 하나씩 다듬고 판정한다
+  # 나중에 물리적으로 갈라지면 sources.yaml 의 엔드포인트만 바꾸면 된다.
+  SEPARATION:
+    kind: STATION
+    default_capacity: 16         # 배치 1 + 떼어낸 부품이 쌓이는 동안
+    default_cycle_s: 300
+    id_prefix: S                 # 부품이 태어나는 자리 = 채번 자리
+    splits_batch: true           # 🔴 배치는 이 노드를 통과할 수 없다. Split 만 가능
+    ui_kind: BATCH_SPLIT
+    group_label: 부품 분리
+
+  SUPPORT_REMOVAL:
+    kind: STATION
+    default_capacity: 16
+    default_cycle_s: 480
+    ui_kind: PART_JUDGE          # 치수검사와 같은 화면 — 부품 하나씩 OK/NG
+    group_label: 서포트 제거
+
+  INSPECT:
+    kind: STATION
+    ui_kind: PART_JUDGE          # 서포트 제거와 같은 화면
+    group_label: 치수검사
+    default_capacity: 1          # 부품 하나씩
+    default_cycle_s: 300
+    id_prefix: D                 # Dimensional Inspection
+    # 이 노드는 측정값을 받는다. 화면은 attrs.measure 가 있으면 입력란을 띄운다 —
+    # ui_kind 로 분기하면 공정 타입 분기 금지 원칙 위반이다.
+    # 공차(nominal/tol)는 여기가 아니라 part.attrs 다 — 도면에서 온다.
+    attrs:
+      measure: { key: height_mm, label: 높이, unit: mm }
+
+  BEAMPICK:
+    kind: STATION
+    ui_kind: MONITOR
+    group_label: 빔피킹·드릴링·트림
+    default_capacity: 1
+    default_cycle_s: 900
+    id_prefix: B
+
+  EXIT:
+    kind: RACK
+    slot_access: RANDOM          # 폐기함은 순서가 없다
+
+  BUFFER:
+    kind: RACK
+    # 랙 용량은 slots 에서 계산되므로 기본값을 두지 않는다
+    slot_access: FIFO            # 관통형 — 넣은 순서대로 나온다
+    slot_fill: SEQUENTIAL        # 앞 칸부터 채움 (BALANCED = 가장 빈 칸부터)
+
+  # --- FDM 도입 시 예시 (지금은 주석) ---
+  # FDM_PRINTER:
+  #   kind: STATION
+  #   default_capacity: 1
+  #   default_cycle_s: 14400
+  #   id_prefix: F
+  #   post_delay_s: 1200       # 빌드 플레이트 냉각
+  #
+  # SUPPORT_REMOVAL:
+  #   kind: STATION
+  #   default_capacity: 1
+  #   default_cycle_s: 480
+  #   id_prefix: S
+
+# ------------------------------------------------------------
+# 노드
+#   설비 증설/감축은 이 목록만 고치면 됩니다.
+#   타입 기본값을 쓰면 capacity/cycle 은 생략 가능합니다.
+# ------------------------------------------------------------
+nodes:
+  # ── 랙 ────────────────────────────────────────────────
+  # slots: [칸1 용량, 칸2 용량, ...]  → node.capacity 는 합계로 자동 계산
+  # 칸 수, 칸당 수량, 랙 개수 모두 여기서만 바꾼다.
+  # 같은 역할의 랙이 여러 대면 -02, -03 을 추가하고 groups 에 넣는다.
+  #
+  # slot_access 는 node_types.BUFFER 의 FIFO 를 따른다.
+  # 구조가 다른 랙만 개별로 덮어쓴다 (LIFO 적재형 / RANDOM 선반).
+  - { id: RK-PRE-PRT-01,  type: BUFFER, label: 프린터 대기 랙 1,  slots: [4, 4] }
+  - { id: RK-PRT-DONE-01, type: BUFFER, label: 프린터 완료 랙 1,  slots: [4, 4] }
+  - { id: RK-WSH-DONE-01, type: BUFFER, label: 세척기 완료 랙 1,  slots: [4, 4] }
+  - { id: RK-BPD-WAIT-01, type: BUFFER, label: 빔피킹 대기 랙 1,
+      count_by_group: true, slots: [4, 4] }   # 트레이 단위 랙
+  # 제어가 'output' 이라 부르는 곳 (curing.py:170 · robot.py:189)
+  - { id: RK-DONE-01,     type: BUFFER, label: 완료 랙 1,         slots: [4, 4],
+      external_ref: { legacy_task_unit: output } }
+
+  # ── 설비 ──────────────────────────────────────────────
+  #
+  # external_ref = 바깥에서 이 노드를 뭐라 부르나. 어댑터가 외부 식별자로 node_id 를 역조회한다.
+  #   printer_serial        A: Formlabs 클라우드 (web-api). 🚨 이 파일에 적지 않는다 — 시리얼은 인프라 식별자라
+  #                            git 에 올리지 않는다(CLAUDE.md 보안 원칙). topo_sync --apply 가 web-api/.env 의
+  #                            PRINTER_SERIAL_MAP[legacy_target_printer] 를 읽어 DB 에 적재할 때 채운다.
+  #   legacy_target_printer B: print_command.target_printer (정수 1~4) — 시리얼 주입의 키
+  #   legacy_task_unit      B: RobotTask.from_unit / to_unit 문자열
+  #   mqtt                  A: vision_cameras.camera_id. 토픽 = factory/<device_type>/<device_id>/status
+  #                            출처 = web-api/app/vision/camera_manager.py:29
+  #
+  # 🚨 여기 적은 값은 전부 코드에서 실제로 쓰는 문자열이다. 추정해서 넣지 않는다.
+  # 🔴 io (리모트 I/O 접점) 는 아직 비운다 — 배선이 위탁1(9~10월) 범위라 확정값이 없다.
+  #    없는 값을 자리만 채워두면 있는 것처럼 읽힌다.
+  # ⚠️ [확인필요] "1호기"라는 우리 라벨이 제어의 target_printer=1 과 같은 실물인지는
+  #    현장에서 한 번 눈으로 맞춰야 한다. 진짜 앵커는 printer_serial 이다.
+  - id: PRT-01
+    type: PRINTER
+    label: 프린터 1호기
+    external_ref: { legacy_target_printer: 1, legacy_task_unit: printer-1 }
+  - id: PRT-02
+    type: PRINTER
+    label: 프린터 2호기
+    external_ref: { legacy_target_printer: 2, legacy_task_unit: printer-2 }
+  - id: PRT-03
+    type: PRINTER
+    label: 프린터 3호기
+    external_ref: { legacy_target_printer: 3, legacy_task_unit: printer-3 }
+  - id: PRT-04
+    type: PRINTER
+    label: 프린터 4호기
+    external_ref: { legacy_target_printer: 4, legacy_task_unit: printer-4 }
+
+  # 🚨 제어가 목적지를 'wash' · 'printer' 로만 적고 넘기는 경로가 있다 (SW · P task).
+  #    그건 노드 이름이 아니라 미지정 표식이고, 실제 대상은 allocated_data['wash_id'] 에 있다.
+  #    어댑터가 'wash' 를 그대로 역조회하면 못 찾는다 — 여기에 넣지 않는 이유다.
+  - id: WSH-01
+    type: WASHER
+    label: 세척기 1호기
+    external_ref: { legacy_task_unit: wash-1, mqtt: wash_1 }
+  - id: WSH-02
+    type: WASHER
+    label: 세척기 2호기
+    external_ref: { legacy_task_unit: wash-2, mqtt: wash_2 }
+
+  # 🔴 CUR-02 는 제어에서 주석 처리돼 있다 (mainSequence.py:33) — 노드는 두되 legacy 이름은
+  #    살아 있는 1호기만 갖는다. 2호기가 살아나면 cure-2 를 여기 적는다.
+  - id: CUR-01
+    type: CURER
+    label: 경화기 1호기
+    external_ref: { legacy_task_unit: cure-1, mqtt: cure_1 }
+  - id: CUR-02
+    type: CURER
+    label: 경화기 2호기
+    external_ref: { mqtt: cure_2 }
+
+  - { id: SEP-01, type: SEPARATION,      label: 부품 분리대 1 }
+  - { id: SUP-01, type: SUPPORT_REMOVAL, label: 서포트 제거대 1 }
+
+  - { id: INS-01, type: INSPECT, label: 치수검사 }
+
+  - { id: BPD-01, type: BEAMPICK, label: 빔피킹/드릴링/트림 }
+
+  # 라인 이탈. 불량이 어느 공정에서든 나올 수 있으므로 모든 설비에서 연결한다.
+  - { id: EXIT-SCRAP, type: EXIT, label: 폐기함, slots: [999] }
+
+# ------------------------------------------------------------
+# 노드 그룹
+#   route 와 transporters.nodes 에서 "@이름" 으로 참조한다.
+#   같은 역할의 설비/랙이 늘거나 줄면 여기 한 줄만 고치면
+#   route 전체가 따라 바뀐다.
+# ------------------------------------------------------------
+groups:
+  PRE_PRT:  [RK-PRE-PRT-01]
+  PRT_DONE: [RK-PRT-DONE-01]
+  WSH_DONE: [RK-WSH-DONE-01]
+  BPD_WAIT: [RK-BPD-WAIT-01]
+  DONE:     [RK-DONE-01]
+  PRINTERS: [PRT-01, PRT-02, PRT-03, PRT-04]
+  WASHERS:  [WSH-01, WSH-02]
+  CURERS:   [CUR-01, CUR-02]
+  # 불량이 나올 수 있는 모든 공정
+  SCRAPPABLE: [PRT-01, PRT-02, PRT-03, PRT-04, WSH-01, WSH-02,
+               SEP-01, SUP-01, CUR-01, CUR-02, INS-01, BPD-01]
+
+# ------------------------------------------------------------
+# 공정 경로
+#   from/to 에 배열을 쓰면 팬아웃/팬인이 한 줄로 표현됩니다.
+#   프린터 증설 = 아래 두 줄의 배열에 ID 하나씩 추가.
+# ------------------------------------------------------------
+routes:
+  # ── 현행 ────────────────────────────────────────────────
+  # kind: DETOUR = 되주차. 이동은 허용되지만 순서 계산과
+  # 순환 검사에서 제외된다.
+  RESIN-1-ASIS:
+    - { from: "@PRE_PRT",  to: "@PRINTERS" }
+    - { from: "@PRINTERS", to: "@WASHERS" }
+    - { from: "@WASHERS",  to: CUR-01 }
+    - { from: "@WASHERS",  to: "@PRINTERS", kind: DETOUR }   # 세척 -> 빈 프린터 되주차
+    - { from: "@PRINTERS", to: CUR-01,      kind: DETOUR }   # 되주차분의 경화행
+    - { from: CUR-01,      to: "@DONE" }
+
+  # ── 재배치 후 ───────────────────────────────────────────
+  RESIN-1:
+    - { from: "@PRE_PRT",  to: "@PRINTERS" }
+    - { from: "@PRINTERS", to: "@PRT_DONE" }
+    - { from: "@PRT_DONE", to: "@WASHERS" }
+    - { from: "@WASHERS",  to: "@WSH_DONE" }
+    # 순서가 바뀔 수 있으므로 엣지만 고치면 된다.
+    # 예: 경화를 서포트 제거 앞으로 옮기려면 아래 세 줄의 연결만 바꾼다.
+    - { from: "@WSH_DONE", to: SEP-01 }
+    - { from: SEP-01,      to: SUP-01 }      # 같은 작업대. 논리적 단계 전환
+    - { from: SUP-01,      to: "@CURERS" }
+    - { from: "@CURERS",   to: INS-01 }
+    - { from: INS-01,      to: "@BPD_WAIT" }
+    - { from: "@BPD_WAIT", to: BPD-01 }
+    - { from: BPD-01,      to: "@DONE" }
+    # 폐기 — 어느 공정에서든. 순서 계산과 순환 검사에서 제외된다.
+    - { from: "@SCRAPPABLE", to: EXIT-SCRAP, kind: EXIT }
+
+# ------------------------------------------------------------
+# 반송 자원
+#   nodes: [...]  =  이 자원이 담당하는 노드. "그 노드에서 나가는 이동은 누가 하나."
+#   node.transporter_id 로 들어갑니다. 엣지별 담당은 없습니다.
+#
+#   endpoint 가 없으면 auto_dispatch=false 로,
+#   지시를 발행하지 않고 '작업자 대기' 상태로만 표시합니다.
+#   나중에 로봇암으로 교체할 때 kind 와 endpoint 만 바꾸면 됩니다.
+# ------------------------------------------------------------
+transporters:
+  # 노드별 담당. "이 노드에서 나가는 이동은 누가 하나."
+  # 폐기(EXIT)는 담당을 두지 않는다 — 지시가 나가지 않고 대기 지표에도 안 잡힌다.
+  - id: ARM-A
+    kind: ROBOT_ARM
+    label: 로봇암 A
+    nodes: ["@PRE_PRT", "@PRINTERS", "@PRT_DONE", "@WASHERS"]
+    endpoint: { protocol: modbus, ref: arm-a }
+    # 수동 제어 화면이 보여줄 명령. 작업자는 label 만 고르고 send 는 서버가 안다.
+    #   verified: false 면 화면이 실행을 잠그고 값만 보여준다.
+    #   source   : 이 값이 어디서 왔나. 타이핑하지 않았으므로 근거가 대신 있어야 한다.
+    attrs:
+      commands:
+        - { id: mv-prt,  group: 이송 핸드셰이크, label: 프린터 이송,     hint: "명령값 1",
+            send: { kind: MODBUS, reg: 130, value: 1, then: { reg: 150, value: 1 } },
+            source: "config.py ROBOT_MODBUS_CMD_FW_VALUE", verified: true,
+            risk: 로봇이 프린터로 이동 }
+        - { id: mv-wash, group: 이송 핸드셰이크, label: 세척기 이송,     hint: "명령값 2",
+            send: { kind: MODBUS, reg: 130, value: 2, then: { reg: 150, value: 1 } },
+            source: "config.py ROBOT_MODBUS_CMD_FW_VALUE", verified: true,
+            risk: 로봇이 세척기로 이동 }
+        - { id: mv-back, group: 이송 핸드셰이크, label: 복귀,           hint: "명령값 0",
+            send: { kind: MODBUS, reg: 130, value: 0, then: { reg: 150, value: 1 } },
+            source: "config.py ROBOT_MODBUS_CMD_FW_VALUE", verified: true,
+            risk: 로봇이 대기 자세로 }
+        - { id: pc-ready, group: 이송 핸드셰이크, label: PC Ready 세우기, hint: "레지스터 151",
+            send: { kind: MODBUS, reg: 151, value: 1 },
+            source: "config.py ROBOT_MODBUS_PC_READY", verified: true,
+            risk: 로봇이 다음 단계로 넘어간다 }
+
+  - id: OP-CURE
+    kind: OPERATOR
+    label: 경화 구간 수동 반송
+    nodes: ["@WSH_DONE", SEP-01, SUP-01, "@CURERS", INS-01, "@BPD_WAIT"]
+    # endpoint 없음 → 수동
+
+  - id: ARM-B
+    kind: ROBOT_ARM
+    label: 로봇암 B
+    nodes: [BPD-01]
+    endpoint: { protocol: modbus, ref: arm-b }
+    attrs:
+      commands:
+        # 🚨 그리퍼는 상태 하나에 신호 하나다. "열어라/닫아라" 가 아니라 갈 상태를 고른다.
+        #    span_mm 은 이산값이고 2단계만 9/9 에 실측했다. 나머지 셋은 임의값 —
+        #    실측하면 이 줄만 고친다(코드는 안 바뀐다).
+        - { id: grip-open-1, group: 그리퍼 상태, label: 열기 1단계, span_mm: 40,
+            send: { kind: DO, ch: D_GEN_OUT_0~3, bits: [1,0,0,0], pulse_s: 0.5 },
+            source: "rodi_pick_sequence.js GRIP_COMBO[0] · 폭은 임의값(9/9 에 45mm 부품을 못 물었다)",
+            verified: false, risk: 그리퍼가 이 상태로 간다 }
+        - { id: grip-open-2, group: 그리퍼 상태, label: 열기 2단계, span_mm: 84,
+            send: { kind: DO, ch: D_GEN_OUT_0~3, bits: [0,1,0,0], pulse_s: 0.5 },
+            source: "rodi_pick_sequence.js GRIP_COMBO[1] · 9/9 실물 확인",
+            verified: true, risk: 그리퍼가 이 상태로 간다 }
+        - { id: grip-open-3, group: 그리퍼 상태, label: 열기 3단계, span_mm: 60,
+            send: { kind: DO, ch: D_GEN_OUT_0~3, bits: [1,1,0,0], pulse_s: 0.5 },
+            source: "rodi_pick_sequence.js GRIP_COMBO[2] · 폭은 임의값",
+            verified: false, risk: 그리퍼가 이 상태로 간다 }
+        - { id: grip-open-4, group: 그리퍼 상태, label: 열기 4단계, span_mm: 20,
+            send: { kind: DO, ch: D_GEN_OUT_0~3, bits: [1,1,1,0], pulse_s: 0.5 },
+            source: "rodi_pick_sequence.js GRIP_COMBO[3] · 폭은 임의값",
+            verified: false, risk: 그리퍼가 이 상태로 간다 }
+        - { id: bp-capture, group: 빔피킹, label: 촬영 자세로, hint: "PICK_CAPTURE_POSE",
+            send: { kind: SOCKET, port: 5000, msg: CAPTURE },
+            source: "pick_socket_server.py · 자세값은 10월 재배치 후 재티칭",
+            verified: false, risk: 팔이 촬영 자세로 이동 }
+        - { id: bp-pick, group: 빔피킹, label: 인식 좌표로 집기, hint: "6요소 좌표 송신",
+            send: { kind: SOCKET, port: 5000, msg: PICK },
+            source: "pick_socket_server.py · hand-eye 값 미확정",
+            verified: false, risk: 팔이 빈으로 내려가 집는다 }
+        # 🔴 스핀들은 rodi_pick_sequence.js 가 SPINDLE_API='none' 으로 두고 있다.
+        #    추측한 함수로 돌리지 않는다는 판단을 그대로 물려받는다.
+        - { id: spindle-on, group: 스핀들, label: 스핀들 ON, hint: "D_CONF_OUT_2",
+            send: { kind: DO, ch: D_CONF_OUT_2, bits: [1] },
+            source: "rodi_pick_sequence.js SPINDLE_API='none' — 함수명 미확인",
+            verified: false, risk: 드릴이 돈다 }

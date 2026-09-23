@@ -15,7 +15,8 @@ pydantic-settings>=2.1.0
 
 # Database (Phase 2: Local API)
 sqlalchemy>=2.0.25
-psycopg[binary]>=3.1  # 라인 MES(PostgreSQL) Spawn 발행. LINE_DSN 비면 import 만 되고 안 쓴다
+psycopg[binary,pool]>=3.1  # 라인 MES(PostgreSQL). LINE_DSN 비면 import 만 되고 안 쓴다
+-e ..                      # line_mes 패키지 (리포 루트) — contract · state_engine
 # alembic>=1.13.0  # 마이그레이션 (나중에 사용)
 
 # MQTT (Phase 4: Vision)
