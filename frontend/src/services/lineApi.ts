@@ -317,7 +317,7 @@ export function readCommandLog(): { ts: string; actor: string; kind: string; tex
 // ── R6 · 직전 출처 랙 ───────────────────────────────────────
 
 export async function getSourceRacks(nodeId: string): Promise<RackListResponse> {
-  if (!useMock('getSourceRacks')) throw new Error('v2 미구현');
+  if (!useMock('getSourceRacks')) return v2<RackListResponse>(`/nodes/${encodeURIComponent(nodeId)}/source-racks`);
   const m = mock.MOCK;
   const racks: RackRow[] = mock.prevRacks(m, nodeId).map((r) => {
     const load = mock.rackLoad(m, r.node_id);
@@ -329,7 +329,7 @@ export async function getSourceRacks(nodeId: string): Promise<RackListResponse> 
 // ── R7 · 랙 칸 목록 ─────────────────────────────────────────
 
 export async function getRackSlots(rackId: string): Promise<SlotListResponse> {
-  if (!useMock('getRackSlots')) throw new Error('v2 미구현');
+  if (!useMock('getRackSlots')) return v2<SlotListResponse>(`/racks/${encodeURIComponent(rackId)}/slots`);
   const slots: SlotRow[] = mock.slotsOf(mock.MOCK, rackId).map((s) => ({
     slot_no: s.slot_no,
     capacity: s.capacity,
@@ -343,7 +343,7 @@ export async function getRackSlots(rackId: string): Promise<SlotListResponse> {
 // ── R8 · 칸 FIFO 대기열 ─────────────────────────────────────
 
 export async function getSlotQueue(rackId: string, slotNo: number): Promise<SlotQueueResponse> {
-  if (!useMock('getSlotQueue')) throw new Error('v2 미구현');
+  if (!useMock('getSlotQueue')) return v2<SlotQueueResponse>(`/racks/${encodeURIComponent(rackId)}/slots/${slotNo}/queue`);
   const m = mock.MOCK;
   const queue: SlotQueueRow[] = mock.queueOf(m, rackId, slotNo).map((u) => ({
     unit_id: u.unit_id,
@@ -365,7 +365,7 @@ export async function getSlotQueue(rackId: string, slotNo: number): Promise<Slot
 // ── R9 · 노드의 묶음 ────────────────────────────────────────
 
 export async function getGroups(nodeId: string): Promise<GroupListResponse> {
-  if (!useMock('getGroups')) throw new Error('v2 미구현');
+  if (!useMock('getGroups')) return v2<GroupListResponse>(`/nodes/${encodeURIComponent(nodeId)}/groups`);
   const m = mock.MOCK;
   const capacity = mock.groupTarget(m, nodeId);
   const groups: GroupRow[] = mock.groups(m, nodeId).map((g) => ({
@@ -384,7 +384,7 @@ export async function getGroups(nodeId: string): Promise<GroupListResponse> {
 // ── R10 · 부품 판정 목록 ────────────────────────────────────
 
 export async function getNodeParts(nodeId: string): Promise<PartJudgeListResponse> {
-  if (!useMock('getNodeParts')) throw new Error('v2 미구현');
+  if (!useMock('getNodeParts')) return v2<PartJudgeListResponse>(`/nodes/${encodeURIComponent(nodeId)}/parts`);
   const m = mock.MOCK;
   const spec = mock.measureSpec(m, nodeId);
   const parts: PartJudgeRow[] = mock.waitingParts(m, nodeId).map((p) => {
@@ -504,8 +504,7 @@ export async function getRobotCommands(transporterId: string): Promise<RobotComm
 // 내용 미상 배치(contents 0행)에서 작업자가 부품을 고를 목록. part 테이블을 그대로 돌려준다.
 
 export async function getParts(all = false): Promise<PartListResponse> {
-  if (!useMock('getParts')) throw new Error('v2 미구현');
-  void all;   // 목업엔 비활성 부품이 없다
+  if (!useMock('getParts')) return v2<PartListResponse>(`/parts${all ? '?all=true' : ''}`);
   const parts = Object.entries(mock.MOCK.part)
     .map(([part_no, p]) => ({ part_no, name: p.name, revision: null, cad_ref: p.cad_ref, attrs: p.attrs, is_active: true }))
     .sort((a, b) => a.part_no.localeCompare(b.part_no));
