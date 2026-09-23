@@ -33,7 +33,17 @@ import { authFetch } from './auth';
 // 화면 하나씩 옮기는 것이 곧 테스트다(계획 E). 여기 이름을 넣은 함수만 /api/v2 를 부른다.
 // 순서 = getControlMenu(R4 · FE 가 v2 탭 표시를 이것으로 판단) → R2 R1 R3 R5 R11 → R6~R10 R12 → W3 W2 W1 W4 W5 → W6
 const REAL = new Set<string>([]);
-const useMock = (fn: string) => !REAL.has(fn);
+
+// 스위치는 서버 .env LINE_DSN 하나 — /system/config.line_mes 가 true 면 18개 전부 실 API. REAL 은 그 전에 함수 하나씩 강제로 켤 때만 쓴다.
+// 서버에 못 닿으면(개발 목업·node 자체검사) false → 목업. 실패는 기억하지 않아 다음 호출에 다시 묻는다.
+let _lineMes: Promise<boolean> | null = null;
+const lineMesOn = (): Promise<boolean> => {
+  if (!_lineMes) {
+    _lineMes = getSystemConfig().then(c => !!c.line_mes).catch(() => { _lineMes = null; return false; });
+  }
+  return _lineMes;
+};
+const useMock = async (fn: string) => !(REAL.has(fn) || await lineMesOn());
 
 // GET 응답의 ETag 를 기억해 If-None-Match 로 다시 묻는다(명세 §1-4). 304 면 기억한 본문을 돌려준다 — 5초 폴링의 대부분이 이 경로다
 const etags = new Map<string, { etag: string; body: unknown }>();
@@ -65,7 +75,7 @@ export const DEFAULT_LINE_ID = mock.MOCK.line_id;
 // 🚨 목업은 RESIN-1(재배치 후 · 17노드)로 만들어졌고 실물은 RESIN-1-ASIS 다. 실 API 로 바꾸면 노드·서브 탭 수가 달라지는 것이 정상.
 let _lineId: string | null = null;
 export async function currentLineId(): Promise<string> {
-  if (REAL.size === 0) return DEFAULT_LINE_ID;
+  if (REAL.size === 0 && !(await lineMesOn())) return DEFAULT_LINE_ID;
   if (!_lineId) _lineId = (await getSystemConfig()).line_id;
   return _lineId;
 }
@@ -119,7 +129,7 @@ function toNodeRow(m: mock.MockState, n: mock.MockNode, order: Record<string, nu
 }
 
 export async function getNodes(lineId?: string): Promise<NodeListResponse> {
-  if (!useMock('getNodes')) return v2<NodeListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/nodes`);
+  if (!(await useMock('getNodes'))) return v2<NodeListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/nodes`);
   const m = mock.MOCK;
   const order = mock.stepOrder(m);
   const nodes = m.nodes
@@ -132,7 +142,7 @@ export async function getNodes(lineId?: string): Promise<NodeListResponse> {
 // ── R2 · 반송 자원 ──────────────────────────────────────────
 
 export async function getTransporters(lineId?: string): Promise<TransporterListResponse> {
-  if (!useMock('getTransporters')) return v2<TransporterListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/transporters`);
+  if (!(await useMock('getTransporters'))) return v2<TransporterListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/transporters`);
   const m = mock.MOCK;
   // 담당 노드의 투입 대기 건수를 합쳐 큐로 본다
   const queued: Record<string, number> = {};
@@ -160,7 +170,7 @@ export async function getTransporters(lineId?: string): Promise<TransporterListR
 // ── R3 · 재공 파이프라인 ────────────────────────────────────
 
 export async function getWip(lineId?: string): Promise<WipListResponse> {
-  if (!useMock('getWip')) return v2<WipListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/wip`);
+  if (!(await useMock('getWip'))) return v2<WipListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/wip`);
   const m = mock.MOCK;
   const order = mock.stepOrder(m);
   const rowOf = (nodeId: string) => {
@@ -217,7 +227,7 @@ export async function getWip(lineId?: string): Promise<WipListResponse> {
 // ── R4 · 제어 서브 메뉴 ─────────────────────────────────────
 
 export async function getControlMenu(lineId?: string): Promise<ControlMenuResponse> {
-  if (!useMock('getControlMenu')) {
+  if (!(await useMock('getControlMenu'))) {
     const id = lineId ?? await currentLineId();
     return v2<ControlMenuResponse>(`/lines/${encodeURIComponent(id)}/control-menu`);
   }
@@ -227,7 +237,7 @@ export async function getControlMenu(lineId?: string): Promise<ControlMenuRespon
 // ── R5 · 투입 대기 큐 ───────────────────────────────────────
 
 export async function getInbound(nodeId: string): Promise<InboundQueueResponse> {
-  if (!useMock('getInbound')) return v2<InboundQueueResponse>(`/nodes/${encodeURIComponent(nodeId)}/inbound`);
+  if (!(await useMock('getInbound'))) return v2<InboundQueueResponse>(`/nodes/${encodeURIComponent(nodeId)}/inbound`);
   const m = mock.MOCK;
   const inbound: InboundRow[] = mock.inbound(m, nodeId).map((r) => ({
     // 박스도 묶음이다 — R5 는 UNIT / GROUP 둘로만 가른다
@@ -248,7 +258,7 @@ export async function getInbound(nodeId: string): Promise<InboundQueueResponse> 
 // ── W2 · 이동 (투입) ────────────────────────────────────────
 
 export async function postMove(req: MoveRequest): Promise<WriteResult> {
-  if (!useMock('postMove')) return v2<WriteResult>('/moves', { method: 'POST', body: JSON.stringify(req) });
+  if (!(await useMock('postMove'))) return v2<WriteResult>('/moves', { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
 
   // 박스 합류 — OK 판정한 부품 하나가 다음 랙의 담는 중인 박스에 붙는다
@@ -291,7 +301,7 @@ const CMD_OF_STATUS: Record<StateCommand, string> = {
 };
 
 export async function postState(nodeId: string, req: StateRequest): Promise<WriteResult> {
-  if (!useMock('postState')) return v2<WriteResult>(`/nodes/${encodeURIComponent(nodeId)}/state`, { method: 'POST', body: JSON.stringify(req) });
+  if (!(await useMock('postState'))) return v2<WriteResult>(`/nodes/${encodeURIComponent(nodeId)}/state`, { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
   const n = mock.node(m, nodeId);
   const cmd = CMD_OF_STATUS[req.status];
@@ -329,7 +339,7 @@ export function readCommandLog(): { ts: string; actor: string; kind: string; tex
 // ── R6 · 직전 출처 랙 ───────────────────────────────────────
 
 export async function getSourceRacks(nodeId: string): Promise<RackListResponse> {
-  if (!useMock('getSourceRacks')) return v2<RackListResponse>(`/nodes/${encodeURIComponent(nodeId)}/source-racks`);
+  if (!(await useMock('getSourceRacks'))) return v2<RackListResponse>(`/nodes/${encodeURIComponent(nodeId)}/source-racks`);
   const m = mock.MOCK;
   const racks: RackRow[] = mock.prevRacks(m, nodeId).map((r) => {
     const load = mock.rackLoad(m, r.node_id);
@@ -341,7 +351,7 @@ export async function getSourceRacks(nodeId: string): Promise<RackListResponse> 
 // ── R7 · 랙 칸 목록 ─────────────────────────────────────────
 
 export async function getRackSlots(rackId: string): Promise<SlotListResponse> {
-  if (!useMock('getRackSlots')) return v2<SlotListResponse>(`/racks/${encodeURIComponent(rackId)}/slots`);
+  if (!(await useMock('getRackSlots'))) return v2<SlotListResponse>(`/racks/${encodeURIComponent(rackId)}/slots`);
   const slots: SlotRow[] = mock.slotsOf(mock.MOCK, rackId).map((s) => ({
     slot_no: s.slot_no,
     capacity: s.capacity,
@@ -355,7 +365,7 @@ export async function getRackSlots(rackId: string): Promise<SlotListResponse> {
 // ── R8 · 칸 FIFO 대기열 ─────────────────────────────────────
 
 export async function getSlotQueue(rackId: string, slotNo: number): Promise<SlotQueueResponse> {
-  if (!useMock('getSlotQueue')) return v2<SlotQueueResponse>(`/racks/${encodeURIComponent(rackId)}/slots/${slotNo}/queue`);
+  if (!(await useMock('getSlotQueue'))) return v2<SlotQueueResponse>(`/racks/${encodeURIComponent(rackId)}/slots/${slotNo}/queue`);
   const m = mock.MOCK;
   const queue: SlotQueueRow[] = mock.queueOf(m, rackId, slotNo).map((u) => ({
     unit_id: u.unit_id,
@@ -377,7 +387,7 @@ export async function getSlotQueue(rackId: string, slotNo: number): Promise<Slot
 // ── R9 · 노드의 묶음 ────────────────────────────────────────
 
 export async function getGroups(nodeId: string): Promise<GroupListResponse> {
-  if (!useMock('getGroups')) return v2<GroupListResponse>(`/nodes/${encodeURIComponent(nodeId)}/groups`);
+  if (!(await useMock('getGroups'))) return v2<GroupListResponse>(`/nodes/${encodeURIComponent(nodeId)}/groups`);
   const m = mock.MOCK;
   const capacity = mock.groupTarget(m, nodeId);
   const groups: GroupRow[] = mock.groups(m, nodeId).map((g) => ({
@@ -396,7 +406,7 @@ export async function getGroups(nodeId: string): Promise<GroupListResponse> {
 // ── R10 · 부품 판정 목록 ────────────────────────────────────
 
 export async function getNodeParts(nodeId: string): Promise<PartJudgeListResponse> {
-  if (!useMock('getNodeParts')) return v2<PartJudgeListResponse>(`/nodes/${encodeURIComponent(nodeId)}/parts`);
+  if (!(await useMock('getNodeParts'))) return v2<PartJudgeListResponse>(`/nodes/${encodeURIComponent(nodeId)}/parts`);
   const m = mock.MOCK;
   const spec = mock.measureSpec(m, nodeId);
   const parts: PartJudgeRow[] = mock.waitingParts(m, nodeId).map((p) => {
@@ -420,7 +430,7 @@ export async function getNodeParts(nodeId: string): Promise<PartJudgeListRespons
 // ── W1 · 배치 완료 등록 (분리) ──────────────────────────────
 
 export async function postSplit(unitId: string, req: SplitRequest): Promise<WriteResult> {
-  if (!useMock('postSplit')) return v2<WriteResult>(`/units/${encodeURIComponent(unitId)}/split`, { method: 'POST', body: JSON.stringify(req) });
+  if (!(await useMock('postSplit'))) return v2<WriteResult>(`/units/${encodeURIComponent(unitId)}/split`, { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
   const batch = m.units.find((u) => u.unit_id === unitId);
   if (!batch) {
@@ -454,7 +464,7 @@ export async function postSplit(unitId: string, req: SplitRequest): Promise<Writ
 // 🚨 NG 는 판정 + EXIT-SCRAP 이동이 **한 트랜잭션**이다. 나눠 부르면 판정만 남고 부품이 라인에 남는다.
 
 export async function postJudgement(req: JudgementRequest): Promise<WriteResult> {
-  if (!useMock('postJudgement')) return v2<WriteResult>('/judgements', { method: 'POST', body: JSON.stringify(req) });
+  if (!(await useMock('postJudgement'))) return v2<WriteResult>('/judgements', { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
   const part = mock.waitingParts(m, req.node_id).find((p) => p.unit_id === req.unit_id);
   mock.judge(m, req.unit_id, req.node_id, req.verdict, req.value ? JSON.stringify(req.value) : null);
@@ -470,7 +480,7 @@ export async function postJudgement(req: JudgementRequest): Promise<WriteResult>
 // ── W5 · 조작 기록 (박스 수동 마감) ─────────────────────────
 
 export async function postCommand(req: CommandRequest): Promise<WriteResult> {
-  if (!useMock('postCommand')) return v2<WriteResult>('/commands', { method: 'POST', body: JSON.stringify(req) });
+  if (!(await useMock('postCommand'))) return v2<WriteResult>('/commands', { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
   if (req.kind === 'GROUP_CLOSE') {
     const done = mock.closeBox(m, req.target);
@@ -498,7 +508,7 @@ export function readOpenBox(rackId: string): { group_id: string; count: number; 
 // 🥇 카탈로그의 정본은 `topology.yaml` 이다 — API 는 명령의 내용을 알지 못하고 그대로 돌려준다.
 
 export async function getRobotCommands(transporterId: string): Promise<RobotCommandListResponse> {
-  if (!useMock('getRobotCommands')) return v2<RobotCommandListResponse>(`/transporters/${encodeURIComponent(transporterId)}/commands`);
+  if (!(await useMock('getRobotCommands'))) return v2<RobotCommandListResponse>(`/transporters/${encodeURIComponent(transporterId)}/commands`);
   const t = mock.transporterById(transporterId);
   if (!t) return { node_ids: [], manual: true, protocol: null, commands: [] };
   return {
@@ -516,7 +526,7 @@ export async function getRobotCommands(transporterId: string): Promise<RobotComm
 // 내용 미상 배치(contents 0행)에서 작업자가 부품을 고를 목록. part 테이블을 그대로 돌려준다.
 
 export async function getParts(all = false): Promise<PartListResponse> {
-  if (!useMock('getParts')) return v2<PartListResponse>(`/parts${all ? '?all=true' : ''}`);
+  if (!(await useMock('getParts'))) return v2<PartListResponse>(`/parts${all ? '?all=true' : ''}`);
   const parts = Object.entries(mock.MOCK.part)
     .map(([part_no, p]) => ({ part_no, name: p.name, revision: null, cad_ref: p.cad_ref, attrs: p.attrs, is_active: true }))
     .sort((a, b) => a.part_no.localeCompare(b.part_no));
@@ -529,7 +539,7 @@ export async function getParts(all = false): Promise<PartListResponse> {
 // 🥇 이벤트가 아니다 — 위치를 바꾸지 않는다. 로봇이 실제로 옮기면 그 사실은 Moved 로 따로 온다.
 
 export async function runRobotCommand(transporterId: string, commandId: string, actor: string): Promise<WriteResult> {
-  if (!useMock('runRobotCommand')) return v2<WriteResult>(`/transporters/${encodeURIComponent(transporterId)}/commands/${encodeURIComponent(commandId)}`, { method: 'POST', body: JSON.stringify({ actor }) });
+  if (!(await useMock('runRobotCommand'))) return v2<WriteResult>(`/transporters/${encodeURIComponent(transporterId)}/commands/${encodeURIComponent(commandId)}`, { method: 'POST', body: JSON.stringify({ actor }) });
   const t = mock.transporterById(transporterId);
   const c = t?.commands.find((x) => x.id === commandId);
   if (!t || !c) {
