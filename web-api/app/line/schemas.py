@@ -9,6 +9,19 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+# ── R4 · GET /lines/{line_id}/control-menu ──────────────────
+class ControlMenuRow(BaseModel):
+    menu_label: str
+    ui_kind: str                       # MONITOR | BATCH_SPLIT | PART_JUDGE | TRANSPORT(FE 가 R2 로 붙임)
+    step_order: int
+    node_count: int
+    node_ids: list[str]
+
+
+class ControlMenuResponse(BaseModel):
+    menu: list[ControlMenuRow]
+
+
 class WriteResult(BaseModel):
     """쓰기 API 공통 응답 (명세 §1-3). 엔진 거부는 여기가 아니라 409 다."""
     ok: bool
