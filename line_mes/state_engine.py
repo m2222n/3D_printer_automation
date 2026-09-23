@@ -13,17 +13,34 @@ M3a 상태 엔진.
 """
 
 import logging
+
+import psycopg
+from psycopg.rows import tuple_row
+
 from line_mes.contract import Event, Moved, Spawn, Split, State
 
 log = logging.getLogger("m3a")
 
 
+class _TupleConn:
+    """엔진은 컬럼 순서로 읽는다(row[0] · 언패킹). 호출자 커넥션의 row_factory 가 dict_row(web-api 풀)여도
+    깨지지 않게 실행마다 튜플 커서를 쓴다. transaction() 은 그대로 위임 — 호출자 트랜잭션 안이면 세이브포인트."""
+    def __init__(self, conn):
+        self._c = conn
+    def execute(self, sql, params=None):
+        return self._c.cursor(row_factory=tuple_row).execute(sql, params)
+    def transaction(self):
+        return self._c.transaction()
+
+
 class StateEngine:
 
     def __init__(self, conn):
-        self.conn = conn
+        self.conn = conn if isinstance(conn, _TupleConn) else _TupleConn(conn)
+        self.last_event_ids: list[int] = []   # 직전 handle() 이 남긴 product_event.event_id — 쓰기 API 응답용
 
     def handle(self, e: Event):
+        self.last_event_ids = []
         with self.conn.transaction():
             if isinstance(e, Spawn): return self._spawn(e)
             if isinstance(e, State): return self._state(e)
@@ -70,13 +87,15 @@ class StateEngine:
 
     def _log(self, unit_id, node_id, status, source, confidence=None, ready_at=None,
              transporter_id=None, msg=None):
-        self.conn.execute("""
+        row = self.conn.execute("""
             INSERT INTO product_event (unit_id, node_id, status, ready_at, source,
                                        confidence, transporter_id, msg, duration_s)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,
               (SELECT extract(epoch FROM (now() - updated_at))::int
                  FROM product_state WHERE unit_id=%s))
-        """, (unit_id, node_id, status, ready_at, source, confidence, transporter_id, msg, unit_id))
+            RETURNING event_id
+        """, (unit_id, node_id, status, ready_at, source, confidence, transporter_id, msg, unit_id)).fetchone()
+        self.last_event_ids.append(row[0])
 
     # ------------------------------------------------------------ SPAWN
     def _spawn(self, e: Spawn):

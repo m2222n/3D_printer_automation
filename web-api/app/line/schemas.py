@@ -229,6 +229,60 @@ class PartListResponse(BaseModel):
     parts: list[PartRow]
 
 
+# ── 쓰기 요청 (frontend/src/types/line.ts 그대로) ───────────
+class StateRequest(BaseModel):
+    status: str                        # RUN | DONE | ERROR | HOLD
+    duration_s: Optional[int] = None
+    confidence: Optional[float] = None
+    actor: str
+
+
+class MoveRequest(BaseModel):
+    unit_id: Optional[str] = None
+    group_id: Optional[str] = None
+    from_node: str
+    to_node: str
+    transporter_id: Optional[str] = None
+    slot_no: Optional[int] = None
+    join_group: Optional[str] = None
+    actor: str
+
+
+class SplitOutputIn(BaseModel):
+    part_no: str
+    qty: int
+
+
+class SplitScrapIn(BaseModel):
+    part_no: str
+    qty: int
+    reason: str
+
+
+class SplitRequest(BaseModel):
+    node_id: str
+    outputs: list[SplitOutputIn]       # 🚨 NG 는 여기 넣지 않는다 — 부품 unit 이 생기면 안 된다
+    scraps: list[SplitScrapIn]
+    group_id: Optional[str] = None     # null = 새 묶음. 서버 기본값을 정하지 않는다
+    actor: str
+
+
+class JudgementRequest(BaseModel):
+    unit_id: str
+    node_id: str
+    verdict: str                       # OK | NG | RETEST
+    value: Optional[dict] = None
+    note: Optional[str] = None
+    actor: str
+
+
+class CommandRequest(BaseModel):
+    kind: str
+    target: str
+    payload: dict = {}
+    actor: str
+
+
 class WriteResult(BaseModel):
     """쓰기 API 공통 응답 (명세 §1-3). 엔진 거부는 여기가 아니라 409 다."""
     ok: bool

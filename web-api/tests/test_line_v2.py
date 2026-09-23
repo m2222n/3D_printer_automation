@@ -111,3 +111,52 @@ def test_p2_reads_from_dev_db(v2_client, settings, auth_headers, monkeypatch):
             assert pr["tol"] is None or set(pr["tol"]) <= {"nominal_mm", "tol_mm"}
 
     r12 = g("/parts"); assert r12.status_code == 200 and isinstance(r12.json()["parts"], list)
+
+
+# ── 쓰기 W1~W5 ──────────────────────────────────────────────
+
+def test_write_validation_without_db(v2_client, auth_headers):
+    """입력 검증은 DB 앞에서 — PG 없이 422."""
+    r = v2_client.post("/api/v2/nodes/PRT-01/state", headers=auth_headers, json={"status": "XX", "actor": "t"})
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "BAD_STATUS"
+    r = v2_client.post("/api/v2/moves", headers=auth_headers,
+                       json={"unit_id": "u", "group_id": "g", "from_node": "a", "to_node": "b", "actor": "t"})
+    assert r.status_code == 422 and r.json()["detail"]["code"] == "BAD_REF"
+    r = v2_client.post("/api/v2/judgements", headers=auth_headers,
+                       json={"unit_id": "u", "node_id": "n", "verdict": "MAYBE", "value": None, "note": None, "actor": "t"})
+    assert r.status_code == 422
+
+
+def test_write_is_503_when_line_mes_off(v2_client, settings, auth_headers, monkeypatch):
+    monkeypatch.setattr(settings, "LINE_DSN", "")
+    r = v2_client.post("/api/v2/commands", headers=auth_headers, json={"kind": "MODE_CHANGE", "target": "x", "payload": {}, "actor": "t"})
+    assert r.status_code == 503 and r.json()["detail"]["code"] == "LINE_MES_OFF"
+
+
+@pytest.mark.skipif(not os.environ.get("LINE_DSN"), reason="개발 PG 없음")
+def test_writes_on_dev_db(v2_client, settings, auth_headers, monkeypatch):
+    """W3 · W2 거부 · W5 — 되읽기로 확인(계획 §4). 개발 DB 상태를 바꾼다."""
+    monkeypatch.setattr(settings, "LINE_DSN", os.environ["LINE_DSN"])
+    L = settings.LINE_ID
+    g = lambda p: v2_client.get(f"/api/v2{p}", headers=auth_headers)
+    p = lambda path, body: v2_client.post(f"/api/v2{path}", headers=auth_headers, json=body)
+    nodes = g(f"/lines/{L}/nodes").json()["nodes"]
+    busy = next((n for n in nodes if n["node_kind"] == "STATION" and n["occupancy"]), None)
+    empty = next(n for n in nodes if n["node_kind"] == "STATION" and not n["occupancy"])
+
+    r = p(f"/nodes/{empty['node_id']}/state", {"status": "DONE", "actor": "t"})
+    assert r.status_code == 200 and r.json()["ok"] is False, "개체 없는 노드는 ok=false 로 알려준다"
+    if busy:
+        r = p(f"/nodes/{busy['node_id']}/state", {"status": "RUN", "duration_s": 600, "actor": "t"})
+        b = r.json(); assert r.status_code == 200 and b["ok"] and b["event_ids"] and len(b["unit_ids"]) == busy["occupancy"]
+        after = next(n for n in g(f"/lines/{L}/nodes").json()["nodes"] if n["node_id"] == busy["node_id"])
+        assert after["status"] == "RUN", "되읽기: 상태가 RUN 으로"
+        # 경로에 없는 이동은 엔진이 409 로 거부한다
+        uid = v2_client.get(f"/api/v2/lines/{L}/wip", headers=auth_headers).json()["wip"][0]["ref"]
+        r = p("/moves", {"unit_id": uid, "from_node": busy["node_id"], "to_node": "NOPE-NODE", "actor": "t"})
+        assert r.status_code in (404, 409), r.text
+
+    r = p("/commands", {"kind": "MODE_CHANGE", "target": "ARM-A", "payload": {"auto": False}, "actor": "t"})
+    assert r.status_code == 200 and r.json()["ok"]
+    r = p("/commands", {"kind": "GROUP_CLOSE", "target": "BOX-NOPE", "payload": {}, "actor": "t"})
+    assert r.status_code == 409
