@@ -236,7 +236,7 @@ export async function getInbound(nodeId: string): Promise<InboundQueueResponse> 
 // ── W2 · 이동 (투입) ────────────────────────────────────────
 
 export async function postMove(req: MoveRequest): Promise<WriteResult> {
-  if (!useMock('postMove')) throw new Error('v2 미구현');
+  if (!useMock('postMove')) return v2<WriteResult>('/moves', { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
 
   // 박스 합류 — OK 판정한 부품 하나가 다음 랙의 담는 중인 박스에 붙는다
@@ -279,7 +279,7 @@ const CMD_OF_STATUS: Record<StateCommand, string> = {
 };
 
 export async function postState(nodeId: string, req: StateRequest): Promise<WriteResult> {
-  if (!useMock('postState')) throw new Error('v2 미구현');
+  if (!useMock('postState')) return v2<WriteResult>(`/nodes/${encodeURIComponent(nodeId)}/state`, { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
   const n = mock.node(m, nodeId);
   const cmd = CMD_OF_STATUS[req.status];
@@ -408,7 +408,7 @@ export async function getNodeParts(nodeId: string): Promise<PartJudgeListRespons
 // ── W1 · 배치 완료 등록 (분리) ──────────────────────────────
 
 export async function postSplit(unitId: string, req: SplitRequest): Promise<WriteResult> {
-  if (!useMock('postSplit')) throw new Error('v2 미구현');
+  if (!useMock('postSplit')) return v2<WriteResult>(`/units/${encodeURIComponent(unitId)}/split`, { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
   const batch = m.units.find((u) => u.unit_id === unitId);
   if (!batch) {
@@ -442,7 +442,7 @@ export async function postSplit(unitId: string, req: SplitRequest): Promise<Writ
 // 🚨 NG 는 판정 + EXIT-SCRAP 이동이 **한 트랜잭션**이다. 나눠 부르면 판정만 남고 부품이 라인에 남는다.
 
 export async function postJudgement(req: JudgementRequest): Promise<WriteResult> {
-  if (!useMock('postJudgement')) throw new Error('v2 미구현');
+  if (!useMock('postJudgement')) return v2<WriteResult>('/judgements', { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
   const part = mock.waitingParts(m, req.node_id).find((p) => p.unit_id === req.unit_id);
   mock.judge(m, req.unit_id, req.node_id, req.verdict, req.value ? JSON.stringify(req.value) : null);
@@ -458,7 +458,7 @@ export async function postJudgement(req: JudgementRequest): Promise<WriteResult>
 // ── W5 · 조작 기록 (박스 수동 마감) ─────────────────────────
 
 export async function postCommand(req: CommandRequest): Promise<WriteResult> {
-  if (!useMock('postCommand')) throw new Error('v2 미구현');
+  if (!useMock('postCommand')) return v2<WriteResult>('/commands', { method: 'POST', body: JSON.stringify(req) });
   const m = mock.MOCK;
   if (req.kind === 'GROUP_CLOSE') {
     const done = mock.closeBox(m, req.target);
