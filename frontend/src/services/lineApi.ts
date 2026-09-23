@@ -106,8 +106,8 @@ function toNodeRow(m: mock.MockState, n: mock.MockNode, order: Record<string, nu
   };
 }
 
-export async function getNodes(lineId: string = DEFAULT_LINE_ID): Promise<NodeListResponse> {
-  if (!useMock('getNodes')) throw new Error('v2 미구현');
+export async function getNodes(lineId?: string): Promise<NodeListResponse> {
+  if (!useMock('getNodes')) return v2<NodeListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/nodes`);
   const m = mock.MOCK;
   const order = mock.stepOrder(m);
   const nodes = m.nodes
@@ -119,8 +119,8 @@ export async function getNodes(lineId: string = DEFAULT_LINE_ID): Promise<NodeLi
 
 // ── R2 · 반송 자원 ──────────────────────────────────────────
 
-export async function getTransporters(lineId: string = DEFAULT_LINE_ID): Promise<TransporterListResponse> {
-  if (!useMock('getTransporters')) throw new Error('v2 미구현');
+export async function getTransporters(lineId?: string): Promise<TransporterListResponse> {
+  if (!useMock('getTransporters')) return v2<TransporterListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/transporters`);
   const m = mock.MOCK;
   // 담당 노드의 투입 대기 건수를 합쳐 큐로 본다
   const queued: Record<string, number> = {};
@@ -147,8 +147,8 @@ export async function getTransporters(lineId: string = DEFAULT_LINE_ID): Promise
 
 // ── R3 · 재공 파이프라인 ────────────────────────────────────
 
-export async function getWip(lineId: string = DEFAULT_LINE_ID): Promise<WipListResponse> {
-  if (!useMock('getWip')) throw new Error('v2 미구현');
+export async function getWip(lineId?: string): Promise<WipListResponse> {
+  if (!useMock('getWip')) return v2<WipListResponse>(`/lines/${encodeURIComponent(lineId ?? await currentLineId())}/wip`);
   const m = mock.MOCK;
   const order = mock.stepOrder(m);
   const rowOf = (nodeId: string) => {
@@ -215,7 +215,7 @@ export async function getControlMenu(lineId?: string): Promise<ControlMenuRespon
 // ── R5 · 투입 대기 큐 ───────────────────────────────────────
 
 export async function getInbound(nodeId: string): Promise<InboundQueueResponse> {
-  if (!useMock('getInbound')) throw new Error('v2 미구현');
+  if (!useMock('getInbound')) return v2<InboundQueueResponse>(`/nodes/${encodeURIComponent(nodeId)}/inbound`);
   const m = mock.MOCK;
   const inbound: InboundRow[] = mock.inbound(m, nodeId).map((r) => ({
     // 박스도 묶음이다 — R5 는 UNIT / GROUP 둘로만 가른다
@@ -486,7 +486,7 @@ export function readOpenBox(rackId: string): { group_id: string; count: number; 
 // 🥇 카탈로그의 정본은 `topology.yaml` 이다 — API 는 명령의 내용을 알지 못하고 그대로 돌려준다.
 
 export async function getRobotCommands(transporterId: string): Promise<RobotCommandListResponse> {
-  if (!useMock('getRobotCommands')) throw new Error('v2 미구현');
+  if (!useMock('getRobotCommands')) return v2<RobotCommandListResponse>(`/transporters/${encodeURIComponent(transporterId)}/commands`);
   const t = mock.transporterById(transporterId);
   if (!t) return { node_ids: [], manual: true, protocol: null, commands: [] };
   return {
