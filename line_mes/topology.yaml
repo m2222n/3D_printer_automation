@@ -13,6 +13,10 @@ updated: 2026-09-07
 #   plate_count = 보유 빌드플레이트 수 = 동시 진행 배치 수의 상한.
 # ------------------------------------------------------------
 lines:
+  # 🚨 활성 라인은 "지금 물리적으로 물건이 밟는 경로" 하나만 (2026-09-23). active 는 v_plate_usage 에 그 라인 행을
+  #    만들고 Spawn 이 그 라인으로만 가능하게 한다. web-api .env LINE_ID 와 같은 라인이 active 여야 한다.
+  #    재배치 날 = 아래 두 active 를 서로 바꾸고 topo_sync --apply, LINE_ID 도 함께.
+  #
   # 현행 라인 — 코드가 실제로 밟는 경로 (조사 S4 기준)
   #   되주차(세척 -> 빈 프린터 -> 경화)가 있다. 경화 뒤는 완료 랙으로 바로 간다 —
   #   프린터/세척 완료 랙과 부품 분리 이후 공정(분리·서포트·검사·빔피킹)이 없다.
@@ -21,14 +25,14 @@ lines:
     label: 레진 라인 (현행)
     process_family: SLA
     plate_count: 6               # 보유 빌드플레이트. 동시 진행 배치 수의 상한
-    active: true
+    active: true                 # ← LINE_ID
 
-  # 목표 라인 — 10월 재배치 후. 신규 unit 만 이쪽으로 발급한다.
+  # 목표 라인 — 10월 재배치 후. 정의만 두고 비활성 — 재배치 전에 unit 이 여기로 태어나면 부품 분리대 앞에서 영영 멈춘다.
   - id: RESIN-1
     label: 레진 라인 (재배치 후)
     process_family: SLA
     plate_count: 6
-    active: true
+    active: false                # 재배치 후 true
 
   # --- FDM 도입 시 예시 (지금은 주석) ---
   # - id: FDM-1

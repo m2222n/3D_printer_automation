@@ -99,9 +99,13 @@ class StateEngine:
             log.warning("투입 게이트 경고(생성은 진행): %s", msg)
 
         # 플레이트 제약. 라인에 있는 배치 수가 보유 플레이트 수를 넘을 수 없다.
-        used, cap = self.conn.execute(
+        row = self.conn.execute(
             "SELECT plates_in_use, plate_count FROM v_plate_usage WHERE line_id=%s",
             (e.line_id,)).fetchone()
+        if not row:
+            # v_plate_usage 는 활성 라인만 낸다 — 비활성/없는 라인으로는 어떤 source 도 투입할 수 없다(게이트가 아니라 정합성)
+            raise ValueError(f"없는 라인 또는 비활성 라인: {e.line_id}")
+        used, cap = row
         if used >= cap:
             gate(f"{e.line_id} 빌드플레이트 {cap}장 전부 사용 중 — 투입 거부")
 

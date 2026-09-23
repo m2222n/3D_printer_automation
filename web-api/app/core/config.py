@@ -80,9 +80,10 @@ class Settings(BaseSettings):
     # 라인 MES(v2 · PostgreSQL). 비어 있으면 Spawn 을 발행하지 않는다.
     # web-api 는 공장 PC 한 대에서만 돈다 (2026-09-22 확인) ⇒ 발행자도 하나다.
     LINE_DSN: str = ""
-    # 🚨 활성 라인이 둘(RESIN-1 · RESIN-1-ASIS)이라 값이 갈리면 Spawn 한 unit 이 FE 에 안 보인다.
-    #    FE frontend/src/mocks/lineMock.ts DEFAULT_LINE_ID 와 반드시 같은 값 (2026-09-22 통일 = RESIN-1).
-    LINE_ID: str = "RESIN-1"
+    # "지금 물리적으로 물건이 밟는 경로" 의 ID. 현행 = RESIN-1-ASIS (되주차 · 세척→경화 직행 포함).
+    #   RESIN-1(재배치 후 경로)엔 그 엣지가 없어 로봇의 실제 이동(Moved)이 거부된다 → 재배치 날 이 값 + topology.yaml active 를 바꾼다.
+    #   FE 는 이 값을 /system/config line_id 로 받는다 — 라인 ID 를 두 곳에 두지 않는다 (2026-09-23).
+    LINE_ID: str = "RESIN-1-ASIS"
     
     # ===========================================
     # 알림 설정
