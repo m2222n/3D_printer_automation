@@ -55,12 +55,15 @@ class WebApiPrinterClient:
         simul_mode: bool = False,
         preset_id: str | None = None,
         settings: dict | None = None,
+        cmd_id: str | None = None,
     ) -> dict:
         payload = {
             'stl_file': stl_file,
             'printer_serial': printer_serial,
             'simul_mode': simul_mode,
         }
+        if cmd_id:
+            payload['cmd_id'] = cmd_id   # 라인 MES unit.cmd_id 다리. web-api 가 Spawn 에 싣는다
         if preset_id:
             payload['preset_id'] = preset_id
         if settings is not None:

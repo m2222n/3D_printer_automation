@@ -365,7 +365,9 @@ async def _process_print_job(
     stl_path: str,
     printer_serial: str,
     print_settings: PrintSettings,
-    db: Session
+    db: Session,
+    cmd_id: Optional[str] = None,
+    part_type: Optional[str] = None,
 ):
     """백그라운드에서 프린트 작업 처리"""
     job_service = PrintJobService(db)
@@ -388,6 +390,15 @@ async def _process_print_job(
             estimated_print_time_ms=result.get("estimated_print_time_ms"),
             estimated_material_ml=result.get("estimated_material_ml")
         )
+        # 프린터가 받았다 = 배치가 태어났다. 라인 MES 에 Spawn 한 건.
+        # 🚨 실패해도 삼킨다 — 프린터는 이미 돌고 있고 원격 취소 API 가 없다. 대신 같은 프로세스의
+        #    SQLite(print_jobs.error_message)에 남긴다. PG 가 죽어도 이 기록은 된다.
+        try:
+            from app.local.line_publish import spawn_for_print   # 모듈이 없는 배포에서도 여기서 잡혀 기록만 남는다
+            spawn_for_print(printer_serial=printer_serial, cmd_id=cmd_id, part_type=part_type)
+        except Exception as ex:  # noqa: BLE001
+            logger.error(f"LINE_UNTRACKED job={job_id} serial={printer_serial}: {ex}")
+            job_service.update_status(job_id, PrintJobStatus.SENT, error_message=f"LINE_UNTRACKED: {ex}")
     else:
         job_service.update_status(
             job_id,
@@ -497,7 +508,9 @@ async def start_print_job(
         str(stl_path),
         data.printer_serial,
         print_settings,
-        db
+        db,
+        data.cmd_id,
+        preset.part_type if data.preset_id else None,   # 배치 내용물 = 프리셋의 부품 종류
     )
 
     return job

@@ -542,6 +542,7 @@ class PrinterSequence(Sequence):
                 simul_mode=bool(self.ctx.simul_mode),
                 preset_id=preset_id,
                 settings=print_settings,
+                cmd_id=job.cmd_id,
             )
             self._log_api_response(job, f'START_PRINT_API attempt={attempt}', print_resp)
             if print_resp.get('ok'):
