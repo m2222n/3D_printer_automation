@@ -306,4 +306,6 @@ export interface SystemConfig {
   printer_serial_map: Record<string, string>;
   /** 라인 MES 가 보는 라인 ID. 실 API 조회는 이 값으로 — FE 가 라인을 하드코딩하지 않는다 */
   line_id: string;
+  /** 서버에 LINE_DSN 이 있어 /api/v2 가 살아 있는가. false 면 FE 라인 화면은 목업 */
+  line_mes: boolean;
 }
