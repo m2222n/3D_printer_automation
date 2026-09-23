@@ -122,6 +122,8 @@ class PrintJobCreate(BaseModel):
     printer_serial: str = Field(..., description="대상 프린터 시리얼")
     copies: int = Field(default=1, ge=1, le=10, description="복사본 수")
     simul_mode: bool = Field(default=False, description="True면 프린트 장비 없이 시뮬레이션으로 처리")
+    # 자동화 탭(sequence_service)이 건 출력이면 그 CMD 의 id. 라인 MES unit.cmd_id 다리. 사람이 걸면 None
+    cmd_id: Optional[str] = None
 
     # 프리셋 없이 직접 설정 시
     settings: Optional[PrintSettings] = None

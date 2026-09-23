@@ -76,6 +76,13 @@ class Settings(BaseSettings):
     # 데이터베이스 설정
     # ===========================================
     DATABASE_URL: str = "postgresql://localhost:5432/formlabs_db"
+
+    # 라인 MES(v2 · PostgreSQL). 비어 있으면 Spawn 을 발행하지 않는다.
+    # web-api 는 공장 PC 한 대에서만 돈다 (2026-09-22 확인) ⇒ 발행자도 하나다.
+    LINE_DSN: str = ""
+    # 🚨 활성 라인이 둘(RESIN-1 · RESIN-1-ASIS)이라 값이 갈리면 Spawn 한 unit 이 FE 에 안 보인다.
+    #    FE frontend/src/mocks/lineMock.ts DEFAULT_LINE_ID 와 반드시 같은 값 (2026-09-22 통일 = RESIN-1).
+    LINE_ID: str = "RESIN-1"
     
     # ===========================================
     # 알림 설정
