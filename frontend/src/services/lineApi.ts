@@ -27,8 +27,24 @@ import type {
 import * as mock from '../mocks/lineMock';
 import { getSystemConfig } from './api';
 
-/** 🔴 백엔드 v2 가 생기면 false 로. 그때 아래 fetch 분기를 채운다. */
-const USE_MOCK = true;
+import { authFetch } from './auth';
+
+// ── 목업 ↔ 실 API 전환은 함수 단위로 ─────────────────────────
+// 화면 하나씩 옮기는 것이 곧 테스트다(계획 E). 여기 이름을 넣은 함수만 /api/v2 를 부른다.
+// 순서 = getControlMenu(R4 · FE 가 v2 탭 표시를 이것으로 판단) → R2 R1 R3 R5 R11 → R6~R10 R12 → W3 W2 W1 W4 W5 → W6
+const REAL = new Set<string>([]);
+const useMock = (fn: string) => !REAL.has(fn);
+
+async function v2<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await authFetch(`/api/v2${path}`, { headers: { 'Content-Type': 'application/json', ...init?.headers }, ...init });
+  if (!res.ok) {
+    // 명세 1-2 거부 규약: {code, message}. 없으면 statusText
+    let code = res.statusText;
+    try { const b = await res.json(); code = b.code ?? b.detail?.code ?? b.detail ?? code; } catch { /* 본문 없음 */ }
+    throw new Error(`v2 ${res.status}: ${code}`);
+  }
+  return res.json();
+}
 
 /** 목업 데이터의 라인 ID. 목업 모드에서만 기본값으로 쓴다. */
 export const DEFAULT_LINE_ID = mock.MOCK.line_id;
@@ -37,7 +53,7 @@ export const DEFAULT_LINE_ID = mock.MOCK.line_id;
 // 🚨 목업은 RESIN-1(재배치 후 · 17노드)로 만들어졌고 실물은 RESIN-1-ASIS 다. 실 API 로 바꾸면 노드·서브 탭 수가 달라지는 것이 정상.
 let _lineId: string | null = null;
 export async function currentLineId(): Promise<string> {
-  if (USE_MOCK) return DEFAULT_LINE_ID;
+  if (REAL.size === 0) return DEFAULT_LINE_ID;
   if (!_lineId) _lineId = (await getSystemConfig()).line_id;
   return _lineId;
 }
@@ -91,7 +107,7 @@ function toNodeRow(m: mock.MockState, n: mock.MockNode, order: Record<string, nu
 }
 
 export async function getNodes(lineId: string = DEFAULT_LINE_ID): Promise<NodeListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getNodes')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const order = mock.stepOrder(m);
   const nodes = m.nodes
@@ -104,7 +120,7 @@ export async function getNodes(lineId: string = DEFAULT_LINE_ID): Promise<NodeLi
 // ── R2 · 반송 자원 ──────────────────────────────────────────
 
 export async function getTransporters(lineId: string = DEFAULT_LINE_ID): Promise<TransporterListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getTransporters')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   // 담당 노드의 투입 대기 건수를 합쳐 큐로 본다
   const queued: Record<string, number> = {};
@@ -132,7 +148,7 @@ export async function getTransporters(lineId: string = DEFAULT_LINE_ID): Promise
 // ── R3 · 재공 파이프라인 ────────────────────────────────────
 
 export async function getWip(lineId: string = DEFAULT_LINE_ID): Promise<WipListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getWip')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const order = mock.stepOrder(m);
   const rowOf = (nodeId: string) => {
@@ -188,8 +204,8 @@ export async function getWip(lineId: string = DEFAULT_LINE_ID): Promise<WipListR
 
 // ── R4 · 제어 서브 메뉴 ─────────────────────────────────────
 
-export async function getControlMenu(lineId: string = DEFAULT_LINE_ID): Promise<ControlMenuResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+export async function getControlMenu(lineId?: string): Promise<ControlMenuResponse> {
+  if (!useMock('getControlMenu')) throw new Error('v2 미구현');
   void lineId;
   return { menu: mock.menu(mock.MOCK) };
 }
@@ -197,7 +213,7 @@ export async function getControlMenu(lineId: string = DEFAULT_LINE_ID): Promise<
 // ── R5 · 투입 대기 큐 ───────────────────────────────────────
 
 export async function getInbound(nodeId: string): Promise<InboundQueueResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getInbound')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const inbound: InboundRow[] = mock.inbound(m, nodeId).map((r) => ({
     // 박스도 묶음이다 — R5 는 UNIT / GROUP 둘로만 가른다
@@ -218,7 +234,7 @@ export async function getInbound(nodeId: string): Promise<InboundQueueResponse> 
 // ── W2 · 이동 (투입) ────────────────────────────────────────
 
 export async function postMove(req: MoveRequest): Promise<WriteResult> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('postMove')) throw new Error('v2 미구현');
   const m = mock.MOCK;
 
   // 박스 합류 — OK 판정한 부품 하나가 다음 랙의 담는 중인 박스에 붙는다
@@ -261,7 +277,7 @@ const CMD_OF_STATUS: Record<StateCommand, string> = {
 };
 
 export async function postState(nodeId: string, req: StateRequest): Promise<WriteResult> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('postState')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const n = mock.node(m, nodeId);
   const cmd = CMD_OF_STATUS[req.status];
@@ -299,7 +315,7 @@ export function readCommandLog(): { ts: string; actor: string; kind: string; tex
 // ── R6 · 직전 출처 랙 ───────────────────────────────────────
 
 export async function getSourceRacks(nodeId: string): Promise<RackListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getSourceRacks')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const racks: RackRow[] = mock.prevRacks(m, nodeId).map((r) => {
     const load = mock.rackLoad(m, r.node_id);
@@ -311,7 +327,7 @@ export async function getSourceRacks(nodeId: string): Promise<RackListResponse> 
 // ── R7 · 랙 칸 목록 ─────────────────────────────────────────
 
 export async function getRackSlots(rackId: string): Promise<SlotListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getRackSlots')) throw new Error('v2 미구현');
   const slots: SlotRow[] = mock.slotsOf(mock.MOCK, rackId).map((s) => ({
     slot_no: s.slot_no,
     capacity: s.capacity,
@@ -325,7 +341,7 @@ export async function getRackSlots(rackId: string): Promise<SlotListResponse> {
 // ── R8 · 칸 FIFO 대기열 ─────────────────────────────────────
 
 export async function getSlotQueue(rackId: string, slotNo: number): Promise<SlotQueueResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getSlotQueue')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const queue: SlotQueueRow[] = mock.queueOf(m, rackId, slotNo).map((u) => ({
     unit_id: u.unit_id,
@@ -347,7 +363,7 @@ export async function getSlotQueue(rackId: string, slotNo: number): Promise<Slot
 // ── R9 · 노드의 묶음 ────────────────────────────────────────
 
 export async function getGroups(nodeId: string): Promise<GroupListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getGroups')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const capacity = mock.groupTarget(m, nodeId);
   const groups: GroupRow[] = mock.groups(m, nodeId).map((g) => ({
@@ -366,7 +382,7 @@ export async function getGroups(nodeId: string): Promise<GroupListResponse> {
 // ── R10 · 부품 판정 목록 ────────────────────────────────────
 
 export async function getNodeParts(nodeId: string): Promise<PartJudgeListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getNodeParts')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const spec = mock.measureSpec(m, nodeId);
   const parts: PartJudgeRow[] = mock.waitingParts(m, nodeId).map((p) => {
@@ -390,7 +406,7 @@ export async function getNodeParts(nodeId: string): Promise<PartJudgeListRespons
 // ── W1 · 배치 완료 등록 (분리) ──────────────────────────────
 
 export async function postSplit(unitId: string, req: SplitRequest): Promise<WriteResult> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('postSplit')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const batch = m.units.find((u) => u.unit_id === unitId);
   if (!batch) {
@@ -424,7 +440,7 @@ export async function postSplit(unitId: string, req: SplitRequest): Promise<Writ
 // 🚨 NG 는 판정 + EXIT-SCRAP 이동이 **한 트랜잭션**이다. 나눠 부르면 판정만 남고 부품이 라인에 남는다.
 
 export async function postJudgement(req: JudgementRequest): Promise<WriteResult> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('postJudgement')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   const part = mock.waitingParts(m, req.node_id).find((p) => p.unit_id === req.unit_id);
   mock.judge(m, req.unit_id, req.node_id, req.verdict, req.value ? JSON.stringify(req.value) : null);
@@ -440,7 +456,7 @@ export async function postJudgement(req: JudgementRequest): Promise<WriteResult>
 // ── W5 · 조작 기록 (박스 수동 마감) ─────────────────────────
 
 export async function postCommand(req: CommandRequest): Promise<WriteResult> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('postCommand')) throw new Error('v2 미구현');
   const m = mock.MOCK;
   if (req.kind === 'GROUP_CLOSE') {
     const done = mock.closeBox(m, req.target);
@@ -468,7 +484,7 @@ export function readOpenBox(rackId: string): { group_id: string; count: number; 
 // 🥇 카탈로그의 정본은 `topology.yaml` 이다 — API 는 명령의 내용을 알지 못하고 그대로 돌려준다.
 
 export async function getRobotCommands(transporterId: string): Promise<RobotCommandListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getRobotCommands')) throw new Error('v2 미구현');
   const t = mock.transporterById(transporterId);
   if (!t) return { node_ids: [], manual: true, protocol: null, commands: [] };
   return {
@@ -486,7 +502,7 @@ export async function getRobotCommands(transporterId: string): Promise<RobotComm
 // 내용 미상 배치(contents 0행)에서 작업자가 부품을 고를 목록. part 테이블을 그대로 돌려준다.
 
 export async function getParts(all = false): Promise<PartListResponse> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('getParts')) throw new Error('v2 미구현');
   void all;   // 목업엔 비활성 부품이 없다
   const parts = Object.entries(mock.MOCK.part)
     .map(([part_no, p]) => ({ part_no, name: p.name, revision: null, cad_ref: p.cad_ref, attrs: p.attrs, is_active: true }))
@@ -500,7 +516,7 @@ export async function getParts(all = false): Promise<PartListResponse> {
 // 🥇 이벤트가 아니다 — 위치를 바꾸지 않는다. 로봇이 실제로 옮기면 그 사실은 Moved 로 따로 온다.
 
 export async function runRobotCommand(transporterId: string, commandId: string, actor: string): Promise<WriteResult> {
-  if (!USE_MOCK) throw new Error('v2 미구현');
+  if (!useMock('runRobotCommand')) throw new Error('v2 미구현');
   const t = mock.transporterById(transporterId);
   const c = t?.commands.find((x) => x.id === commandId);
   if (!t || !c) {
