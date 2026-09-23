@@ -31,6 +31,7 @@ from app.local.schemas import (
     SceneEstimate, ScenePrepareRequest, DuplicateModelRequest
 )
 from app.local.automation_db import (
+    add_log as add_sequence_log,
     create_command as create_sequence_command,
     list_commands as list_sequence_commands,
     list_logs as list_sequence_logs,
@@ -1239,7 +1240,19 @@ async def create_automation_command(body: AutomationCommandCreate, db: Session =
 )
 async def get_automation_commands(limit: int = Query(100, ge=1, le=500)):
     try:
-        return {"items": list_sequence_commands(limit=limit)}
+        items = list_sequence_commands(limit=limit)
+        # 라인 MES 대조 — print_command 에 있는데 unit 이 없는 CMD = Spawn 누락(조용히 사라진 배치). LINE_DSN 없으면 null
+        tracked = None
+        if settings.LINE_DSN and items:
+            try:
+                from app.line import db as line_db
+                ids = [str(it["cmd_id"]) for it in items if it.get("cmd_id")]
+                tracked = {r["cmd_id"] for r in line_db.rows("SELECT cmd_id FROM unit WHERE cmd_id = ANY(%(ids)s)", ids=ids)}
+            except Exception as ex:  # noqa: BLE001 — 대조 실패가 목록을 막으면 안 된다
+                logger.warning(f"라인 MES 대조 건너뜀: {ex}")
+        for it in items:
+            it["line_tracked"] = (str(it.get("cmd_id")) in tracked) if tracked is not None else None
+        return {"items": items}
     except Exception as e:
         logger.error(f"automation cmd list failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1399,6 +1412,8 @@ async def automation_manual_io_output(body: AutomationIoWrite):
         # Read-back result from output port bit (do not trust requested value blindly).
         read_back_list = gateway.read_outputs(board_no=body.board_no, count=max(1, body.offset + 1))
         read_back = bool(read_back_list[body.offset]) if body.offset < len(read_back_list) else False
+        # 관리자용 임의 Write — 누가 무엇을 썼는지 자기 도메인(automation_log)에 남긴다. 기록이 0 이던 자리(README TODO)
+        add_sequence_log(log_type=10, source="manual", message=f"MANUAL IO write board={body.board_no} offset={body.offset} value={int(body.value)} ok={ok} read_back={read_back}")
         return {
             "ok": True,
             "board_no": body.board_no,
@@ -1427,6 +1442,7 @@ async def manual_robot_send(body: AutomationManualSend):
             payload=body.payload,
             timeout_seconds=settings.MANUAL_TCP_TIMEOUT_SECONDS,
         )
+        add_sequence_log(log_type=10, source="manual", message=f"MANUAL robot-send ok={bool(result.get('ok'))} payload={body.payload[:200]}")
         if not result.get("ok"):
             raise HTTPException(status_code=502, detail=result.get("error", "robot send failed"))
         return result
@@ -1633,6 +1649,7 @@ async def automation_manual_modbus_write(body: AutomationModbusWrite):
             slave_id=slave_id,
         )
         ok, result = client.write_single(body.address, body.value)
+        add_sequence_log(log_type=10, source="manual", message=f"MANUAL modbus write addr={body.address} value={body.value} ok={ok}")
         if not ok:
             raise HTTPException(status_code=502, detail=f"modbus write failed: {result}")
         read_back = int(result) if isinstance(result, int) else body.value
