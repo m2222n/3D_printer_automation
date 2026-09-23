@@ -423,7 +423,8 @@ SELECT n.node_id, n.label, n.node_type, n.node_kind, n.transporter_id,
        o.line_id, o.step_order, n.capacity,
        count(x.unit_id)::int                                        AS occupancy,
        CASE WHEN count(x.unit_id) = 1 THEN min(x.display_id) END    AS display_id,
-       string_agg(x.display_id, ', ' ORDER BY x.entered_at)         AS display_ids,
+       -- text[] (API 개발 계획 §5-1 · FE string[]). 빈 노드는 '{}'
+       coalesce(array_agg(x.display_id ORDER BY x.entered_at) FILTER (WHERE x.unit_id IS NOT NULL), '{}') AS display_ids,
        CASE WHEN count(x.unit_id) = 1 THEN min(x.part_label) END    AS part_label,
        sum(x.part_qty)::int                                         AS part_qty,
        (array_agg(x.display_status ORDER BY
@@ -435,8 +436,9 @@ SELECT n.node_id, n.label, n.node_type, n.node_kind, n.transporter_id,
        max(extract(epoch FROM (now() - x.entered_at)))::int         AS elapsed_s,
        n.std_cycle_s,
        CASE WHEN n.std_cycle_s > 0 THEN least(100, round(
-         100.0 * max(extract(epoch FROM (now() - x.entered_at))) / n.std_cycle_s)) END
-                                                                    AS progress_pct
+         100.0 * max(extract(epoch FROM (now() - x.entered_at))) / n.std_cycle_s))::int END
+                                                                    AS progress_pct,
+       n.attrs                                                      -- 화면 분기(measure · duration_input · count_by_group) — §5-2
   FROM node n
   JOIN v_node_order o ON o.node_id = n.node_id
   LEFT JOIN (SELECT d.*, us.display_id, us.line_id, us.part_label, us.part_qty
@@ -445,7 +447,7 @@ SELECT n.node_id, n.label, n.node_type, n.node_kind, n.transporter_id,
  WHERE n.is_active
  GROUP BY n.node_id, n.label, n.node_type, n.node_kind, n.transporter_id,
           n.ui_kind, n.group_label, n.splits_batch, n.count_by_group,
-          o.line_id, o.step_order, n.capacity, n.std_cycle_s;
+          o.line_id, o.step_order, n.capacity, n.std_cycle_s, n.attrs;
 
 CREATE VIEW v_slot_map AS
 SELECT sl.node_id, n.label, sl.slot_no, p.pos_no, u.display_id, ps.unit_id, ps.group_id, ps.entered_at
@@ -459,7 +461,9 @@ SELECT sl.node_id, n.label, sl.slot_no, p.pos_no, u.display_id, ps.unit_id, ps.g
 CREATE VIEW v_rack_slot AS
 SELECT sl.node_id, n.label, n.slot_access, sl.slot_no, sl.capacity,
        count(ps.unit_id)::int AS used, (sl.capacity - count(ps.unit_id))::int AS free,
-       string_agg(ps.pos_no || ':' || u.display_id, ', ' ORDER BY ps.pos_no) AS contents
+       -- text[] · 반출 차례(pos_no 1)부터 (§5-3). head_display_id = 다음에 나갈 것
+       coalesce(array_agg(u.display_id ORDER BY ps.pos_no) FILTER (WHERE u.unit_id IS NOT NULL), '{}') AS contents,
+       min(u.display_id) FILTER (WHERE ps.pos_no = 1)                                                AS head_display_id
   FROM node_slot sl
   JOIN node n USING (node_id)
   LEFT JOIN product_state ps ON ps.node_id = sl.node_id AND ps.slot_no = sl.slot_no
@@ -585,7 +589,8 @@ CREATE VIEW v_wip AS
 SELECT 'UNIT'::text AS ref_kind, us.unit_id::text AS ref, us.display_id,
        us.line_id, us.part_label, us.part_qty,
        ps.node_id, n.label AS node_label, o.step_order,
-       d.display_status, d.settle_left_s, d.transport_wait_s
+       d.display_status, d.settle_left_s, d.transport_wait_s,
+       (n.node_kind = 'RACK') AS waiting          -- 랙에서 다음 공정을 기다리는 중 (§5-4 · API 가 계산하지 않는다)
   FROM v_unit_summary us
   JOIN product_state ps USING (unit_id)
   JOIN v_product_display d USING (unit_id)
@@ -602,7 +607,8 @@ SELECT 'GROUP', ps.group_id, ps.group_id,
        (array_agg(d.display_status ORDER BY
           CASE d.display_status WHEN 'ERROR' THEN 1 WHEN 'HOLD' THEN 2 WHEN 'RUN' THEN 3
                WHEN 'SETTLING' THEN 4 WHEN 'DONE' THEN 5 WHEN 'WAIT' THEN 6 ELSE 7 END))[1],
-       min(d.settle_left_s), max(d.transport_wait_s)
+       min(d.settle_left_s), max(d.transport_wait_s),
+       (n.node_kind = 'RACK')
   FROM product_state ps
   JOIN v_unit_summary us USING (unit_id)
   JOIN v_product_display d USING (unit_id)
@@ -610,7 +616,7 @@ SELECT 'GROUP', ps.group_id, ps.group_id,
   LEFT JOIN unit_content uc ON uc.unit_id = ps.unit_id
   LEFT JOIN v_node_order o ON o.node_id = ps.node_id AND o.line_id = us.line_id
  WHERE ps.group_id IS NOT NULL AND us.unit_kind = 'PART'
- GROUP BY ps.group_id, us.line_id, ps.node_id, n.label, o.step_order;
+ GROUP BY ps.group_id, us.line_id, ps.node_id, n.label, n.node_kind, o.step_order;
 
 -- 이 노드에 들어올 차례. v_waiting_for 는 부품 단위인데 화면은 묶음 1줄로 본다.
 -- ready = 출처마다 맨 앞의 것 (FIFO). 출처가 여럿이면 각 출처의 앞이 하나씩 선다.
