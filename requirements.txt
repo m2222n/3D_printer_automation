@@ -17,6 +17,9 @@ aiofiles>=23.2.0
 websockets>=12.0
 python-json-logger>=2.0.7
 
+# 라인 MES 관측 도메인 (리포 루트 line_mes/). web-api·sequence_service 가 import — 편집 설치
+-e .
+
 # Auth (JWT + bcrypt)
 python-jose[cryptography]>=3.3.0
 bcrypt>=4.0.0
