@@ -232,7 +232,7 @@ class Sim:
         q = lambda sql, *a: self.conn.execute(sql, a).fetchall()
         print(f"\n시뮬 경과 {minutes/60:.1f}h (실제 {self.clock:.0f}s · {self.speed:.0f}x · 라인 {self.line_id})\n")
         print("── 노드 현황 " + "─" * 50)
-        for r in q("""SELECT node_id, label, occupancy, capacity, coalesce(display_id, display_ids, '-'),
+        for r in q("""SELECT node_id, label, occupancy, capacity, coalesce(display_id, array_to_string(display_ids, ', '), '-'),
                              coalesce(status,'IDLE') FROM v_node_status WHERE line_id=%s
                       ORDER BY step_order, node_id""", self.line_id):
             ids = r[4] if len(r[4]) < 34 else r[4][:31] + "…"

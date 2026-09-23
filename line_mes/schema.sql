@@ -651,9 +651,11 @@ SELECT ps.node_id, u.line_id, ps.unit_id, u.display_id, ps.group_id,
        uc.part_no, p.name AS part_name,
        (p.attrs->>'nominal_mm')::numeric AS nominal_mm,
        (p.attrs->>'tol_mm')::numeric     AS tol_mm,
-       j.verdict, j.value AS judge_value, j.ts AS judged_at, j.source AS judge_source
+       j.verdict, j.value AS judge_value, j.ts AS judged_at, j.source AS judge_source,
+       n.attrs->'measure' AS measure_spec        -- 이 노드가 받는 측정값 {key,label,unit} (§5-7 · API 가 jsonb 키를 몰라도 되게)
   FROM product_state ps
   JOIN unit u USING (unit_id)
+  JOIN node n ON n.node_id = ps.node_id
   JOIN unit_content uc USING (unit_id)
   JOIN part p USING (part_no)
   LEFT JOIN v_latest_judgement j ON j.unit_id = ps.unit_id AND j.node_id = ps.node_id
@@ -662,19 +664,50 @@ SELECT ps.node_id, u.line_id, ps.unit_id, u.display_id, ps.group_id,
 -- 묶음 집계. 작업대의 묶음과 랙의 박스가 같은 모양이라 뷰 하나로 둘 다 덮는다.
 -- closed = 수동 마감. 정원이 차서 닫힌 것은 unit_qty 로 알 수 있으므로 여기 안 남는다.
 CREATE VIEW v_group_at_node AS
+-- 묶음(바구니·박스) 한 행. sources = 출처 배치별 파트 수량 jsonb (API 개발 계획 §5-6 — 콤마 텍스트로는 화면이 못 그린다)
+--   [{"parent_display_id": "P3-W2", "parts": {"BRK-1002": 4, "HNG-2041": 3}}, ...]
+-- capacity = 묶음 정원. 트레이 랙(count_by_group)이면 자기 정원. 작업대면 "MAIN 2홉 안의 설비·트레이 랙 중 정원(>1) 최솟값"
+--   (FE 목업 groupTarget 과 같은 규칙 — 서포트 제거대의 묶음은 다음 경화기 바구니(12)에 담기므로 그 정원이 목표다). 없으면 NULL
+WITH pp AS (
+  SELECT ps.node_id, ps.group_id,
+         coalesce(pu.display_id, '(출처 없음)')                AS parent_display_id,
+         uc.part_no, sum(uc.qty - uc.qty_scrapped)::int        AS qty
+    FROM product_state ps
+    JOIN unit u USING (unit_id)
+    LEFT JOIN unit pu ON pu.unit_id = u.parent_unit_id
+    JOIN unit_content uc ON uc.unit_id = ps.unit_id
+   WHERE ps.group_id IS NOT NULL
+   GROUP BY ps.node_id, ps.group_id, pu.display_id, uc.part_no
+), src AS (
+  SELECT node_id, group_id,
+         jsonb_agg(jsonb_build_object('parent_display_id', parent_display_id, 'parts', parts)
+                   ORDER BY parent_display_id)                  AS sources
+    FROM (SELECT node_id, group_id, parent_display_id,
+                 jsonb_object_agg(part_no, qty ORDER BY part_no) AS parts
+            FROM pp GROUP BY node_id, group_id, parent_display_id) x
+   GROUP BY node_id, group_id
+)
 SELECT ps.node_id, u.line_id, ps.group_id,
        count(*)::int                                          AS unit_qty,
-       CASE WHEN n.count_by_group THEN n.capacity END          AS capacity,
+       coalesce(CASE WHEN n.count_by_group THEN n.capacity END,
+                (SELECT min(n2.capacity)
+                   FROM (SELECT r1.to_node AS nid FROM route r1
+                          WHERE r1.from_node = ps.node_id AND r1.line_id = u.line_id AND r1.edge_kind = 'MAIN'
+                         UNION
+                         SELECT r2.to_node FROM route r1
+                           JOIN route r2 ON r2.from_node = r1.to_node AND r2.line_id = r1.line_id AND r2.edge_kind = 'MAIN'
+                          WHERE r1.from_node = ps.node_id AND r1.line_id = u.line_id AND r1.edge_kind = 'MAIN') h
+                   JOIN node n2 ON n2.node_id = h.nid AND n2.is_active
+                  WHERE (n2.node_kind = 'STATION' OR n2.count_by_group) AND n2.capacity > 1))
+                                                               AS capacity,
        (gc.group_id IS NOT NULL)                               AS closed,
        gc.closed_at, gc.actor AS closed_by,
        min(u.parent_unit_id::text)                             AS any_parent,
-       string_agg(DISTINCT pu.display_id, ', ')                AS sources,
-       string_agg(DISTINCT uc.part_no, ', ' ORDER BY uc.part_no) AS parts
+       coalesce((SELECT s.sources FROM src s WHERE s.node_id = ps.node_id AND s.group_id = ps.group_id),
+                '[]'::jsonb)                                   AS sources
   FROM product_state ps
   JOIN unit u USING (unit_id)
   JOIN node n ON n.node_id = ps.node_id
-  LEFT JOIN unit pu ON pu.unit_id = u.parent_unit_id
-  LEFT JOIN unit_content uc ON uc.unit_id = ps.unit_id
   LEFT JOIN group_close gc ON gc.group_id = ps.group_id
  WHERE ps.group_id IS NOT NULL
  GROUP BY ps.node_id, u.line_id, ps.group_id, n.count_by_group, n.capacity,

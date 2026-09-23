@@ -244,6 +244,7 @@ FK 를 못 건다(다른 DB) — UNIQUE 가 같은 CMD 의 이중 Spawn 을 막�
 # 뷰 · 함수
 
 > 🔁 **2026-09-23 뷰 3개 보정** (API 개발 계획 §5 · "계산은 뷰가, 이름은 API 가") — `v_node_status.display_ids` **text[]**(콤마 텍스트 → 배열) · `v_node_status.attrs` 추가(화면 분기용) · `progress_pct` int · `v_rack_slot.contents` **text[]** + `head_display_id`(반출 차례) · `v_wip.waiting`(랙에서 대기 = `node_kind='RACK'`). R1·R3·R7 이 파서 없이 그대로 돌려준다.
+> 🔁 **2026-09-23 P2** — `v_group_at_node.sources` 콤마 텍스트 → **jsonb**(`[{parent_display_id, parts:{part_no: qty}}]`) · `parts` 컬럼 제거 · `capacity` = 트레이 랙이면 자기 정원, 작업대면 MAIN 2홉 안 설비·트레이 랙 정원(>1) 최솟값(FE 목업 규칙) · `v_node_parts.measure_spec`(`node.attrs->'measure'`) 추가. R9·R10 용.
 
 뷰가 M4 와 M5 사이의 계약이다. `SETTLING` 판정이나 대기시간 계산이 패널 쿼리에 들어가면 정의를 바꿀 때 패널을 전부 고쳐야 한다.
 
