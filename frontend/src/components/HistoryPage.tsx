@@ -960,7 +960,10 @@ function LocalJobCard({
             {job.error_message && (
               <>
                 <span className="text-gray-300">|</span>
-                <span className="text-xs text-red-500">{job.error_message}</span>
+                {/* LINE_UNTRACKED 는 출력 성공 + 라인 MES 미등록 — 실패(빨강)로 읽히면 안 된다 */}
+                <span className={`text-xs ${job.error_message.startsWith('LINE_UNTRACKED') ? 'text-amber-600' : 'text-red-500'}`}>
+                  {job.error_message.startsWith('LINE_UNTRACKED') ? '라인 미등록 · ' + job.error_message.slice('LINE_UNTRACKED:'.length).trim() : job.error_message}
+                </span>
               </>
             )}
           </div>
