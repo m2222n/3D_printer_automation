@@ -25,11 +25,22 @@ import type {
   RobotCommandListResponse, PartListResponse,
 } from '../types/line';
 import * as mock from '../mocks/lineMock';
+import { getSystemConfig } from './api';
 
 /** 🔴 백엔드 v2 가 생기면 false 로. 그때 아래 fetch 분기를 채운다. */
 const USE_MOCK = true;
 
+/** 목업 데이터의 라인 ID. 목업 모드에서만 기본값으로 쓴다. */
 export const DEFAULT_LINE_ID = mock.MOCK.line_id;
+
+// 실 API 에서는 라인 ID 를 서버에서 받는다(/system/config line_id) — web-api .env LINE_ID 가 유일한 출처.
+// 🚨 목업은 RESIN-1(재배치 후 · 17노드)로 만들어졌고 실물은 RESIN-1-ASIS 다. 실 API 로 바꾸면 노드·서브 탭 수가 달라지는 것이 정상.
+let _lineId: string | null = null;
+export async function currentLineId(): Promise<string> {
+  if (USE_MOCK) return DEFAULT_LINE_ID;
+  if (!_lineId) _lineId = (await getSystemConfig()).line_id;
+  return _lineId;
+}
 
 // ── R1 · 노드 현황 ──────────────────────────────────────────
 

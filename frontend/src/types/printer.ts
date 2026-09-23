@@ -304,4 +304,6 @@ export interface SystemConfig {
   printer_serials: string[];
   /** 제어의 target_printer(문자열 "1"~"4") → 시리얼 */
   printer_serial_map: Record<string, string>;
+  /** 라인 MES 가 보는 라인 ID. 실 API 조회는 이 값으로 — FE 가 라인을 하드코딩하지 않는다 */
+  line_id: string;
 }
