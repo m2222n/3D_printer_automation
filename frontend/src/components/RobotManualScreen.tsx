@@ -77,7 +77,7 @@ export function RobotManualScreen({ transporters, actor, labels, selected, onSel
     const d = new Date();
     const ts = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     setLog((l) => [{ ts, text: `${arm.label} · ${cmd.label} → ${chunkOf(cmd.send)}` }, ...l].slice(0, 8));
-    setError(res.ok ? null : res.message);
+    setError(res.ok ? null : [res.message, ...res.warnings].join(' · '));   // 미송신 사유(warnings)도 보인다
     setAsk(false);
   };
 

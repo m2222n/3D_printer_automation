@@ -35,15 +35,27 @@ import { authFetch } from './auth';
 const REAL = new Set<string>([]);
 const useMock = (fn: string) => !REAL.has(fn);
 
+// GET 응답의 ETag 를 기억해 If-None-Match 로 다시 묻는다(명세 §1-4). 304 면 기억한 본문을 돌려준다 — 5초 폴링의 대부분이 이 경로다
+const etags = new Map<string, { etag: string; body: unknown }>();
+
 async function v2<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await authFetch(`/api/v2${path}`, { headers: { 'Content-Type': 'application/json', ...init?.headers }, ...init });
+  const isGet = !init?.method || init.method === 'GET';
+  const cached = isGet ? etags.get(path) : undefined;
+  const res = await authFetch(`/api/v2${path}`, {
+    headers: { 'Content-Type': 'application/json', ...(cached ? { 'If-None-Match': cached.etag } : {}), ...init?.headers },
+    ...init,
+  });
+  if (res.status === 304 && cached) return cached.body as T;
   if (!res.ok) {
     // 명세 1-2 거부 규약: {code, message}. 없으면 statusText
     let code = res.statusText;
     try { const b = await res.json(); code = b.code ?? b.detail?.code ?? b.detail ?? code; } catch { /* 본문 없음 */ }
     throw new Error(`v2 ${res.status}: ${code}`);
   }
-  return res.json();
+  const body = await res.json();
+  const etag = res.headers.get('ETag');
+  if (isGet && etag) etags.set(path, { etag, body });
+  return body as T;
 }
 
 /** 목업 데이터의 라인 ID. 목업 모드에서만 기본값으로 쓴다. */
@@ -517,7 +529,7 @@ export async function getParts(all = false): Promise<PartListResponse> {
 // 🥇 이벤트가 아니다 — 위치를 바꾸지 않는다. 로봇이 실제로 옮기면 그 사실은 Moved 로 따로 온다.
 
 export async function runRobotCommand(transporterId: string, commandId: string, actor: string): Promise<WriteResult> {
-  if (!useMock('runRobotCommand')) throw new Error('v2 미구현');
+  if (!useMock('runRobotCommand')) return v2<WriteResult>(`/transporters/${encodeURIComponent(transporterId)}/commands/${encodeURIComponent(commandId)}`, { method: 'POST', body: JSON.stringify({ actor }) });
   const t = mock.transporterById(transporterId);
   const c = t?.commands.find((x) => x.id === commandId);
   if (!t || !c) {

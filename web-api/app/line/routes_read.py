@@ -15,7 +15,7 @@ v2 읽기 API — R1~R12. 뷰를 감싼다. 계산은 뷰가, 이름 바꾸기(A
   R12 GET /parts                            part
 """
 import psycopg
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from app.line import db
 from app.line.schemas import (
@@ -35,6 +35,17 @@ def _rows(sql: str, **params) -> list[dict]:
         raise HTTPException(status_code=503, detail={"code": "LINE_MES_OFF", "message": str(ex)})
     except psycopg.OperationalError as ex:           # PG 접속 실패
         raise HTTPException(status_code=503, detail={"code": "LINE_MES_UNAVAILABLE", "message": str(ex).strip()})
+
+
+def _etag(request: Request, response: Response, where: str, **params):
+    """명세 §1-4: ETag = product_state 의 max(updated_at) + 행수(삭제도 잡히게). If-None-Match 가 맞으면 304.
+    product_state 로 결정되지 않는 응답(R2 transporter_state · R9 group_close · R10 judgement)엔 붙이지 않는다 — 틀린 304 가 최악이다."""
+    tag = _rows(f"""SELECT '"' || md5(coalesce(max(ps.updated_at)::text, '0') || ':' || count(*)) || '"' AS tag
+                      FROM product_state ps JOIN unit u USING (unit_id) WHERE {where}""", **params)[0]["tag"]
+    if request.headers.get("if-none-match") == tag:
+        return Response(status_code=304, headers={"ETag": tag})
+    response.headers["ETag"] = tag
+    return None
 
 
 # R4 — 첫 번째 라우트. 뷰 그대로, 계산 없음. 활성 라인이 둘일 수 있어 line_id 로 건다(계획 §2-3).
@@ -89,7 +100,9 @@ def transporter_commands(transporter_id: str) -> RobotCommandListResponse:
 
 # R1 — 노드 현황. v_node_status 그대로 + 랙은 v_rack_slot 을 slots 로 붙인다. RACK 의 ui_kind 는 null(FE 계약).
 @router.get("/lines/{line_id}/nodes", response_model=NodeListResponse, summary="R1 노드 현황")
-def nodes(line_id: str) -> NodeListResponse:
+def nodes(line_id: str, request: Request, response: Response):
+    if (r304 := _etag(request, response, "u.line_id = %(line_id)s", line_id=line_id)) is not None:
+        return r304
     rows = _rows(
         """SELECT node_id, label, node_kind, node_type,
                   CASE WHEN node_kind = 'RACK' THEN NULL ELSE ui_kind END AS ui_kind,
@@ -113,7 +126,9 @@ def nodes(line_id: str) -> NodeListResponse:
 
 # R3 — 재공 파이프라인. 배치는 개체, 부품은 묶음 단위로 접힌 것이 뷰(v_wip)의 몫이다.
 @router.get("/lines/{line_id}/wip", response_model=WipListResponse, summary="R3 재공 파이프라인")
-def wip(line_id: str) -> WipListResponse:
+def wip(line_id: str, request: Request, response: Response):
+    if (r304 := _etag(request, response, "u.line_id = %(line_id)s", line_id=line_id)) is not None:
+        return r304
     rows = _rows(
         """SELECT ref_kind, ref, display_id, part_label, coalesce(part_qty, 0) AS part_qty,
                   node_id, node_label, coalesce(step_order, 99) AS step_order, display_status, waiting
@@ -125,7 +140,10 @@ def wip(line_id: str) -> WipListResponse:
 
 # R5 — 투입 대기 큐. ready(출처별 FIFO 맨 앞)는 뷰가 판정한다. key 는 표시용 이름 조합일 뿐이다.
 @router.get("/nodes/{node_id}/inbound", response_model=InboundQueueResponse, summary="R5 투입 대기 큐")
-def inbound(node_id: str) -> InboundQueueResponse:
+def inbound(node_id: str, request: Request, response: Response):
+    # 대기 큐는 "이 노드로 올 것들" 이라 라인 전체 상태로 판정한다(출처 랙이 바뀌면 큐가 바뀐다)
+    if (r304 := _etag(request, response, "u.line_id IN (SELECT line_id FROM v_node_order WHERE node_id = %(node_id)s)", node_id=node_id)) is not None:
+        return r304
     rows = _rows(
         """SELECT lower(ref_kind) || ':' || ref AS key, ref_kind, ref, label, qty,
                   from_node, from_label, ready, waiting_s

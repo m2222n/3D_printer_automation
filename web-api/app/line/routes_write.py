@@ -20,7 +20,7 @@ from psycopg.types.json import Json
 
 from app.line import db
 from app.line.schemas import (
-    CommandRequest, JudgementRequest, MoveRequest, SplitRequest, StateRequest, WriteResult,
+    ActorRequest, CommandRequest, JudgementRequest, MoveRequest, SplitRequest, StateRequest, WriteResult,
 )
 from line_mes.contract import Moved, Split, SplitOutput, State
 from line_mes.state_engine import StateEngine
@@ -166,4 +166,27 @@ def post_command(req: CommandRequest) -> WriteResult:
             return WriteResult(ok=True, group_id=req.target if req.kind == "GROUP_CLOSE" else None, message=message, warnings=warnings)
     return _engine(run)
 
-# 다음 = W6 (P4) — 기록 + verified 검사까지. 송신 어댑터는 web-api 에 없다(계획 하위 §7)
+# W6 — 로봇 명령 실행. 여기서 하는 것은 ①verified 검사 ②command_log(DEVICE) 기록 ③결과 반환 셋뿐(명세 §4-W6).
+#      🚨 v2 는 Modbus·DO 를 직접 치지 않는다 — 실제 송신 경로(sequence_service Modbus · 펜던트 소켓)는 web-api 안에 없고,
+#      제어권은 한 프로세스만 가져야 한다(한화). 그래서 지금은 "기록했고 보내지 않았다" 를 ok=false 로 정직하게 돌려준다.
+#      실행됨(ok=true)으로 답하면 작업자가 로봇이 받은 줄 안다. 어댑터가 붙는 날 이 한 곳만 바뀐다.
+@router.post("/transporters/{transporter_id}/commands/{command_id}", response_model=WriteResult, summary="W6 로봇 명령 실행")
+def run_transporter_command(transporter_id: str, command_id: str, req: ActorRequest) -> WriteResult:
+    def run():
+        with db.connection() as conn, conn.transaction():
+            t = conn.execute("SELECT label, auto_dispatch, attrs FROM transporter WHERE transporter_id = %s AND is_active", (transporter_id,)).fetchone()
+            if not t:
+                raise HTTPException(status_code=404, detail={"code": "TRANSPORTER_NOT_FOUND", "message": transporter_id})
+            if not t["auto_dispatch"]:
+                raise HTTPException(status_code=404, detail={"code": "MANUAL_TRANSPORTER", "message": f"{transporter_id} 는 수동 반송 자원 — 보낼 명령이 없다"})
+            cmd = next((c for c in (t["attrs"] or {}).get("commands", []) if c.get("id") == command_id), None)
+            if not cmd:
+                raise HTTPException(status_code=404, detail={"code": "COMMAND_NOT_FOUND", "message": command_id})
+            if not cmd.get("verified"):
+                raise HTTPException(status_code=409, detail={"code": "UNVERIFIED_COMMAND", "message": f"{cmd.get('label')} — 실물로 확인되지 않은 명령은 내보내지 않는다"})
+            reason = "송신 어댑터 미연결 — 기록만 남김"
+            conn.execute("""INSERT INTO command_log (actor, kind, target, payload, result)
+                            VALUES (%s, 'DEVICE', %s, %s, 'REJECTED')""",
+                         (req.actor, transporter_id, Json({"command_id": command_id, "label": cmd.get("label"), "send": cmd.get("send"), "reason": reason})))
+            return WriteResult(ok=False, message=f"{t['label']} · {cmd.get('label')} — 기록됨, 미송신", warnings=[reason])
+    return _engine(run)

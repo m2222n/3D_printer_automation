@@ -160,3 +160,42 @@ def test_writes_on_dev_db(v2_client, settings, auth_headers, monkeypatch):
     assert r.status_code == 200 and r.json()["ok"]
     r = p("/commands", {"kind": "GROUP_CLOSE", "target": "BOX-NOPE", "payload": {}, "actor": "t"})
     assert r.status_code == 409
+
+
+# ── W6 · ETag ───────────────────────────────────────────────
+
+@pytest.mark.skipif(not os.environ.get("LINE_DSN"), reason="개발 PG 없음")
+def test_w6_records_but_does_not_send(v2_client, settings, auth_headers, monkeypatch):
+    monkeypatch.setattr(settings, "LINE_DSN", os.environ["LINE_DSN"])
+    from app.line import db
+    L = settings.LINE_ID
+    ts = v2_client.get(f"/api/v2/lines/{L}/transporters", headers=auth_headers).json()["transporters"]
+    auto = next((t for t in ts if t["auto_dispatch"]), None); manual = next((t for t in ts if not t["auto_dispatch"]), None)
+    p = lambda tid, cid: v2_client.post(f"/api/v2/transporters/{tid}/commands/{cid}", headers=auth_headers, json={"actor": "t"})
+    assert p("NOPE", "x").status_code == 404
+    if manual:
+        assert p(manual["transporter_id"], "x").json()["detail"]["code"] == "MANUAL_TRANSPORTER"
+    if auto:
+        cmds = v2_client.get(f"/api/v2/transporters/{auto['transporter_id']}/commands", headers=auth_headers).json()["commands"]
+        assert p(auto["transporter_id"], "no-such-cmd").json()["detail"]["code"] == "COMMAND_NOT_FOUND"
+        ok = next((c for c in cmds if c["verified"]), None); bad = next((c for c in cmds if not c["verified"]), None)
+        if bad:
+            assert p(auto["transporter_id"], bad["command_id"]).json()["detail"]["code"] == "UNVERIFIED_COMMAND"
+        if ok:
+            before = db.rows("SELECT count(*) AS c FROM command_log WHERE kind='DEVICE'")[0]["c"]
+            r = p(auto["transporter_id"], ok["command_id"]); b = r.json()
+            assert r.status_code == 200 and b["ok"] is False and b["warnings"], "보내지 않았으면 ok=false 로 말한다"
+            assert db.rows("SELECT count(*) AS c FROM command_log WHERE kind='DEVICE'")[0]["c"] == before + 1
+
+
+@pytest.mark.skipif(not os.environ.get("LINE_DSN"), reason="개발 PG 없음")
+def test_etag_304_on_polled_reads(v2_client, settings, auth_headers, monkeypatch):
+    monkeypatch.setattr(settings, "LINE_DSN", os.environ["LINE_DSN"])
+    L = settings.LINE_ID
+    for path in (f"/lines/{L}/nodes", f"/lines/{L}/wip"):
+        r1 = v2_client.get(f"/api/v2{path}", headers=auth_headers)
+        assert r1.status_code == 200 and r1.headers.get("etag"), path
+        r2 = v2_client.get(f"/api/v2{path}", headers={**auth_headers, "If-None-Match": r1.headers["etag"]})
+        assert r2.status_code == 304, f"{path}: 같은 상태면 304"
+        r3 = v2_client.get(f"/api/v2{path}", headers={**auth_headers, "If-None-Match": '"stale"'})
+        assert r3.status_code == 200
