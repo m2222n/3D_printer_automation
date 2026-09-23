@@ -185,23 +185,23 @@ docker compose logs -f
 | Method | Endpoint | 설명 |
 |--------|----------|------|
 | `POST` | `/api/v1/local/automation/commands` | Sequence CMD 생성 (제어 DB `print_command` 에 QUEUED 1행) |
-| `GET` | `/api/v1/local/automation/commands` | Sequence CMD 목록 `TODO` 라인 MES `unit.cmd_id` 와 대조 — `print_command` 에 있는데 `unit` 이 없는 CMD(Spawn 누락) 를 목록에 표시 |
+| `GET` | `/api/v1/local/automation/commands` | Sequence CMD 목록 ✅ 9/23 각 항목에 `line_tracked`(라인 MES `unit.cmd_id` 대조 · `LINE_DSN` 없으면 null) — false = Spawn 누락 CMD |
 | `POST` | `/api/v1/local/automation/commands/use` | CMD use_yn 일괄 변경 |
-| `POST` | `/api/v1/local/automation/control/{action}` | START / STOP / PAUSE / RESUME `TODO` 지금 **어디에도 기록되지 않는다**(`set_cell_state` 가 `UPDATE cell_state` 만 하고 `add_log` 를 안 부른다) — 자기 도메인인 `automation_log` 에 남긴다. 🚨 v2 `command_log` 에 넣지 않는다(`cell_state` 는 기존 DB 의 개념 · 병존 문서 ①) · `cell_state.paused`(셀 운전 모드)와 v2 `State(HOLD)`(개체 하나)는 층이 다르다 |
+| `POST` | `/api/v1/local/automation/control/{action}` | START / STOP / PAUSE / RESUME ✅ 정정 — `set_cell_state` 가 `automation_log` 에 `Control action: START` 로 이미 기록한다(9/22 "미기록" 은 오독). v2 `command_log` 에는 넣지 않는다(`cell_state` 는 기존 DB 개념) |
 | `POST` | `/api/v1/local/automation/simul` | 시뮬 모드 토글 |
 | `GET` | `/api/v1/local/automation/state` | Sequence 동작 상태 |
 | `GET` | `/api/v1/local/automation/queues` | 런타임 큐 스냅샷 |
 | `GET` | `/api/v1/local/automation/logs` | Sequence/Program 로그 |
 | `GET` | `/api/v1/local/automation/manual/io/state` | DIO 입출력 비트 읽기 |
-| `POST` | `/api/v1/local/automation/manual/io/output` | DIO 출력 비트 쓰기 `TODO` **유지**(관리자용 · robot-send 와 같은 결정). W6 카탈로그 `send.kind=DO` 가 이 본문을 어댑터로 쓴다. `automation_log` 기록 추가 |
-| `POST` | `/api/v1/local/automation/manual/robot-send` | 로봇 TCP 수동 송신 `TODO` **W6 완성 후에도 유지**(2026-09-22 결정 — 개발·운영 관리자용 저수준 도구, FE 도 유지). W6 는 카탈로그의 검증된 명령만 보내는 작업자용 문이고, 이것은 임의 payload 를 보내는 관리자용 문 — 역할이 다르다. W6 의 `SOCKET` 어댑터는 이 본문(`send_st_framed` + comm targets)을 그대로 쓴다. 남는 일 = 지금 기록이 0 이라 `automation_log` 에 누가 무엇을 보냈는지 남기기 |
+| `POST` | `/api/v1/local/automation/manual/io/output` | DIO 출력 비트 쓰기 **유지**(관리자용). ✅ 9/23 `automation_log(source=manual)` 기록 추가 |
+| `POST` | `/api/v1/local/automation/manual/robot-send` | 로봇 TCP 수동 송신 **유지**(관리자용 · W6 는 카탈로그의 검증된 명령만 보내는 작업자용 문). ✅ 9/23 `automation_log(source=manual)` 기록 추가 |
 | `POST` | `/api/v1/local/automation/manual/vision-send` | 비전 TCP 수동 송신 |
 | `GET` | `/api/v1/local/automation/manual/robot-status` | 로봇 TCP 연결 상태 |
 | `GET` | `/api/v1/local/automation/manual/vision-status` | 비전 TCP 연결 상태 |
 | `GET` | `/api/v1/local/automation/manual/comm-config` | 수동 통신 대상 설정 조회 |
 | `POST` | `/api/v1/local/automation/manual/comm-config` | 수동 통신 대상 설정 변경 |
 | `GET` | `/api/v1/local/automation/manual/modbus/registers` | 로봇 Modbus holding register 읽기 |
-| `GET` | `/api/v1/local/automation/manual/modbus/write` | Modbus register 1개 쓰기 (query 파라미터) `TODO` **유지**(관리자용). W6 카탈로그 `send.kind=MODBUS` 가 이 본문을 어댑터로 쓴다. 쓰기인데 GET 인 것은 그대로 두되(FE 호출부가 있다) `automation_log` 기록 추가 |
+| `GET` | `/api/v1/local/automation/manual/modbus/write` | Modbus register 1개 쓰기 (query 파라미터) **유지**(관리자용). ✅ 9/23 `automation_log(source=manual)` 기록 추가. 쓰기인데 GET 인 것은 FE 호출부가 있어 그대로 |
 
 ### Phase 4: 비전 상태 감시 (10 routes)
 
