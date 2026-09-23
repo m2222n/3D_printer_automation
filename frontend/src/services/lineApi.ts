@@ -205,8 +205,10 @@ export async function getWip(lineId: string = DEFAULT_LINE_ID): Promise<WipListR
 // ── R4 · 제어 서브 메뉴 ─────────────────────────────────────
 
 export async function getControlMenu(lineId?: string): Promise<ControlMenuResponse> {
-  if (!useMock('getControlMenu')) throw new Error('v2 미구현');
-  void lineId;
+  if (!useMock('getControlMenu')) {
+    const id = lineId ?? await currentLineId();
+    return v2<ControlMenuResponse>(`/lines/${encodeURIComponent(id)}/control-menu`);
+  }
   return { menu: mock.menu(mock.MOCK) };
 }
 
