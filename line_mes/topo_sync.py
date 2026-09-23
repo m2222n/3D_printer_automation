@@ -292,7 +292,9 @@ def apply(doc, nodes, slots, edges, cur):
               attrs=EXCLUDED.attrs, is_active=true
         """, (tr["id"], tr["kind"], tr["label"], "endpoint" in tr,
               # commands 가 없으면 NULL. Json(None) 은 jsonb 'null' 이 되어 IS NOT NULL 에 걸린다.
-              Json(tr["attrs"]) if tr.get("attrs") else None))
+              # endpoint(protocol · ref)도 attrs 에 함께 — R11 이 protocol 을 낸다. 컬럼을 늘리지 않는다
+              Json({**(tr.get("attrs") or {}), **({"endpoint": tr["endpoint"]} if tr.get("endpoint") else {})})
+              if (tr.get("attrs") or tr.get("endpoint")) else None))
         cur.execute("INSERT INTO transporter_state (transporter_id, status) VALUES (%s,'OFFLINE') "
                     "ON CONFLICT DO NOTHING", (tr["id"],))
     cur.execute("UPDATE transporter SET is_active=false WHERE transporter_id <> ALL(%s)",

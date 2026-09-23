@@ -276,6 +276,11 @@ class JudgementRequest(BaseModel):
     actor: str
 
 
+class ActorRequest(BaseModel):
+    """W6 — 보낼 값을 싣지 않는다. command_id 만 보내고 무엇을 쓸지는 서버(카탈로그)가 안다."""
+    actor: str
+
+
 class CommandRequest(BaseModel):
     kind: str
     target: str
