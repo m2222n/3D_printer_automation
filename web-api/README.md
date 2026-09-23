@@ -12,7 +12,7 @@ Formlabs Form 4 3D프린터 4대를 실시간 모니터링하고 원격으로 �
 - **Phase 4**: 세척기/경화기 비전 상태 감시 — 카메라 MQTT 수신, 상태 전이 저장, WebSocket 푸시
 - **Phase 5**: 빈피킹 인식 결과 수신 — 인식 모듈이 HTTP POST 한 장면/검출을 저장·조회
 - **공통**: JWT 로그인(loopback 호출은 면제), 프린터 벤더 어댑터(`PRINTER_VENDOR`), 라인 MES(PostgreSQL) 배치 발행 — `POST /api/v1/local/print` 전송 성공 시 1건(`LINE_DSN` 설정 시) · 배치 내용물 = 프리셋 `part_type`
-- **라인 MES v2 API** (`new`, 예정): 라인 모니터링·공정 제어 탭이 쓰는 `/api/v2/*` 17개 — 아직 미구현, 프런트는 목업으로 동작 (`frontend/src/services/lineApi.ts`)
+- **라인 MES v2 API** (`new`, 예정): 라인 모니터링·공정 제어 탭이 쓰는 `/api/v2/*` 18개 — 아직 미구현, 프런트는 목업으로 동작 (`frontend/src/services/lineApi.ts`)
 
 ## 프로젝트 구조
 
@@ -95,7 +95,7 @@ cp .env.example .env
 | `PREFORM_SERVER_HOST` | PreFormServer 실행 PC IP |
 | `PREFORM_SERVER_PORT` | PreFormServer 포트 (기본: 44388) |
 | `LINE_DSN` | 라인 MES(PostgreSQL) DSN. 비어 있으면 배치 발행을 하지 않음 |
-| `LINE_ID` | 라인 MES 라인 ID (기본: RESIN-1-ASIS) |
+| `LINE_ID` | 라인 MES 가 보는 라인 = 지금 물리적으로 물건이 밟는 경로 (기본: RESIN-1-ASIS). FE 는 `/system/config` 의 `line_id` 로 받는다 — 하드코딩 금지. 재배치 날 `topology.yaml` 의 `active` 와 함께 바꾼다 |
 | `PRINTER_VENDOR` | 프린터 어댑터 (기본: formlabs, UI 확인용: demo) |
 
 ### 3. 서버 실행
@@ -229,7 +229,7 @@ docker compose logs -f
 | `GET` | `/api/v1/binpick/scenes/{scene_pk}` | 장면 상세 (검출 순서 보존) |
 | `WS` | `/api/v1/binpick/ws` | 실시간 |
 
-### 라인 MES v2 (17 routes) — `new` · 미구현 · 명세 = `docs/plan/20260921_API명세.md`
+### 라인 MES v2 (18 routes) — `new` · 미구현 · 명세 = `docs/plan/20260921_API명세.md`
 
 신규 스키마(`schema.sql`, PostgreSQL)와 라인 모니터링·공정 제어 탭을 위해 새로 정의된 API. 전부 `/api/v2` prefix, 전부 JWT, WebSocket 없음(폴링). 프런트(`lineApi.ts`)는 `USE_MOCK = true` 로 목업이 답하고 있으며, 백엔드가 생기면 그 파일의 함수 본문만 바뀐다.
 
@@ -246,6 +246,7 @@ docker compose logs -f
 | `GET` | `/api/v2/nodes/{node_id}/groups` | `new` R9 노드의 묶음(바구니·트레이) |
 | `GET` | `/api/v2/nodes/{node_id}/parts` | `new` R10 부품 판정 목록 |
 | `GET` | `/api/v2/transporters/{transporter_id}/commands` | `new` R11 로봇 명령 카탈로그 (`transporter.attrs`) |
+| `GET` | `/api/v2/parts` | `new` R12 부품 마스터 — 내용 미상 배치(주문·프리셋 없이 걸린 출력)의 파트별 판정에서 작업자가 부품을 고르는 목록 |
 | `POST` | `/api/v2/units/{unit_id}/split` | `new` W1 배치 완료 등록 — 부품 분리 (`Split`) |
 | `POST` | `/api/v2/moves` | `new` W2 이동 (`Moved`) |
 | `POST` | `/api/v2/nodes/{node_id}/state` | `new` W3 설비 상태 변경 (`State`) |
