@@ -2994,7 +2994,7 @@ CSI 쪽 원문 = *"require you to load an additional overlay"* +
 
 ### 🎉🎉🎉 [2026-09-07] **좌표 송수신 = 실물로 뚫렸다** — 성공 정의 ① 달성 (②③은 9/11)
 
-> 상세 = `memory/project_robot_network_0907.md` · 현장 기록 `/data/jtm/handover_0907/`
+> 상세 = `memory/project_robot_live_integration_0907_0909.md(9/11 통합 · 원 robot_network_0907)` · 현장 기록 `/data/jtm/handover_0907/`
 > **결과** = HCR-10L(클라이언트) → IPC `pick_socket_server`(:5000) 접속 → `[]` 수신 → `DONE` 회신 **2/2** (55809·55815).
 > 8/4 이후 **시뮬 801건**이었던 사슬이 **실물 첫 왕복**이 됐다. 8/28 회의의 *"추석 전 = 카메라+로봇을 IPC에 연결해 좌표 받기"* 중 **로봇 쪽이 닫혔다.**
 
@@ -3023,7 +3023,7 @@ CSI 쪽 원문 = *"require you to load an additional overlay"* +
 
 ### 🎉🎉🎉 [2026-09-09] **성공 정의 ③ 달성 — 로봇이 명령으로 부품을 집었고, 이송·놓기·복귀까지 1사이클** (자진 출근)
 
-> 상세 = `memory/project_pick_achieved_0909.md` · 펜던트·그리퍼 실측 = `memory/reference_rodi_pendant_ui_facts_0909.md` · 일지 = `CLAUDE.local.md` 「9/9 실행 결과」
+> 상세 = `memory/project_robot_live_integration_0907_0909.md(9/11 통합 · 원 pick_achieved_0909)` · 펜던트·그리퍼 실측 = `memory/reference_rodi_pendant_ui_facts_0909.md` · 일지 = `CLAUDE.local.md` 「9/9 실행 결과」
 > **결과** = 펜던트 GUI 프로그램 **`pick_test`**(set/wait/move 노드) 가 **`02_sol_block_b`(45mm)** 를 테스트 판에서 집어 → 옆자리에 놓고 → 시작점으로 복귀. 속도 20% · 1회 성공(3회 반복은 9/11). ⭐ **대표님 9/2 "들어서 드릴링까지"의 이송 구간이 뚫렸다** — 남은 것은 드릴 위치 좌표 + 스핀들 ON/OFF.
 
 **🚨 그리퍼 채널이 바뀌었다 — 9/7 값(`DO0`/`DO2`)은 쓰지 않는다**
@@ -3097,7 +3097,7 @@ CSI 쪽 원문 = *"require you to load an additional overlay"* +
 #### 🔄 [9/15 재택] 브라켓 = "설계"가 아니라 "설계 입력 대장 + 실측 카드" → `handover_0915/브라켓_설계입력_대장_0915.md` · `memory/project_camera_bracket_remake_0914.md` §9/15
 태민님 *"카메라·로봇 홈 위치를 알아야 도면을 짜고 출력하는 것 아니냐"* ⇒ 맞다(세 물체가 만나는 부품). ✅ **로봇 쪽 원격 종결** = 3G 사용자 매뉴얼 **230쪽 부록 D**(ISO 9409-1-50-4-M6 · 4-M6 PCD 50 · ø6 핀 90° · ø63 · ø31.5 · 두께 7) ↔ 10L STEP `TOOL-IO` **완전 일치** · 부록 C PCD 170 ↔ STEP 일치 · 📌 매뉴얼 261p가 `/tmp`에만 있어 `~/docs/robot_manuals/HCR_3G_사용자_매뉴얼_국문_261p.pdf` 보존 · 🚨 플랜지 M6는 그리퍼 어댑터 링 점유 ⇒ 브라켓 자리 ⓐ샌드위치/ⓑ옆면(현 24×58 M4 ≠ ISO ⇒ ⓑ). 🟡 카메라 쪽 = 렌즈 **8mm C23-0824-5M**(89.5g) 확정 · Basler 웹 치수 ≠ 5/8 기록(실측 확정) · Basler 브라켓 문서 404. 🚨 **9/14 "편하중" 판정은 우리 판이 카메라를 직접 든다(B) 전제** — 5/8 기록의 **Basler 공식 브라켓**(M3×3·M4×2 · 174×80.6×73)이 먼저 묶는 구조(A)면 매달림은 Basler 설계 ⇒ **9/16 Q1 사진 1장이 재제작 성격을 정한다**. 경로 = 9/16 실측 Q1~Q8 → 9/17 재택 설계·STL·**웹앱 원격 출력**(Q8 프린터 상태 선행) → 9/18 장착·extrinsic 재취득.
 
-#### 🔄 [9/15 재택] 리그립·부품·빈 검토 3건 + 뒤집기 결론 → `handover_0915/` · `memory/project_part_reduction_review_0915.md` · `project_bin_spec_review_0915.md` · `project_regrip_location_0914.md` §9/15
+#### 🔄 [9/15 재택] 리그립·부품·빈 검토 3건 + 뒤집기 결론 → `handover_0915/` · `memory/project_parts_bin_review_0915.md(Ⅰ부 · 9/18 통합)` · `project_bin_spec_review_0915.md` · `project_regrip_location_0914.md` §9/15
 태민님 *"재택 때 진짜 할 게 없을까?"* ⇒ 내 *"할 게 없다"*는 **내 산출물만 센 오류**. **①부품 줄이기** = 21종 × 파지·홀·리그립·BV 표 — 홀 없는 3종(드릴 비대상) · **GUI 재설정 없이 못 집는 8종=38%(줄이는 축 아님)** · **줄이는 축 = 측면 홀**(S1 네스트 0·4종 탈락 / S2 네스트 ≤9) · 대표님 질문 2. **②리그립** = NTC 110은 스탠드 대신·베이스 판은 못 대신 ⇒ 박스 + Al 상판(테바) · **위에 얹기**. **③빈** = 21종 한 층 988cm² · 🚨 **8/28 도면 빈 26cm는 271 부품 불가(146%)** ⇒ 600×400급 또는 그룹 3빈 · 🚨 **NTC 노랑 PPC는 빈 불가 → IR 흡수 검정 샘플 판정 필수** · 깊이 100~150. **④뒤집기 결론**(태민님 4안 평가 + 조사) = J5 ±360(p221) · 그리퍼 self-lock 20배 · 🚨 **IK: 툴 위 180°는 손목이 부품보다 341 아래 → 상판 위 불가** ⇒ 🥇 **D안 = 90°+90° V홈**(툴 수평만 · 두께 무관 · 네스트 불필요 · 측면도 같은 홈) > A′(기둥형 바 ≈950) > B(공압) · 9/16 시험 3. 📌 ***"관절 범위가 된다"와 "그 자세로 놓을 수 있다"는 다른 질문*** — 도구 길이(TCP 200 + d6 141)가 손목을 부품 아래로 끌어내린다.
 
 #### 🎉🎉 [9/16 출근 12:57] **성공 정의 ③' 달성 — 팔에 달린 Blaze로 IPC가 실물 장면을 인식했다** → `memory/project_camera_live_recognition_0916.md`
@@ -3759,7 +3759,7 @@ T100_csblur_lr1e4_ep80/best.pt
 - 4/14 대표님 지시로 MaixCAM 전환 — RISC-V + 1 TOPS NPU + 4MP, Cloud 없이 온디바이스 AI
 - 보유 장비: MaixCAM 1대 + LicheeRV Nano 2대
 - 우선순위: 빈피킹 우선, MaixCAM은 여유 시 PoC
-- 역사: `memory/project_openmv_image_capture.md` (3/16 시도 → 4/14 전환)
+- 역사: `memory/project_openmv_monitoring_0713.md(§3/16 기존 자산 · 원 파일 부재)` (3/16 시도 → 4/14 전환)
 
 ---
 
@@ -4292,7 +4292,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ## Phase 4: 장비 모니터링 (MaixCAM, ~~OpenMV~~ 대체) ⬜ 빈피킹 후순위
 
-> 4/14 대표님 지시로 OpenMV → MaixCAM 전환. 이전 OpenMV 설계는 `memory/project_openmv_image_capture.md`에 역사로 보존.
+> 4/14 대표님 지시로 OpenMV → MaixCAM 전환. 이전 OpenMV 설계는 `memory/project_openmv_monitoring_0713.md(§3/16 기존 자산 · 원 파일 부재)`에 역사로 보존.
 
 ### 용도
 - **세척기/경화기 완료 감지** — Form Wash/Cure는 API 미지원이라 카메라 기반 감지 필요 (2026.02.06 확정)
@@ -4603,7 +4603,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-04-13~14 | RealSense D435 라이브 연동 + Full Pipeline PASS | ✅ — `memory/project_realsense_d435.md` |
 | 2026-04-14 | HCR-10L 로봇 교육 1회차 (펜던트 + Modbus TCP) | ✅ — `memory/reference_hcr_user_education.md` |
 | 2026-04-15 | Modbus INT16 재설계 + Colored ICP + Basler 듀얼 캡처 모듈 | ✅ — 카메라 입고 전 SW 마무리 |
-| 2026-04-16 | 한솔 머지 2차 (`e68c2b1`) + 카카오 VM 외부 접속 + Basic Auth | ✅ — `memory/project_kakao_vm_migration.md` |
+| 2026-04-16 | 한솔 머지 2차 (`e68c2b1`) + 카카오 VM 외부 접속 + Basic Auth | ✅ — `memory/reference_dev_environment.md(§카카오 VM · 원 파일 부재)` |
 | 2026-04-21 | 도메인 확정 `factory.flickdone.com` | ✅ |
 | 2026-04-22 | 데모 리허설 피드백 반영 (synthetic 9.7s→1.5s, 크래시 방어) | ✅ 커밋 6건 |
 | 2026-04-23 | Basler 입고 + IPC-510 입고 + 한솔 3자 회의 + 머지 3차 (`9f97f1e`) | ✅ — `memory/project_meeting_0423_hansol.md` |
@@ -4665,7 +4665,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 - **배경**: OpenMV AE3로 세척기/경화기 완료 감지 검토 중 → MaixCAM이 성능 우위 (RISC-V + 1 TOPS NPU, 4MP)
 - **결정**: 대표님 지시로 OpenMV 제외, MaixCAM으로 전환. Cloud 없이 온디바이스 AI
 - **현재**: 빈피킹(Phase 5) 우선, MaixCAM은 여유 시 PoC. 보유 장비 = MaixCAM 1대 + LicheeRV Nano 2대
-- 상세: `memory/project_maixcam_monitoring.md`, `memory/project_openmv_image_capture.md` (역사)
+- 상세: `memory/project_maixcam_monitoring.md`, `memory/project_openmv_monitoring_0713.md(§3/16 기존 자산 · 원 파일 부재)` (역사)
 
 #### 빈피킹 카메라 배치 — eye-in-hand 2대 동시 마운트 (2026-04-23 한솔 회의)
 - **배경**: 4/10 대표님 피드백 = "1대 고정 + 1대 로봇암(eye-in-hand)" 검토
