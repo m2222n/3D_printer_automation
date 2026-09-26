@@ -334,7 +334,7 @@ $ python src/acquisition/work_coord_3point.py
 | **테스트** | `tests/test_cam_to_base.py` **78/78**(`/data/jtm/depth_venv/bin/python`) — 9/16 실물 six.json 4건 변환 · 거부 9종 · 🥇 **배선 검사 "보낸 값 ≠ camera_3d"** · 소켓 왕복 · 🧪 그물(변환을 통과시키면 배선 검사가 실패함을 확인) |
 
 **회전(rz)은 위치와 분리했다** — `rz_mode='fixed'`(기본) = 캘리브 `rz_ref`(P_capture 의 RZ) 그대로 ⇒ 9/22 첫 시험은 **위치만**.
-`'angle'` = 이미지 긴 축 각 → `R_cam_to_base` 로 base yaw → `rz = rz_sign×(yaw+90)+rz_offset` · 🚨 **`rz_sign`(HCR 오일러 규약) · `rz_offset`(조우가 툴 X 인지 Y 인지) · `z_offset`(파지 깊이)은 문서로 확정 불가 = 현장 1회 시험**(부품 30° 돌려 rz 부호 · 조우가 짧은 변에 오나). 파일 `grasp._unverified` 에 적혀 있다.
+`'angle'` = 이미지 긴 축 각 → `R_cam_to_base` 로 base yaw → `rz = rz_sign×(yaw+90)+rz_offset` · 🚨 **`rz_sign`(HCR 오일러 규약) · `rz_offset`(조우가 툴 X 인지 Y 인지) · `z_offset`(파지 깊이)은 문서로 확정 불가 = 현장 1회 시험**(부품 30° 돌려 rz 부호 · 조우가 짧은 변에 오나). 파일 `grasp._unverified` 에 적혀 있다. 🆕 **9/26 = 세 값을 카메라 없이 로봇만으로 재는 절차 → `docs/GRASP_ANGLE_CARD.md`**(계산기 `tests/grasp_angle_calc.py` · build 옵션 `--rz-sign --rz-offset --z-offset`).
 
 🚨 **유효 조건 = P_capture 하나** — 카메라가 팔에 있어도 항상 같은 자세에서 찍으면 T 는 상수(§8 "더 짧은 길"). **P_capture 를 다시 티칭하면 파일도 다시 만든다**(3분). 파일에 P_capture 6값이 있어 `--actual-tcp` 로 대조한다.
 📌 9/22 현장 절차 전문 = `/data/jtm/handover_0917/실행표_0922_v5.md` STEP 4·5.
