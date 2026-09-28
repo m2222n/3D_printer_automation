@@ -20,4 +20,4 @@ for (k = 0; k < CH.length; k++) {
     console.log(k + ' DO' + CH[k] + ' IN0=' + getGeneralDigitalInput(0) +
                 ' IN1=' + getGeneralDigitalInput(1) + ' IN2=' + getGeneralDigitalInput(2));
 }
-console.log('END (열림 상태로 종료)');
+console.log('END (left OPEN)');

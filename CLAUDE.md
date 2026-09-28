@@ -75,6 +75,24 @@
 
 ---
 
+## 🗂️ 노션 정본 위치 (2026-09-28 갱신)
+
+| 무엇 | 어디 | 상태 |
+|---|---|---|
+| **프로젝트 정본** | `Robot Arm Factory`(`453e6ea732a982cb89f7818ce97544cd` · PROJECT / Physical AI Engineering Hub) + DB 5 | ✅ **9/28 최신화**(본문 + Tasks·Plans·Issues) |
+| **내 업무자료 목차** | `업무자료 트리 · 정태민`(`3e9e6ea732a9818ab3edc1360ada7dbd` · 멤버별 마이페이지 / 정태민 · 마이페이지 아래 · 폴더 7) | ✅ 9/28 신설(대표님 지시) · 원본은 링크만 |
+| 주간보고 | Work Hub(`collection://a74e6ea7-32a9-83bc-8657-8725a263eac4`) · 주간보고만 작성(일일보고는 자동 생성 빈 템플릿) | 첨부 PDF 5개는 목차에서 📎로 연결 |
+
+- 🚨 **"개인별 업무보고" 정리 = 내 보고만** — 다른 직원 보고는 열지 않는다(9/28 전원 조사로 확장했다가 정정) → `memory/feedback_personal_report_scope_own_only_0928.md`
+- 노션 편집 = fetch → update → **fetch 재검수**(한글 자동변환 깨짐 + 내 오타 둘 다 잡힌다) → `memory/project_notion_company_pages.md`
+- 🥇 **부품 = 10/31 사업 통과용 3종 확정(9/28 태민님)** = 02_sol_block_b · plate_e · 13_x2_bcf8ccb4(가장 쉽고 잘 되는 것 · 리그립 없이 앞면 드릴) · 다음 확장 = 09_guide_paper_r + bracket_sensor1(⚠️ bracket_sen_1 아님) · 예비 03 · 실물 판정으로 확정 · 사업 뒤 13→21 확장) · 빈 = 🆕 9/28 낱장닷컴 샘플 발주(PVC 275×170×90 ×2 · G형 400×380×150 ×2 · 크라프트) → 9/30 판정 통과분으로 같은 사이트 추가 구매 · 🚨 기존 택배상자 벽 40cm가 테이블을 가려 준 것 ⇒ 낮은 상자는 **골판지 깔개 위** → `/data/jtm/handover_0928/부품최적화_0928.md` · `memory/project_parts_bin_review_0915.md` §9/28
+- 🗣️ **주희님(이번 주 퇴사) 인수인계 = 10/1(목)~10/2(금)**(9/28 태민님 · 마지막 출근일 [확인]) · 퇴사 후 못 얻는 것부터 → `/data/jtm/handover_0926/주희님_인수인계_체크리스트_0926.md`
+- 🥇 **리그립 스테이션 = 9/28 회의 → 산출물 4 완성**(`/data/jtm/handover_0928/` · 사이즈정리 md(테바용·보안 0) · 도면 png+dxf · 셀B 배치제안 png) · 방식 V홈 90°+90°(실물 0회) · 받침 = 표준 프로파일 **H_f = H − 210 − t** · 🔴 **H = 드릴 지그 상면 실측 대기** · 🚨 노션 「9/11 - 테바 전달 자료」 페이지는 아직 옛 안(평판+슬릿) → 갱신 필요 → `memory/project_regrip_location_0914.md` §9/28
+- 🔧 **현장 사실 3(9/28)** = ①**펜던트 script 노드는 한글 입력 불가** → `rodi_*_tiny.js` 코드 줄 ASCII만(`vision_test` 타이핑·유효성 ✅ 9/28) ②**RDP `0x204` 진단 순서 = IPC 전원 → Tailscale online → `nc 3389` → TermService**(9/28 원인은 IPC 꺼짐 · 절전 0 확인) ③공장 도어락 = WELKOM WTS-700 · 자동잠금 `비번→[#][#]→[4]` · 비번 재등록 `[등록]→번호→[*]` · 자동잠금 안 되면 **닫힘 감지(보조 걸쇠/자석 플레이트)** → `memory/reference_factory_doorlock_wts700_0928.md`
+- 📐 **테바 2차 STEP(9/26)** = `/data/jtm/teba_layout_0928/` · 변경 = 셀A 거치대만 · 리그립·BV·빈·NTC 0건 · 스핀들 수평 일렬(실물 타워 → 테바 확인) → `memory/reference_teba_layout_step_0911.md` §5 · 파서 = 세션 scratchpad `step_parse.py`·`step_bbox.py`(회전 포함 전역 변환)
+
+---
+
 ## 🚨 시간대 원칙 — 모든 날짜·시각·요일은 **한국시간(KST)** (태민님 2026-08-28 지시)
 
 > 태민님: *"한국기준시간으로 항상 작업을 하도록 해줘. **항시 기억하고 있어 이거는.**"*
