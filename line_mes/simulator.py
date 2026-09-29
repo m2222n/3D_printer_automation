@@ -6,7 +6,7 @@ P2 라인 시뮬레이터.
 contract.py 의 이벤트만 발행하므로, P4에서 실물 어댑터로 교체할 때
 state_engine.py 는 한 줄도 바뀌지 않습니다.
 
-  python simulator.py --line RESIN-1 --minutes 480 --speed 240 --spawn-every 900
+  python -m line_mes.simulator --minutes 480 --speed 240 --spawn-every 900
 
 흉내내는 것
   - 카메라·프린터API : 설비에 개체가 들어오면 RUN, 사이클 후 DONE  (State)
@@ -21,6 +21,7 @@ state_engine.py 는 한 줄도 바뀌지 않습니다.
 import argparse
 import logging
 import os
+import pathlib
 import random
 import time
 
@@ -260,13 +261,17 @@ class Sim:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dsn", default=DSN)
-    ap.add_argument("--line", default="RESIN-1")
+    ap.add_argument("--line", default=None, help="기본 = topology.yaml 의 active 라인 (비활성 라인 Spawn 은 엔진이 거부한다)")
     ap.add_argument("--minutes", type=int, default=480)
     ap.add_argument("--speed", type=float, default=240)
     ap.add_argument("--spawn-every", type=int, default=900)
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(name)s %(message)s")
+    if a.line is None:
+        from line_mes import topo_sync
+        doc = topo_sync.load(str(pathlib.Path(__file__).with_name("topology.yaml")))
+        a.line = next(l["id"] for l in doc["lines"] if l.get("active"))
     with psycopg.connect(a.dsn, autocommit=True) as conn:
         Sim(conn, a.line, a.speed).run(a.minutes, a.spawn_every)
 
