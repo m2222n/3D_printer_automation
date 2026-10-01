@@ -11,4 +11,4 @@
 | `tools/dev_reset.sh` | 개발 DB 재생성 → 스키마 → 토폴로지 → 시뮬 (sudo 필요) |
 
 설치: 리포 루트 `pip install -r requirements.txt` (`-e .` 포함). 접속: `LINE_DSN` 환경변수, 비번은 `PGPASSWORD`.
-HTTP 계층은 여기 없다 — `web-api/app/line/` 이 이 패키지를 호출한다. 계획 = `docs/plan/20260922_API개발_전체계획.md`.
+HTTP 계층은 여기 없다 — `web-api/app/line/` 이 이 패키지를 호출한다. 계획 = `docs/juhee/02_개발계획/20260922_API개발_전체계획.md`.

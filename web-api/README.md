@@ -229,7 +229,7 @@ docker compose logs -f
 | `GET` | `/api/v1/binpick/scenes/{scene_pk}` | 장면 상세 (검출 순서 보존) |
 | `WS` | `/api/v1/binpick/ws` | 실시간 |
 
-### 라인 MES v2 (18 routes) — `new` · 미구현 · 명세 = `docs/plan/20260921_API명세.md`
+### 라인 MES v2 (18 routes) — `new` · 미구현 · 명세 = `docs/juhee/04_API_명세/20260921_API명세.md`
 
 신규 스키마(`schema.sql`, PostgreSQL)와 라인 모니터링·공정 제어 탭을 위해 새로 정의된 API. 전부 `/api/v2` prefix, 전부 JWT, WebSocket 없음(폴링). 프런트(`lineApi.ts`)는 `USE_MOCK = true` 로 목업이 답하고 있으며, 백엔드가 생기면 그 파일의 함수 본문만 바뀐다.
 

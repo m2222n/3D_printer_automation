@@ -4,7 +4,7 @@
  * 화면이 서버와 만나는 **유일한 자리**. 지금은 목업이 답하고, 백엔드 `/api/v2` 가 생기면
  * 이 파일의 함수 본문만 `authFetch` 호출로 바뀐다. 화면 코드는 그대로다.
  *
- * 대응 = `docs/plan/20260921_API명세.md`
+ * 대응 = `docs/juhee/04_API_명세/20260921_API명세.md`
  *   R1 GET /api/v2/lines/{line_id}/nodes
  *   R2 GET /api/v2/lines/{line_id}/transporters
  *   R3 GET /api/v2/lines/{line_id}/wip
