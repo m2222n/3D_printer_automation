@@ -1,0 +1,37 @@
+<!-- 라인 모니터링 ─────────────────────────────────────────── -->
+<section id="wf-panel-line" data-panel="line" hidden>
+  <div id="wf-line-view" data-view="flow">
+    <div class="bg-white rounded-xl border shadow-sm mb-6">
+      <div class="px-4">
+        <div id="wf-line-tabs" class="flex space-x-6">
+          <button data-line-view="flow" class="py-3 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600">설비 · 반송</button>
+          <button data-line-view="pipe" class="py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500">플레이트 파이프라인</button>
+        </div>
+      </div>
+    </div>
+    <div id="wf-line-body"></div>
+  </div>
+</section>
+
+<!-- 공정 제어 ──────────────────────────────────────────────── -->
+<section id="wf-panel-control" data-panel="control" hidden>
+  <div class="bg-white rounded-xl border shadow-sm mb-4">
+    <div class="px-4">
+      <div id="wf-ct-menu" class="flex space-x-6 overflow-x-auto"></div>
+    </div>
+    <div id="wf-ct-nodebar" class="px-4 py-2.5 border-t bg-gray-50 flex items-center gap-2 flex-wrap rounded-b-xl"></div>
+  </div>
+  <div id="wf-ct-screen"></div>
+</section>
+
+<!-- 확인 모달 (기존 FE 알림 패널과 같은 rounded-xl / shadow-xl) -->
+<div id="wf-mask" class="hidden fixed inset-0 z-50 bg-gray-900/40 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-xl border w-full max-w-md overflow-hidden">
+    <div class="px-4 py-3 border-b"><h3 id="wf-dlg-t" class="font-semibold text-gray-900 text-sm"></h3></div>
+    <div id="wf-dlg-c" class="px-4 py-4 text-sm text-gray-700"></div>
+    <div class="px-4 pb-4 flex gap-2">
+      <button id="wf-dlg-no" class="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 flex-1">취소</button>
+      <button id="wf-dlg-yes" class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 flex-1">확인</button>
+    </div>
+  </div>
+</div>
