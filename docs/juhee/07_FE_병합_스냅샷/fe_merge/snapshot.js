@@ -8,7 +8,8 @@ const OUT = process.argv[2] || '/tmp/fe-snapshot.json';
 (async () => {
   const r = await fetch(API + '/api/v1/auth/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: 'demo', password: 'demo1234' }),
+    // 10/2: 계정은 환경변수로 (SNAP_USER / SNAP_PASS) — 리포에 자격증명을 두지 않는다
+    body: JSON.stringify({ username: process.env.SNAP_USER || 'demo', password: process.env.SNAP_PASS || '' }),
   });
   const { access_token } = await r.json();
 

@@ -59,7 +59,7 @@ deploy_6000() {
     if [ "$SKIP_DEPS" = false ]; then
         echo ""
         echo "→ pip install (web-api)"
-        ./web-api/venv/bin/pip install -q -r web-api/requirements.txt 2>&1 | tail -3
+        (cd web-api && venv/bin/pip install -q -r requirements.txt 2>&1 | tail -3)   # 10/2: requirements.txt 의 "-e .."(line_mes) 는 cwd 기준이라 web-api/ 에서 실행
     fi
 
     if [ "$SKIP_BUILD" = false ]; then
@@ -126,7 +126,7 @@ git pull origin main 2>&1 | tail -5
 if [ "$SKIP_DEPS" = "false" ]; then
     echo ""
     echo "→ pip install (web-api)"
-    ./web-api/venv/bin/pip install -q -r web-api/requirements.txt 2>&1 | tail -3
+    (cd web-api && venv/bin/pip install -q -r requirements.txt 2>&1 | tail -3)   # 10/2: requirements.txt 의 "-e .."(line_mes) 는 cwd 기준이라 web-api/ 에서 실행
 fi
 
 if [ "$SKIP_BUILD" = "false" ]; then
