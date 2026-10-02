@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import time
 
+from app.cell import line_events
 from app.cell.ctx import RobotTask
 from app.cell.enums import CmdStatus
 from app.cell.printer_interface import WebApiPrinterClient
@@ -274,6 +275,7 @@ class PrinterSequence(Sequence):
                 job.cmd_status = CmdStatus.PRINT_FINISHED
                 job.progress = 100
                 job.allocated_data['plate_state'] = 'PRINT_DONE_ON_PRINTER'
+                line_events.printer_done(str(job.allocated_data.get('printer_serial') or self._resolve_printer_serial()))  # 라인 MES: DONE 의 1차 정보원
                 self.ctx.repo.update_command(
                     cmd_id,
                     cmd_status=int(CmdStatus.PRINT_FINISHED),
@@ -371,6 +373,7 @@ class PrinterSequence(Sequence):
                 job.cmd_status = CmdStatus.PRINT_FINISHED
                 job.progress = 100
                 job.allocated_data['plate_state'] = 'PRINT_DONE_ON_PRINTER'
+                line_events.printer_done(str(job.allocated_data.get('printer_serial') or self._resolve_printer_serial()))  # 라인 MES: DONE 의 1차 정보원
                 job.allocated_data.pop('last_logged_printer_status', None)
 
                 self.ctx.repo.update_command(
@@ -542,6 +545,7 @@ class PrinterSequence(Sequence):
                 simul_mode=bool(self.ctx.simul_mode),
                 preset_id=preset_id,
                 settings=print_settings,
+                cmd_id=job.cmd_id,
             )
             self._log_api_response(job, f'START_PRINT_API attempt={attempt}', print_resp)
             if print_resp.get('ok'):

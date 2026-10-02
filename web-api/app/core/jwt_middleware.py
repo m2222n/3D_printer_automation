@@ -33,8 +33,18 @@ PUBLIC_API_PATHS = {
 }
 
 
+# 같은 호스트(loopback) 요청이 인증 없이 지나가는 경로. v1 만 — sequence_service 가 부르는 것이 전부 여기 있다.
+LOOPBACK_EXEMPT_PREFIXES = ("/api/v1/",)
+
+
+# OpenAPI 문서 경로. /api/ 밖이라 지금까지 무인증이었다 — v2 쓰기 스키마 전문이 공개된다 (API 개발 계획 D8)
+DOCS_PATHS = ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect")
+
+
 def _is_protected_path(path: str) -> bool:
-    """API 경로만 보호. 프론트 정적 파일은 누구나 로드 가능 (어차피 API 호출 시 401 받음)."""
+    """API 경로 + OpenAPI 문서만 보호. 프론트 정적 파일은 누구나 로드 가능 (어차피 API 호출 시 401 받음)."""
+    if path in DOCS_PATHS:
+        return True
     if not path.startswith("/api/"):
         return False
     if path in PUBLIC_API_PATHS:
@@ -106,9 +116,11 @@ class JWTAuthMiddleware:
         # (sequence_service → web-api 호출 시 JWT 토큰 없이도 통과)
         # 5/29 운영 모드에서 401 받아 CMD 픽업 실패 회귀 fix.
         # 외부 노출 = Cloudflare Tunnel(https://factory.flickdone.com) → 항상 외부 IP라 영향 없음
+        # 🚨 면제는 v1 에 한정한다. v2(/api/v2/*)는 작업자 조작을 기록하는 쓰기 API 라
+        #    같은 호스트라도 actor 가 있는 JWT 로만 들어온다 (2026-09-22 · API 개발 계획 §10-2).
         client = scope.get("client") or ("", 0)
         client_host = client[0] if client else ""
-        if client_host in ("127.0.0.1", "::1", "localhost"):
+        if client_host in ("127.0.0.1", "::1", "localhost") and path.startswith(LOOPBACK_EXEMPT_PREFIXES):
             await self.app(scope, receive, send)
             return
 

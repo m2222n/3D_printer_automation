@@ -376,6 +376,12 @@ async def get_system_config():
         "polling_interval_seconds": settings.POLLING_INTERVAL_SECONDS,
         "monitored_printers": len(settings.PRINTER_SERIALS),
         "printer_serials": settings.PRINTER_SERIALS,
+        # 제어의 target_printer(1~4) ↔ 시리얼. FE 가 셀렉트 라벨을 여기서 만든다 — 코드에 시리얼을 박지 않기 위해.
+        "printer_serial_map": {str(k): v for k, v in sorted(settings.PRINTER_SERIAL_MAP.items())},
+        # 라인 MES 가 보는 라인. FE 라인 모니터링·공정 제어가 실 API 로 갈 때 이 값으로 조회한다 (하드코딩 금지)
+        "line_id": settings.LINE_ID,
+        # 라인 MES 가 켜져 있나(LINE_DSN 유무). FE 는 이 값이 true 일 때만 /api/v2 를 부르고 아니면 목업으로 남는다 — 스위치는 서버 .env 하나
+        "line_mes": bool(settings.LINE_DSN),
         "notifications": {
             "on_print_complete": settings.NOTIFY_ON_PRINT_COMPLETE,
             "on_print_error": settings.NOTIFY_ON_PRINT_ERROR,

@@ -181,6 +181,15 @@ class PrinterPollingService:
         
         if printer.cartridge_status:
             current_resin_ml = printer.cartridge_status.remaining_ml
+
+        # 라인 MES 관측 — RUN/HOLD 가 바뀐 폴링에만 State 1건 (논블로킹 · 실패해도 폴링은 모른다). DONE 은 제어가 낸다(B3)
+        try:
+            from app.line.publisher import printer_line_state, publisher
+            now_ls, prev_ls = printer_line_state(current_status), printer_line_state(prev_state.last_status)
+            if now_ls and now_ls != prev_ls:
+                publisher().emit_state(("printer_serial", serial), now_ls, source="ADAPTER")
+        except Exception as ex:  # noqa: BLE001 — 관측이 폴링을 멈추면 안 된다
+            logger.warning(f"라인 MES 발행 건너뜀 ({serial}): {ex}")
         
         # =====================
         # 1. 프린트 시작 감지

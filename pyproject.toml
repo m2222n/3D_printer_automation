@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "line-mes"
+version = "0.1.0"
+description = "라인 MES 관측 도메인 (contract · state_engine · topo_sync) — web-api 와 sequence_service 가 공유"
+requires-python = ">=3.10"
+dependencies = ["psycopg[binary,pool]>=3.1", "pyyaml>=6.0"]
+
+[tool.setuptools]
+packages = ["line_mes"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+line_mes = ["*.sql", "*.yaml", "tools/*.sh"]

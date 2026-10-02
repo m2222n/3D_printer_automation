@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>공정 모니터링 · 수동 조작 — 와이어프레임 (현행)</title>
+<style>
+/* ════════════════════════════════════════════════════════════
+   색 토큰 — 기존 frontend(Tailwind 기본 팔레트) 값을 그대로 옮겼다.
+   이관 시 이 블록만 갈아끼우면 된다.
+   ════════════════════════════════════════════════════════════ */
+:root {
+  /* 개요 밀도 — types/lineMonitor.ts 의 TILE_H / TILE_GAP / OVERVIEW_H 와 값이 같아야 한다 */
+  --tile-h: 64px;
+  --tile-w: 138px;
+  --tile-gap: 6px;
+  --overview-h: 460px;
+
+  --bg:            #f3f4f6;   /* gray-100 */
+  --surface:       #ffffff;
+  --border:        #e5e7eb;   /* gray-200 */
+  --border-strong: #d1d5db;   /* gray-300 */
+
+  --text:          #111827;   /* gray-900 */
+  --text-muted:    #6b7280;   /* gray-500 */
+  --text-faint:    #9ca3af;   /* gray-400 */
+
+  --primary:       #2563eb;   /* blue-600 */
+  --primary-soft:  #eff6ff;   /* blue-50  */
+  --primary-text:  #1d4ed8;   /* blue-700 */
+
+  /* 상태 */
+  --idle-bg:   #f9fafb; --idle-fg:   #9ca3af; --idle-dot:   #d1d5db;
+  --wait-bg:   #f1f5f9; --wait-fg:   #334155; --wait-dot:   #64748b;
+  --run-bg:    #eff6ff; --run-fg:    #1d4ed8; --run-dot:    #3b82f6;
+  --settle-bg: #fffbeb; --settle-fg: #b45309; --settle-dot: #f59e0b;
+  --done-bg:   #f0fdf4; --done-fg:   #15803d; --done-dot:   #22c55e;
+  --error-bg:  #fef2f2; --error-fg:  #b91c1c; --error-dot:  #ef4444;
+
+  /* 물리 동작(경고) — 관측 입력과 절대 같은 색을 쓰지 않는다 */
+  --danger:      #c2410c;   /* orange-700 */
+  --danger-bg:   #fff7ed;   /* orange-50  */
+  --danger-line: #fdba74;   /* orange-300 */
+
+  --radius: 8px;
+  --shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+}
+
+button { font: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+/* ── 레이아웃 ───────────────────────────────────────────── */
+.page { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+}
+.section > h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.section > h2 .hint { font-size: 12px; font-weight: 400; color: var(--text-faint); }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 1100px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ── 상단 바 ────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 10px 16px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.topbar .spacer { flex: 1; }
+.topbar label { font-size: 12px; color: var(--text-muted); margin-right: 4px; }
+
+.manual-banner {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  color: var(--danger);
+  font-size: 13px; font-weight: 600;
+}
+
+.mode-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; letter-spacing: .02em;
+}
+.mode-badge.auto   { background: var(--run-bg);    color: var(--run-fg); }
+.mode-badge.manual { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-line); }
+
+/* ── KPI ────────────────────────────────────────────────── */
+.kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.kpi {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: var(--shadow); padding: 12px 16px;
+}
+.kpi.warn { background: var(--error-bg); border-color: var(--error-dot); }
+.kpi .label { font-size: 12px; color: var(--text-muted); }
+.kpi .value { font-size: 24px; font-weight: 700; margin-top: 2px; }
+.kpi.warn .value { color: var(--error-fg); }
+.kpi .sub { font-size: 12px; color: var(--text-faint); }
+
+/* ── 상태 ───────────────────────────────────────────────── */
+.status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.s-IDLE     { background: var(--idle-bg);   color: var(--idle-fg); }
+.s-IDLE     .dot { background: var(--idle-dot); }
+.s-WAIT     { background: var(--wait-bg);   color: var(--wait-fg); }
+.s-WAIT     .dot { background: var(--wait-dot); }
+.s-RUN      { background: var(--run-bg);    color: var(--run-fg); }
+.s-RUN      .dot { background: var(--run-dot); }
+.s-SETTLING { background: var(--settle-bg); color: var(--settle-fg); }
+.s-SETTLING .dot { background: var(--settle-dot); }
+.s-DONE     { background: var(--done-bg);   color: var(--done-fg); }
+.s-DONE     .dot { background: var(--done-dot); }
+.s-ERROR, .s-HOLD { background: var(--error-bg); color: var(--error-fg); }
+.s-ERROR .dot, .s-HOLD .dot { background: var(--error-dot); }
+
+.bar { height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 999px; background: var(--run-dot); }
+.bar.warn > i { background: var(--error-dot); }
+.bar.neutral > i { background: var(--text-faint); }
+
+.note { font-size: 12px; }
+.note.settle { color: var(--settle-fg); font-weight: 600; }
+.note.delay  { color: var(--error-fg);  font-weight: 600; }
+.note.muted  { color: var(--text-muted); }
+
+/* ── 조작 ───────────────────────────────────────────────── */
+.actions { border-top: 1px dashed var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.actions .row { display: flex; gap: 5px; flex-wrap: wrap; }
+
+/* 관측 입력 — 조용한 회색 계열 */
+.btn-observe {
+  flex: 1; min-width: 52px;
+  padding: 5px 8px; border-radius: 6px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+  font-size: 12px; font-weight: 500;
+}
+.btn-observe:hover:not(:disabled) { background: #f9fafb; border-color: var(--primary); color: var(--primary-text); }
+.btn-observe:disabled { opacity: .4; }
+
+/* 물리 동작 — 경고색 + 두꺼운 테두리. 관측과 절대 헷갈리면 안 된다 */
+.btn-physical {
+  width: 100%;
+  padding: 7px 10px; border-radius: 6px;
+  border: 2px solid var(--danger); background: var(--danger-bg); color: var(--danger);
+  font-size: 12.5px; font-weight: 700;
+}
+.btn-physical:hover:not(:disabled) { background: #ffedd5; }
+.btn-physical:disabled { opacity: .45; border-style: dashed; }
+
+.reason { font-size: 11px; color: var(--text-faint); line-height: 1.35; }
+
+/* 소스 토글 */
+.src-toggle {
+  display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden;
+}
+.src-toggle button {
+  padding: 2px 7px; font-size: 10.5px; font-weight: 700; border: 0;
+  background: var(--surface); color: var(--text-faint);
+}
+.src-toggle button.on.auto   { background: var(--primary); color: #fff; }
+.src-toggle button.on.manual { background: var(--danger);  color: #fff; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: var(--wait-bg); color: var(--wait-fg);
+}
+.pill.manual { background: var(--danger-bg); color: var(--danger); }
+.pill.auto   { background: var(--run-bg);    color: var(--run-fg); }
+
+/* ── 버튼 일반 ──────────────────────────────────────────── */
+.btn {
+  padding: 6px 12px; border-radius: 6px; font-size: 13px;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+}
+.btn:hover:not(:disabled) { background: #f9fafb; }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--primary-text); }
+.btn.danger  { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger:hover:not(:disabled) { background: #9a3412; }
+.btn:disabled { opacity: .45; }
+.btn.sm { padding: 3px 9px; font-size: 12px; }
+
+select, input[type='number'], input[type='text'] {
+  padding: 5px 8px; border: 1px solid var(--border-strong);
+  border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px;
+}
+
+/* ── 모달 ───────────────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; background: rgb(0 0 0 / 40%);
+  display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px;
+}
+.modal {
+  background: var(--surface); border-radius: 12px; width: 100%; max-width: 520px;
+  max-height: 85vh; overflow: auto; box-shadow: 0 10px 30px rgb(0 0 0 / 20%);
+}
+.modal .m-head { padding: 14px 20px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.modal .m-head.danger { background: var(--danger-bg); color: var(--danger); border-bottom-color: var(--danger-line); }
+.modal .m-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.modal .m-foot { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+.confirm-box {
+  background: var(--danger-bg); border: 1px solid var(--danger-line);
+  border-radius: var(--radius); padding: 14px; font-size: 14px; line-height: 1.7;
+}
+.confirm-box b { font-family: ui-monospace, Menlo, monospace; }
+
+.mix-row { display: flex; gap: 8px; align-items: center; }
+.mix-row select { flex: 1; }
+.mix-row input { width: 78px; }
+
+.target-list { display: flex; flex-direction: column; gap: 6px; }
+.target {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 10px 12px; border: 1px solid var(--border-strong);
+  border-radius: var(--radius); background: var(--surface); text-align: left;
+}
+.target:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
+.target:disabled { opacity: .5; }
+.target .t-label { font-weight: 600; flex: 1; }
+.target .t-reason { font-size: 11.5px; color: var(--text-faint); }
+
+/* ── 표 ─────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--text-muted); background: #fafafa; padding: 7px 10px; white-space: nowrap; }
+td { padding: 7px 10px; border-top: 1px solid var(--border); }
+.table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; max-height: 340px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.empty-row { text-align: center; color: var(--text-faint); padding: 28px 0; }
+
+.gauge { display: flex; flex-direction: column; gap: 4px; }
+.gauge .g-head { display: flex; justify-content: space-between; font-size: 13px; }
+.gauge .g-sub { font-size: 11.5px; color: var(--text-muted); }
+
+/* ════════════════════════════════════════════════════════════
+   개요 — 압축 타일. 한 열이 넘치면 옆 열로 흘린다
+   ════════════════════════════════════════════════════════════ */
+.overview { display: flex; align-items: flex-start; gap: 4px; overflow-x: auto; padding-bottom: 6px; }
+
+.col {
+  display: flex;
+  flex-flow: column wrap;              /* 세로로 채우다 넘치면 옆 열이 생긴다 */
+  max-height: var(--overview-h);
+  gap: var(--tile-gap);
+  align-content: flex-start;
+  flex-shrink: 0;
+}
+
+.tile {
+  width: var(--tile-w); height: var(--tile-h);
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  padding: 5px 8px; text-align: left;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); overflow: hidden;
+}
+.tile:hover { border-color: var(--primary); }
+.tile.sel { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+.tile.rack { border-style: dashed; border-color: var(--border-strong); }
+
+.tile .t-name { font-size: 11px; color: var(--text-muted); line-height: 1.2; }
+.tile .t-id {
+  font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;
+}
+.tile .t-status { font-size: 10.5px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.tile .t-status .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.tile .t-bar { display: block; height: 3px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.tile .t-bar > i { display: block; height: 100%; background: currentColor; opacity: .8; }
+.tile .t-sub { font-size: 12px; font-weight: 700; }
+.tile .t-sub.warn { color: var(--error-fg); }
+.tile .t-tray { font-size: 10px; font-weight: 400; color: var(--text-faint); }
+.tile .t-slots { display: flex; gap: 3px; }
+.tile .t-slot { flex: 1; height: 6px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.tile .t-slot > i { display: block; height: 100%; background: var(--text-faint); }
+.tile .t-slot > i.full { background: var(--error-dot); }
+
+.tile.s-RUN      { background: var(--run-bg);    color: var(--run-fg); }
+.tile.s-SETTLING { background: var(--settle-bg); color: var(--settle-fg); }
+.tile.s-DONE     { background: var(--done-bg);   color: var(--done-fg); }
+.tile.s-WAIT     { background: var(--wait-bg);   color: var(--wait-fg); }
+.tile.s-ERROR, .tile.s-HOLD { background: var(--error-bg); color: var(--error-fg); }
+.tile.s-IDLE     { color: var(--text-faint); }
+.tile.s-RUN .dot { background: var(--run-dot); }
+.tile.s-SETTLING .dot { background: var(--settle-dot); }
+.tile.s-DONE .dot { background: var(--done-dot); }
+.tile.s-WAIT .dot { background: var(--wait-dot); }
+.tile.s-ERROR .dot, .tile.s-HOLD .dot { background: var(--error-dot); }
+.tile.s-IDLE .dot { background: var(--idle-dot); }
+
+/* 단계 사이 — 담당 반송 자원과 대기 건수 */
+.link {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  min-width: 46px; padding-top: 14px; color: var(--text-faint); flex-shrink: 0;
+}
+.link .l-arrow { font-size: 18px; line-height: 1; }
+.link .l-name { font-size: 9.5px; letter-spacing: -.02em; }
+.link .l-q {
+  font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 999px;
+  background: var(--border); color: var(--text-muted);
+}
+.link .l-q.warn { background: var(--error-dot); color: #fff; }
+.link.busy { color: var(--error-fg); }
+
+/* ── 상세 ───────────────────────────────────────────────── */
+.detail { display: grid; grid-template-columns: 1fr 260px; gap: 20px; }
+@media (max-width: 900px) { .detail { grid-template-columns: 1fr; } }
+
+.d-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.d-head h3 { margin: 0; font-size: 16px; }
+.d-head .spacer { flex: 1; }
+.d-plate { margin-bottom: 12px; }
+.plate-id { font-family: ui-monospace, Menlo, monospace; font-weight: 600; word-break: break-all; }
+.plate-id.big { font-size: 20px; }
+.plate-empty { color: var(--text-faint); }
+.plate-parts { font-size: 13px; color: var(--text-muted); }
+
+.d-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; }
+.fact { display: flex; flex-direction: column; gap: 2px; }
+.fact .f-label { font-size: 11px; color: var(--text-faint); }
+.fact .f-value { font-size: 13px; font-weight: 600; }
+
+.d-actions { display: flex; flex-direction: column; gap: 14px; }
+.a-group { display: flex; flex-direction: column; gap: 6px; }
+.a-title { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.a-title.danger { color: var(--danger); }
+.a-group .row { display: flex; gap: 6px; }
+
+/* 작업자 반출 — 관측 등급이지만 주요 조작이라 크게 (터치 44px) */
+.btn-retrieve {
+  width: 100%; min-height: 44px; padding: 10px;
+  border: 2px solid var(--primary); border-radius: 6px;
+  background: var(--primary-soft); color: var(--primary-text);
+  font-size: 13.5px; font-weight: 700;
+}
+.btn-retrieve:hover:not(:disabled) { background: #dbeafe; }
+.btn-retrieve:disabled { opacity: .45; border-style: dashed; }
+.btn-physical { min-height: 44px; }
+
+/* ── 칸 대기열 ──────────────────────────────────────────── */
+.slot-queues { display: flex; flex-direction: column; gap: 12px; }
+.slot .s-head { display: flex; gap: 8px; font-size: 13px; margin-bottom: 5px; }
+.slot .s-head .full { color: var(--error-fg); font-weight: 700; }
+.s-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.s-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); font-size: 12px;
+}
+.s-item.next { border-color: var(--done-dot); background: var(--done-bg); }
+.s-item.buried { opacity: .45; }
+.s-item.empty { border-style: dashed; color: var(--text-faint); }
+.s-pos { font-weight: 700; font-size: 11px; }
+.s-part { color: var(--text-muted); font-size: 11px; }
+.s-next { font-size: 10px; font-weight: 700; color: var(--done-fg); }
+
+/* ── 반출 모달 ──────────────────────────────────────────── */
+.modal.wide { max-width: 680px; }
+.m-body section { display: flex; flex-direction: column; gap: 8px; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  min-height: 44px; min-width: 64px; padding: 8px 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  border: 2px solid var(--border-strong); border-radius: 8px;
+  background: var(--surface); font-size: 13px; font-weight: 600;
+}
+.chip small { font-size: 10px; font-weight: 400; color: var(--text-faint); }
+.chip.on { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-text); }
+.chip.on small { color: var(--primary-text); }
+.chip.exit { border-color: var(--danger-line); color: var(--danger); background: var(--danger-bg); }
+.chip.exit.on { border-color: var(--danger); background: #ffedd5; }
+.chip:disabled { opacity: .4; }
+.chip.big { min-width: 92px; }
+
+.preview { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.p-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; font-size: 12px; border-bottom: 1px solid var(--border);
+}
+.p-row:last-child { border-bottom: 0; }
+.p-row.out { background: var(--danger-bg); }
+.p-row.stay { color: var(--text-muted); }
+.p-tag { margin-left: auto; font-size: 11px; font-weight: 700; }
+.p-row.out .p-tag { color: var(--danger); }
+
+.assign {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 0; border-top: 1px solid var(--border);
+}
+
+/* ── 랙 게이지 ──────────────────────────────────────────── */
+.slot-bars { display: flex; gap: 10px; }
+.sb { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.sb-l { font-size: 10.5px; color: var(--text-faint); }
+.linkish { border: 0; background: none; padding: 0; font-weight: 600; color: var(--primary-text); text-decoration: underline; cursor: pointer; }
+
+</style>
+</head>
+<body>
+<div class="page"><div class="topbar"><label for="line">라인</label><select id="line"><option value="RESIN-1" selected="">레진 라인 (재배치 후)</option><option value="RESIN-1-ASIS">레진 라인 (현행)</option></select><span class="mode-badge manual">반송 MANUAL — 사람이 지시</span><button class="btn sm">AUTO 로 전환</button><span class="spacer"></span></div><div class="manual-banner">✋ 수동 반송 모드 — 자동 배정이 정지되어 있습니다. 반송은 사람이 지시해야 진행됩니다.</div><div class="kpi-strip"><div class="kpi"><div class="label">재공 플레이트</div><div class="value">16<span style="font-size:13px;color:var(--text-faint)"> 장</span></div><div class="sub">설비 9 · 랙 7</div></div><div class="kpi"><div class="label">재공 부품</div><div class="value">194<span style="font-size:13px;color:var(--text-faint)"> 개</span></div><div class="sub">플레이트당 평균 12.1개</div></div><div class="kpi"><div class="label">오늘 완료</div><div class="value">2<span style="font-size:13px;color:var(--text-faint)"> 장</span></div><div class="sub">부품 24개</div></div><div class="kpi"><div class="label">반송 대기</div><div class="value">3<span style="font-size:13px;color:var(--text-faint)"> 건</span></div><div class="sub">정상</div></div></div><section class="section"><h2>라인 개요 <span class="hint">타일을 누르면 아래에 상세와 조작이 나옵니다</span></h2><div class="overview"><div class="col"><button class="tile sel rack s-IDLE" title="프린터 대기 랙 1"><span class="t-name">프린터 대기 랙 1</span><span class="t-slots"><span class="t-slot" title="칸 1: 2/4"><i class="" style="width:50%"></i></span><span class="t-slot" title="칸 2: 0/4"><i class="" style="width:0%"></i></span></span><span class="t-sub">2/8</span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">ARM-A</span><span class="l-q">1</span></div><div class="col"><button class="tile s-RUN" title="프린터 1호기"><span class="t-name">프린터 1</span><span class="t-id">P1</span><span class="t-status"><i class="dot"></i>진행 중</span><span class="t-bar"><i style="width:38.9%"></i></span></button><button class="tile s-RUN" title="프린터 2호기"><span class="t-name">프린터 2</span><span class="t-id">P2</span><span class="t-status"><i class="dot"></i>진행 중</span><span class="t-bar"><i style="width:87%"></i></span></button><button class="tile s-DONE" title="프린터 3호기"><span class="t-name">프린터 3</span><span class="t-id">P3</span><span class="t-status"><i class="dot"></i>반출 가능</span><span class="t-bar"></span></button><button class="tile s-IDLE" title="프린터 4호기"><span class="t-name">프린터 4</span><span class="t-id">—</span><span class="t-status"><i class="dot"></i>비어 있음</span><span class="t-bar"></span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">ARM-A</span><span class="l-q">1</span></div><div class="col"><button class="tile rack s-IDLE" title="프린터 완료 랙 1"><span class="t-name">프린터 완료 랙 1</span><span class="t-slots"><span class="t-slot" title="칸 1: 1/4"><i class="" style="width:25%"></i></span><span class="t-slot" title="칸 2: 0/4"><i class="" style="width:0%"></i></span></span><span class="t-sub">1/8</span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">ARM-A</span><span class="l-q">1</span></div><div class="col"><button class="tile s-RUN" title="세척기 1호기"><span class="t-name">세척기 1</span><span class="t-id">P5-W1</span><span class="t-status"><i class="dot"></i>진행 중</span><span class="t-bar"><i style="width:53.3%"></i></span></button><button class="tile s-SETTLING" title="세척기 2호기"><span class="t-name">세척기 2</span><span class="t-id">P6-W2</span><span class="t-status"><i class="dot"></i>건조·냉각</span><span class="t-bar"></span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">ARM-A</span><span class="l-q">1</span></div><div class="col"><button class="tile rack s-IDLE" title="세척기 완료 랙 1"><span class="t-name">세척기 완료 랙 1</span><span class="t-slots"><span class="t-slot" title="칸 1: 1/4"><i class="" style="width:25%"></i></span><span class="t-slot" title="칸 2: 0/4"><i class="" style="width:0%"></i></span></span><span class="t-sub">1/8</span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">✋OP-CURE</span><span class="l-q">1</span></div><div class="col"><button class="tile s-RUN" title="경화기 1호기"><span class="t-name">경화기 1</span><span class="t-id">P8-W1-C1</span><span class="t-status"><i class="dot"></i>진행 중</span><span class="t-bar"><i style="width:50%"></i></span></button><button class="tile s-DONE" title="경화기 2호기"><span class="t-name">경화기 2</span><span class="t-id">P9-W2-C2</span><span class="t-status"><i class="dot"></i>반출 가능</span><span class="t-bar"></span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">✋OP-CURE</span><span class="l-q">1</span></div><div class="col"><button class="tile s-RUN" title="치수검사"><span class="t-name">치수검사</span><span class="t-id">P2-W1-C1-D1</span><span class="t-status"><i class="dot"></i>진행 중</span><span class="t-bar"><i style="width:40%"></i></span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">✋OP-CURE</span><span class="l-q">1</span></div><div class="col"><button class="tile rack s-IDLE" title="빔피킹 대기 랙 1"><span class="t-name">빔피킹 대기 랙 1</span><span class="t-slots"><span class="t-slot" title="칸 1: 1/4"><i class="" style="width:25%"></i></span><span class="t-slot" title="칸 2: 0/4"><i class="" style="width:0%"></i></span></span><span class="t-sub">1/8<span class="t-tray"> 트레이</span></span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">ARM-A</span><span class="l-q">1</span></div><div class="col"><button class="tile s-RUN" title="빔피킹/드릴링/트림"><span class="t-name">빔피킹/드릴링/트림</span><span class="t-id">P4-W1-C2-D1-B1</span><span class="t-status"><i class="dot"></i>진행 중</span><span class="t-bar"><i style="width:44.4%"></i></span></button></div><div class="link"><span class="l-arrow">→</span><span class="l-name">ARM-A</span><span class="l-q">1</span></div><div class="col"><button class="tile rack s-IDLE" title="완료 랙 1"><span class="t-name">완료 랙 1</span><span class="t-slots"><span class="t-slot" title="칸 1: 2/4"><i class="" style="width:50%"></i></span><span class="t-slot" title="칸 2: 0/4"><i class="" style="width:0%"></i></span></span><span class="t-sub">2/8</span></button></div></div></section><section class="section"><h2>상세 · 조작</h2><div class="detail"><div class="d-main"><div class="d-head"><h3>프린터 대기 랙 1</h3><span class="pill">BUFFER</span><span class="pill">용량 8</span><span class="spacer"></span><span class="reason">이벤트 입력</span><span class="src-toggle"><button class="on auto">AUTO</button><button class="">수동</button></span></div><div class="slot-queues"><div class="slot"><div class="s-head"><b>칸 1</b><span class="">2 / 4</span></div><div class="s-row"><div class="s-item next"><span class="s-pos">●1</span><span class="mono">U-242f9a3c</span><span class="s-part">PN-A-2026 12개</span><span class="s-next">다음 반출</span></div><div class="s-item buried"><span class="s-pos">●2</span><span class="mono">U-427fb584</span><span class="s-part">혼재 2종 16개</span></div><div class="s-item empty"><span class="s-pos">○3</span><span class="s-part">빈 자리</span></div><div class="s-item empty"><span class="s-pos">○4</span><span class="s-part">빈 자리</span></div></div></div><div class="slot"><div class="s-head"><b>칸 2</b><span class="">0 / 4</span></div><div class="s-row"><div class="s-item empty"><span class="s-pos">○1</span><span class="s-part">빈 자리</span></div><div class="s-item empty"><span class="s-pos">○2</span><span class="s-part">빈 자리</span></div><div class="s-item empty"><span class="s-pos">○3</span><span class="s-part">빈 자리</span></div><div class="s-item empty"><span class="s-pos">○4</span><span class="s-part">빈 자리</span></div></div></div></div></div><div class="d-actions"><div class="a-group"><div class="a-title">투입</div><button class="btn primary" style="width:100%">+ 투입</button></div><div class="a-group"><div class="a-title danger">물리 동작 <span class="reason">— 로봇이 실제로 움직입니다</span></div><button class="btn-physical">▸ 반송 지시</button></div></div></div></section><div class="two-col"><section class="section"><h2>반송 자원</h2><div style="display:flex;flex-direction:column;gap:10px"><div class="card" style="width:100%"><div class="head"><span class="name">로봇암 A</span><span class="status s-RUN"><span class="dot"></span>반송 중</span></div><div class="body" style="gap:5px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">이송 중</span><span><span style="color:var(--text-muted)">프린터 3호기 → 프린터 완료 랙 1</span></span></div><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">반출 대기</span><span><b>1건</b></span></div><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">평균 / 최대 대기</span><span><span style="color:var(--text-muted)">35초 / 1분</span></span></div></div></div><div class="card" style="width:100%"><div class="head"><span class="name">경화 구간 작업자 반송</span><span class="pill manual">수동</span><span class="status s-WAIT"><span class="dot"></span>대기</span></div><div class="body" style="gap:5px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">이송 중</span><span>-</span></div><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">반출 대기</span><span><b>1건</b></span></div><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">평균 / 최대 대기</span><span><span style="color:var(--text-muted)">3분 30초 / 5분</span></span></div></div></div><div class="card" style="width:100%"><div class="head"><span class="name">로봇암 B</span><span class="status s-WAIT"><span class="dot"></span>대기</span></div><div class="body" style="gap:5px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">이송 중</span><span>-</span></div><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">반출 대기</span><span><b>1건</b></span></div><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">평균 / 최대 대기</span><span><span style="color:var(--text-muted)">1분 / 1분</span></span></div></div></div></div></section><section class="section"><h2>랙 적재율 <span class="hint">칸 단위</span></h2><div style="display:flex;flex-direction:column;gap:12px"><div class="gauge"><div class="g-head"><button class="linkish">프린터 대기 랙 1</button><span style="color:var(--text-muted)">2 / 8<span style="color:var(--text-faint);margin-left:4px">(25%)</span></span></div><div class="slot-bars"><div class="sb" title="칸 1: 2/4"><div class="bar "><i style="width:50%"></i></div><span class="sb-l">칸 1 2/4</span></div><div class="sb" title="칸 2: 0/4"><div class="bar "><i style="width:0%"></i></div><span class="sb-l">칸 2 0/4</span></div></div><div class="g-sub">플레이트 2장</div></div><div class="gauge"><div class="g-head"><button class="linkish">프린터 완료 랙 1</button><span style="color:var(--text-muted)">1 / 8<span style="color:var(--text-faint);margin-left:4px">(13%)</span></span></div><div class="slot-bars"><div class="sb" title="칸 1: 1/4"><div class="bar "><i style="width:25%"></i></div><span class="sb-l">칸 1 1/4</span></div><div class="sb" title="칸 2: 0/4"><div class="bar "><i style="width:0%"></i></div><span class="sb-l">칸 2 0/4</span></div></div><div class="g-sub">플레이트 1장</div></div><div class="gauge"><div class="g-head"><button class="linkish">세척기 완료 랙 1</button><span style="color:var(--text-muted)">1 / 8<span style="color:var(--text-faint);margin-left:4px">(13%)</span></span></div><div class="slot-bars"><div class="sb" title="칸 1: 1/4"><div class="bar "><i style="width:25%"></i></div><span class="sb-l">칸 1 1/4</span></div><div class="sb" title="칸 2: 0/4"><div class="bar "><i style="width:0%"></i></div><span class="sb-l">칸 2 0/4</span></div></div><div class="g-sub">플레이트 1장</div></div><div class="gauge"><div class="g-head"><button class="linkish">빔피킹 대기 랙 1</button><span style="color:var(--text-muted)">1 / 8<span style="color:var(--text-faint);margin-left:4px">(13%)</span></span></div><div class="slot-bars"><div class="sb" title="칸 1: 1/4"><div class="bar "><i style="width:25%"></i></div><span class="sb-l">칸 1 1/4</span></div><div class="sb" title="칸 2: 0/4"><div class="bar "><i style="width:0%"></i></div><span class="sb-l">칸 2 0/4</span></div></div><div class="g-sub">트레이 1개 · 플레이트 1장</div></div><div class="gauge"><div class="g-head"><button class="linkish">완료 랙 1</button><span style="color:var(--text-muted)">2 / 8<span style="color:var(--text-faint);margin-left:4px">(25%)</span></span></div><div class="slot-bars"><div class="sb" title="칸 1: 2/4"><div class="bar "><i style="width:50%"></i></div><span class="sb-l">칸 1 2/4</span></div><div class="sb" title="칸 2: 0/4"><div class="bar "><i style="width:0%"></i></div><span class="sb-l">칸 2 0/4</span></div></div><div class="g-sub">플레이트 2장</div></div></div></section></div><section class="section"><h2>이벤트 로그 <span class="hint">출처를 보면 어디가 아직 수동인지 알 수 있습니다</span></h2><div><div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center"><button class="btn sm primary">전체 16</button><button class="btn sm">◉ 카메라 5</button><button class="btn sm">⬢ 로봇 1</button><button class="btn sm">✋ 사람 0</button><button class="btn sm">⇄ 프린터API 10</button><button class="btn sm">∿ 시뮬 0</button></div><div class="table-wrap"><table><thead><tr><th>시각</th><th>플레이트</th><th>노드</th><th>상태</th><th>출처</th><th>반송자원</th></tr></thead><tbody><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P1-W1-C1-D1-B1</td><td>완료 랙 1</td><td>DONE</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P3-W2-C5-D1-B2</td><td>완료 랙 1</td><td>DONE</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P4-W1-C2-D1-B1</td><td>빔피킹/드릴링/트림</td><td>RUN</td><td><span class="pill auto">⬢ 로봇</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P1-W2-C5-D1</td><td>빔피킹 대기 랙 1</td><td>WAIT</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P2-W1-C1-D1</td><td>치수검사</td><td>RUN</td><td><span class="pill auto">◉ 카메라</span><span class="reason" style="margin-left:5px">94%</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P9-W2-C2</td><td>경화기 2호기</td><td>DONE</td><td><span class="pill auto">◉ 카메라</span><span class="reason" style="margin-left:5px">94%</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P8-W1-C1</td><td>경화기 1호기</td><td>RUN</td><td><span class="pill auto">◉ 카메라</span><span class="reason" style="margin-left:5px">94%</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P7-W1</td><td>세척기 완료 랙 1</td><td>WAIT</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P6-W2</td><td>세척기 2호기</td><td>SETTLING</td><td><span class="pill auto">◉ 카메라</span><span class="reason" style="margin-left:5px">94%</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P5-W1</td><td>세척기 1호기</td><td>RUN</td><td><span class="pill auto">◉ 카메라</span><span class="reason" style="margin-left:5px">94%</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P4</td><td>프린터 완료 랙 1</td><td>WAIT</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P3</td><td>프린터 3호기</td><td>DONE</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P2</td><td>프린터 2호기</td><td>RUN</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">P1</td><td>프린터 1호기</td><td>RUN</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">U-427fb584</td><td>프린터 대기 랙 1</td><td>WAIT</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr><tr><td style="color:var(--text-muted);white-space:nowrap">오후 05:49:15</td><td class="mono">U-242f9a3c</td><td>프린터 대기 랙 1</td><td>WAIT</td><td><span class="pill auto">⇄ 프린터API</span></td><td style="color:var(--text-muted)">-</td></tr></tbody></table></div></div></section></div>
+</body>
+</html>

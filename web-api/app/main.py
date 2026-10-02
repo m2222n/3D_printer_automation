@@ -22,6 +22,8 @@ from app.local.routes import router as local_router
 from app.local.database import init_local_db
 from app.vision.routes import router as vision_router
 from app.binpick.routes import router as binpick_router
+from app.line.routes_read import router as line_read_router
+from app.line.routes_write import router as line_write_router
 from app.vision.camera_manager import get_camera_manager
 from app.vision.mqtt_client import get_mqtt_client
 
@@ -194,6 +196,9 @@ Web API 기반 모니터링 시스템
     app.include_router(local_router, prefix="/api/v1/local")
     app.include_router(vision_router, prefix="/api/v1")
     app.include_router(binpick_router, prefix="/api/v1")  # /api/v1/binpick/*
+    # 라인 MES v2 — 도메인은 리포 루트 line_mes, 여기는 HTTP 계층만. 라우트가 없으면 404 → FE 는 목업 유지
+    app.include_router(line_read_router, prefix="/api/v2")
+    app.include_router(line_write_router, prefix="/api/v2")
 
     # 프론트엔드 정적 파일 서빙
     frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"

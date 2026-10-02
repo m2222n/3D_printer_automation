@@ -1,0 +1,215 @@
+# 스키마 실측 대조 — 운영 중인 것 vs 신규 설계안
+
+작성 2026-09-09 · 근거 = 소스 전수 + 운영 DB 실물 introspection
+
+비교 대상 세 가지.
+
+| | 이름 | 위치 | DB | 상태 |
+|---|---|---|---|---|
+| **A** | web-api | `web-api/app/{local,vision,binpick}/models.py` | **SQLite** `web-api/presets.db` (148KB) | 🟢 운영 중 |
+| **B** | sequence_service | `sequence_service/app/db/models.py` + `cell/repository.py` | **MariaDB 11.3** `automation` | 🟢 운영 중 (공장 PC) |
+| **C** | 신규 설계안 | `schema.sql` · 정리본 `schema.md` | **PostgreSQL 14+** | 🔴 미구축 (DDL 파일만) |
+
+## 한 줄 요약
+
+**세 스키마의 테이블 이름이 하나도 겹치지 않는다.** C 는 A·B 를 대체하는 마이그레이션이 아니라 **옆에 새로 세우는 것**이고, 지금 상태로는 **A·B 와 C 를 잇는 식별자가 없다.**
+
+---
+
+# 1. 실측
+
+## A. web-api — 8 테이블 · 84 컬럼 · FK 0건 · 뷰 0개
+
+모델 정의와 운영 DB 실물이 **정확히 일치**함을 확인했다(테이블 수·컬럼 수 동일).
+
+| 테이블 | 컬럼 | 하는 일 | 행 수 |
+|---|---|---|---|
+| `presets` | 10 | 프린트 설정 프리셋 (STL · 재료 · 대상 프린터) | 0 |
+| `print_jobs` | 13 | 프린트 작업 (scene_id · 예상시간 · 예약) | 0 |
+| `notification_events` | 8 | 알림 + 읽음 표시 | 0 |
+| `print_notes` | 5 | 작업별 메모 | 0 |
+| `vision_cameras` | 14 | 카메라 **장비** 상태 (펌웨어 · IP · RSSI · 온라인) | **4** |
+| `vision_events` | 8 | 카메라 상태 변화 이력 | 0 |
+| `binpick_scenes` | 15 | 빈피킹 인식 장면 (게이트 판정 · 지연) | 0 |
+| `binpick_detections` | 11 | 검출 항목 (x · y · z · angle · 벌림) | 0 |
+
+## B. sequence_service — 4 테이블 · 34 컬럼 · FK 0건 · 뷰 0개
+
+🚨 `automation_comm_config` 는 **`models.py` 에 없다** — `repository.py:128` 이 런타임에 `CREATE TABLE IF NOT EXISTS` 로 만든다. 모델만 읽으면 3개로 보인다.
+
+| 테이블 | 컬럼 | 하는 일 |
+|---|---|---|
+| `print_command` | 16 | 🥇 **작업 하나의 전 생애** — 출력 → 세척 → 경화 → 반출 |
+| `cell_state` | 6 | 셀 전체 상태 (running · paused · simul_mode · queue_state) · 싱글턴 id=1 |
+| `automation_log` | 6 | 시퀀스 · 로봇 · 시스템 로그 |
+| `automation_comm_config` | 6 | 로봇/비전 endpoint (host · port) · 싱글턴 id=1 |
+
+**상태 모델** (`cell/enums.py`)
+
+```
+CmdStatus       0 UPLOADING → 10 QUEUED → 20 CLAIMED → 30 PRINTING
+                → 40 PRINT_FINISHED → 50 POST_PROCESSING → 90 DONE (98 CANCELED / 99 ERROR)
+
+PostProcStage   실제 진행 = WASHING(50) → WASH_DONE(60)
+                          → CURE_WAITING(10) → CURING(20) → CURE_DONE(30) → OUTPUT_DONE(70)
+```
+
+## C. 신규 설계안 — 17 테이블 · 115 컬럼 · 뷰 19 · 함수 2 · 트리거 1 · FK 22건
+
+| 그룹 | 테이블 |
+|---|---|
+| 토폴로지 | `line` `node` `node_slot` `route` `id_counter` |
+| 반송 | `transporter` `transporter_state` |
+| 주문 · 파트 | `customer_order` `order_line` `part` |
+| 재공품 | `unit` `unit_content` |
+| 상태 · 이력 | `product_state` `product_event` `part_scrap` |
+| 판정 · 조작 | `judgement` `command_log` |
+
+FK 22건 전부 대상 실재 · 괄호 균형 · 뷰 참조 정상.
+
+---
+
+# 2. 교차 대조
+
+## 이름
+
+```
+web-api ∩ sequence_service = 0개
+web-api ∩ 신규             = 0개
+sequence ∩ 신규            = 0개
+전체 29 테이블, 이름 중복 0
+```
+
+컬럼 이름 공통은 `confidence` `label` `name` `status` `updated_at` **5개뿐**이고 뜻도 다르다
+(`label` = 빈피킹 부품 클래스 ↔ 노드 표시명).
+
+## 개념 — 여기서 진짜 겹침이 보인다
+
+이름은 안 겹쳐도 **하는 일이 겹치는 것이 있다.**
+
+| 개념 | 기존 (A·B) | 신규 (C) | 판정 |
+|---|---|---|---|
+| 🥇 **작업 개체** | `print_command` (B) | `unit` (BATCH) | ⚠️ **정면 중복** |
+| 🥇 **지금 어느 공정인가** | `print_command.cmd_status` + `post_proc_stage` (B) | `product_state.node_id` + `status` | ⚠️ **정면 중복** |
+| 어느 프린터에 배정 | `print_command.target_printer` int (B) | `product_state.node_id` `PRT-01` | ⚠️ 중복 · 식별자 다름 |
+| 어느 세척기에 있나 | `allocated_data.wash_id` JSON (B) | `product_state.node_id` | ⚠️ 중복 |
+| 공정 시간 설정 | `washing_time` `curing_time` (B) | `node.std_cycle_s` | ⚠️ 위치 다름 (작업별 ↔ 설비별) |
+| 이력 | `automation_log` (B) | `product_event` + `command_log` | ⚠️ 중복 · C 는 둘로 나뉨 |
+| 프린트 설정 | `presets` `print_jobs` (A) | — | 🔴 C 에 없음 |
+| 알림 | `notification_events` (A) | — | 🔴 C 에 없음 (문서: *"알람은 M5 결정 후"*) |
+| 메모 | `print_notes` (A) | — | 🔴 C 에 없음 |
+| 카메라 장비 상태 | `vision_cameras` `vision_events` (A) | — | 🔴 C 에 없음 |
+| 빈피킹 인식 결과 | `binpick_scenes` `binpick_detections` (A) | — | 🔴 C 에 없음 |
+| 셀 운전 상태 | `cell_state` (B) | — | 🔴 C 에 없음 |
+| 로봇/비전 endpoint | `automation_comm_config` (B) | `topology.yaml` (DB 밖) | 위치 이동 |
+| 라인 토폴로지 | — | `line` `node` `node_slot` `route` | 🆕 신설 |
+| 주문 | — | `customer_order` `order_line` `part` | 🆕 신설 |
+| 배치 → 부품 분해 | — | `unit.parent_unit_id` · `unit_content` | 🆕 신설 |
+| 판정 (OK/NG · 측정값) | — | `judgement` | 🆕 신설 |
+| 폐기 | — | `part_scrap` + 트리거 | 🆕 신설 |
+| 묶음 (바구니 · 박스) | — | `product_state.group_id` | 🆕 신설 |
+
+⇒ **정면 중복 6건 · C 에 없는 것 7건 · 신설 6건.**
+
+---
+
+# 3. 🔴 이어지지 않는 것
+
+## 3-1. 식별자 다리가 없다 — 가장 큰 구멍
+
+| 개념 | 기존이 쓰는 값 | 신규가 쓰는 값 | 잇는 컬럼 |
+|---|---|---|---|
+| 프린터 | `printer_serial` `Form4-CapableGecko` (A) · `target_printer` `1~4` (B) | `node_id` `PRT-01` | 🔴 **없음** |
+| 세척기 · 경화기 | `device_type` + `device_id` (A) · `wash_id` (B) | `node_id` `WSH-01` | 🔴 **없음** |
+| 파트 | `presets.part_type` | `part.part_no` | 🔴 **없음** |
+| 작업 개체 | `cmd_id` uuid (B) | `unit_id` uuid · `display_id` | 🔴 **없음** |
+| 빈피킹 장면 | `scene_id` (A) | — | 🔴 **없음** |
+
+`node` 17컬럼 어디에도 **외부 식별자를 담을 자리가 없다.** `topology.yaml` 에도 프린터 시리얼이 없다
+(`PRT-01`~`PRT-04` 라벨만).
+
+⇒ Formlabs 어댑터가 *"Form4-CapableGecko 출력 완료"* 를 줘도 **어느 `unit` 인지 이을 수 없다.**
+
+**필요한 것 (택1)**
+- `node` 에 `external_ref` 계열 컬럼 — 프린터 시리얼 · 카메라 device_id 를 담는 자리
+- 또는 별도 매핑 테이블 (`node_external_id`)
+
+## 3-2. 신규로 가면 사라지는 데이터
+
+| 잃는 것 | 어디 | 왜 문제인가 |
+|---|---|---|
+| **게이트 판정** `gate_verdict` `gate_valid_ratio_pct` `gate_n_dropped_by_size` | `binpick_scenes` | 🚨 없으면 **배경을 부품으로 잡은 장면이 정상으로 보인다.** 8/7 설계원칙 ③ 이 이걸 막으려고 만든 것 |
+| 검출 좌표 `x y z angle gripper_width_mm` | `binpick_detections` | `judgement.value` jsonb 로 흡수 가능하나 스키마에 정의 없음 |
+| 카메라 장비 건강 (펌웨어 · RSSI · 온라인) | `vision_cameras` | 정량목표 3(설비 10대 실시간 모니터링)의 근거 데이터 |
+| 알림 읽음 상태 | `notification_events` | 프론트 알림벨이 이걸 씀 |
+| 셀 운전/일시정지/시뮬 모드 | `cell_state` | 자동화 탭이 이걸 읽음 |
+
+## 3-3. `print_command` 와 `unit` 이 같은 것을 두 번 센다
+
+둘 다 *"한 번의 출력 분량"* 을 추적한다. 병존시키면 **같은 물건에 `cmd_id` 와 `unit_id` 두 개**가 생기고,
+어느 쪽이 진실인지 정하지 않으면 5/29 JWT 사고와 같은 계열(두 시스템이 서로 다른 상태를 믿음)이 된다.
+
+---
+
+# 4. 부수 발견
+
+## 🐛 `PostProcStage` 값 순서가 실제 진행 순서와 다르다
+
+```
+값 정렬 :  CURE_WAITING 10 · CURING 20 · CURE_DONE 30 · WASH_WAITING 40 · WASHING 50 · WASH_DONE 60 · OUTPUT_DONE 70
+실제 진행:  WASHING 50 → WASH_DONE 60 → CURE_WAITING 10 → CURING 20 → CURE_DONE 30 → OUTPUT_DONE 70
+```
+
+**세척 → 경화 전환에서 값이 60 → 10 으로 역행한다.** 실행 코드는 순서를 값으로 판단하지 않으므로
+(각 시퀀스가 명시적으로 다음 단계를 대입) **지금 버그는 아니다.** 다만
+
+- `ORDER BY post_proc_stage` 로 진척을 정렬하면 **틀린 순서가 나온다**
+- 신규 스키마로 옮길 때 이 값을 `step_order` 로 그대로 쓰면 공정 순서가 뒤집힌다
+
+⇒ 📌 **마이그레이션 시 값이 아니라 `route` 의 MAIN 엣지로 순서를 잡을 것.**
+
+## FK 제약이 A·B 양쪽 모두 0건
+
+`automation_log.cmd_id` → `print_command.cmd_id`, `binpick_detections.scene_pk` → `binpick_scenes.id`
+둘 다 **컬럼만 있고 FK 제약이 없다.** 신규 C 는 FK 22건을 건다 — 이관 시 **고아 행이 걸려 INSERT 가 막힐 수 있다.**
+
+## `automation_comm_config` 는 모델에 없다
+
+`repository.py:128` 런타임 DDL 로만 생성. **`models.py` 만 보고 스키마를 파악하면 놓친다.**
+
+---
+
+# 5. 결정이 필요한 것
+
+| # | 질문 | 안 정하면 |
+|---|---|---|
+| 1 | **C 는 A·B 를 대체하나, 병존하나?** | 이 문서의 나머지 판단이 전부 흔들린다 |
+| 2 | 병존이면 — **프린터 완료를 누가 먼저 알고 누구에게 알리나?** | 두 DB 가 서로 다른 상태를 믿는다 |
+| 3 | `print_command` ↔ `unit` 중 **어느 쪽이 진실인가** | 같은 물건에 ID 두 개 |
+| 4 | `node` 에 **외부 식별자 컬럼**을 넣나, 매핑 테이블을 두나 | 어댑터가 unit 을 못 찾는다 |
+| 5 | 빈피킹 **게이트 판정**을 어디에 남기나 | 못 믿을 인식 결과가 정상으로 보인다 |
+| 6 | 카메라 장비 상태 · 알림 · 셀 운전상태를 C 로 옮기나, A·B 에 남기나 | 프론트 화면 3개가 갈 곳을 잃는다 |
+
+---
+
+# 부록 — 확인 방법
+
+```bash
+# A. 운영 DB 실물
+python3 -c "
+import sqlite3
+con = sqlite3.connect('web-api/presets.db')
+for (t,) in con.execute(\"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'\"):
+    print(t, len(list(con.execute('PRAGMA table_info(%s)' % t))))"
+
+# B. 모델 + 런타임 DDL 둘 다 봐야 한다
+grep -rn "__tablename__" sequence_service --include=*.py
+grep -rn "CREATE TABLE" sequence_service/app/cell/repository.py
+
+# C. DDL 실측
+grep -c "^CREATE TABLE" schema.sql   # 17
+grep -c "^CREATE VIEW"  schema.sql   # 19
+```
+
+⚠️ **B 의 실물 DB 는 공장 PC 에만 있다** — 이 조사는 소스 기준이고 MariaDB introspection 은 못 했다.
+운영 DB 에 수동으로 추가된 컬럼이 있으면 이 문서와 다를 수 있다.

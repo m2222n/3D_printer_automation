@@ -14,7 +14,7 @@ import {
   type AutomationLogItem,
   type AutomationQueues,
 } from '../services/localApi';
-import { getDashboard } from '../services/api';
+import { getDashboard, getSystemConfig } from '../services/api';
 import type { Preset } from '../types/local';
 import type { PrinterSummary } from '../types/printer';
 
@@ -117,6 +117,8 @@ export function AutomationPage() {
   const [queues, setQueues] = useState<AutomationQueues>({});
   const [logs, setLogs] = useState<AutomationLogItem[]>([]);
   const [printers, setPrinters] = useState<PrinterSummary[]>([]);
+  // target_printer 번호 → 시리얼. 서버 .env 가 유일한 출처라 화면에 시리얼을 박지 않는다.
+  const [serialMap, setSerialMap] = useState<Record<string, string>>({});
   const [queueTab, setQueueTab] = useState<QueueTab>('board');
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -152,6 +154,10 @@ export function AutomationPage() {
     } else {
       setPrinters([]);
     }
+  }, []);
+
+  useEffect(() => {
+    getSystemConfig().then((c) => setSerialMap(c.printer_serial_map || {})).catch(() => setSerialMap({}));
   }, []);
 
   useEffect(() => {
@@ -729,10 +735,11 @@ export function AutomationPage() {
                     onChange={(e) => setForm((p) => ({ ...p, target_printer: e.target.value === '' ? '' : Number(e.target.value) }))}
                   >
                     <option value="">Any Printer (공용/아무 프린터나)</option>
-                    <option value="1">Printer 1 (ShrewdStork)전용</option>
-                    <option value="2">Printer 2 (CorrectPelican)전용</option>
-                    <option value="3">Printer 3 (HeavenlyTuna)전용</option>
-                    <option value="4">Printer 4 (CapableGecko)전용</option>
+                    {Object.entries(serialMap)
+                      .sort(([a], [b]) => Number(a) - Number(b))
+                      .map(([no, serial]) => (
+                        <option key={no} value={no}>Printer {no} ({printerNicknameFromSerial(serial)})전용</option>
+                      ))}
                   </select>
                 </div>
               </div>

@@ -6,7 +6,7 @@ Formlabs Web API 시스템 설정
 - 알림 설정
 """
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import Optional
@@ -60,18 +60,30 @@ class Settings(BaseSettings):
     # ===========================================
     # 프린터 설정
     # ===========================================
-    # Form 4 프린터 4대 시리얼 번호 (실제 값으로 교체 필요)
-    PRINTER_SERIALS: list[str] = [
-        "PRINTER_SERIAL_1",
-        "PRINTER_SERIAL_2", 
-        "PRINTER_SERIAL_3",
-        "PRINTER_SERIAL_4"
-    ]
+    # 프린터 번호(제어의 target_printer) ↔ 시리얼. 🚨 유일한 손 편집 지점은 .env 다 — 코드 기본값을 두지 않는다.
+    #   sequence_service 도 같은 .env(../web-api/.env)를 읽고, topo_sync 도 이 키를 읽어 node.external_ref 를 채운다.
+    PRINTER_SERIAL_MAP: dict[int, str] = {}
+    # 모니터링 대상 시리얼. 비어 있으면 PRINTER_SERIAL_MAP 의 값(번호 순)으로 파생된다 — 두 출처를 만들지 않기 위해.
+    PRINTER_SERIALS: list[str] = []
+
+    @model_validator(mode="after")
+    def _derive_printer_serials(self):
+        if not self.PRINTER_SERIALS and self.PRINTER_SERIAL_MAP:
+            self.PRINTER_SERIALS = [self.PRINTER_SERIAL_MAP[k] for k in sorted(self.PRINTER_SERIAL_MAP)]
+        return self
     
     # ===========================================
     # 데이터베이스 설정
     # ===========================================
     DATABASE_URL: str = "postgresql://localhost:5432/formlabs_db"
+
+    # 라인 MES(v2 · PostgreSQL). 비어 있으면 Spawn 을 발행하지 않는다.
+    # web-api 는 공장 PC 한 대에서만 돈다 (2026-09-22 확인) ⇒ 발행자도 하나다.
+    LINE_DSN: str = ""
+    # "지금 물리적으로 물건이 밟는 경로" 의 ID. 현행 = RESIN-1-ASIS (되주차 · 세척→경화 직행 포함).
+    #   RESIN-1(재배치 후 경로)엔 그 엣지가 없어 로봇의 실제 이동(Moved)이 거부된다 → 재배치 날 이 값 + topology.yaml active 를 바꾼다.
+    #   FE 는 이 값을 /system/config line_id 로 받는다 — 라인 ID 를 두 곳에 두지 않는다 (2026-09-23).
+    LINE_ID: str = "RESIN-1-ASIS"
     
     # ===========================================
     # 알림 설정

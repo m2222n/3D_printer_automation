@@ -6,6 +6,8 @@ import { HistoryPage } from './components/HistoryPage';
 import { StatisticsPage } from './components/StatisticsPage';
 import { AutomationPage } from './components/AutomationPage';
 import { AutomationManualPage } from './components/AutomationManualPage';
+import { LineMonitorPage } from './components/LineMonitorPage';
+import { ProcessControlPage } from './components/ProcessControlPage';
 import { PrinterInfoModal } from './components/PrinterInfoModal';
 import { LoginPage } from './components/LoginPage';
 import { getNotifications, markNotificationsRead } from './services/localApi';
@@ -15,7 +17,8 @@ import './App.css';
 
 type AuthState = 'checking' | 'authenticated' | 'guest';
 
-type TabType = 'monitoring' | 'print' | 'queue' | 'history' | 'statistics' | 'automation' | 'automation_manual';
+type TabType = 'monitoring' | 'print' | 'queue' | 'history' | 'statistics' | 'automation' | 'automation_manual'
+  | 'line' | 'control';
 
 interface TabConfig {
   key: TabType;
@@ -30,6 +33,8 @@ const TABS: TabConfig[] = [
   { key: 'statistics', label: '통계' },
   { key: 'automation', label: '자동화' },
   { key: 'automation_manual', label: '자동화 수동제어' },
+  { key: 'line', label: '라인 모니터링' },
+  { key: 'control', label: '공정 제어' },
 ];
 
 function App() {
@@ -131,6 +136,10 @@ function App() {
         return <AutomationPage key={tabResetKey} />;
       case 'automation_manual':
         return <AutomationManualPage key={tabResetKey} />;
+      case 'line':
+        return <LineMonitorPage key={tabResetKey} />;
+      case 'control':
+        return <ProcessControlPage key={tabResetKey} />;
     }
   };
 

@@ -124,6 +124,14 @@ class VisionMQTTClient:
 
         if message_type == "status":
             msg = MQTTStatusMessage(**payload)
+            # 라인 MES 관측 — 카메라 처리(handle_status)와 독립된 try. 여기서 실패해도 카메라 상태 저장은 그대로 간다
+            try:
+                from app.line.publisher import publisher
+                ls = {"running": "RUN", "complete": "DONE", "error": "ERROR"}.get(msg.status.rsplit("_", 1)[-1])
+                if ls:
+                    publisher().emit_state(("mqtt", msg.camera_id), ls, source="CAMERA", confidence=msg.confidence)
+            except Exception as ex:  # noqa: BLE001
+                logger.warning(f"라인 MES 발행 건너뜀 ({msg.camera_id}): {ex}")
             await manager.handle_status(msg)
 
         elif message_type == "heartbeat":

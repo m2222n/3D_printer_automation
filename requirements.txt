@@ -13,9 +13,19 @@ sqlalchemy>=2.0.25
 pymysql>=1.1.0
 
 python-multipart>=0.0.6
+# 🚨 아래 둘은 web-api·sequence_service 가 import 단계에서 요구한다(vision/mqtt_client · Modbus). 4/29 공장 PC 복구가 "aiomqtt 누락" 이었는데
+#   루트엔 여전히 없었다 — 9/23 새 venv 로 `pip install -r requirements.txt` 만 해서 import 하니 그대로 재현됐다
+aiomqtt>=2.0.0
+pymodbus>=3.6.0
 aiofiles>=23.2.0
 websockets>=12.0
 python-json-logger>=2.0.7
+
+# 라인 MES 관측 도메인 (리포 루트 line_mes/). web-api·sequence_service 가 import — 편집 설치
+-e .
+# 라인 MES PostgreSQL 드라이버. 🚨 deploy.bat 는 이 파일만 설치한다 — 빠지면 web-api(app.line.*)·sequence_service(line_events→line_mes.publish) 가
+#   import 단계에서 죽어 OrinuMain 이 안 올라온다. LINE_DSN 이 비어도 import 는 필요하다
+psycopg[binary,pool]>=3.1
 
 # Auth (JWT + bcrypt)
 python-jose[cryptography]>=3.3.0
