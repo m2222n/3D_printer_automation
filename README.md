@@ -40,7 +40,8 @@
 | 협동로봇 | HCR-10L | 1대 | 빈피킹, 후가공 이송 (셀B) |
 | 세척기 | Form Wash | 2대 | 레진 세척 |
 | 경화기 | Form Cure | 1대 | UV 경화 |
-| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 (eye-in-hand) |
+| 전동 그리퍼 | JEGB-4285P-3MA (2지 평행 · 스트로크 85mm) | 1대 | 빈피킹 파지 (로봇 DO 4비트 · 설정 프로그램으로 파지 위치 등록) |
+| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 (eye-in-hand · 로봇팔 장착) |
 | 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 (Blaze와 동시 마운트) |
 | 깊이 카메라 | Intel RealSense D435 | 1대 | 빈피킹 임시 검증 |
 | 산업용 PC | IPC-510 (RTX GPU) | 1대 | 셀B 비전·로봇 통신 허브 |
@@ -56,8 +57,8 @@
 | **Phase 1** | Web API 모니터링 (Formlabs Cloud) | ✅ 완료 |
 | **Phase 2** | Local API 원격 프린트 제어 + 프론트엔드 UI | ✅ 완료 |
 | **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 (Modbus 8단계 핸드셰이크) | ✅ 운영 |
-| **Phase 4** | 장비 상태 감시 (리모트 I/O 신호 → 상태 전이 → WebSocket) | 🔄 리모트 I/O 입고, 결선·연동 진행 중 |
-| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 트랙 2 (YOLO) v2 5모델 비교 학습 완료, ONNX 변환 + 도메인 갭 검증 단계 |
+| **Phase 4** | 장비 상태 감시 (세척기·경화기) | 🔄 리모트 I/O 입고 · 카메라 판독(규칙 기반 + 문자 인식) 경로와 병행 검토 |
+| **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 **Depth+CAD 인식 모델 확정 · 산업용 PC 배포 · 로봇 소켓 통신·그리퍼·티칭 좌표 집기·팔 카메라 실물 인식 완료** → 인식 좌표로 집기 시험 단계 |
 | **Phase 6** | 라인 MES v2 (관측 도메인 + `/api/v2` + 라인 모니터링·공정 제어 탭) | 🔄 백엔드 18 라우트 완료, 운영 DB 적용 대기 |
 
 ---
@@ -121,95 +122,74 @@
 
 ## 빈피킹 (Phase 5)
 
-### 빈피킹 — 듀얼 트랙 전략
+### 운영 트랙 — Depth + CAD 인식 (`bin_picking/depth_track/` + `bin_picking/src/`)
 
-협력사 제안으로 두 트랙을 병행 개발 중. 산업 현장 도입 관점에서 트랙 2가 우선.
+ToF 거리 영상 하나로 부품 27종을 찾고 종류를 가린다. 색·재질과 무관하고, CAD 도면이 있으면 실물 데이터 없이도 학습을 시작할 수 있다(실측 소량 fine-tune 이 성능의 열쇠).
 
-| | 트랙 1: 6DoF Pose Estimation | 트랙 2: YOLO 2D 인식 + Depth |
-|---|---|---|
-| 방식 | CAD 라이브러리 + FPFH + Colored ICP | YOLOv8/v11 detection + depth fusion |
-| 구현 | L1~L6 Python (Open3D 기반) | Ultralytics + Roboflow + ONNXRuntime |
-| 좌표 | 6DoF (rotation matrix) | 6요소 (x, y, z, edge, angle, label) |
-| 데이터 | CAD 29종 + 합성 검증 | 실 부품 촬영 + augmentation + **CAD 렌더 합성 데이터셋** |
-| 상태 | 인프라 완성, 환경 제약으로 단계적 검증 보류 | **v2 학습 완료, 도메인 갭 검증 단계** |
+| 구성 | 내용 |
+|---|---|
+| 모델 | 2D 거리영상 검출기 + CAD 형상 코드북 (3D 인코더 PointNet++ · 2D VQ 인코더 · 검출 헤드) — 산학 부트캠프 산출물을 회사 자산으로 편입 |
+| 입력 | Basler Blaze-112 depth (848×480, uint16 → m 단위 단일 출처 `depth_units.py`) |
+| 출력 | 6요소 좌표 (x, y, z, edge, angle, label) + 장면 게이트 판정 → 웹 보고 / 로봇 전송 |
+| 모델 선택 | 두 촬영 조건을 함께 학습한 판이 상위를 독점 — 지렛대는 장수가 아니라 **촬영 조건의 폭** · seed 노이즈(F1 ±0.08)보다 작은 차이는 "구분 불가"로 본다 |
 
-### 빈피킹 v2 학습 결과 (2026-05-22 학습 / 2026-05-26 분석)
+**현재 성능 (모델 확정 · 재설치 후 다른 날 촬영본 30장)**
 
-5종 부품 (Part1~5) 인식 — Roboflow 데이터셋 946 augmented images (train 828 / val 80 / test 39):
+| 지표 | 값 |
+|---|---|
+| 인식 F1 | **0.88** (이전 운영 모델 0.64) |
+| 부품 종류 정답률 | 88.8% |
+| 집을 수 있는 비율 (안전여유 10mm · 계산값) | 100% (206/206) |
+| 산업용 PC 추론 속도 | **장당 1.3초** (CPU · 개발 서버와 소수점까지 일치) |
 
-| Rank | Model | Params | mAP50 | mAP50-95 | Recall | best.pt |
-|------|-------|--------|-------|----------|--------|---------|
-| 🥇 1 | **YOLOv8n** | 3.2M | **0.9939** | 0.7458 | 0.978 | 6.3MB |
-| 🥈 2 | YOLOv11s | 9.5M | 0.9910 | 0.7446 | 0.979 | 19.2MB |
-| 🥉 3 | YOLOv8m | 25.9M | 0.9899 | 0.7255 | 0.947 | 52.1MB |
-| 4 | YOLOv11m | 20.1M | 0.9868 | 0.7225 | 0.929 | 40.5MB |
-| 5 | YOLOv11l | 25.3M | 0.9842 | 0.7363 | 0.916 | 51.2MB |
+> 수치는 학습이 본 촬영 조건의 시험지 기준이고, 파지 100%는 부품 치수와 대조한 계산값이다. 실물 파지는 로봇으로 검증 중이며 **실물 시험 중에는 모델을 바꾸지 않는다**(바꿔가며 하면 실패 원인을 못 가린다).
 
-**핵심 관찰**:
-- 가장 작은 YOLOv8n이 1등 — 데이터셋 작은 규모에서 큰 모델은 과적합 경향
-- 클래스별 약점 부품 Recall **0.656 → 0.958 (+30%p)** 회복 — 멀티 객체 촬영 효과 입증
-- IPC-510 ONNXRuntime 배포 관점에서 YOLOv8n(6MB) / YOLOv11s(19MB) 동률 후보
-- 다음 단계: ONNX 변환 → 도메인 갭 검증 (별도 환경 평가셋) → 최종 모델 선정
-
-### 빈피킹 학습/배포 파이프라인
+### 인식 → 로봇 사슬
 
 ```mermaid
 flowchart LR
-    Capture["📸 실 부품 촬영<br/>다각도<br/>(스마트폰 + Basler)"]
-    Synth["🧩 CAD 렌더 합성<br/>STEP/STL 다각도 렌더<br/>(trimesh + pyrender)"]
-    Roboflow["🏷️ Roboflow<br/>(annotation + 증강)"]
-    Train["🎓 A100 GPU<br/>(PyTorch + Ultralytics)"]
-    ONNX["⚙️ ONNX Export<br/>(yolo export format=onnx)"]
-    Deploy["🏭 IPC-510<br/>(ONNXRuntime-GPU)"]
-    Coord["📐 6요소 좌표<br/>(x, y, z, edge, angle, label)"]
-    Modbus["🤖 Modbus → HCR-10L"]
+    Cam["📸 Blaze 촬영<br/>(로봇팔 eye-in-hand)"]
+    Infer["🧠 추론<br/>depth_track"]
+    Angle["📐 회전각 복구<br/>mask_to_angle"]
+    Six["🧮 6요소 좌표<br/>depth_track_to_6elements"]
+    Gate["🚧 입력·출력 게이트<br/>input_gate"]
+    Web["🌐 웹 보고<br/>web_reporter → /binpick/reports"]
+    Base["🔁 카메라→로봇 좌표<br/>cam_to_base (3점법)"]
+    Sock["🔌 소켓 서버<br/>pick_socket_server"]
+    Rodi["🤖 펜던트 스크립트<br/>rodi_pick_sequence.js"]
+    Grip["🤏 그리퍼 DO<br/>열림·물음·빈손 신호"]
 
-    Capture --> Roboflow
-    Synth --> Roboflow
-    Roboflow --> Train --> ONNX --> Deploy --> Coord --> Modbus
+    Cam --> Infer --> Angle --> Six --> Gate
+    Gate --> Web
+    Gate --> Base --> Sock --> Rodi --> Grip
 
-    classDef capture fill:#e3f2fd,stroke:#1976d2,color:#000
-    classDef label fill:#fff8e1,stroke:#f57c00,color:#000
-    classDef train fill:#f3e5f5,stroke:#7b1fa2,color:#000
-    classDef export fill:#e0f7fa,stroke:#00838f,color:#000
-    classDef deploy fill:#fff3e0,stroke:#e65100,color:#000
-    classDef output fill:#e8f5e9,stroke:#388e3c,color:#000
-
-    class Capture,Synth capture
-    class Roboflow label
-    class Train train
-    class ONNX export
-    class Deploy deploy
-    class Coord,Modbus output
+    classDef vision fill:#e3f2fd,stroke:#1976d2,color:#000
+    classDef robot fill:#fff3e0,stroke:#e65100,color:#000
+    classDef out fill:#e8f5e9,stroke:#388e3c,color:#000
+    class Cam,Infer,Angle,Six,Gate vision
+    class Base,Sock,Rodi,Grip robot
+    class Web out
 ```
 
-### 트랙 1 (6DoF Pose) 현황 — 보존 상태
+- **빈피킹 좌표는 Modbus 로 가지 않는다.** 로봇이 클라이언트로 산업용 PC 소켓 서버에 접속해 JSON 포즈를 받고, 펜던트 스크립트가 `createPose → moveLinear` 로 실행한다. Modbus TCP 는 셀A 이송 핸드셰이크 전용.
+- **정합 파일이 없으면 소켓 서버가 시작을 거부한다** — 카메라 좌표를 그대로 로봇에 보내는 경로를 코드로 막았다. 로봇 작업영역 밖 좌표·신뢰할 수 없는 회전각은 전송하지 않는다.
+- 게이트 = 학습 분포를 벗어난 장면(유효율·크기)을 걸러 "배경을 부품으로 잡은 결과"가 정상처럼 보이지 않게 한다.
 
-CAD 기반 파이프라인은 인프라가 완성되어 있으며, 환경 제약(작업 영역, 카메라 캘리브레이션 fundamental 검증)으로 단계적 검증을 보류 중. 추후 산업 현장 셋업이 갖춰지면 트랙 2와 병행 비교 예정.
+**로봇 연동 단계**
 
-- L1~L6 Python 단독 구현 (CAD 기반 29종 인식)
-- 인식률: easy 100%, crowded 90%, hard 60% (Colored ICP로 hard 개선)
-- 매칭 시간 0.4~0.6s/부품, RMSE 1.0~1.5mm
-- 레진별 프리셋 4종 (grey/white/clear/flexible)
-- 데모 시각화: 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT) + 실패 케이스 자동 PNG
-- 카메라: Basler Blaze-112 (ToF depth) + Basler ace2 (RGB 5MP) eye-in-hand 동시 마운트
+| 단계 | 상태 |
+|---|---|
+| 산업용 PC ↔ 로봇 소켓 왕복 · 좌표 수신 · 완료 회신 | ✅ |
+| 로봇 DO 로 그리퍼 개폐 · 완료 신호 3종(열림·물음·빈손) | ✅ |
+| 티칭 좌표로 한 개 집기 (1사이클) | ✅ |
+| 로봇팔 카메라로 실물 장면 인식 | ✅ |
+| 인식 좌표로 로봇 이동 → 집기 | 🔜 시험 단계 |
+| 집어서 드릴 스테이션까지 (리그립 · 바텀비전 보정) | ⏳ |
 
-### 빈피킹 트랙 1 — 6DoF Pose 파이프라인
+### 보존 트랙 (운영에 쓰지 않음)
 
-```mermaid
-flowchart LR
-    L1["L1: 영상 취득<br/>pypylon<br/>(Blaze-112 + ace2)"]
-    L2["L2: 전처리<br/>Open3D<br/>(ROI, RANSAC)"]
-    L3["L3: 분할<br/>DBSCAN"]
-    L4["L4: 인식+자세<br/>FPFH + (Colored)ICP<br/>+ OBB SizeFilter"]
-    L5["L5: 그래스프<br/>grasp_planner<br/>(29종 DB)"]
-    L6["L6: 로봇 전송<br/>Modbus TCP<br/>(INT16)"]
-
-    L1 --> L2 --> L3 --> L4 --> L5 --> L6
-
-    classDef stage fill:#e8eaf6,stroke:#3f51b5,color:#000
-    class L1,L2,L3,L4,L5,L6 stage
-```
+- **YOLO 2D 트랙** (`bin_picking/yolo_track/`): 컬러 영상 5종 비교 학습, 같은 환경 mAP50 0.99 — 다른 날 촬영본에서 일반화가 확인되지 않아 Depth 트랙으로 전환. 데이터·학습 인프라는 보존.
+- **6DoF Pose 트랙** (`bin_picking/src/recognition/`): CAD 라이브러리 + FPFH + Colored ICP (L1~L6, Open3D). 인식률 easy 100% / crowded 90% / hard 60%, RMSE 1.0~1.5mm. 레진별 프리셋 4종. 카메라 캘리브레이션·eye-in-hand 자산은 운영 트랙이 그대로 사용.
 
 ---
 
@@ -236,21 +216,11 @@ flowchart LR
 - 엣지 AI 카메라(MaixCAM)는 보조 PoC — 화면 숫자 판독(OCR)·플레이트 유무 확인용
 
 ### Phase 5: 3D 빈피킹 비전 시스템
-
-**트랙 2: YOLO 2D 인식 + Depth (현재 메인 트랙)**
-- Roboflow annotation + augmentation 파이프라인
-- **CAD 렌더 합성 데이터셋** — STEP/STL 부품을 다각도(기울임 × 회전) 자동 렌더링해 부품별 합성 이미지 생성 (trimesh + pyrender, 헤드리스). 실 촬영 데이터 보완 + 부품 클래스 확장용
-- A100 GPU에서 다중 모델 비교 학습 (YOLOv8n/8m, YOLOv11s/m/l)
-- 6요소 좌표 출력: x, y, z (depth), edge, angle, label
-- ONNX 변환 + ONNXRuntime-GPU 배포 (산업용 PC)
-
-**트랙 1: 6DoF Pose Estimation (인프라 보존 상태)**
-- STL 29종 라이브러리 (FPFH 캐싱)
-- Multi-resolution ICP (coarse-to-fine)
-- Colored ICP 파이프라인
-- OBB SizeFilter (회전 불변) + 포인트 비율 필터
-- 핸드-아이 캘리브레이션 (eye-to-hand + eye-in-hand 2세트)
-- E2E 실패 케이스 자동 시각화
+- Depth 단독 인식 (CAD 코드북) → 6요소 좌표 + 회전각 + 장면 게이트 → 웹 보고 (`POST /api/v1/binpick/reports`)
+- 카메라→로봇 좌표 변환 계층 (3점법 정합 파일 · 작업영역 검사 · 배선 검사) + 소켓 서버 + 펜던트 Rodi-Script
+- 그리퍼 파지 계획 (`grasp_database.yaml` 29종 · 안전여유 런타임 상수) · 파지 자세 보정 절차·계산기
+- 산업용 PC 배포 검증 (개발 서버와 추론 결과 소수점 일치 · 장당 1.3초) · 카메라 2대 연결 절차서
+- 한 명령 E2E 러너 (`run_binpick_e2e.py` · `run_live_pick.py`) · 펜던트 스크립트 시뮬레이터 (112 케이스)
 
 ### Phase 6: 라인 MES v2
 - 관측 도메인 패키지 `line_mes/` (이벤트 4종 contract · state_engine · 토폴로지 적재 · 시뮬레이터)
@@ -448,24 +418,19 @@ POST /api/v2/transporters/{id}/commands/{command_id}                     # W6 �
 │   └── src/{components, services/{api,localApi,lineApi,auth}.ts, mocks, types}
 │
 ├── bin_picking/                   # Phase 5 3D 빈피킹
-│   ├── src/                       # 트랙 1: 6DoF Pose Estimation
-│   │   ├── acquisition/           # L1: realsense, basler, depth_to_pointcloud
-│   │   ├── preprocessing/         # L2: cloud_filter (레진별 프리셋)
-│   │   ├── segmentation/          # L3: dbscan_segmenter
-│   │   ├── recognition/           # L4: cad_library, pose_estimator, size_filter
-│   │   ├── grasping/              # L5: grasp_planner, grasp_database.yaml
-│   │   ├── communication/         # L6: modbus_server
-│   │   └── visualization/         # demo_ui, e2e_viz
-│   ├── yolo_track/                # 트랙 2: YOLO 2D 인식 + Depth (현재 메인)
-│   │   ├── pipeline/              # detect_and_output.py (6요소 좌표)
-│   │   └── runs/                  # 학습 결과 (모델별 weights + metrics)
-│   ├── scripts/
-│   │   ├── demo_live_recognition.py
-│   │   ├── basler_setup.sh
-│   │   └── basler_smoke_test.py
-│   ├── models/{cad, reference_clouds, fpfh_features}
+│   ├── depth_track/               # 운영 트랙: Depth + CAD 인식 모델 (학습·추론 코드 · 체크포인트는 리포 밖)
+│   ├── src/
+│   │   ├── acquisition/           # Blaze/ace2 취득 · depth 단위 · 3점법 · RGB-D 정합 · extrinsic
+│   │   ├── pipeline/              # 6요소 좌표 · 회전각 복구 · 입력/출력 게이트
+│   │   ├── communication/         # 소켓 서버 · cam_to_base 변환 · 파지 계획 · 웹 보고 · 정합 채집
+│   │   ├── run_binpick_e2e.py     # 촬영→추론→각도→6요소→게이트→웹 한 명령
+│   │   ├── run_live_pick.py       # 촬영→추론→변환→소켓 한 명령
+│   │   └── recognition/ segmentation/ preprocessing/ grasping/   # 보존 트랙 (6DoF Pose)
+│   ├── scripts/                   # rodi_*.js 펜던트 스크립트 (집기 시퀀스 · 정합 채집 · 소켓 · DO 맵) · Basler 셋업
+│   ├── yolo_track/                # 보존 트랙 (YOLO 2D)
 │   ├── config/{resin_presets.py, grasp_database.yaml}
-│   ├── tests/
+│   ├── docs/                      # 현장 카드 (hand-eye · 파지 자세 · IPC 카메라 연결 · 모델 선택표)
+│   ├── tests/                     # 자체 실행 스크립트 + simulate_rodi_pick.js
 │   └── tutorials/                 # Open3D 학습
 │
 ├── factory-pc/file_receiver.py    # STL 파일 수신
@@ -496,11 +461,11 @@ React 18 · TypeScript 5 · Vite 5 · Tailwind CSS 4 · WebSocket (v1) / 폴링 
 
 ### 빈피킹 비전 (Phase 5)
 
-**트랙 2 (YOLO)**: PyTorch 2.1 · Ultralytics 8.4.51 (YOLOv8/v11) · Roboflow (annotation + augmentation) · trimesh + pyrender (CAD 다각도 렌더 합성 데이터) · ONNX + ONNXRuntime-GPU (산업용 PC 배포)
+**운영 트랙 (Depth + CAD)**: PyTorch 2.x · CAD 코드북 (PointNet++ · VQ) · NumPy · SciPy · Pillow · pypylon (Basler Blaze-112 + ace2) · 로봇 = 한화 Rodi-Script (펜던트) + TCP 소켓 (JSON)
 
-**트랙 1 (6DoF)**: Open3D 0.19 · NumPy · OpenCV · trimesh · pypylon (Basler Blaze-112 + ace2) · pyrealsense2 (RealSense D435) · SciPy
+**보존 트랙**: Ultralytics YOLOv8/v11 · Roboflow · ONNX (YOLO 2D) / Open3D 0.19 · OpenCV · trimesh · pyrealsense2 (6DoF Pose)
 
-**학습 인프라**: NVIDIA A100 80GB GPU · 컨테이너 환경
+**학습 인프라**: NVIDIA A100 80GB GPU · 컨테이너 환경 / **배포**: 산업용 PC (Windows · CPU 추론으로 응답 목표 충족) → 엣지 AI 보드 (추후)
 
 ### Infrastructure
 Docker · systemd --user · NSSM (Windows 서비스) · Cloudflare Tunnel · MQTT (Mosquitto, 카메라 PoC)
@@ -600,26 +565,27 @@ npm run build
 ./scripts/dev_develop.sh
 ```
 
-### 4. 빈피킹 데모
+### 4. 빈피킹 실행
 
 ```bash
-# 트랙 1 (6DoF Pose) — synthetic 씬 렌더 검증
-python bin_picking/scripts/demo_live_recognition.py \
-  --synthetic --test-render /tmp/demo.png
+# 산업용 PC — 소켓 서버 (로봇이 접속해 좌표를 받아간다 · 정합 파일 필수)
+python -m bin_picking.src.communication.pick_socket_server --mode vision --calib <정합 파일> --cycles 0
 
-# 트랙 1 — RealSense D435 라이브
-python bin_picking/scripts/demo_live_recognition.py --realsense
+# 촬영 → 추론 → 변환 → 소켓 한 명령 (현장 시험용)
+python bin_picking/src/run_live_pick.py --capture --calib <정합 파일> --help
 
-# 트랙 1 — Basler 라이브
-python bin_picking/scripts/demo_live_recognition.py --basler
+# 저장 프레임으로 인식 → 6요소 → 게이트 → 웹 보고 (검증용)
+python bin_picking/src/run_binpick_e2e.py --help
 
-# 트랙 2 (YOLO) — 단일 이미지 → 6요소 좌표 출력
-python bin_picking/yolo_track/pipeline/detect_and_output.py \
-  --model path/to/best.pt --image path/to/scene.jpg --format yaml
+# 카메라↔로봇 정합 파일 생성 (3점법) · 검증
+python -m bin_picking.src.communication.cam_to_base build --help
+python -m bin_picking.src.communication.cam_to_base check --help
 
-# 트랙 2 — ONNX 변환 (산업용 PC 배포 준비)
-yolo export model=path/to/best.pt format=onnx imgsz=640
+# 펜던트 스크립트 로직 시뮬레이션 (로봇 없이)
+node bin_picking/tests/simulate_rodi_pick.js
 ```
+
+현장 절차는 `bin_picking/docs/` 카드(hand-eye · 파지 자세 보정 · IPC 카메라 연결)를 따른다.
 
 ---
 
@@ -633,6 +599,7 @@ yolo export model=path/to/best.pt format=onnx imgsz=640
 | `docs/juhee/` | 라인 MES v2 조사 → 계획 → 설계 정본 → API 명세 → 와이어프레임 → FE 병합 |
 | `docs/juhee/03_MES_v2_설계/서비스_역할_구조.md` | 세 서비스 역할·DB 소유·의존 방향 한 장 |
 | `bin_picking/docs/README.md` | 빈피킹 절차서 색인 (현행 / 완료 기록 / 종료) |
+| `bin_picking/docs/HAND_EYE_CARD.md` · `GRASP_ANGLE_CARD.md` · `IPC_CAMERA_CONNECT.md` | 현장 카드 — 카메라↔로봇 정합 · 파지 자세 보정 · 카메라 2대 연결 |
 
 ---
 
