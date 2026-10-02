@@ -1161,7 +1161,7 @@ depth 노이즈가 픽셀 단위로 흔들리고 부품이 조금만 기울면 �
   └ group_labels_0818.json             ← 정답지 + label_rules(병합 규칙)
 ```
 
-상세: `memory/project_capture_done_0818.md`
+상세: `memory/project_capture_0818.md`
 
 ---
 
@@ -1267,7 +1267,7 @@ DB 29종 − DB전용 2종(10_guide_paper_roll_l, top_inner_sheet004) = 학습 2
 🚨 **여기서 통과 안 되면 90장을 찍지 않는다** — 조건 틀린 90장 = 0장이고,
 8/14에 차광용지를 깔아만 두고 사진을 안 찍어 하루 밀린 것과 같은 계열의 손실이다.
 
-📌 **현장 카드** = `bin_picking/FIELD_CARD_0818.md` · 상세 `memory/project_capture_plan_0818.md`
+📌 **현장 카드** = `bin_picking/FIELD_CARD_0818.md` · 상세 `memory/project_capture_0818.md`
 
 ---
 
@@ -1881,7 +1881,7 @@ payload엔 없어야 한다 = 8/7 설계원칙 2).
 `/binpick/*`를 아직 서빙하지 않는다) / ⏸️**치수검사는 미착수** — ✅**측정 대상은 8/15 문서로 확정됐다**
 (외관 전반 치수 + 미성형 검출 / 홀은 유무 판정) ⇒ 스키마 착수 가능, 구축 일정 9~10월.
 
-상세: `memory/project_binpick_web_router_0813.md`
+상세: `memory/project_binpick_web_delivery_0807_0813.md`
 
 ---
 
@@ -2147,7 +2147,7 @@ RTX가 달려 있어 **전력 여유가 빠듯하다**(보조전원 연결 여�
 
 ⏭️ **다음 수** = 🥇**빈+무광시트 확보 후 학습 조건에 맞춰 수십 장 재촬영**(소량 추가는 과적합) /
 🥈오버샘플링 재시도 / 🥉**혼동쌍을 벌림 기준으로 묶기**(→ 위 8/7 절에서 실행함).
-상세: `memory/project_crosssession_retrain_0806.md`
+상세: `memory/project_crosssession_0731_0807.md`
 
 ---
 
@@ -2324,7 +2324,7 @@ RTX가 달려 있어 **전력 여유가 빠듯하다**(보조전원 연결 여�
 
 ✅ 실데이터 왕복 = c1 `in_distribution`(유효율 5.55%) / c3 `out_of_distribution`(81.21%).
 구현: `src/communication/web_reporter.py` · `tests/test_web_reporter.py`(36/36)
-상세: `memory/project_module_web_delivery_0807.md`
+상세: `memory/project_binpick_web_delivery_0807_0813.md`
 
 ---
 
@@ -3766,7 +3766,7 @@ T100_csblur_lr1e4_ep80/best.pt
    - **코드 짜기 전 명세 초안 → 대표님 align**
 4. **예승님 연락** — (a) 빈피킹 좌표 명세 (좌표계/단위/회전/그리퍼/시퀀스) (b) 바텀비전 홀 검출 소스코드
 
-**5/6 한솔 3자 회의 추가 안건** — 상세: `memory/project_meeting_0506_hansol.md`
+**5/6 한솔 3자 회의 추가 안건** — 상세: `memory/project_hansol_meetings_0423_0506.md`
 - 다면 인식 정식 안건화 (리그립 스테이션 vs 시퀀스 분할 A/B자세)
 - Formlabs API 무인 운전 불가 — 공식 확인. 출력 종료 후 수동 터치 체크리스트 필수
 - 그리퍼 교체 요청 (한솔) — 잔여 레진 제거 어려움
@@ -4605,7 +4605,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 - ✅ 머지 5차 (05-06, `9fd365a`): 이예승 사원 — `cell_state.simul_mode` 컬럼 자동 마이그레이션 (4차 누락분)
 - ⏳ 다음주 예승님 방문: 실 출력 + 로봇 E2E 테스트 (시뮬 토글 OFF)
 
-상세: `memory/project_hansol_merge_issues.md`, `memory/project_meeting_0423_hansol.md`, `memory/project_meeting_0506_hansol.md`
+상세: `memory/project_hansol_merge_issues.md`, `memory/project_hansol_meetings_0423_0506.md`, `memory/project_hansol_meetings_0423_0506.md`
 
 ---
 
@@ -4648,13 +4648,13 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | 2026-04-16 | 한솔 머지 2차 (`e68c2b1`) + 카카오 VM 외부 접속 + Basic Auth | ✅ — `memory/reference_dev_environment.md(§카카오 VM · 원 파일 부재)` |
 | 2026-04-21 | 도메인 확정 `factory.flickdone.com` | ✅ |
 | 2026-04-22 | 데모 리허설 피드백 반영 (synthetic 9.7s→1.5s, 크래시 방어) | ✅ 커밋 6건 |
-| 2026-04-23 | Basler 입고 + IPC-510 입고 + 한솔 3자 회의 + 머지 3차 (`9f97f1e`) | ✅ — `memory/project_meeting_0423_hansol.md` |
+| 2026-04-23 | Basler 입고 + IPC-510 입고 + 한솔 3자 회의 + 머지 3차 (`9f97f1e`) | ✅ — `memory/project_hansol_meetings_0423_0506.md` |
 | 2026-04-24 | Cloudflare Tunnel 구축 + NSSM OrinuMain 등록 + DB(MariaDB) 재조사 + Formlabs Secret Rotate | ✅ — `memory/project_cloudflare_tunnel.md` |
 | 2026-04-29 | 🔥 공장 PC 원격 복구 (origin URL 정정 + aiomqtt 누락) | ✅ — `memory/project_factory_pc_remote_recovery_0429.md` |
 | 2026-04-29 | KAIST 부트캠프 합격 (4/30~7/9) | ✅ — `memory/archive/project_kaist_bootcamp.md` |
 | 2026-04-30 | `deploy.bat` 도입 + smoke test + 재부팅 자동복구 검증 | ✅ — `memory/project_deploy_bat.md` |
 | 2026-05-06 | JWT 로그인 도입 + 한솔 머지 4·5차 + 공장 PC 응답 영구 해결 (12시간, 11커밋) | ✅ — `memory/project_web_auth_security.md` |
-| 2026-05-06 | 한솔 3자 회의 (4DoF / 다면 인식 / 한화 패키지) + 대표님 빈피킹 개인 지시 4가지 | ✅ — `memory/project_meeting_0506_hansol.md` + `memory/project_binpicking_ceo_directive_0506.md` |
+| 2026-05-06 | 한솔 3자 회의 (4DoF / 다면 인식 / 한화 패키지) + 대표님 빈피킹 개인 지시 4가지 | ✅ — `memory/project_hansol_meetings_0423_0506.md` + `memory/project_binpicking_ceo_directive_0506.md` |
 | **2026-05 (W19~W21)** | ⭐**Basler 실물 셋업 → Mac 단독 워크플로 확립 → 트랙2 전환** — 카메라 개봉·어댑터 검증(ipTIME U1G-C)·**5/12 Mac Blaze 풀 작동**·라이브 뷰어 / 5/15 공장(**한글 파일명 fix**·**Phase 2 E2E 풀패스**·ACE2 케이블 인수·⭐**출력 실패 진짜 원인=레진 탱크 잔여물**) / 5/18 **Roboflow v1 + AICA A100 부활 + YOLOv8n mAP50 0.988**(⚠️같은 환경) + 한솔 빈피킹 코드 인계 / 5/20 **ACE2 렌즈 미장착 진단** + ⭐**한솔 좌표 6요소 명세 수신**(x,y,z,edge,angle,label) | ✅ — `memory/project_basler_setup_history.md` · `archive/project_roboflow_dataset.md` · `project_hansol_coord_spec_0520.md` · `project_phase2_e2e_complete_0515.md` · `reference_aica_a100.md` |
 | 2026-05-22~29 (W21~22) | v2 5모델 YOLO 학습(🥇yolov8n mAP50 0.9939) + 일정 재정렬(빈피킹=가을) + JWT 회귀버그 fix + 대표님 5/28 4대 지시 | ✅ — `memory/archive/project_yolo_v2_training_results_0522.md` |
 | 2026-06-01~05 (W23) | 삼성 시연 성공 + Formlabs fix + KAIST 첫 미팅(방향 전환) | ✅ — `memory/archive/project_kaist_meetings_timeline.md` |
