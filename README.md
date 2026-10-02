@@ -33,20 +33,62 @@
 
 ### 하드웨어 구성
 
-| 장비 | 모델 | 수량 | 용도 |
+**셀A — 프린팅 라인**
+
+| 장비 | 모델 | 수량 | 용도 · 상태 |
 |------|------|------|------|
-| 3D 프린터 | Formlabs Form 4 | 4대 | SLA 레진 프린팅 |
-| 협동로봇 | HCR-12A | 1대 | 빌드플레이트 교체, 세척기 투입 (셀A) |
-| 협동로봇 | HCR-10L | 1대 | 빈피킹, 후가공 이송 (셀B) |
-| 세척기 | Form Wash | 2대 | 레진 세척 |
-| 경화기 | Form Cure | 1대 | UV 경화 |
-| 전동 그리퍼 | JEGB-4285P-3MA (2지 평행 · 스트로크 85mm) | 1대 | 빈피킹 파지 (로봇 DO 4비트 · 설정 프로그램으로 파지 위치 등록) |
-| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 (eye-in-hand · 로봇팔 장착) |
-| 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 (Blaze와 동시 마운트) |
-| 깊이 카메라 | Intel RealSense D435 | 1대 | 빈피킹 임시 검증 |
-| 산업용 PC | IPC-510 (RTX GPU) | 1대 | 셀B 비전·로봇 통신 허브 |
-| 리모트 I/O | PoE 이더넷 리모트 I/O (DI/DO · RTD) | 3대 | 세척기·경화기·건조기·타워램프 신호 통합 (상태 감시) |
-| 엣지 AI 카메라 | Sipeed MaixCAM | 1+대 | 세척기/경화기 완료 감지 (PoC) |
+| 3D 프린터 | Formlabs Form 4 | 4대 | SLA 레진 프린팅 (Cloud API 모니터링 · Local API 출력) |
+| 세척기 / 경화기 | Form Wash / Form Cure | 2 / 1 | 제어 API 없음 → 상태 감시로 완료 판정 |
+| 협동로봇 | 한화 HCR-12A | 1대 | 빌드플레이트 교체 · 세척기 투입 (Modbus TCP 8단계 핸드셰이크) |
+| 주행 레일 · 서보 | 레일 2.5m 급 · 서보 모델 선정 중 | 1식 | 로봇 좌우 주행 — 드라이버 통신 방식(펄스 / RS-485 / EtherCAT)에 따라 모션 컨트롤 카드 또는 RS-485 컨버터 |
+| 빌드플레이트 거치대 · 랙 | 자체 설계 | — | 선입선출 적재 · 건조 공간 겸용 (설계 중) |
+
+**셀B — 후가공 라인**
+
+| 장비 | 모델 | 수량 | 용도 · 상태 |
+|------|------|------|------|
+| 협동로봇 | 한화 HCR-10L | 1대 | 빈피킹 · 드릴 스테이션 이송 (산업용 PC 와 TCP 소켓 · 펜던트 Rodi-Script) |
+| 전동 그리퍼 | JEGB-4285P-3MA (2지 평행 · 스트로크 85mm) | 1대 | 로봇 DO 4비트 제어 · 완료 신호 3종 (열림·물음·빈손) |
+| 3D 카메라 | Basler Blaze-112 (ToF · 24VDC) | 1대 | 빈피킹 Depth — 인식 모델 입력 (eye-in-hand) |
+| 2D 카메라 | Basler ace2 5MP (IMX547) + 8mm C-mount | 1대 | 컬러 영상 (Blaze 와 한 브라켓 · 정합 완료 · 융합은 보류) |
+| 드릴·연마 타워 | 스핀들 3 (드릴 14,000rpm ×2 · 연마 24,000rpm ×1) · 인버터 2 | 1식 | 로봇 DO → 릴레이 → 인버터 ON/OFF · 공압 지그 클램프 |
+| 리그립 스테이션 | 공구 박스 베이스 + 알루미늄 상판 + V홈 블록 | 1식 | 측면 홀 가공용 부품 뒤집기 (90°+90°) — 제작 중 |
+| 바텀비전 | 하방 카메라 + 조명 | 1식 | 기존 홀 위치 보정 (협력사 중단분 인수 · 재배치 예정) |
+| 깊이 카메라 | Intel RealSense D435 | 1대 | 개발·검증용 |
+
+**치수검사 — 경화 직후 · 드릴 이전**
+
+| 장비 | 모델 | 수량 | 용도 · 상태 |
+|------|------|------|------|
+| 검사 카메라 | 12.4MP GigE PoE 글로벌셔터 모노 (IMX304) | 1대 | 외관 치수 · 미성형 검출 (홀은 유무 판정) — 도입 중, 대여 모듈로 선행 개발 |
+| 광학계 | 텔레센트릭 렌즈 (시야 약 64×47mm) · 링 라이트 · 백라이트 (실루엣 · 24VDC) · 정렬·클램핑 기구 | 1식 | Opto Engineering 계열 |
+| 기준물 | 캘리브레이션 타겟 + 홀더 · 글라스 스테이지 | 1식 | 픽셀-mm 환산 · 반복성 검증 |
+| 지그 · 차광 | 수직 광축 프로파일 프레임 + 글라스 높이·수평 조절 | 1식 | 자체 설계 (제작 중) |
+| 검사 PC | Windows 일반 PC (내장 그래픽 · PoE 랜카드) | 1대 | OpenCV 치수 측정 (CPU) |
+
+**상태 감시 · 현장 신호**
+
+| 장비 | 모델 | 수량 | 용도 · 상태 |
+|------|------|------|------|
+| 리모트 I/O | ICP DAS PET-2255U (8DI/8DO · PoE) | 2대 | 세척기·경화기·건조기·타워램프 신호 (입고 · 결선 전) |
+| 리모트 I/O | ICP DAS PET-7015 (RTD 입력) | 1대 | 건조 공정 온도 (센서 별도) |
+| PoE 스위치 | 8포트 PoE | 1대 | 리모트 I/O · 검사 카메라 급전 |
+| 모니터링 카메라 | Logitech C270 | 3대 | 장비 가동·플레이트 유무 (형상 판정) |
+| 모니터링 카메라 | Raspberry Pi HQ (IMX477) + 8mm M12 | 2대 | 장비 화면 숫자 판독 (OCR) |
+| 온디바이스 카메라 | OpenMV N6 · Sipeed MaixCAM | 1 / 1 | 온디바이스 상태 판독 (N6 도입 중 · MaixCAM 검증용) |
+| 작업자 패널 | 12.7" 태블릿 | 2대 | 셀별 작업자 입력·확인 (도입 중) |
+
+**연산 · 네트워크**
+
+| 장비 | 모델 | 수량 | 용도 · 상태 |
+|------|------|------|------|
+| 산업용 PC | IPC-510 (i7 · RTX 5060 8GB · 32GB · Windows 11 IoT) | 1대 | 셀B 비전 추론 · 로봇 소켓 · 카메라 2대 — 포트별 고정 배선 |
+| 공장 PC | Windows | 1대 | web-api · sequence_service · PreFormServer · MariaDB (NSSM 서비스) |
+| 클라우드 VM | Linux | 1대 | 외부 모니터링 (Cloudflare Tunnel) |
+| 엣지 AI 서버 | NVIDIA Jetson AGX Thor | 1대 | 모니터링 카메라 3대 + 빈피킹 추론 이관 (도입 중 · ARM64 환경 재구축 필요) |
+| 엣지 AI 보드 | AMD Kria KV260 · BeagleBone AI-64 · Rubik Pi 3 | 각 1 | 온디바이스 추론 검증 |
+| UPS | 2200VA / 1200W 정현파 | 2대 | 제어반 · PC 전원 백업 |
+| 학습 서버 | NVIDIA A100 80GB (외부 컨테이너) | 1 | 인식 모델 학습 |
 
 ---
 
@@ -67,30 +109,42 @@
 
 세 서비스가 **방향**으로 갈린다 — 쓰는 쪽(제어) · 읽는 쪽(관측) · 보여주는 쪽(API).
 
-```
-                 브라우저 (frontend/ · 9탭)
-                        │ HTTP · JWT
-                        ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ web-api/                  API 층 · FastAPI                        │
-│  app/api, local, vision, binpick   v1 (기존 화면)                │
-│  app/line/                         v2 /api/v2 18 라우트 (라인 MES) │
-│  소유 DB: SQLite                                                  │
-└──────┬──────────────────────┬───────────────────────┬────────────┘
-       │ 읽기·CMD 생성        │ StateEngine 호출       │ 발행 (Spawn · State)
-       ▼                      ▼                       ▼
-┌──────────────┐   ┌───────────────────────────────────────────────┐
-│ MariaDB      │   │ line_mes/          관측 도메인 · 순수 파이썬 패키지 │
-│ automation   │   │  contract.py       이벤트 4종 = 유일한 경계        │
-│ (제어 진실)   │   │  state_engine.py   이벤트 → product_state · 채번   │
-└──────▲───────┘   │  publish.py        논블로킹 발행기                  │
-       │ 소유       │  topology.yaml · topo_sync.py · schema.sql         │
-       │           │  소유 DB: PostgreSQL (LINE_DSN)                      │
-┌──────┴──────────┐└───────────────────────────────────────────────┘
-│ sequence_service/│  제어 층 · 단일 컨트롤러 스레드                 ▲
-│  app/cell/       │  Modbus 마스터(로봇) · PreForm · 시퀀스         │ 발행 (State DONE · Moved)
-│  app/cell/line_events.py ──────────────────────────────────────────┘
-└─────────────────┘
+```mermaid
+flowchart TB
+    FE["🖥️ 브라우저<br/>frontend/ · 9탭"]
+    subgraph API["web-api/ — API 층 (FastAPI)"]
+        V1["v1 — app/api · local · vision · binpick<br/>기존 화면 · 소유 DB: SQLite"]
+        V2["v2 — app/line/<br/>/api/v2 18 라우트 (라인 MES)"]
+    end
+    subgraph DOM["line_mes/ — 관측 도메인 (순수 파이썬 패키지)"]
+        C["contract.py — 이벤트 4종 = 유일한 경계"]
+        SE["state_engine.py — 이벤트 → product_state · 채번"]
+        PUB["publish.py — 논블로킹 발행기"]
+        TOPO["topology.yaml · topo_sync.py · schema.sql"]
+        PG[("PostgreSQL<br/>LINE_DSN")]
+    end
+    subgraph CTL["sequence_service/ — 제어 층 (단일 컨트롤러 스레드)"]
+        SEQ["app/cell/ — Modbus 마스터(로봇) · PreForm · 시퀀스"]
+        LE["app/cell/line_events.py"]
+        MDB[("MariaDB automation<br/>제어 진실")]
+    end
+
+    FE -- "HTTP · JWT" --> API
+    V1 -- "읽기 · CMD 생성" --> MDB
+    V2 -- "StateEngine 호출" --> SE
+    V1 -- "발행 (Spawn · State)" --> PUB
+    SEQ --> MDB
+    LE -- "발행 (State DONE · Moved)" --> PUB
+    SE --> PG
+    PUB --> PG
+    TOPO --> PG
+
+    classDef api fill:#e3f2fd,stroke:#1976d2,color:#000
+    classDef dom fill:#e8f5e9,stroke:#388e3c,color:#000
+    classDef ctl fill:#fff3e0,stroke:#e65100,color:#000
+    class V1,V2 api
+    class C,SE,PUB,TOPO dom
+    class SEQ,LE ctl
 ```
 
 | 서비스 | 역할 | 소유 DB | 프로세스 |
