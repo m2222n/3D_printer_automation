@@ -1,6 +1,6 @@
 # 3D Printer Automation System
 
-> 3D프린터-로봇 연동 자동화 시스템 | Formlabs Form 4 + HCR 협동로봇 + 3D 빈피킹 비전 (YOLO + Basler) + 엣지 AI
+> 3D프린터-로봇 연동 자동화 시스템 | Formlabs Form 4 + HCR 협동로봇 + 3D 빈피킹 비전 (Depth + CAD) + 라인 MES
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -9,6 +9,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-psycopg_3-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![MariaDB](https://img.shields.io/badge/MariaDB-11-003545?logo=mariadb&logoColor=white)](https://mariadb.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.1-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org)
 [![Ultralytics](https://img.shields.io/badge/Ultralytics-YOLOv8%2Fv11-0078D4?logoColor=white)](https://docs.ultralytics.com)
 [![ONNX](https://img.shields.io/badge/ONNX-Runtime-005CED?logo=onnx&logoColor=white)](https://onnx.ai)
@@ -23,24 +25,26 @@
 
 ## 프로젝트 개요
 
-점자프린터 플라스틱 부품(약 29종) 생산 공정을 자동화하는 시스템입니다.
+점자프린터 플라스틱 부품(약 20종) 생산 공정을 자동화하는 시스템입니다.
 
-### 목표
-- **1차 목표**: 웹/앱에서 프린터 실시간 모니터링 + 원격 프린트 전송
-- **궁극적 목표**: 3D프린터 + 로봇 + 3D 비전(빈피킹) + 엣지 AI를 통합한 완전 자동화 생산 라인
+- **셀A (프린팅 라인)**: 프린터 4대 → 세척 → 건조 → 경화를 로봇과 통합 제어 서버가 관리
+- **셀B (후가공 라인)**: 빈피킹 비전으로 부품을 찾아 집고 드릴·트림 스테이션으로 이송
+- **라인 MES**: 배치(빌드플레이트)와 부품이 "지금 어디 있나"를 관측하는 도메인 + 모니터링·제어 대시보드
 
 ### 하드웨어 구성
 
 | 장비 | 모델 | 수량 | 용도 |
 |------|------|------|------|
 | 3D 프린터 | Formlabs Form 4 | 4대 | SLA 레진 프린팅 |
-| 협동로봇 | HCR-12 | 1대 | 빌드플레이트 교체, 세척기 투입 |
-| 협동로봇 | HCR-10L | 1대 | 후가공 탭, 제품 이송 |
+| 협동로봇 | HCR-12A | 1대 | 빌드플레이트 교체, 세척기 투입 (셀A) |
+| 협동로봇 | HCR-10L | 1대 | 빈피킹, 후가공 이송 (셀B) |
 | 세척기 | Form Wash | 2대 | 레진 세척 |
 | 경화기 | Form Cure | 1대 | UV 경화 |
-| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 |
-| 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 |
+| 3D 카메라 | Basler Blaze-112 (ToF) | 1대 | 빈피킹 Depth 취득 (eye-in-hand) |
+| 2D 카메라 | Basler ace2 5MP | 1대 | 빈피킹 RGB 취득 (Blaze와 동시 마운트) |
 | 깊이 카메라 | Intel RealSense D435 | 1대 | 빈피킹 임시 검증 |
+| 산업용 PC | IPC-510 (RTX GPU) | 1대 | 셀B 비전·로봇 통신 허브 |
+| 리모트 I/O | PoE 이더넷 리모트 I/O (DI/DO · RTD) | 3대 | 세척기·경화기·건조기·타워램프 신호 통합 (상태 감시) |
 | 엣지 AI 카메라 | Sipeed MaixCAM | 1+대 | 세척기/경화기 완료 감지 (PoC) |
 
 ---
@@ -51,9 +55,71 @@
 |-------|------|------|
 | **Phase 1** | Web API 모니터링 (Formlabs Cloud) | ✅ 완료 |
 | **Phase 2** | Local API 원격 프린트 제어 + 프론트엔드 UI | ✅ 완료 |
-| **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 | ✅ 통합 |
-| **Phase 4** | 장비 모니터링 (엣지 AI 카메라) | 🔄 리서치 완료, PoC 대기 |
+| **Phase 3** | HCR 로봇 연동 + 시퀀스 서비스 (Modbus 8단계 핸드셰이크) | ✅ 운영 |
+| **Phase 4** | 장비 상태 감시 (리모트 I/O 신호 → 상태 전이 → WebSocket) | 🔄 리모트 I/O 입고, 결선·연동 진행 중 |
 | **Phase 5** | 3D 빈피킹 비전 시스템 | 🔄 트랙 2 (YOLO) v2 5모델 비교 학습 완료, ONNX 변환 + 도메인 갭 검증 단계 |
+| **Phase 6** | 라인 MES v2 (관측 도메인 + `/api/v2` + 라인 모니터링·공정 제어 탭) | 🔄 백엔드 18 라우트 완료, 운영 DB 적용 대기 |
+
+---
+
+## 시스템 아키텍처
+
+세 서비스가 **방향**으로 갈린다 — 쓰는 쪽(제어) · 읽는 쪽(관측) · 보여주는 쪽(API).
+
+```
+                 브라우저 (frontend/ · 9탭)
+                        │ HTTP · JWT
+                        ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ web-api/                  API 층 · FastAPI                        │
+│  app/api, local, vision, binpick   v1 (기존 화면)                │
+│  app/line/                         v2 /api/v2 18 라우트 (라인 MES) │
+│  소유 DB: SQLite                                                  │
+└──────┬──────────────────────┬───────────────────────┬────────────┘
+       │ 읽기·CMD 생성        │ StateEngine 호출       │ 발행 (Spawn · State)
+       ▼                      ▼                       ▼
+┌──────────────┐   ┌───────────────────────────────────────────────┐
+│ MariaDB      │   │ line_mes/          관측 도메인 · 순수 파이썬 패키지 │
+│ automation   │   │  contract.py       이벤트 4종 = 유일한 경계        │
+│ (제어 진실)   │   │  state_engine.py   이벤트 → product_state · 채번   │
+└──────▲───────┘   │  publish.py        논블로킹 발행기                  │
+       │ 소유       │  topology.yaml · topo_sync.py · schema.sql         │
+       │           │  소유 DB: PostgreSQL (LINE_DSN)                      │
+┌──────┴──────────┐└───────────────────────────────────────────────┘
+│ sequence_service/│  제어 층 · 단일 컨트롤러 스레드                 ▲
+│  app/cell/       │  Modbus 마스터(로봇) · PreForm · 시퀀스         │ 발행 (State DONE · Moved)
+│  app/cell/line_events.py ──────────────────────────────────────────┘
+└─────────────────┘
+```
+
+| 서비스 | 역할 | 소유 DB | 프로세스 |
+|---|---|---|---|
+| `web-api/` | 브라우저가 보는 전부 — 인증 · v1 화면 API · v2 라인 MES API · 정적 파일 | SQLite | uvicorn 1개 |
+| `line_mes/` | 관측 도메인 — 제품 위치 규칙·스키마. HTTP 없음, 상주 프로세스 없음 | PostgreSQL (`schema.sql` 18테이블·24뷰) | 없음 (두 서비스가 `import`) |
+| `sequence_service/` | 제어 — 프린터 출력 지시 · 로봇 반송 · 셀 상태. **로봇에 쓰는 유일한 자리** | MariaDB `automation` | 스레드 1개 |
+
+**원칙**
+- 의존은 한 방향: `web-api → line_mes ← sequence_service`. `line_mes/`는 표준 라이브러리 + psycopg + yaml 외 아무것도 import하지 않는다.
+- 발행은 논블로킹이고 실패해도 제어를 막지 않는다. `LINE_DSN`이 비면 v2 전체가 no-op(라우트 503, 발행 skip, 프론트는 목업).
+- 위치를 바꾸는 이벤트는 `Moved` 뿐. 카메라·프린터 API는 `State`만 낸다.
+- 세 DB 병존 · 기존 DDL 0 변경. 다리는 `unit.cmd_id = print_command.cmd_id` 한 컬럼.
+
+**허브 개념**: 로봇·프린터·카메라 같은 실시간 제어는 공장 PC 로컬에서 직접 처리(네트워크 장애 시에도 안전). 원격 모니터링·UI·이력 조회만 Cloudflare Tunnel을 통해 제공.
+
+### 라인 MES 이벤트 발행 지점
+
+| 이벤트 | 발행 지점 | 소스 |
+|---|---|---|
+| `Spawn` 배치 투입 | web-api `/local/print` 전송 성공 직후 | ADAPTER |
+| `State` 프린터 RUN/HOLD | web-api 폴링 서비스 (15초) | ADAPTER |
+| `State` 프린터 DONE | sequence_service 프린터 시퀀스 (`cmd_status=40`) | ADAPTER |
+| `State` 세척기·경화기 | web-api 상태 감시 (리모트 I/O 입력) | DEVICE |
+| `Moved` 로봇 이송 완료 | sequence_service 로봇 시퀀스 (레지스터 206) | ROBOT |
+| `Split` · `Moved` · `State` 작업자 | web-api `/api/v2` 쓰기 W1~W6 | MANUAL |
+
+---
+
+## 빈피킹 (Phase 5)
 
 ### 빈피킹 — 듀얼 트랙 전략
 
@@ -128,40 +194,6 @@ CAD 기반 파이프라인은 인프라가 완성되어 있으며, 환경 제약
 - 데모 시각화: 2×2 그리드 + 3상태 색상 코딩 (ACCEPT/WARN/REJECT) + 실패 케이스 자동 PNG
 - 카메라: Basler Blaze-112 (ToF depth) + Basler ace2 (RGB 5MP) eye-in-hand 동시 마운트
 
----
-
-## 시스템 아키텍처
-
-```mermaid
-flowchart LR
-    Browser["🌐 브라우저"]
-    WebApp["🖥️ Web App<br/>(web-api + frontend)"]
-    Tunnel["☁️ Cloudflare Tunnel<br/>(외부 접속 허브)"]
-    FactoryPC["🏭 공장 PC<br/>(Ajin IO + 로봇 제어)"]
-    Hardware["⚙️ 현장 하드웨어<br/>Form 4 ×4<br/>HCR-12 / HCR-10L<br/>Wash / Cure<br/>Basler / MaixCAM"]
-
-    Browser --> Tunnel --> FactoryPC
-    Browser --> WebApp
-    WebApp -.Formlabs Cloud API.-> Cloud["Formlabs Cloud"]
-    FactoryPC --> Hardware
-
-    classDef browser fill:#e3f2fd,stroke:#1976d2,color:#000
-    classDef cf fill:#fff8e1,stroke:#f57c00,color:#000
-    classDef srv fill:#f3e5f5,stroke:#7b1fa2,color:#000
-    classDef factory fill:#fff3e0,stroke:#e65100,color:#000
-    classDef hw fill:#e8f5e9,stroke:#388e3c,color:#000
-    classDef cloud fill:#eceff1,stroke:#546e7a,color:#000
-
-    class Browser browser
-    class Tunnel cf
-    class WebApp srv
-    class FactoryPC factory
-    class Hardware hw
-    class Cloud cloud
-```
-
-**허브 개념**: 로봇·프린터·카메라 같은 실시간 제어는 공장 PC 로컬에서 직접 처리(네트워크 장애 시에도 안전). 원격 모니터링·UI·이력 조회만 Cloudflare Tunnel을 통해 제공.
-
 ### 빈피킹 트랙 1 — 6DoF Pose 파이프라인
 
 ```mermaid
@@ -185,21 +217,23 @@ flowchart LR
 
 ### Phase 1: 실시간 모니터링
 - Formlabs Cloud API 폴링 → WebSocket 실시간 push
-- 프린터 4대 그리드 대시보드 + 상태 필터
-- 타임라인 간트 차트 + 프린터 상세 모달 (Details/Settings/Services 3탭)
-- 프린트 이력 + 통계 (재료 도넛, 일별 바차트, 프린터별 가동률)
+- 프린터 4대 그리드 대시보드 + 타임라인 간트 차트 + 상세 모달
+- 프린트 이력 + 통계
 
 ### Phase 2: 원격 프린트 제어
-- 파일 업로드 → 프리셋 저장 → 프린터로 전송
-- 프리셋 CRUD (프린터별 독립 관리)
-- 프린트 readiness 체크 + 유효성/간섭 검사
-- 대기 큐 + 드래그앤드롭 순서 변경
-- 알림벨 (폴링, 드롭다운)
+- 파일 업로드 → 프리셋 저장 → 프린터로 전송 (PreFormServer)
+- 프리셋 CRUD · readiness 체크 · 유효성/간섭 검사 · 대기 큐 · 알림벨
+- 프린터 벤더 어댑터(`PRINTER_VENDOR`, 현재 formlabs)
 
-### Phase 3: HCR 로봇 연동
-- Modbus TCP (pymodbus 3.x) INT16 매핑
-- 자동화 시퀀스 + 수동 제어 UI
-- Ajin IO + Windows WinDLL (공장 PC 전용 실행)
+### Phase 3: 자동화 셀 제어
+- sequence_service: 단일 컨트롤러 스레드, 설비별 시퀀스(프린터·세척·경화·로봇), MariaDB 상태 전이
+- Modbus TCP 8단계 핸드셰이크 (레지스터 130 명령 · 131~135 파라미터 · 150/151 · 200/206) — 명령표는 `sequence_service/README.md`
+- 자동화 탭(CMD 생성·셀 START/STOP) + 수동제어 탭(DIO·Modbus·TCP 송신, 조작 기록 남김)
+
+### Phase 4: 장비 상태 감시
+- 세척기·경화기·건조기 신호를 **리모트 I/O**(PoE 이더넷 DI/DO, Modbus TCP)로 통합 수집 → 상태 전이 저장 → WebSocket 푸시
+- Form Wash/Cure 는 제어 API 가 없으므로 장비 신호선·버튼을 리모트 I/O 에 결선해 완료/대기를 읽는다
+- 엣지 AI 카메라(MaixCAM)는 보조 PoC — 화면 숫자 판독(OCR)·플레이트 유무 확인용
 
 ### Phase 5: 3D 빈피킹 비전 시스템
 
@@ -218,14 +252,21 @@ flowchart LR
 - 핸드-아이 캘리브레이션 (eye-to-hand + eye-in-hand 2세트)
 - E2E 실패 케이스 자동 시각화
 
+### Phase 6: 라인 MES v2
+- 관측 도메인 패키지 `line_mes/` (이벤트 4종 contract · state_engine · 토폴로지 적재 · 시뮬레이터)
+- `/api/v2` 18 라우트: 읽기 R1~R12(노드 현황·반송자원·재공·투입 대기·랙 칸·FIFO 대기열·묶음·판정·명령 카탈로그·부품 마스터) + 쓰기 W1~W6(배치 분리·이동·상태·판정·조작 기록·로봇 명령). 읽기는 ETag/304.
+- 프론트 전환 스위치는 서버 한 값: `/system/config.line_mes` (= `LINE_DSN` 유무). 꺼져 있으면 목업으로 동작.
+- 기존 자동화 CMD 목록에 `line_tracked` 대조 — Spawn 누락 CMD를 바로 드러낸다.
+
 ### 웹앱 인프라
-- systemd user service로 자동 시작 + 크래시 재시작
-- JWT 토큰 기반 인증 + React 로그인 페이지 + sliding refresh (HTTP + WebSocket 모두 보호)
+- systemd user service로 자동 시작 + 크래시 재시작 (공장 PC 는 NSSM 서비스 + `deploy.bat`)
+- JWT 토큰 기반 인증 + React 로그인 페이지 + sliding refresh (HTTP + WebSocket + OpenAPI 문서 모두 보호)
 - Cloudflare Tunnel을 통한 외부 접속 (내부 네트워크 비노출)
+- 프린터 시리얼 단일 출처 `PRINTER_SERIAL_MAP` — web-api · sequence_service · topo_sync가 전부 여기서 읽는다
 
 ---
 
-## 프론트엔드 UI
+## 프론트엔드 UI (9탭)
 
 | 탭 | 기능 |
 |----|------|
@@ -234,43 +275,61 @@ flowchart LR
 | 대기 중인 작업 | 드래그앤드롭 순서 변경, 예약 시간 |
 | 이전 작업 내용 | 로컬+클라우드 이력, 필터, CSV, 메모 |
 | 통계 | 재료 도넛, 일별 바, 프린터별 가동률 |
-| Automation | 자동화 CMD 생성·프린터 할당·진행 상황 |
-| Automation_Manual | 수동 제어 |
-| 🔔 알림벨 | 미읽음 뱃지, 드롭다운, 폴링 |
+| 자동화 | CMD 생성·프린터 할당·셀 제어·진행 상황 |
+| 자동화 수동제어 | DIO·Modbus·TCP 수동 송신 (관리자용) |
+| 라인 모니터링 | 노드 점유·반송자원 큐·재공 파이프라인 (v2 폴링) |
+| 공정 제어 | 설비별 투입 대기·랙 칸·배치 분리·부품 판정·로봇 명령 (v2) |
 
-> Automation / Automation_Manual 탭은 공장 PC에서 시퀀스 서비스가 실행 중일 때만 실제 동작합니다.
+> 자동화 두 탭은 공장 PC에서 시퀀스 서비스가 실행 중일 때, 라인 두 탭은 `LINE_DSN`이 설정됐을 때 실제 데이터로 동작한다. 그 외엔 각각 비활성/목업.
 
 ---
 
-## 16단계 공정 흐름
+## 공정 흐름
 
 | # | 공정 | 담당 |
 |---|------|------|
 | ① | STL 파일 업로드 | 사용자 (웹/앱) |
-| ② | 프린터로 작업 전송 | 백엔드 (Local API) |
-| ③ | 3D 프린팅 | Form 4 |
-| ④ | 프린팅 완료 감지 | 백엔드 (Web API 폴링) |
-| ⑤~⑥ | 빌드플레이트 픽업 → 세척기 투입 | HCR-12 |
-| ⑦ | 세척 완료 감지 | 엣지 AI 카메라 |
-| ⑧ | 경화기 투입 | HCR-12 |
-| ⑨ | 경화 완료 감지 | 엣지 AI 카메라 |
-| ⑩~⑫ | 픽업 → 서포트 제거 → 후가공 | HCR-10L |
-| ⑬ | 3D 빈피킹 + 비전 검사 (eye-in-hand 동시 마운트) | Basler Blaze-112 + ace2 |
-| ⑭~⑮ | 양품/불량 분류 → 적재 | HCR-10L |
-| ⑯ | 완료 보고 | 백엔드 (알림) |
+| ② | 프린터로 작업 전송 (+ 라인 MES `Spawn`) | 백엔드 (Local API) |
+| ③ | 빌드플레이트 랙 → 프린터 투입 | HCR-12A |
+| ④ | 3D 프린팅 | Form 4 |
+| ⑤ | 프린팅 완료 감지 | 백엔드 (Web API 폴링 + 시퀀스 `cmd_status`) |
+| ⑥~⑦ | 빌드플레이트 픽업 → 세척기 투입 (`Moved`) | HCR-12A |
+| ⑧ | 세척 완료 감지 (`State`) | 리모트 I/O |
+| ⑨ | 빌드플레이트 세척기 → 랙 투입 (`Moved`) | HCR-12A |
+| ⑩ | 부품 분리 (`Split`) | 작업자 (공정 제어 탭) |
+| ⑪ | 서포트 제거 | 작업자 |
+| ⑫ | 경화기 투입 | 작업자 |
+| ⑬ | 경화 완료 감지 (`State`) | 리모트 I/O |
+| ⑭ | 치수 검사 | 광학계 (구축 중) |
+| ⑮ | 빈피킹 → 드릴·트림 스테이션 이송 | HCR-10L + Blaze/ace2 |
+| ⑯ | 양품/불량 판정 → 적재 | 작업자 / HCR-10L |
+| ⑰ | 완료 보고 | 백엔드 (알림) |
 
 ---
 
 ## API 엔드포인트
 
+전체 표는 `web-api/README.md`. `GET /api/v1/system/config` 가 프론트 설정의 단일 출처다 (`printer_serial_map` · `line_id` · `line_mes`).
+
+### 인증
+```
+POST /api/v1/auth/login           # 로그인 → JWT (7일 sliding, 30일 절대 최대)
+GET  /api/v1/auth/me              # 현재 세션
+POST /api/v1/auth/logout
+```
+
 ### Phase 1: Web API 모니터링
 ```
-GET  /api/v1/dashboard            # 4대 프린터 상태 요약
-GET  /api/v1/printers             # 프린터 목록
-GET  /api/v1/printers/{serial}    # 특정 프린터 상태
-GET  /api/v1/prints               # 프린트 이력 (필터)
-GET  /api/v1/statistics           # 통계
-WS   /api/v1/ws                   # 실시간 업데이트
+GET  /api/v1/dashboard                    # 4대 프린터 상태 요약
+GET  /api/v1/printers                     # 프린터 목록
+GET  /api/v1/printers/{serial}            # 특정 프린터 상태
+GET  /api/v1/printers/{serial}/refresh    # 상태 즉시 새로고침
+GET  /api/v1/printers/{serial}/prints     # 프린터별 이력
+GET  /api/v1/prints                       # 프린트 이력 (필터)
+GET  /api/v1/statistics                   # 통계
+GET  /api/v1/system/token-status          # Formlabs 토큰 상태
+GET  /api/v1/system/config                # 시스템 설정 (프린터 맵 · 라인 ID · 라인 MES on/off)
+WS   /api/v1/ws                           # 실시간 업데이트
 ```
 
 ### Phase 2: Local API 원격 제어
@@ -281,20 +340,71 @@ CRUD   /api/v1/local/presets
 POST   /api/v1/local/presets/{id}/print
 POST   /api/v1/local/upload
 GET    /api/v1/local/files
-CRUD   /api/v1/local/print
-CRUD   /api/v1/local/scene/*      # Scene + 모델 복제 + 유효성 + 간섭
+DELETE /api/v1/local/files/{filename}
+CRUD   /api/v1/local/print                # 전송 성공 시 라인 MES Spawn 1건
+CRUD   /api/v1/local/scene/*              # Scene + 모델 복제 + 유효성 + 간섭
 GET    /api/v1/local/materials
 POST   /api/v1/local/scene/{id}/screenshot
 POST   /api/v1/local/scene/{id}/estimate-time
 CRUD   /api/v1/local/notes
 GET    /api/v1/local/notifications
+POST   /api/v1/local/notifications/mark-read
+```
+
+### Phase 3: 자동화 셀 제어 (sequence_service 연동)
+```
+POST /api/v1/local/automation/commands            # Sequence CMD 생성
+GET  /api/v1/local/automation/commands            # CMD 목록 (+ line_tracked 라인 MES 대조)
+POST /api/v1/local/automation/commands/use
+POST /api/v1/local/automation/control/{action}    # START / STOP / PAUSE / RESUME
+POST /api/v1/local/automation/simul               # 시뮬 모드 토글
+GET  /api/v1/local/automation/state | queues | logs
+GET  /api/v1/local/automation/manual/io/state     # DIO 읽기
+POST /api/v1/local/automation/manual/io/output    # DIO 쓰기 (관리자용 · 기록)
+POST /api/v1/local/automation/manual/robot-send | vision-send
+GET  /api/v1/local/automation/manual/robot-status | vision-status
+GET/POST /api/v1/local/automation/manual/comm-config
+GET  /api/v1/local/automation/manual/modbus/registers | write
+```
+
+### Phase 4: 장비 상태 감시
+```
+GET  /api/v1/vision/health
+GET  /api/v1/vision/cameras[/{camera_id}]
+GET  /api/v1/vision/devices[/{device_type}/{device_id}]   # 세척기/경화기 상태
+GET  /api/v1/vision/events[/latest]                       # 상태 전이 이력
+POST /api/v1/vision/simulate[/scenario]                   # 개발용
+WS   /api/v1/vision/ws
+```
+
+### Phase 5: 빈피킹 결과 수신
+```
+POST /api/v1/binpick/reports                  # 인식 모듈 → 서버
+GET  /api/v1/binpick/health
+GET  /api/v1/binpick/scenes[/latest|/{pk}]    # 장면 목록·상세 (게이트 판정 필터)
+WS   /api/v1/binpick/ws
+```
+
+### 라인 MES v2 (전부 JWT · 폴링 · 읽기는 ETag/304)
+```
+GET  /api/v2/lines/{line_id}/nodes | transporters | wip | control-menu   # R1~R4
+GET  /api/v2/nodes/{node_id}/inbound | source-racks | groups | parts     # R5 R6 R9 R10
+GET  /api/v2/racks/{node_id}/slots[/{slot_no}/queue]                     # R7 R8
+GET  /api/v2/transporters/{id}/commands                                  # R11 명령 카탈로그
+GET  /api/v2/parts                                                       # R12 부품 마스터
+POST /api/v2/units/{unit_id}/split                                       # W1 배치 완료 → 부품 분리
+POST /api/v2/moves                                                       # W2 이동
+POST /api/v2/nodes/{node_id}/state                                       # W3 설비 상태
+POST /api/v2/judgements                                                  # W4 부품 판정
+POST /api/v2/commands                                                    # W5 조작 기록
+POST /api/v2/transporters/{id}/commands/{command_id}                     # W6 로봇 명령 실행
 ```
 
 ### Formlabs API 사용 현황
 - Web API: 6개 사용 (전체 19개) — 읽기 전용 모니터링
 - Local API: 17개 사용 (전체 35개) — 프린트 전송·Scene 관리
 - Webhook 미지원 → 폴링 방식
-- Form Wash/Cure 제어 API 없음 → 엣지 AI 카메라로 완료 감지
+- Form Wash/Cure 제어 API 없음 → 리모트 I/O 신호로 완료 감지
 
 ---
 
@@ -302,29 +412,40 @@ GET    /api/v1/local/notifications
 
 ```
 3D_printer_automation/
-├── web-api/                       # 백엔드 (FastAPI, Phase 1+2)
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── core/                  # 설정, Formlabs OAuth2, JWT 미들웨어
-│   │   ├── services/              # Formlabs 클라이언트, 폴링, 알림
-│   │   ├── api/                   # Phase 1 REST + WebSocket + auth_routes (로그인)
-│   │   ├── local/                 # Phase 2 로컬 API
-│   │   └── schemas/
-│   ├── data/                      # SQLite
-│   └── Dockerfile / docker-compose.yml
-│
-├── frontend/                      # React + Vite + TS + Tailwind CSS 4
-│   └── src/{components, services, types}
-│
-├── sequence_service/              # Phase 3 시퀀스 런타임 (Windows 전용)
-│   ├── app/cell/                  # 시퀀스, Modbus, 로봇/프린터 제어
-│   ├── app/io/                    # Ajin IO (WinDLL)
-│   └── app/main.py
-│
 ├── main.py                        # 통합 런처 (web-api + sequence_service)
+├── requirements.txt               # 루트 의존성 (-e . 로 line_mes 포함) — deploy.bat 는 이것만 설치
+├── pyproject.toml                 # line_mes 패키지 정의
+├── deploy.bat                     # 공장 PC 1줄 배포
 │
-├── factory-pc/
-│   └── file_receiver.py           # STL 파일 수신
+├── web-api/                       # API 층 (FastAPI)
+│   ├── app/
+│   │   ├── core/                  # 설정, Formlabs OAuth2, JWT 미들웨어
+│   │   ├── api/                   # Phase 1 REST + WebSocket + 로그인
+│   │   ├── local/                 # Phase 2 로컬 API + Phase 3 자동화 DB·DIO + 라인 발행
+│   │   ├── adapters/              # 프린터 벤더 어댑터 (formlabs | demo)
+│   │   ├── vision/                # Phase 4 상태 감시 (리모트 I/O · 카메라 PoC)
+│   │   ├── binpick/               # Phase 5 인식 결과 수신
+│   │   └── line/                  # 라인 MES v2 /api/v2 (routes_read · routes_write · publisher)
+│   ├── .env.example
+│   ├── Dockerfile / docker-compose.yml
+│   └── README.md                  # 전체 라우트 표
+│
+├── line_mes/                      # 라인 MES 관측 도메인 (순수 파이썬 패키지)
+│   ├── contract.py                # 이벤트 4종 (Spawn · State · Moved · Split)
+│   ├── state_engine.py            # 이벤트 → product_state · 채번
+│   ├── publish.py                 # 논블로킹 발행기
+│   ├── schema.sql / schema.md     # PostgreSQL 테이블·뷰·트리거
+│   ├── topology.yaml / topo_sync.py   # 라인·노드·경로 정의 → DB 적재
+│   ├── simulator.py               # 이벤트 흘려 뷰 검증
+│   └── tools/                     # dev_up.sh · dev_reset.sh
+│
+├── sequence_service/              # 제어 층 (공장 PC)
+│   ├── app/cell/                  # runtime · sequences/ · modbus_protocol · line_events
+│   ├── app/io/                    # Ajin IO (WinDLL)
+│   └── README.md                  # 로봇암 이송 명령표
+│
+├── frontend/                      # React + Vite + TS + Tailwind CSS 4 (9탭)
+│   └── src/{components, services/{api,localApi,lineApi,auth}.ts, mocks, types}
 │
 ├── bin_picking/                   # Phase 5 3D 빈피킹
 │   ├── src/                       # 트랙 1: 6DoF Pose Estimation
@@ -347,7 +468,11 @@ GET    /api/v1/local/notifications
 │   ├── tests/
 │   └── tutorials/                 # Open3D 학습
 │
-└── OpenMV/                        # 참고자료 (Phase 4 = MaixCAM 온디바이스 AI로 전환)
+├── factory-pc/file_receiver.py    # STL 파일 수신
+├── scripts/                       # deploy_servers.sh · dev_develop.sh · smoke test
+├── wireframe/                     # 라인 화면 와이어프레임 (Vite)
+├── docs/                          # 설계·레퍼런스 (docs/juhee/ = 라인 MES v2 계획·설계·API 명세)
+└── kaist_backup/                  # 동결 백업 (수정 금지)
 ```
 
 ---
@@ -357,19 +482,17 @@ GET    /api/v1/local/notifications
 ### Backend
 | 기술 | 용도 |
 |------|------|
-| Python 3.11+ | 런타임 |
-| FastAPI | REST + WebSocket |
-| uvicorn | ASGI 서버 |
-| httpx | Formlabs API 호출 |
-| pydantic-settings | 환경변수 로드 |
-| SQLAlchemy + SQLite | 로컬 DB (web-api) |
-| PyMySQL + MariaDB 11.3 | 자동화 시퀀스 로그 (sequence_service, 공장 PC) |
-| pymodbus 3.x | Modbus TCP (HCR 로봇 INT16 매핑) |
-| aiomqtt | MQTT 비동기 클라이언트 |
-| bcrypt + python-jose | JWT 로그인 + 비밀번호 해시 |
+| Python 3.11+ · FastAPI · uvicorn | REST + WebSocket |
+| httpx · pydantic-settings | Formlabs API 호출 · 환경변수 |
+| SQLAlchemy + SQLite | web-api 로컬 DB |
+| PyMySQL + MariaDB 11 | 자동화 제어 DB (sequence_service, 공장 PC) |
+| psycopg 3 + PostgreSQL | 라인 MES 관측 DB (`line_mes/`) |
+| pymodbus 3.x | 로봇 Modbus TCP 핸드셰이크 · 리모트 I/O 상태 감시 |
+| aiomqtt | 엣지 AI 카메라 PoC (MQTT) |
+| bcrypt + python-jose | JWT 로그인 |
 
 ### Frontend
-React 18 · TypeScript 5 · Vite 5 · Tailwind CSS 4 · WebSocket
+React 18 · TypeScript 5 · Vite 5 · Tailwind CSS 4 · WebSocket (v1) / 폴링 + ETag (v2)
 
 ### 빈피킹 비전 (Phase 5)
 
@@ -380,95 +503,104 @@ React 18 · TypeScript 5 · Vite 5 · Tailwind CSS 4 · WebSocket
 **학습 인프라**: NVIDIA A100 80GB GPU · 컨테이너 환경
 
 ### Infrastructure
-Docker · systemd --user · Cloudflare Tunnel · MQTT (Mosquitto)
+Docker · systemd --user · NSSM (Windows 서비스) · Cloudflare Tunnel · MQTT (Mosquitto, 카메라 PoC)
 
 ---
 
 ## 설치 및 실행
 
 ### 사전 요구사항
-- Python 3.11+
-- Node.js 18+
+- Python 3.11+ · Node.js 18+
 - (선택) Docker + docker-compose
-- 빈피킹 개발은 Open3D 호환 CPU (AVX2) 필요
+- (라인 MES) PostgreSQL 14+
+- (공장 PC) MariaDB 11 · PreFormServer · Windows
 
-### 환경 변수
+### 1. 환경 변수
 
-`web-api/.env.example`을 복사해 `.env`를 만드세요:
+`web-api/.env.example`을 복사해 `web-api/.env`를 만든다. **sequence_service도 같은 파일을 읽는다.**
+
 ```bash
-# Formlabs Web API (Developer Portal에서 발급)
+# Formlabs Web API
 FORMLABS_CLIENT_ID=your_client_id
 FORMLABS_CLIENT_SECRET=your_client_secret
 
-# PreFormServer (Formlabs Local API)
+# 프린터 번호(1~4) ↔ 시리얼. 시리얼의 유일한 손 편집 지점
+PRINTER_SERIAL_MAP={"1":"SERIAL1","2":"SERIAL2","3":"SERIAL3","4":"SERIAL4"}
+
+# PreFormServer / 파일 수신
 PREFORM_SERVER_HOST=127.0.0.1
 PREFORM_SERVER_PORT=44388
-
-# 공장 PC 파일 수신 (STL 업로드)
 FILE_RECEIVER_HOST=127.0.0.1
 FILE_RECEIVER_PORT=8089
 
-# Formlabs Cloud API 폴링 주기 (초)
-POLLING_INTERVAL_SECONDS=15
+# 라인 MES v2 — 비우면 v2 전체 no-op. 비번은 DSN 에 넣지 말고 PGPASSWORD/.pgpass 로
+LINE_DSN=
+LINE_ID=RESIN-1-ASIS     # topology.yaml 의 active 라인과 같아야 한다
 
-# 사용자 로그인 (JWT) — 공개 배포 시 필수, 셋 다 비면 인증 OFF (로컬 개발용)
+# 사용자 로그인 (JWT) — 셋 다 비면 인증 OFF (로컬 개발용)
 AUTH_USERNAME=your_username
-AUTH_PASSWORD_HASH=  # bcrypt 해시 (평문 X). python -c "import bcrypt; print(bcrypt.hashpw(b'pw', bcrypt.gensalt(rounds=12)).decode())"
-JWT_SECRET=          # 서버별 랜덤 32바이트. python -c "import secrets; print(secrets.token_urlsafe(32))"
-JWT_EXPIRE_DAYS=7
-JWT_ABSOLUTE_MAX_DAYS=30
+AUTH_PASSWORD_HASH=      # python -c "import bcrypt; print(bcrypt.hashpw(b'pw', bcrypt.gensalt(rounds=12)).decode())"
+JWT_SECRET=              # python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-`sequence_service/.env` (공장 PC 전용):
+> **⚠️ `.env`는 절대 커밋하지 마세요.** credentials·IP·시리얼·경로는 로컬 설정 파일에서만 관리합니다.
+
+### 2. 라인 MES DB (선택)
+
 ```bash
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_NAME=your_db_name
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-
-SIMUL_MODE=false
-AJIN_SIMULATION=false
-
-# Modbus 레지스터 매핑 (.env.copy 템플릿 참조)
-ENABLE_TCP_IO=true
-ROBOT_TCP_HOST=your_robot_ip
+psql -f line_mes/schema.sql
+python -m line_mes.topo_sync --check     # --plan → --apply
+python -m line_mes.simulator             # 이벤트를 흘려 뷰 검증 (개발용)
+# 이후 .env 의 LINE_DSN 을 채우면 v2 라우트·발행·프론트 라인 탭이 함께 켜진다
 ```
 
-> **⚠️ `.env`는 절대 커밋하지 마세요.** credentials·IP·경로는 로컬 설정 파일에서만 관리합니다.
+### 3. 실행
 
-### 방법 1: Docker
+**방법 1: Docker** (web-api 만)
 ```bash
 cd web-api
 docker-compose up -d
 ```
 
-### 방법 2: 직접 실행
+**방법 2: 직접 실행**
 
-**백엔드**:
+백엔드 (web-api + sequence_service — 리포 루트에서):
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt  # line_mes 가 -e . 로 함께 설치된다
+python main.py                   # web-api :8085 + sequence_service
+```
+
+web-api 만:
 ```bash
 cd web-api
 python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+source venv/bin/activate         # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8085
 ```
 
-**프론트엔드 (개발)**:
+프론트엔드 (개발):
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                      # :5180 → API 프록시 :8085
 ```
 
-**프론트엔드 (프로덕션 빌드)**:
+프론트엔드 (프로덕션 빌드):
 ```bash
 cd frontend
 npm run build
 # dist/ 가 web-api에서 정적 서빙됨
 ```
 
-### 빈피킹 데모
+개발용 포트 분리 (vite 5181 → web-api 8086, main 5180/8085 와 병행):
+```bash
+./scripts/dev_develop.sh
+```
+
+### 4. 빈피킹 데모
 
 ```bash
 # 트랙 1 (6DoF Pose) — synthetic 씬 렌더 검증
@@ -491,10 +623,23 @@ yolo export model=path/to/best.pt format=onnx imgsz=640
 
 ---
 
+## 문서
+
+| 위치 | 내용 |
+|---|---|
+| `web-api/README.md` | 전체 라우트 표 (v1 61 + v2 18) |
+| `sequence_service/README.md` | 로봇암 이송 명령표 · 레지스터 |
+| `line_mes/README.md` · `schema.md` | 관측 도메인 파일 역할 · DB 스키마 |
+| `docs/juhee/` | 라인 MES v2 조사 → 계획 → 설계 정본 → API 명세 → 와이어프레임 → FE 병합 |
+| `docs/juhee/03_MES_v2_설계/서비스_역할_구조.md` | 세 서비스 역할·DB 소유·의존 방향 한 장 |
+| `bin_picking/docs/README.md` | 빈피킹 절차서 색인 (현행 / 완료 기록 / 종료) |
+
+---
+
 ## 라이선스
 
 내부 프로젝트 (Private)
 
 ---
 
-_Last updated: 2026-06-04_
+_Last updated: 2026-10-02_
