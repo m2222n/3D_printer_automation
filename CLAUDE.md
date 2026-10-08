@@ -232,7 +232,7 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 세 축으로 확장:
 1. **① 앞단 — 고객 셀프 주문 홈페이지**: 고객이 모델 파일 업로드 → **자동 견적** → **PG 결제** → 결제 시 **자동으로 작업 큐 투입**(우리가 출력 시작 누르는 것까지 자동) → 완료 시 **담당자 알림**(카카오톡/SMS/우리 앱 푸시) → 픽업. ⭐ **이 시스템 자체를 타 기업에 판매**(멀티테넌트 제품화).
 2. **② 뒷단 — 후공정 작업 카운팅 모니터링**(현재 전무): 공장 모니터에 "어떤 파츠 / 어떤 가공 / 총 몇 개 중 몇 개째" 실시간 표시. ⭐ **로봇과 통신**(동일 작업 몇 번째인지) — 기존 HCR Modbus 자산 연계.
-3. **③ ERP**: 원재료(SLA 레진 / FDM 필라멘트) **입고·사용량·잔여·발주 알림** 관리. 6/1 ERP 참고영상 2개(`memory/project_ceo_terminology_study_0601.md`) 기반 학습.
+3. **③ ERP**: 원재료(SLA 레진 / FDM 필라멘트) **입고·사용량·잔여·발주 알림** 관리. 6/1 ERP 참고영상 2개(`memory/archive/project_ceo_terminology_study_0601.md`) 기반 학습.
 
 **진행 방식 (대표님 명시)**: **개발 기획을 Claude와 정리 → 대표님께 먼저 보여드리고 검토** → 실개발은 그 후 별도 결정. **바이브 코딩**으로 개발. (코드 짜기 전 명세 → 대표님 align = 5/6 방식과 동일)
 
@@ -244,7 +244,7 @@ README 전면 개편(`51fce05`) 시 위 7 카테고리 전부 박아서 origin +
 
 ⭐⭐ **7/7 대표님 회의 = 기획 고도화 지시 (본업 P0, 9월말 지원사업 마감)**: 6/29 초안이 "너무 포괄적"→**정식 기획서**로. ①현 개발현황 정리 ②**타사/FDM 프린터 범용화**(API 있으면 API·없으면 오픈소스 슬라이서, FDM은 오픈소스 잘 나와 난이도 낮음) ③주문·관리 시스템 ④⭐**ERP/MES/ATS로 발전하려면 어떤 기능 필요한지="이거부터"**(1순위). +한솔 로봇교육 재요청. → ✅ **기능정의 문서** `docs/MES_ERP_ATS_기능정의_0710.md`(현황§1·3계층 필요기능§2·프린터 범용화 어댑터§3·주문관리§4·대표님 결정 7가지§5). ✅ **현 앱 정직 현황**(코드 전수조사)=SLA 전용 소형 MES+로봇 ATS(7탭), 3축(주문·ERP·카운팅)은 코드 0건. ✅ 앱 상태점검=3서버 200·PreFormServer connected·프린터 NOT READY(실물출력 시연은 탱크 필요). ✅ **대표님 보고용 HTML 문서**=`/data/jtm/synth_out/factory_system_report.html`(현 앱 설명+앞으로 방향 4파트, sim2real 스타일·PDF버튼, 내부용). 보고용 문서 표준형식→`memory/feedback_report_doc_format.md`. ✅ **코드 리팩터링 완료 = 프린터 어댑터 토대**(`memory/project_printer_adapter_refactor_0710.md`): Formlabs 전용→`PrinterAdapter` Protocol 격리(`web-api/app/adapters/`), 테스트 0→27개 신설(⚠️PrinterSummary 5필드=로봇 계약 동결), 죽은코드(local-api·basic_auth) 정리, `PRINTER_VENDOR` config 스위치. FDM 추가 시 어댑터+factory elif만. 런타임 0 변경(실구동 검증). main 머지(`2a6d69a`)·dual push 완료. **✅ 3개 서버 전부 배포·검증 완료**(6000·카카오VM·공장PC, web-api·JWT·CMD DB등록 정상). ⚠️공장PC 시뮬 CMD는 프린터 4대 OFFLINE(전원·탱크 없음)으로 미진행=리팩터링 무관 물리이슈. ✅ **7/10 대표님 보고 3개 문서(PDF) 제출**(내부용, 대표님만)=①빈피킹 비전 AI 성과 보고(KAIST 우수상 검증·위치0.91/종류0.85/종합0.684) ②sim2real 학습 리포트(11섹션 상세) ③3D 프린터 자동화 현황&확장 방향(SaaS 7/7 지시 답). 배경=대표님 "그동안 공장개발 못 하고 KAIST 교육 들었으니 성과 달라". ⏭️ **월요일(7/13) 대표님 회의에서 SaaS 방향 확정**(3축 우선순위·9월범위·1순위·판매모델·견적단가)→착수. 회의 전=회신 미정.
 
-상세: `memory/project_saas_platform_directive_0618.md` + `memory/project_ceo_saas_directive_0707.md` + `memory/project_current_app_status_0710.md` + `memory/project_printer_adapter_refactor_0710.md`
+상세: `memory/project_saas_track_0618_0710.md` + `memory/project_printer_adapter_refactor_0710.md`
 
 ---
 
@@ -381,7 +381,7 @@ numpy 1.26.4 · pillow · scipy)을 Thor에서 한 번 더 하는 일이고 **im
   🎉 **[8/28 닫힘] IPC-510 실측 = 장당 1.32~1.40초** ⇒ **목표 통과**
   (A100 6.7~7.5초 · 6000 CPU 4.27~4.57초 · **IPC 1.33초** — torch `+cpu` 빌드인데도 가장 빠르다)
   ⚠️ **npy 입력 기준**이라 실촬영 시간은 별도 · ⚠️**대상이 다를 수 있다**(우리 측정은 빈피킹 추론)
-  → `memory/project_ipc_e2e_verified_0828.md`
+  → `memory/project_ipc510_bringup_0811_0828.md`
 - 비전AI 상태감시 = **3조합 모두 구현·검증**(NPU 온디바이스 / 웹캠+로컬 엣지 / 웹캠+클라우드)
 
 **사업비** = 장비 2,400→**2,950만(+550)** · 위탁 2,400만(내부 재조정) · **지식재산 850→300만(PCT 550만 제외)**
@@ -497,7 +497,7 @@ A100 평가기가 **7/6자**로 **8/19 동치 처리(`14_13`→`13_variant`)가 
 (C의 c2 0.1170 < 기준선 0.1281). 📌 **보류 결론은 유지되나 근거가 교체된다**
 = *"표본이 부족해서"*가 아니라 **"c2가 기준선에 못 미쳐서"**(더 단단한 사유).
 ⭐⭐ **8/14 교훈 재적용** = *"결론이 같다"와 "근거가 유효하다"는 다른 문제다.*
-상세 = `memory/project_evaluator_version_drift_0821.md`
+상세 = `memory/project_recognition_judgement_0819_0821.md`
 
 ⭐ **판정 기준 확립 = c1 하나로 판단하지 않는다.** 조건 3개를 **합치지 말고 따로**
 (성격이 다르다). c3는 기준선이 0이라 F1 대신 **FP 감소**로 본다.
@@ -512,7 +512,7 @@ A100 평가기가 **7/6자**로 **8/19 동치 처리(`14_13`→`13_variant`)가 
 > ⭐⭐⭐ **상위 10판이 전부 "병합 138장"**(세션A 48 + 8/18 90 = 두 촬영조건을 다 학습)
 > ⇒ 🥇 ***"조건의 폭이 듣는다"* 가설이 40판 전수로 입증됐다.**
 > 🚨🚨 **단 seed 노이즈가 0.0756**(데이터를 138장으로 늘려도 안 줄었다)이라
-> **병합 판들 사이의 순위는 전부 구분 불가** → `memory/project_seed_noise_0825.md`
+> **병합 판들 사이의 순위는 전부 구분 불가** → `memory/project_model_selection_0824_0827.md`
 > 📊 선택표 = `bin_picking/docs/MODEL_SELECTION_TABLE.md`
 >
 > 🚨🚨🚨 **[같은 날 오후 c1/c2/c3 측정으로 순위가 뒤집혔다]** — **세션B 한 조건만으로 순위를
@@ -530,7 +530,7 @@ A100 평가기가 **7/6자**로 **8/19 동치 처리(`14_13`→`13_variant`)가 
 > **"나쁜 모델"인지 "낡은 시험지"인지는 판단 필요.**
 > 📌 **한 줄 요약 = "학습이 본 촬영조건에서는 크게 좋아졌고, 7주 전 다른 조건에서는 T100과 비슷하거나 못하다."**
 >
-> ✅✅✅ **[2026-08-27 확정 · 🔒닫음] 최종 모델 = `OVN2_mg138_ep80/best.pt`** → `memory/project_model_fixed_0827.md`
+> ✅✅✅ **[2026-08-27 확정 · 🔒닫음] 최종 모델 = `OVN2_mg138_ep80/best.pt`** → `memory/project_model_selection_0824_0827.md`
 > **운영 여유 10mm 기준** = **치명 0 · 파지 100%(206/206) · 헐거움 3 · FP 23 · FN 27 · 종류 88.8%**
 > (T100 = 치명 6 · 97.0% · **헐거움 21** · FP 74 · FN 80 · 65.5%)
 > 🚨🚨🚨 **위 c1/c2/c3 판정의 근거가 바뀐다 — 파지 도구가 안전여유를 안 넣고 재고 있었다.**
@@ -586,7 +586,7 @@ A100 평가기가 **7/6자**로 **8/19 동치 처리(`14_13`→`13_variant`)가 
 ⇒ 지렛대는 *"장수"* 가 아니라 **"학습이 본 촬영조건의 가짓수"** 다.
 ⇒ 🔴 **여전히 닫힌 것** = *"같은 조건에서 장수만 늘리기"* · lr·epoch 흔들기 ·
 🆕**aug**(병합에서도 **−0.086**으로 노이즈 폭을 넘어 해로움).
-📌 상세 = `memory/project_overnight_training_0825.md` · `memory/project_depth_retrain_0825.md`
+📌 상세 = `memory/project_model_selection_0824_0827.md`
 
 🚨🚨🚨 **판정 방법론 = seed 3판 이상 없이 판정하지 말 것 (8/25 발견 · 8/26 갱신)**
 세션A 48장에서 **seed만 바꿔 0.6995 / 0.7255 / 0.7571**(폭 **0.058**),
@@ -596,7 +596,7 @@ A100 평가기가 **7/6자**로 **8/19 동치 처리(`14_13`→`13_variant`)가 
 (*"lr5e-5가 처음 이겼다"*·*"1위 0.8219"*) → 둘 다 폭 안이었고 **원인이 매번
 "1판 결과에 이름을 붙인 것"** 이다. ⭐ **seed 3판을 예약해 둔 덕에 스스로 잡혔다.**
 ⭐ 8/14 교훈 재현 = ***"결론이 같다"와 "근거가 유효하다"는 다른 문제***.
-📌 상세 = `memory/project_seed_noise_0825.md`
+📌 상세 = `memory/project_model_selection_0824_0827.md`
 
 ✅ **KAIST 결론 전수 대조(8/21)** = 학습 레시피(csblur·lr1e-4·ep80·batch2·320×576·amp false)가
 **배포 모델과 일치**(체크포인트 `args` 직접 확인·cad_ids 27) · `score_mode det` 🟢 ·
@@ -605,7 +605,7 @@ A100 평가기가 **7/6자**로 **8/19 동치 처리(`14_13`→`13_variant`)가 
 ⚠️ **"전부"라고는 말하지 않는다** — 위가 확인한 범위이고 6주 산출물 전체 항목표는 따로 없다.
 🚨 대조하다 **A100 추론 기본값이 0.25로 남은 것**을 찾아 동기화했다(같은 사고를 하루에 두 번).
 
-상세: `memory/project_binpicking_direction_0819.md`
+상세: `memory/project_recognition_judgement_0819_0821.md`
 
 ---
 
@@ -933,7 +933,7 @@ throughput·대역 분리·Bayer 패턴)였고 **전부 7/28·8/18 성공 코드
 🟢 **판정 도구는 이미 있고 검증됐다**(c1 4.27~7.5% 🟢 / c3 80~94.7% 🔴 = 실제 F1과 일치) ⇒ **샘플만 있으면 즉시 판정 가능.**
 🟡 빈 **개수 4개는 미정**(태민님 *"추후 바뀔 수도 있다"*) ⇒ 🚨**개수에 의존하는 설계를 하지 않는다.**
 
-상세: `memory/project_bin_ir_reflectance_0818.md`
+상세: `memory/project_bin_background_0805_0818.md`
 
 ---
 
@@ -1418,7 +1418,7 @@ grep -rhoE "^\s*(import|from)\s+[a-zA-Z_][a-zA-Z0-9_]*" depth_vq_detector/*.py i
 
 ⏭️ **남은 것** = web-api를 IPC에서 기동(🔴8/13 라우터는 **서버 재시작 필요**) · pylon · 서비스 등록
 
-상세: `memory/project_ipc_binpick_running_0814.md` · 가이드 `bin_picking/docs/ipc_setup_0814.md`
+상세: `memory/project_ipc510_bringup_0811_0828.md` · 가이드 `bin_picking/docs/ipc_setup_0814.md`
 
 ---
 
@@ -1484,7 +1484,7 @@ grep -rhoE "^\s*(import|from)\s+[a-zA-Z_][a-zA-Z0-9_]*" depth_vq_detector/*.py i
 ⇒ 🎯 **이번 주 최우선은 안 바뀐다** — 🥇배경재 판정→본촬영(21종) · 🥈pylon+Blaze 실취득(**여기서만 OS 판단이 뒤집힐 수 있다**) · 🥉web-api 기동.
 **셋 다 SDK를 안 쓰고 셋 다 Windows에서 한다.**
 
-상세: `memory/project_ipc_os_decision_0814.md`
+상세: `memory/project_ipc510_bringup_0811_0828.md`
 
 ---
 
@@ -1494,7 +1494,7 @@ grep -rhoE "^\s*(import|from)\s+[a-zA-Z_][a-zA-Z0-9_]*" depth_vq_detector/*.py i
 > 🚫 **1번(V1~V4)은 대표님이 "무시해도 된다"**.
 > ⭐⭐ **6건 중 4건이 "우리가 만든 적 없는 물건"** = 전장·컨베이어·배선은 **위탁1(9~10월)**,
 > 로봇 도면은 **한화 자산**. ⇒ 📌 ***"없다"가 실패가 아니라 "우리 소관이 아니다"가 답인 항목이 있다.***
-> 상세: `memory/project_ceo_6requests_0831.md` · `memory/reference_hcr_robot_cad.md`
+> 상세: `memory/project_teba_1st_deliverable_0831_0904.md` · `memory/reference_hcr_robot_cad.md`
 
 | # | 요청 | 보유 | 요청 대상 |
 |---|---|---|---|
@@ -1606,7 +1606,7 @@ grep -rhoE "^\s*(import|from)\s+[a-zA-Z_][a-zA-Z0-9_]*" depth_vq_detector/*.py i
 — **답이 "없음"이어도 미결은 해소**다.
 
 **📞 재원텍 = 김용성 대표님** — *"반출컨베이어 정보, 스핀들 설치도와 배선도는 **재원텍이 맡아서 했기 때문에
-재원텍이 갖고 있을 것**"* ⇒ 🎯 **5번·6번의 진짜 출처 확정**(연락처는 `memory/project_ceo_6requests_0831.md`).
+재원텍이 갖고 있을 것**"* ⇒ 🎯 **5번·6번의 진짜 출처 확정**(연락처는 `memory/project_teba_1st_deliverable_0831_0904.md`).
 ✅ **8/31 통화 완료** → 🎉 **9/1 새벽 회신 = STEP 2종 수령**(아래 절).
 ⚠️ **내 우려(*"도면 없고 실물만"* 으로 올 것)는 빗나갔다** — **3D가 왔다.**
 
@@ -1652,7 +1652,7 @@ grep -rhoE "^\s*(import|from)\s+[a-zA-Z_][a-zA-Z0-9_]*" depth_vq_detector/*.py i
 ### 📊 2번의 실질 산출물 = 주희님 「전장 하드웨어」 시트 (8/31 저녁 전수 검토)
 
 > 견적서·매뉴얼 기반 **13행**을 우리 실물 기록과 대조 ⇒ **삭제 3 · 수정 4 · 추가 4**.
-> 상세 = `memory/project_equipment_sheet_review_0831.md`
+> 상세 = `memory/project_teba_1st_deliverable_0831_0904.md`
 
 ⭐⭐ **판정 기준이 탭 이름에서 나왔다** — 탭이 **`전장 하드웨어`** 이므로 **"함체에 들어가거나 전원을
 잡아먹는가"** 로 걸렀고, 그래서 **추가 후보 8건이 4건으로 줄었다**(로봇암 도면·렌즈·브라켓·Thor 탈락).
@@ -1921,7 +1921,7 @@ LAN 0.6만 ≈ **100만 = 전체의 4%**)
 ⇒ 위 우선순위는 *"현재 막혀 있는 작업"* 기준이므로 **1차 개발 정의가 다르면 바뀐다.**
 ⭐ **8/5 "로봇 제어 제외"·8/7 범위맵 충돌과 함께 물으면 미결 3건이 같이 풀린다.**
 
-상세: `memory/project_phase1_purchase_advance_0811.md`
+상세: `memory/project_purchase_decisions_0803_0821.md`
 
 ---
 
@@ -2069,7 +2069,7 @@ RTX가 달려 있어 **전력 여유가 빠듯하다**(보조전원 연결 여�
 ✅ **RDP를 켜뒀다**(3389 · `DESKTOP-TCO5269`) — ⭐**RDP는 독립 세션을 만들어 GPU 캡처 문제를
 구조적으로 피한다.** ⏭️ 8/14 = **Tailscale + RDP + 테더링 검증**(🚨`admin` 비번이 기록에 없다).
 
-상세: `memory/project_ipc510_diagnosis_0811.md`
+상세: `memory/project_ipc510_bringup_0811_0828.md`
 
 ---
 
@@ -2125,7 +2125,7 @@ RTX가 달려 있어 **전력 여유가 빠듯하다**(보조전원 연결 여�
 ⭐ **원격 접속이 성공하면 CPU·RAM·OS를 화면 없이 확보**하고 **한화 SDK 회신의 "OS 미확정"도
 확정으로 바뀐다** = 두 트랙이 한 작업으로 풀린다. 🚨**파워 W는 원격으로 알 수 없다**(라벨만이 답).
 
-상세: `memory/project_ipc510_diagnosis_0811.md`
+상세: `memory/project_ipc510_bringup_0811_0828.md`
 
 ---
 
@@ -2190,7 +2190,7 @@ RTX가 달려 있어 **전력 여유가 빠듯하다**(보조전원 연결 여�
 
 📌 **보고 원칙 = 두 숫자를 병기한다.** "인식 정확도 48.5%"만 내면 실제보다 나쁘게 읽힌다.
 구현: `bin_picking/tests/analyze_confusion_impact.py` · `tests/test_confusion_impact.py`(27/27)
-상세: `memory/project_confusion_impact_0807.md`
+상세: `memory/project_grasp_postprocess_0806_0814.md`
 
 ---
 
@@ -2231,7 +2231,7 @@ RTX가 달려 있어 **전력 여유가 빠듯하다**(보조전원 연결 여�
 티칭 때 실물 교정 대상이다(8/6). 근거만 남긴다.
 📮 **협력사 확인 필요** = *"15점 등록"이 벌림 위치 15개인지 파지 프로그램 15개인지*
 (지금은 **벌림값 15가지**로 해석).
-상세: `memory/project_gripper_groups_0810.md`
+상세: `memory/project_grasp_postprocess_0806_0814.md`
 
 ---
 
@@ -2271,7 +2271,7 @@ RTX가 달려 있어 **전력 여유가 빠듯하다**(보조전원 연결 여�
 
 ⚠️ **배경재는 눈으로 고를 수 없다** — 가시광 차광 ≠ 850nm 흡수.
 📏 **빈피킹 자리 = 긴 테이블 1530×680 중 좌측 665×680mm**(= 66.5×68cm).
-상세: `memory/project_purchase_and_ipc_as_0810.md`
+상세: `memory/project_bin_background_0805_0818.md`
 
 **⇒ 그래서 판정을 도구로 만들었다** = `bin_picking/tests/check_background_material.py`
 
@@ -2404,7 +2404,7 @@ RTX가 달려 있어 **전력 여유가 빠듯하다**(보조전원 연결 여�
 ⏸️ **ROI 크롭은 빈 확정 후** — 빈이 화면에서 차지하는 영역이 정해져야 좌표를 박을 수 있다.
 
 구현: `bin_picking/src/pipeline/input_gate.py` · `tests/test_input_gate.py`(27/27)
-상세: `memory/project_input_gate_0806.md`
+상세: `memory/project_grasp_postprocess_0806_0814.md`
 
 ---
 
@@ -3179,7 +3179,7 @@ JRT 박스의 NEXTU USB-RS485 컨버터(COM13) + USB 메모리 `JRT_Gripper_SetU
 실행표 v5 STEP 4-3~5 명령을 **9/16 실물 npy + 가상 로봇 점**으로 6000 에서 순서대로 실행(블롭 → build 잔차 0 → check → OVN2 재추론 4건 동일 → check --six 4/4 → `run_live_pick --calib` + fake_robot 왕복 · 로봇이 받은 값 == base 예측 ≠ camera_3d). **잡은 것 4** = 🥇 **`find_calib_blobs.py` 가 실물 raw npy 에서 크래시**(`to_mm` 튜플 언패킹 누락 · 9/10 자체 테스트가 float 합성만 돌려 uint16 경로 0회) · 🥇 **팔 카메라 화면의 16% 가 그리퍼·브라켓**(113~163mm · 좌우 세로 띠 u<106·u>636 ⇒ 바닥 중앙값 180 으로 붕괴 → 근접 컷 300) · 🥇 **골판지 바닥은 depth 에 거의 없다**(ROI 유효 2~4% ⇒ "바닥보다 8mm 위" 판정 불성립 → 바닥 무효 모드) · 🥈 `--cam-point "-12.3,45,482"` argparse 함정('-' 시작+공백 없음만 옵션 오해 · 9/17 `-560,20,130` 동일 원리 → `--opt=value` 자동 결합 · 테스트 78→82) · 🥉 cp949 방어를 CLI 3곳에. **9/17 [미확인] 해소** = "뷰어 450 vs Zc 482~511" 은 **저장 프레임의 뷰어 기록이 `median_mm 502 · all_valid 17.7%`** 라 데이터 불일치가 아니라 메모 불일치 ⇒ DIST 는 `capture_meta.json` 으로 확정(실행표 STEP 3') · all_valid 15~20% 가 정상. 📌 ***"자체 테스트 통과" ≠ "실물 파일 경로를 탔다"* — 실행표 명령은 실물 파일 하나로 리허설한다**(8/24·9/1 계열). 🚫 재택에서 못 한 것 = rz_sign·rz_offset·z_offset · 브라켓 핏 · 3점법 실물 잔차(9/22 그대로).
 같은 날 = **IRIS 9월 3주차 연구노트**(단일 통합본 11절 · 웹 Claude 인계) · **W37 주간보고 노션 게시**(한/영 · 성과 8 · 리스크 2 · 상태 Done) — 🚨 Notion MCP는 claude.ai 커넥터 재연결로는 안 뜨고 **터미널 `/mcp`로 로컬 `notion` 서버를 인증하면 떠 있던 세션에도 즉시 주입**된다(`memory/project_notion_mcp_setup_pending.md` §9/18).
 
-#### 👤 [9/18] 파리드님(같은 팀 · 점자프린터 라인) 장기휴가 9/21~10/12 — 태민님 10/2~10/12 프린터 운영 커버 → `memory/project_faridh_leave_printer_cover_0918.md`
+#### 👤 [9/18] 파리드님(같은 팀 · 점자프린터 라인) 장기휴가 9/21~10/12 — 태민님 10/2~10/12 프린터 운영 커버 → `memory/archive/project_faridh_leave_printer_cover_0918.md`
 공지·DM·zip(8파일 123KB · `/data/jtm/handover_faridh_0918/`) 정독. **원칙 = "keep things running, not move forward"** · 코드 절반은 13일까지 무소유(의도) · 문서 충돌 시 `CONFIRMED_2026-09-17.md`. **태민님 몫 = 기계를 돌리는 것**(Index Everest-D V4 · Basic-D V4 · NIRO Em-Boxer A1 · Jake Park 공동 · 그 전 PoC 주희님) · MES/ERP는 원래 우리 것이라 변화 없음. **날짜** = 인수 세션 9/23(9/22는 hand-eye 출근일) · 커버 실근무 10/6·7·8·12. **10/2 할 것** = 주희님 콜라보 권한 2개 삭제 · 자격증명 별도 발급·회전 · 물리 인수 + 프로브 시트 사진. **현장 규칙** = `completed`≠종이(15s 타임아웃 vs 48.5s 출력) · 앱 창 열려 있어야 · **NIRO abort 없음 = 정지는 패널만** · Index FEED 수동 · 금지 5. ⚠️ 우리 10월 마감과 겹침 ⇒ 요청은 "고장인가 개선인가"로 거름 · 그쪽 리포는 AI attribution 금지 · "VM 203 = 태민" [확인필요].
 
 #### ✅ [9/16 출근] 브라켓 Q1 = 가설 B 확정 · "한 방에" 설계 경로 · SKKU 교육 불참 권고 → `memory/project_camera_bracket_remake_0914.md` §9/16 · `project_skku_defect_training_decision_0916.md`
@@ -3810,7 +3810,7 @@ T100_csblur_lr1e4_ep80/best.pt
 - 4/14 대표님 지시로 MaixCAM 전환 — RISC-V + 1 TOPS NPU + 4MP, Cloud 없이 온디바이스 AI
 - 보유 장비: MaixCAM 1대 + LicheeRV Nano 2대
 - 우선순위: 빈피킹 우선, MaixCAM은 여유 시 PoC
-- 역사: `memory/project_openmv_monitoring_0713.md(§3/16 기존 자산 · 원 파일 부재)` (3/16 시도 → 4/14 전환)
+- 역사: `memory/project_process_monitoring_vision_0713_0717.md(§3/16 기존 자산 · 원 파일 부재)` (3/16 시도 → 4/14 전환)
 
 ---
 
@@ -3821,7 +3821,7 @@ T100_csblur_lr1e4_ep80/best.pt
 | **Phase 1** | Web API 모니터링 | 🔴 URGENT | ✅ 완료 |
 | **Phase 2** | Local API 원격 제어 + 프론트엔드 UI | 🔴 URGENT | ✅ 완료 (5탭 UI + JWT 인증 + 3개 서버 운영) |
 | **Phase 3** | HCR 로봇 연동 | 🟡 HIGH | ✅ 한솔 머지 5차 완료. ✅ **7/22 예승님 2차 교육 완료**(로봇 티칭+Modbus TCP, 오전만·오후 반차). 주희님 정리본으로 **펜던트 프로그래밍 UI 조작법 확보**(위치4방식·변수·로직명령·서브프로그램·그리퍼 `D_GEN_OUT_*`/`Reverse` 필수) → [[robot-teaching-0605]] §주희님 정리본. ⏭️ 실 출력+로봇 E2E는 다음 현장 |
-| **Phase 4** | 장비 모니터링 (세척+건조 중심) | 🟡 HIGH | ⭐⭐ **7/16 대표님 회의로 범위 재정의**([[ceo-meeting-0716]]): 로봇 자동화=**프린터+세척+건조**(건조 신규), **경화기는 자동화·Vision 대상 완전 제외**(ROI 안 나오면 사람이). 카메라=**OpenMV N6 전환**(AE3 폐기, 대표님 발주). 세척기 **idle/complete=빌드플레이트 유무** 확정. ⭐⭐**모델 방향전환=완료/대기는 OCR 아닌 영상분류**(idle/complete=형상 문제, running만 OCR/카운트다운). **7/16 진행**: MaixCAM 세척기 재촬영·크롭·분류→**분류 PoC 실행 완료**=같은세션 resnet18 F1 0.982(7종 비교 최고)지만 ⚠️**cross-session(다른날 테스트) 0.34~0.70 폭락=배경외우기, 지금 데이터로 실공정 배포 불가**. 데이터 진단=전처리(7/14통짜vs7/16크롭)+양(세션2개뿐) 둘 다 부족. 실공정 지표=cross-session macro-F1+per-class recall. 필요=여러세션 재촬영+crop통일. (태민님 지시 4=모델다돌려최고·데이터진단·최고모델기억·실공정지표) ⭐⭐**7/17 = 최고모델 resnet18 정식 학습·저장(이번주 마무리, best.pt=A100 wash_model_0717) + 분류모델 방향 뒤집힘**: 돌린 8개(수제특징5+딥러닝3) 결과가 알려준 것=①병목은 모델 아닌 데이터(모델 더 돌리기 무의미) ②cross-session만 진실 ③딥러닝이 얕은모델 대비 3%p뿐=문제 단순(상태3개=이진질문2개 뚜껑닫힘/플레이트유무) ④실패는 항상 idle→running(배경 붙잡음) ⑤전처리 섞이면 손해. **결론=분류모델 공정사용 애매→룰베이스+OCR 하이브리드**(running=OCR·카운팅 / idle↔complete=룰베이스 1차·분류 백업 2차, 팀 내 빛반사 룰기반 방향과 일치). **7/14~15 분석**: rapidocr 우승, OpenMV 완료판독 불가·MaixCAM급 필요, 완료판단=타이머(완료 IO 없음)→Vision 용도=검증+카운팅. 세척기 룰기반(빛반사) 가능성. 상세 `memory/project_ceo_meeting_0716.md`+`project_vision_state_detection_0715.md`+`project_hwaseong_support_program_0716.md` |
+| **Phase 4** | 장비 모니터링 (세척+건조 중심) | 🟡 HIGH | ⭐⭐ **7/16 대표님 회의로 범위 재정의**([[ceo-meeting-0716]]): 로봇 자동화=**프린터+세척+건조**(건조 신규), **경화기는 자동화·Vision 대상 완전 제외**(ROI 안 나오면 사람이). 카메라=**OpenMV N6 전환**(AE3 폐기, 대표님 발주). 세척기 **idle/complete=빌드플레이트 유무** 확정. ⭐⭐**모델 방향전환=완료/대기는 OCR 아닌 영상분류**(idle/complete=형상 문제, running만 OCR/카운트다운). **7/16 진행**: MaixCAM 세척기 재촬영·크롭·분류→**분류 PoC 실행 완료**=같은세션 resnet18 F1 0.982(7종 비교 최고)지만 ⚠️**cross-session(다른날 테스트) 0.34~0.70 폭락=배경외우기, 지금 데이터로 실공정 배포 불가**. 데이터 진단=전처리(7/14통짜vs7/16크롭)+양(세션2개뿐) 둘 다 부족. 실공정 지표=cross-session macro-F1+per-class recall. 필요=여러세션 재촬영+crop통일. (태민님 지시 4=모델다돌려최고·데이터진단·최고모델기억·실공정지표) ⭐⭐**7/17 = 최고모델 resnet18 정식 학습·저장(이번주 마무리, best.pt=A100 wash_model_0717) + 분류모델 방향 뒤집힘**: 돌린 8개(수제특징5+딥러닝3) 결과가 알려준 것=①병목은 모델 아닌 데이터(모델 더 돌리기 무의미) ②cross-session만 진실 ③딥러닝이 얕은모델 대비 3%p뿐=문제 단순(상태3개=이진질문2개 뚜껑닫힘/플레이트유무) ④실패는 항상 idle→running(배경 붙잡음) ⑤전처리 섞이면 손해. **결론=분류모델 공정사용 애매→룰베이스+OCR 하이브리드**(running=OCR·카운팅 / idle↔complete=룰베이스 1차·분류 백업 2차, 팀 내 빛반사 룰기반 방향과 일치). **7/14~15 분석**: rapidocr 우승, OpenMV 완료판독 불가·MaixCAM급 필요, 완료판단=타이머(완료 IO 없음)→Vision 용도=검증+카운팅. 세척기 룰기반(빛반사) 가능성. 상세 `memory/project_ceo_meeting_0716.md`+`project_process_monitoring_vision_0713_0717.md`+`project_hwaseong_support_program_0716.md` |
 | **Phase 5** | 3D 빈피킹 비전 시스템 | 🔴 URGENT | ✅ 트랙 2 v2 **5모델 학습 + 분석 완료** (5/22 시작 → 자정 전 종료 → 5/26 분석). **🥇 yolov8n mAP50 0.9939 / 🥈 yolo11s 0.9910 / 🥉 yolov8m 0.9899**. Part2 회복 **v1 0.656 → v2 yolo11s 0.958 (+30%p)** ⭐. Part5 0.909 정체 = v3 보강 필요. 우승 후보 = yolov8n(6.3MB) or yolo11s(19.2MB), 5/27 ONNX + 도메인 갭 후 최종. 좌표 6요소 출력 코드 + PyTorch → ONNX → IPC-510 결정 완료. **🔥 5/22 대표님 통화: 빈피킹 = 가을(9~10월) 협력사 페이스, 우리 = 학습+카메라 완성도** — `archive/project_yolo_v2_training_results_0522.md` + `project_binpicking_timeline_realignment_0522.md` |
 
 ### v2 5모델 비교 결과 (5/26 시점) ⭐
@@ -3856,8 +3856,8 @@ v2의 두 약점을 v3가 푼다:
 
 > 일자별 진척 상세는 메모리. 여기엔 **재발 방지 룰**(아키텍처 차원 영구 규칙)만 보존.
 
-**1. JWT 회귀 버그**(5/29, `db6adcf`) — 5/6 JWT 도입 시 sequence_service 클라이언트 Authorization 누락 → 운영 모드 web-api 401 → CMD 픽업 실패. fix=`web-api/app/core/jwt_middleware.py` loopback 면제 → [[jwt-sequence-service-bug-0529]]
-**2. Formlabs status stale 버그**(6/1, `044ddb7`) — Cloud API가 이전 `current_print_run.status=FINISHED` 유지, `ready_to_print`만 갱신 → 우리 웹 stuck. fix=`formlabs_client.py` `FINISHED+ready_to_print=READY`→IDLE → [[formlabs-status-stale-bug-0601]]
+**1. JWT 회귀 버그**(5/29, `db6adcf`) — 5/6 JWT 도입 시 sequence_service 클라이언트 Authorization 누락 → 운영 모드 web-api 401 → CMD 픽업 실패. fix=`web-api/app/core/jwt_middleware.py` loopback 면제 → [[web-bugfixes-0515-0601]]
+**2. Formlabs status stale 버그**(6/1, `044ddb7`) — Cloud API가 이전 `current_print_run.status=FINISHED` 유지, `ready_to_print`만 갱신 → 우리 웹 stuck. fix=`formlabs_client.py` `FINISHED+ready_to_print=READY`→IDLE → [[web-bugfixes-0515-0601]]
 
 ### 🔐 재발 방지 룰 (두 사고 공통 = 외부 API/내부 호출자 동기화)
 - **web-api 인증/미들웨어/응답 스키마 변경 시** 내부 호출 클라이언트 같이 확인: `sequence_service/app/cell/printer_interface.py`, `factory-pc/file_receiver.py`, 향후 추가분
@@ -3943,7 +3943,7 @@ v2의 두 약점을 v3가 푼다:
 ## 🎓 KAIST 부트캠프 3단계 (6/2~7/9) — ✅ 종료 · 🏆우수상·수료
 
 > 🚨 **끝난 트랙이다.** 6주 일자별 경위(방향 3회 전환·Visual Hull·합성데이터 8000장·sim2real 여정)는
-> **`memory/project_digital_twin_synth_data_research_0609.md`** + `memory/project_kaist_final_presentation_0709.md` +
+> **`memory/project_kaist_track_0609_0828.md`** + `memory/project_kaist_track_0609_0828.md` +
 > `CLAUDE.local.md` W23~W27 주간 요약에 보존. 여기엔 **회사 자산으로 남은 것만** 적는다.
 
 ### 🟢 회사에 남은 것
@@ -3979,7 +3979,7 @@ v2의 두 약점을 v3가 푼다:
 ⭐⭐ **교훈 = 거절 사유는 "상대 역량 부족"이 아니라 "우리 필요와의 정합"으로 든다**
 (관계가 계속 가는 상대라 이게 실질적으로 중요하다).
 🟡 **재검토 트리거 = 9/5에 "인식"이 병목으로 판명될 때**(RGB 융합은 미착수 과제로 살아있다).
-🔴 대표님 회신 대기 · 상세 `memory/project_kaist_poc_declined_0828.md`
+🔴 대표님 회신 대기 · 상세 `memory/project_kaist_track_0609_0828.md`
 
 ## 프로젝트 구조
 
@@ -4101,7 +4101,7 @@ v2의 두 약점을 v3가 푼다:
 | 🆕 **랜포트 배정(9/7)** | `이더넷`=Blaze `.20.1` · `이더넷 2`=ACE2 `.20.2` · **`이더넷 4`=공장망 `.219.45`+Tailscale(절대 금지)** · 🆕**`이더넷 5`=HCR-10L E-PC `192.168.101.50`**(로봇 `.101.201`) · `이더넷 3/6` 빈 포트. 🚨 **IP는 포트 이름에 저장 ⇒ 케이블은 항상 같은 구멍에** |
 
 🚨 **모니터는 반드시 GPU 포트에** — 메인보드 HDMI에 꽂으면 화면이 안 나온다(GPU가 있으면 내장 출력이 꺼짐).
-**8/11에 이것 때문에 "고장"으로 오진하고 AS 직전까지 갔다** → `memory/project_ipc510_diagnosis_0811.md`
+**8/11에 이것 때문에 "고장"으로 오진하고 AS 직전까지 갔다** → `memory/project_ipc510_bringup_0811_0828.md`
 ⭐ **GPU는 지금 안 쓰고 있다** — 8/28 추론은 `torch+cpu`로 **장당 1.33초**(KTR 3초 통과)이고,
 GPU 추론은 **CUDA 정합이라는 새 변수**를 들이는 일이라 미뤘다(*"되는 것을 먼저, 빨라지는 것은 다음"*).
 
@@ -4343,7 +4343,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 ## Phase 4: 장비 모니터링 (MaixCAM, ~~OpenMV~~ 대체) ⬜ 빈피킹 후순위
 
-> 4/14 대표님 지시로 OpenMV → MaixCAM 전환. 이전 OpenMV 설계는 `memory/project_openmv_monitoring_0713.md(§3/16 기존 자산 · 원 파일 부재)`에 역사로 보존.
+> 4/14 대표님 지시로 OpenMV → MaixCAM 전환. 이전 OpenMV 설계는 `memory/project_process_monitoring_vision_0713_0717.md(§3/16 기존 자산 · 원 파일 부재)`에 역사로 보존.
 
 ### 용도
 - **세척기/경화기 완료 감지** — Form Wash/Cure는 API 미지원이라 카메라 기반 감지 필요 (2026.02.06 확정)
@@ -4364,7 +4364,7 @@ Phase 2: localApi.ts (Local API)  →  PrintPage, QueuePage, HistoryPage, Notifi
 
 > 통신 아키텍처는 OpenMV 시기와 동일: `카메라 → MQTT → Mosquitto → FastAPI → HCR 로봇(Modbus)`. MQTT E2E는 3/12 검증 완료.
 
-상세: `memory/project_maixcam_monitoring.md`
+상세: `memory/project_process_monitoring_vision_0713_0717.md`
 
 ---
 
@@ -4637,7 +4637,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 
 ### 마지막 업데이트 일자: 2026-07-10 (KAIST 부트캠프 종료(우수상) 후 정리 — sim2real 여정 완결 + 대표님 SaaS 고도화 지시 착수 + 프린터 어댑터 리팩터링·배포)
 
-> ⚠️ 아래 마일스톤 표는 5/20까지 상세, 이후는 요약. 6/13~7/10 상세 일자별은 `CLAUDE.local.md`(주간 요약) + `memory/project_digital_twin_synth_data_research_0609.md`(§6/13~§7/8) + `memory/project_kaist_final_presentation_0709.md` 참조.
+> ⚠️ 아래 마일스톤 표는 5/20까지 상세, 이후는 요약. 6/13~7/10 상세 일자별은 `CLAUDE.local.md`(주간 요약) + `memory/project_kaist_track_0609_0828.md`(§6/13~§7/8) + `memory/project_kaist_track_0609_0828.md` 참조.
 
 ### 마일스톤 (시간 순)
 
@@ -4667,12 +4667,12 @@ JWT_ABSOLUTE_MAX_DAYS=30
 | **2026-05 (W19~W21)** | ⭐**Basler 실물 셋업 → Mac 단독 워크플로 확립 → 트랙2 전환** — 카메라 개봉·어댑터 검증(ipTIME U1G-C)·**5/12 Mac Blaze 풀 작동**·라이브 뷰어 / 5/15 공장(**한글 파일명 fix**·**Phase 2 E2E 풀패스**·ACE2 케이블 인수·⭐**출력 실패 진짜 원인=레진 탱크 잔여물**) / 5/18 **Roboflow v1 + AICA A100 부활 + YOLOv8n mAP50 0.988**(⚠️같은 환경) + 한솔 빈피킹 코드 인계 / 5/20 **ACE2 렌즈 미장착 진단** + ⭐**한솔 좌표 6요소 명세 수신**(x,y,z,edge,angle,label) | ✅ — `memory/project_basler_setup_history.md` · `archive/project_roboflow_dataset.md` · `project_hansol_coord_spec_0520.md` · `project_phase2_e2e_complete_0515.md` · `reference_aica_a100.md` |
 | 2026-05-22~29 (W21~22) | v2 5모델 YOLO 학습(🥇yolov8n mAP50 0.9939) + 일정 재정렬(빈피킹=가을) + JWT 회귀버그 fix + 대표님 5/28 4대 지시 | ✅ — `memory/archive/project_yolo_v2_training_results_0522.md` |
 | 2026-06-01~05 (W23) | 삼성 시연 성공 + Formlabs fix + KAIST 첫 미팅(방향 전환) | ✅ — `memory/archive/project_kaist_meetings_timeline.md` |
-| 2026-06-08~12 (W24) | KAIST 1차 발표 + Visual Hull baseline + 디지털트윈 합성데이터 v1~v3(8000장) | ✅ — `memory/project_digital_twin_synth_data_research_0609.md` |
-| 2026-06-15~19 (W25) | 부품 27종 확정 + 모델 아키텍처 확정(PointNet++/VQ-VAE) + ⭐대표님 6/18 SaaS 지시 | ✅ — `memory/project_saas_platform_directive_0618.md` |
-| 2026-06-22~26 (W26) | 조교 코드 통합·A100 학습 1사이클(합성 class 0.804) + 2차 발표 + 실증 100장 촬영 | ✅ — `memory/project_digital_twin_synth_data_research_0609.md` §6/23~26 |
-| 2026-06-29~07-08 (W27) | ⭐⭐ sim2real 여정: 실측 5% 붕괴 → real fine-tune 대전환 → test100 F1 0.684 → 학습 종료(병목=센서 물리) | ✅ — `memory/project_digital_twin_synth_data_research_0609.md` §7 |
-| **2026-07-09** | 🏆 **KAIST 부트캠프 3단계 최종발표 — 우수상 수상·수료** | ✅ — `memory/project_kaist_final_presentation_0709.md` |
-| **2026-07-10** | 대표님 7/7 SaaS 고도화 지시 착수(현황정리+ERP/MES/ATS 기능정의) + 프린터 어댑터 리팩터링·3서버 배포 + KAIST 코드 3곳 백업 | ✅ — `memory/project_ceo_saas_directive_0707.md` + `memory/project_printer_adapter_refactor_0710.md` |
+| 2026-06-08~12 (W24) | KAIST 1차 발표 + Visual Hull baseline + 디지털트윈 합성데이터 v1~v3(8000장) | ✅ — `memory/project_kaist_track_0609_0828.md` |
+| 2026-06-15~19 (W25) | 부품 27종 확정 + 모델 아키텍처 확정(PointNet++/VQ-VAE) + ⭐대표님 6/18 SaaS 지시 | ✅ — `memory/project_saas_track_0618_0710.md` |
+| 2026-06-22~26 (W26) | 조교 코드 통합·A100 학습 1사이클(합성 class 0.804) + 2차 발표 + 실증 100장 촬영 | ✅ — `memory/project_kaist_track_0609_0828.md` §6/23~26 |
+| 2026-06-29~07-08 (W27) | ⭐⭐ sim2real 여정: 실측 5% 붕괴 → real fine-tune 대전환 → test100 F1 0.684 → 학습 종료(병목=센서 물리) | ✅ — `memory/project_kaist_track_0609_0828.md` §7 |
+| **2026-07-09** | 🏆 **KAIST 부트캠프 3단계 최종발표 — 우수상 수상·수료** | ✅ — `memory/project_kaist_track_0609_0828.md` |
+| **2026-07-10** | 대표님 7/7 SaaS 고도화 지시 착수(현황정리+ERP/MES/ATS 기능정의) + 프린터 어댑터 리팩터링·3서버 배포 + KAIST 코드 3곳 백업 | ✅ — `memory/project_saas_track_0618_0710.md` + `memory/project_printer_adapter_refactor_0710.md` |
 
 ### 핵심 의사결정 (이유 + 결과 보존)
 
@@ -4716,7 +4716,7 @@ JWT_ABSOLUTE_MAX_DAYS=30
 - **배경**: OpenMV AE3로 세척기/경화기 완료 감지 검토 중 → MaixCAM이 성능 우위 (RISC-V + 1 TOPS NPU, 4MP)
 - **결정**: 대표님 지시로 OpenMV 제외, MaixCAM으로 전환. Cloud 없이 온디바이스 AI
 - **현재**: 빈피킹(Phase 5) 우선, MaixCAM은 여유 시 PoC. 보유 장비 = MaixCAM 1대 + LicheeRV Nano 2대
-- 상세: `memory/project_maixcam_monitoring.md`, `memory/project_openmv_monitoring_0713.md(§3/16 기존 자산 · 원 파일 부재)` (역사)
+- 상세: `memory/project_process_monitoring_vision_0713_0717.md`, `memory/project_process_monitoring_vision_0713_0717.md(§3/16 기존 자산 · 원 파일 부재)` (역사)
 
 #### 빈피킹 카메라 배치 — eye-in-hand 2대 동시 마운트 (2026-04-23 한솔 회의)
 - **배경**: 4/10 대표님 피드백 = "1대 고정 + 1대 로봇암(eye-in-hand)" 검토
