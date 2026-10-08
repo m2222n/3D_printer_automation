@@ -99,7 +99,8 @@ function StationCard({ col }: { col: Column }) {
         {col.nodes.map((n) => {
           const filled = n.occupancy > 0;
           const bad = n.status === 'HOLD' || n.status === 'ERROR';
-          // 설비가 여럿일 때만 베이 번호를 앞에 붙인다 (1대뿐이면 열 제목과 같은 말이 두 번 나온다)
+          // 설비가 여럿일 때만 식별 태그를 앞에 붙인다 (1대뿐이면 열 제목과 같은 말이 두 번 나온다)
+          // 라벨이 "N호기"로 끝나면 번호만, 프린터처럼 실제 이름(ShrewdStork 등)이면 이름 그대로
           const short = col.nodes.length > 1 ? n.label.replace(/^.*?(\d+호기|\d+)$/, '$1') : '';
           return (
             <div

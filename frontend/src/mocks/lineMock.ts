@@ -168,19 +168,19 @@ export const MOCK: MockState = {
     { node_id: 'RK-CUR-WAIT-01', node_kind: 'RACK', node_type: 'BUFFER', label: '경화 대기 랙 1',
       slot_access: 'FIFO', count_by_group: true, group_capacity: 12,   // 박스 1개에 부품 12
       slots: [{ slot_no: 1, capacity: 4 }, { slot_no: 2, capacity: 4 }] },
-    { node_id: 'RK-BPD-WAIT-01', node_kind: 'RACK', node_type: 'BUFFER', label: '빔피킹 대기 랙 1',
+    { node_id: 'RK-BPD-WAIT-01', node_kind: 'RACK', node_type: 'BUFFER', label: '빈피킹 대기 랙 1',
       slot_access: 'FIFO', count_by_group: true, group_capacity: 12,   // 트레이 1개에 부품 12
       slots: [{ slot_no: 1, capacity: 4 }, { slot_no: 2, capacity: 4 }] },
 
     // 설비 — group_label 이 서브 메뉴 이름, ui_kind 가 화면 종류
     { node_id: 'PRT-01', node_kind: 'STATION', node_type: 'PRINTER', ui_kind: 'MONITOR',
-      group_label: '프린터', menu_group: '출력 · 세척', label: '프린터 1호기', capacity: 1, std_cycle_s: 5400 },
+      group_label: '프린터', menu_group: '출력 · 세척', label: 'ShrewdStork', capacity: 1, std_cycle_s: 5400 },
     { node_id: 'PRT-02', node_kind: 'STATION', node_type: 'PRINTER', ui_kind: 'MONITOR',
-      group_label: '프린터', menu_group: '출력 · 세척', label: '프린터 2호기', capacity: 1, std_cycle_s: 5400 },
+      group_label: '프린터', menu_group: '출력 · 세척', label: 'CorrectPelican', capacity: 1, std_cycle_s: 5400 },
     { node_id: 'PRT-03', node_kind: 'STATION', node_type: 'PRINTER', ui_kind: 'MONITOR',
-      group_label: '프린터', menu_group: '출력 · 세척', label: '프린터 3호기', capacity: 1, std_cycle_s: 5400 },
+      group_label: '프린터', menu_group: '출력 · 세척', label: 'HeavenlyTuna', capacity: 1, std_cycle_s: 5400 },
     { node_id: 'PRT-04', node_kind: 'STATION', node_type: 'PRINTER', ui_kind: 'MONITOR',
-      group_label: '프린터', menu_group: '출력 · 세척', label: '프린터 4호기', capacity: 1, std_cycle_s: 5400 },
+      group_label: '프린터', menu_group: '출력 · 세척', label: 'CapableGecko', capacity: 1, std_cycle_s: 5400 },
 
     { node_id: 'WSH-01', node_kind: 'STATION', node_type: 'WASHER', ui_kind: 'MONITOR',
       group_label: '세척기', menu_group: '출력 · 세척', label: '세척기 1호기', capacity: 1, std_cycle_s: 600, post_delay_s: 300,
@@ -208,7 +208,7 @@ export const MOCK: MockState = {
       measure: { key: 'height_mm', label: '높이', unit: 'mm' } },   // 측정 스펙이 있으면 입력란이 뜬다
 
     { node_id: 'BPD-01', node_kind: 'STATION', node_type: 'BEAMPICK', ui_kind: 'MONITOR',
-      group_label: '빔피킹·드릴링·트림', label: '빔피킹/드릴링/트림', capacity: 1, std_cycle_s: 900 }
+      group_label: '빈피킹·드릴링·트림', label: '빈피킹/드릴링/트림', capacity: 1, std_cycle_s: 900 }
   ],
 
   // route. MAIN 만 순서 계산과 "다음/직전 공정" 파생의 대상.
@@ -634,11 +634,11 @@ export const TRANSPORTERS: MockTransporter[] = [
         send: DO('D_GEN_OUT_0~3', [1, 1, 1, 0], 0.5),
         source: 'rodi_pick_sequence.js GRIP_COMBO[3] · 폭은 임의값',
         verified: false, risk: '그리퍼가 이 상태로 간다' },
-      { id: 'bp-capture', group: '빔피킹', label: '촬영 자세로', hint: 'PICK_CAPTURE_POSE',
+      { id: 'bp-capture', group: '빈피킹', label: '촬영 자세로', hint: 'PICK_CAPTURE_POSE',
         send: SOCK(5000, 'CAPTURE'),
         source: 'pick_socket_server.py · 자세값은 10월 재배치 후 재티칭',
         verified: false, risk: '팔이 촬영 자세로 이동' },
-      { id: 'bp-pick', group: '빔피킹', label: '인식 좌표로 집기', hint: '6요소 좌표 송신',
+      { id: 'bp-pick', group: '빈피킹', label: '인식 좌표로 집기', hint: '6요소 좌표 송신',
         send: SOCK(5000, 'PICK'),
         source: 'pick_socket_server.py · hand-eye 값 미확정',
         verified: false, risk: '팔이 빈으로 내려가 집는다' },

@@ -75,7 +75,7 @@ CREATE TABLE node (
   --   TRANSPORT    반송 지시 (반송 자원 화면)
   ui_kind        text NOT NULL DEFAULT 'MONITOR',
   -- 제어 화면의 서브 메뉴 이름. 같은 값끼리 한 탭으로 묶인다.
-  -- NULL 이면 label 을 쓴다 (프린터 4대 → 탭 "프린터", 개별 라벨은 "프린터 1호기")
+  -- NULL 이면 label 을 쓴다 (프린터 4대 → 탭 "프린터", 개별 라벨은 "ShrewdStork" 같은 실제 프린터 이름)
   group_label    text,
   -- 이 노드에서 나가는 이동을 누가 하나. 엣지별이 아니라 노드별이다 —
   -- 엣지별로 달라지는 경우는 폐기뿐이고 폐기는 담당을 두지 않는다.
