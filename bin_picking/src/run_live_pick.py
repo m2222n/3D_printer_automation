@@ -38,6 +38,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from bin_picking.src.utils.console_utf8 import enable_utf8_console  # noqa: E402  (cp949 방어 · 8/28)
+from bin_picking.src.pipeline import roi_mask  # noqa: E402  (10/12 빈 안쪽만 — 벽이 크롭에 들어오면 진짜 부품이 사라진다)
 
 CAPTURE_SCRIPT_DIR = REPO / "bin_picking" / "depth_track" / "scripts"
 DEFAULT_BLAZE_IP = "192.168.20.10"      # 8/28 IPC 실측(카메라에 저장된 값) — 인자로 덮어쓸 수 있다
@@ -119,7 +120,7 @@ def run_e2e(depth: Path, out_dir: Path, ckpt: Path, python: str) -> Path:
 # ③ 소켓 서버 — 로봇(펜던트 MODE vision)이 붙어 좌표를 읽고 DONE 을 보낼 때까지 기다린다
 # ---------------------------------------------------------------------------
 def serve(six: Path, host: str, port: int, limit: int, cycles: int, python: str,
-          calib: Path, hover_mm: float, rz_mode: str) -> int:
+          calib: Path, hover_mm: float, rz_mode: str, only_labels: str = "") -> int:
     # 🆕 9/17: --calib 없이는 서버가 시작을 거부한다(카메라 좌표를 그대로 보내던 경로 폐기). 여기서도 먼저 막는다.
     if not calib or not Path(calib).exists():
         raise SystemExit(f"🔴 캘리브 파일이 없다: {calib} — hand-eye(3점법) → cam_to_base build 가 선행이다. "
@@ -128,6 +129,8 @@ def serve(six: Path, host: str, port: int, limit: int, cycles: int, python: str,
            "--mode", "vision", "--six-json", str(six), "--calib", str(calib),
            "--hover-mm", str(hover_mm), "--rz-mode", rz_mode,
            "--host", host, "--port", str(port), "--limit", str(limit), "--cycles", str(cycles)]
+    if only_labels:
+        cmd += ["--only-labels", only_labels]       # 🆕 10/12 시연 3종만 로봇에 보낸다(빈 안 잡음이 다른 이름으로 잡히는 것 차단)
     print("[소켓] " + " ".join(cmd[2:]))
     print(f"[소켓] 펜던트에서 MODE='vision' 실행 → 로봇이 {port} 포트로 접속하면 base 좌표 {limit}건을 보낸다"
           f" (hover {hover_mm}mm · rz {rz_mode})")
@@ -156,6 +159,11 @@ def main() -> int:
                     help="변환 결과 z 에 더한다(위로). 9/22 '집기 없이 이동 1회' = 50")
     ap.add_argument("--rz-mode", choices=("fixed", "angle"), default="fixed",
                     help="fixed=캘리브 rz_ref 그대로(위치만) / angle=부품 각도 반영(부호·오프셋 실측 후)")
+    ap.add_argument("--roi", type=Path, default=None,
+                    help="🆕 10/12 ROI 마스크 JSON(빈 안쪽만) — 추론 전에 적용해 <stem>_roi.npy 로 저장하고 그것을 추론한다. "
+                         "만들기: python -m bin_picking.src.pipeline.roi_mask propose --depth <npy> --out <json>")
+    ap.add_argument("--only-labels", default="",
+                    help="🆕 로봇에 보낼 부품 이름만(쉼표) — 시연 = 02_sol_block_b,plate_e,13_x2_bcf8ccb4 · 비우면 전부")
     ap.add_argument("--python", default=sys.executable)
     args = ap.parse_args()
     if not args.no_server and not args.calib:
@@ -174,12 +182,24 @@ def main() -> int:
             raise SystemExit(f"🔴 depth 없음: {depth}")
         print(f"[촬영] 생략 — {depth}")
 
+    if args.roi:
+        # 🚨 마스크는 "추론 입력" 에만 건다. 원본 npy 는 그대로 두고 옆에 _roi 를 만든다(학습·대조용 원본 보존).
+        depth, st = roi_mask.apply_to_file(depth, args.roi)
+        print(f"[ROI] {args.roi.name} 적용 → {depth.name} · 유효% {st['before']['valid_pct']}→{st['after']['valid_pct']}"
+              f" · 크롭 대역% {st['before']['crop_band_pct']}→{st['after']['crop_band_pct']}")
+        if st["after"]["valid_pct"] > 25:
+            print("   ⚠️ 마스크 뒤에도 유효 25% 초과 — 빈이 움직였나(propose 다시) / 바닥 반사?")
+    else:
+        print("[ROI] 없음 — 빈 벽이 크롭에 들어오면 부품을 놓친다(10/12 실측: 3개 중 1개). --roi 권장")
+
     six = run_e2e(depth, args.out_dir, args.checkpoint, args.python)
+    if args.roi:
+        roi_mask.rescore_scene_in_roi(six, depth, args.roi)   # 장면 게이트를 "빈 안쪽 면적" 기준으로 다시 쓴다(전체 화면 기준이면 마스크 뒤 항상 "비어 있다")
     if args.no_server:
         print("[소켓] --no-server 로 종료. six =", six)
         return 0
     return serve(six, args.host, args.port, args.limit, args.cycles, args.python,
-                 args.calib, args.hover_mm, args.rz_mode)
+                 args.calib, args.hover_mm, args.rz_mode, args.only_labels)
 
 
 if __name__ == "__main__":

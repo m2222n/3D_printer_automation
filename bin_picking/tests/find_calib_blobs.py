@@ -247,6 +247,7 @@ def main() -> int:
     ap.add_argument("--min-height", type=float, default=8.0, help="바닥보다 이만큼(mm) 이상 높은 것만 물체로 본다(바닥이 보일 때만)")
     ap.add_argument("--near-cut", type=float, default=NEAR_CUT_MM, help="이보다 가까운 픽셀은 그리퍼·브라켓으로 보고 무효(mm)")
     ap.add_argument("--floor-mm", type=float, default=None, help="바닥 깊이를 사람이 지정(자동 판정을 덮어쓴다)")
+    ap.add_argument("--roi", type=Path, default=None, help="🆕 10/12 ROI 마스크 JSON — 빈 벽·브라켓이 블롭로 세지지 않게 바깥을 무효로")
     ap.add_argument("--self-test", action="store_true")
     a = ap.parse_args()
     if a.self_test:
@@ -254,6 +255,10 @@ def main() -> int:
     if not a.depth:
         ap.error("--depth 또는 --self-test")
     raw = np.load(a.depth)
+    if a.roi:
+        from bin_picking.src.pipeline import roi_mask
+        raw = roi_mask.apply_roi(raw, roi_mask.load_roi(a.roi))
+        print(f"[ROI] {a.roi.name} 적용 — 바깥은 무효(블롭 후보에서 제외)")
     depth_mm, unit_msg = to_mm(raw, verbose=False)                    # 🚨 단위는 여기서만 정한다 · (배열, 설명) 튜플
     print(f"[단위] {unit_msg}  (🚨 중앙값은 그리퍼 픽셀이 섞여 낮게 나올 수 있다 — 아래 바닥 깊이를 본다)")
     intr = json.loads(Path(a.intr).read_text(encoding="utf-8"))

@@ -194,6 +194,17 @@ def validate_pose(pose: Sequence[float], idx: int = 0, frame: str = "base") -> l
     return out
 
 
+def filter_by_labels(dets: list, allowed) -> tuple[list, list]:
+    """label 이 allowed 에 든 검출만 남긴다. (남긴 것, 버린 것). allowed 가 비면 전부 남긴다."""
+    allowed = {str(x).strip() for x in (allowed or []) if str(x).strip()}
+    if not allowed:
+        return list(dets), []
+    keep, drop = [], []
+    for d in dets:
+        (keep if str(d.get("label", "")) in allowed else drop).append(d)
+    return keep, drop
+
+
 def six_elements_to_pose(
     det: dict,
     rx: float = DEFAULT_RX,
@@ -455,6 +466,7 @@ def _provider_vision(
     calib_path: Optional[str] = None,
     hover_mm: float = 0.0,
     rz_mode: str = "fixed",
+    only_labels=None,
 ) -> Callable[[], list]:
     """3단계: 6요소 인식 결과 → **base 포즈**(cam_to_base 변환 계층 경유).
 
@@ -516,6 +528,17 @@ def _provider_vision(
                 "사람이 확인할 것."
             )
         dets = gated
+
+        # 🆕 10/12 시연 부품 필터 — 빈 안 잡음(바닥 접힘 등)이 다른 부품 이름으로 잡혀 1번 포즈가 되는 것을 막는다.
+        #    "제외종 화이트리스트(DB)" 와 다르다: 이것은 **오늘 집을 것만** 고르는 운영 스위치이고 기본값은 전부 통과.
+        if only_labels:
+            dets, dropped_lab = filter_by_labels(dets, only_labels)
+            if dropped_lab:
+                print(f"[pick-server] 부품 이름 필터 제외 {len(dropped_lab)}건 (허용 = {sorted(only_labels)})")
+                for d in dropped_lab[:5]:
+                    print(f"    - {d.get('label', '?')}")
+            if not dets:
+                raise PickEncodeError(f"허용 부품 {sorted(only_labels)} 이 검출에 없다 — 빈에 그 부품이 있나 · 모델이 다른 이름으로 잡았나(six.json 확인)")
 
         # ⭐ 입력 게이트(장면) = 6요소 JSON에 장면 판정이 실려 있으면 경고한다.
         #   🚨 여기서 조용히 멈추지 않는다 — 멈출지 말지는 운영 정책이고,
@@ -585,6 +608,8 @@ def main() -> int:
                     help="vision: 변환 결과 z 에 더한다(위로). '집기 없이 이동 1회' 시험 = 50 권장")
     ap.add_argument("--rz-mode", choices=("fixed", "angle"), default="fixed",
                     help="vision: fixed=캘리브의 rz_ref 그대로(위치만 시험) / angle=부품 각도 반영(부호·오프셋 실측 후)")
+    ap.add_argument("--only-labels", default="",
+                    help="🆕 10/12 vision: 이 부품 이름만 로봇에 보낸다(쉼표) — 시연 = 02_sol_block_b,plate_e,13_x2_bcf8ccb4 · 비우면 전부")
     args = ap.parse_args()
 
     if args.mode == "handshake":
@@ -608,7 +633,8 @@ def main() -> int:
                      "카메라 좌표를 그대로 보내는 경로는 9/17에 폐기됐다(hand-eye 3점법 → cam_to_base build)")
         try:
             provider = _provider_vision(args.six_json, args.limit, calib_path=args.calib,
-                                        hover_mm=args.hover_mm, rz_mode=args.rz_mode)
+                                        hover_mm=args.hover_mm, rz_mode=args.rz_mode,
+                                        only_labels=[x for x in args.only_labels.split(",") if x.strip()])
         except PickEncodeError as e:
             print(f"🔴 vision 모드 시작 불가: {e}")
             return 2
