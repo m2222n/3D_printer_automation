@@ -24,6 +24,7 @@ from app.vision.routes import router as vision_router
 from app.binpick.routes import router as binpick_router
 from app.line.routes_read import router as line_read_router
 from app.line.routes_write import router as line_write_router
+from app.testtool.routes import router as testtool_router
 from app.vision.camera_manager import get_camera_manager
 from app.vision.mqtt_client import get_mqtt_client
 
@@ -199,6 +200,8 @@ Web API 기반 모니터링 시스템
     # 라인 MES v2 — 도메인은 리포 루트 line_mes, 여기는 HTTP 계층만. 라우트가 없으면 404 → FE 는 목업 유지
     app.include_router(line_read_router, prefix="/api/v2")
     app.include_router(line_write_router, prefix="/api/v2")
+    # KTR 성능 시험용 측정 페이지(/test/latency) — SPA 폴백보다 먼저 등록해야 잡힌다
+    app.include_router(testtool_router)
 
     # 프론트엔드 정적 파일 서빙
     frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"

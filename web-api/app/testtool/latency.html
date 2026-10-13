@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모니터링 응답시간 측정</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --line:#d9dde3; --text:#1d2229; --muted:#5d6670; --ok:#1b7f3b; --ng:#b3261e; --accent:#1f5fbf; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font: 14px/1.5 -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+  header { background:#fff; border-bottom:1px solid var(--line); padding:12px 20px; display:flex; align-items:center; gap:16px; }
+  header h1 { font-size:17px; margin:0; }
+  .pill { padding:2px 10px; border-radius:999px; font-size:12px; border:1px solid var(--line); }
+  .pill.ok { color:var(--ok); border-color:var(--ok); }
+  .pill.ng { color:var(--ng); border-color:var(--ng); }
+  main { max-width:1180px; margin:0 auto; padding:16px 20px 60px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:14px; }
+  .card h2 { font-size:15px; margin:0 0 10px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  label { color:var(--muted); font-size:13px; }
+  input[type=text], input[type=password], input[type=number] { padding:6px 8px; border:1px solid var(--line); border-radius:6px; font-size:13px; }
+  button { padding:7px 14px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; font-size:13px; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { border:1px solid var(--line); padding:5px 8px; text-align:left; white-space:nowrap; }
+  th { background:#eef1f5; }
+  td.num { text-align:right; font-variant-numeric: tabular-nums; }
+  .PASS { color:var(--ok); font-weight:600; } .FAIL { color:var(--ng); font-weight:600; }
+  .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .summary div { background:#f1f4f8; border-radius:6px; padding:8px 10px; }
+  .summary b { display:block; font-size:18px; }
+  .log { font-family: ui-monospace, Menlo, monospace; font-size:12px; color:var(--muted); max-height:140px; overflow:auto; background:#fafbfc; border:1px solid var(--line); padding:8px; white-space:pre-wrap; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .tabs button.active { background:#e8eef9; border-color:var(--accent); color:var(--accent); }
+  .muted { color:var(--muted); font-size:12px; }
+  .scroll { max-height:420px; overflow:auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>모니터링 응답시간 측정</h1>
+  <span id="wsPill" class="pill ng">WebSocket 끊김</span>
+  <span id="authPill" class="pill">인증: 미설정</span>
+  <span class="muted">기준 = 응답시간 3초 이내 (평균·최대)</span>
+</header>
+<main>
+
+<div class="card">
+  <h2>1. 접속 설정</h2>
+  <div class="row">
+    <label>서버</label><input type="text" id="base" size="34">
+    <label>아이디</label><input type="text" id="user" size="12" autocomplete="username">
+    <label>비밀번호</label><input type="password" id="pw" size="12" autocomplete="current-password">
+    <button id="btnLogin">로그인</button>
+    <button id="btnWs">WebSocket 연결</button>
+  </div>
+  <p class="muted">시험 서버에서 직접 접속(localhost)하면 로그인 없이 됩니다. 다른 PC에서 접속하면 로그인 후 토큰이 자동으로 쓰입니다.</p>
+</div>
+
+<div class="tabs">
+  <button class="active" data-tab="t1">시험항목 1 · 설비 상태 변경 → 화면 응답시간</button>
+  <button data-tab="t3" disabled title="작업 3에서 구현">시험항목 2 · 조회 API 응답시간 (준비 중)</button>
+</div>
+
+<section id="tab-t1">
+<div class="card">
+  <h2>2. 사전조건 — 설비 상태 초기화</h2>
+  <div class="row">
+    <button id="btnReset">초기화 (세척기 2 · 경화기 2 → idle)</button>
+    <button id="btnDevices">현재 상태 조회</button>
+    <span id="devices" class="muted"></span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. 시험데이터 — 상태 변경 이벤트 목록</h2>
+  <div class="row">
+    <input type="file" id="file" accept=".json,application/json">
+    <button id="btnSample">샘플 30건 만들기·내려받기</button>
+    <span id="fileInfo" class="muted">파일 없음</span>
+  </div>
+  <p class="muted">형식: <code>{"events":[{"seq":1,"camera_id":"wash_1","status":"wash_running"}, …]}</code> · 카메라 = wash_1 · wash_2 · cure_1 · cure_2 · 상태 = wash_idle/wash_running/wash_complete · cure_idle/cure_running/cure_complete · 같은 설비의 연속 이벤트는 상태가 바뀌어야 합니다(같은 상태는 서버가 변경으로 치지 않음).</p>
+</div>
+
+<div class="card">
+  <h2>4. 시험 실행</h2>
+  <div class="row">
+    <label>이벤트 수신 대기 한도(초)</label><input type="number" id="timeout" value="10" min="1" max="60" style="width:70px">
+    <label>이벤트 사이 간격(ms)</label><input type="number" id="gap" value="300" min="0" max="5000" style="width:80px">
+    <button id="btnStart" class="primary">시험 시작</button>
+    <button id="btnStop" disabled>중지</button>
+    <span id="progress" class="muted"></span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>5. 결과</h2>
+  <div class="summary" id="summary">
+    <div><span>이벤트 수</span><b id="sN">-</b></div>
+    <div><span>평균 응답시간(초)</span><b id="sMean">-</b></div>
+    <div><span>최대 응답시간(초)</span><b id="sMax">-</b></div>
+    <div><span>최소 응답시간(초)</span><b id="sMin">-</b></div>
+    <div><span>3초 이내 건수</span><b id="sPass">-</b></div>
+    <div><span>판정</span><b id="sVerdict">-</b></div>
+  </div>
+  <div class="row" style="margin:10px 0">
+    <button id="btnCsv" disabled>엑셀(CSV) 다운로드</button>
+    <button id="btnJson" disabled>원본 기록(JSON) 다운로드</button>
+    <span class="muted">측정 기준: 발행 요청 직전 시각 ↔ 화면의 WebSocket 수신 시각 (둘 다 이 브라우저 시계)</span>
+  </div>
+  <div class="scroll">
+  <table id="result">
+    <thead><tr><th>순번</th><th>카메라</th><th>변경 후 상태</th><th>발행 요청 시각</th><th>수신 시각</th><th>응답시간(초)</th><th>판정</th><th>비고</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+</div>
+</section>
+
+<div class="card">
+  <h2>로그</h2>
+  <div id="log" class="log"></div>
+</div>
+</main>
+
+<script>
+(() => {
+  const CAMERAS = { wash_1: "wash", wash_2: "wash", cure_1: "cure", cure_2: "cure" };
+  const STATUSES = ["wash_idle","wash_running","wash_complete","cure_idle","cure_running","cure_complete"];
+  const LIMIT_S = 3.0;
+  const $ = id => document.getElementById(id);
+
+  let token = null, ws = null, events = [], results = [], running = false, stopFlag = false;
+  const pending = [];            // {camera_id, status, resolve}
+  const unmatched = [];          // 수신했지만 대기 중인 요청이 없던 메시지
+
+  $("base").value = window.location.origin;
+
+  function log(m) {
+    const t = new Date().toLocaleTimeString("ko-KR", { hour12:false });
+    $("log").textContent += `[${t}] ${m}\n`;
+    $("log").scrollTop = $("log").scrollHeight;
+  }
+  function base() { return $("base").value.replace(/\/+$/, ""); }
+  function headers() {
+    const h = { "Content-Type": "application/json" };
+    if (token) h["Authorization"] = "Bearer " + token;
+    return h;
+  }
+  function kst(d) { return new Date(d.getTime() + 9*3600*1000).toISOString().replace("T"," ").replace("Z","") + " KST"; }
+
+  // ---------- 로그인 ----------
+  $("btnLogin").onclick = async () => {
+    try {
+      const r = await fetch(base() + "/api/v1/auth/login", { method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ username: $("user").value, password: $("pw").value }) });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      token = j.access_token;
+      $("authPill").textContent = "인증: 토큰 발급됨"; $("authPill").className = "pill ok";
+      log("로그인 성공");
+    } catch (e) { log("로그인 실패: " + e.message); }
+  };
+
+  // ---------- WebSocket ----------
+  $("btnWs").onclick = () => connectWs();
+  function connectWs() {
+    if (ws) { try { ws.close(); } catch (_) {} }
+    const u = new URL(base() + "/api/v1/vision/ws");
+    u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+    if (token) u.searchParams.set("token", token);
+    ws = new WebSocket(u.toString());
+    ws.onopen = () => { $("wsPill").textContent = "WebSocket 연결됨"; $("wsPill").className = "pill ok"; log("WebSocket 연결됨 " + u.pathname); };
+    ws.onclose = ev => { $("wsPill").textContent = "WebSocket 끊김" + (ev.code ? " (" + ev.code + ")" : ""); $("wsPill").className = "pill ng"; log("WebSocket 끊김 code=" + ev.code); };
+    ws.onerror = () => log("WebSocket 오류");
+    ws.onmessage = ev => {
+      const tRecv = performance.now(), dRecv = new Date();
+      let m; try { m = JSON.parse(ev.data); } catch (_) { return; }
+      if (m.type !== "vision_status_change" || !m.data) return;
+      const i = pending.findIndex(p => p.camera_id === m.data.camera_id && p.status === m.data.status);
+      if (i >= 0) { const p = pending.splice(i, 1)[0]; p.resolve({ tRecv, dRecv, server_ts: m.data.timestamp }); }
+      else { unmatched.push({ at: dRecv.toISOString(), data: m.data }); log("대기 중인 요청 없는 수신: " + m.data.camera_id + " → " + m.data.status); }
+    };
+  }
+
+  // ---------- 설비 초기화·조회 ----------
+  async function simulate(camera_id, status) {
+    const r = await fetch(base() + "/api/v1/vision/simulate", { method:"POST", headers: headers(),
+      body: JSON.stringify({ camera_id, status, confidence: 0.95 }) });
+    if (!r.ok) throw new Error("simulate HTTP " + r.status + " " + (await r.text()).slice(0, 120));
+  }
+  $("btnReset").onclick = async () => {
+    try {
+      for (const [cam, type] of Object.entries(CAMERAS)) { await simulate(cam, type + "_idle"); await sleep(150); }
+      await sleep(800);
+      await showDevices();
+      log("초기화 완료 (4대 → idle)");
+    } catch (e) { log("초기화 실패: " + e.message); }
+  };
+  $("btnDevices").onclick = showDevices;
+  async function showDevices() {
+    const r = await fetch(base() + "/api/v1/vision/devices", { headers: headers() });
+    if (!r.ok) { $("devices").textContent = "조회 실패 HTTP " + r.status; return; }
+    const j = await r.json();
+    $("devices").textContent = (j.devices || []).map(d => `${d.camera_id}=${d.status}`).join(" · ") || "등록된 설비 없음";
+  }
+
+  // ---------- 시험데이터 ----------
+  $("file").onchange = async ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    try {
+      const text = await f.text();
+      const j = JSON.parse(text);
+      const list = Array.isArray(j) ? j : j.events;
+      const err = validate(list);
+      if (err) throw new Error(err);
+      events = list.map((e, i) => ({ seq: e.seq ?? i + 1, camera_id: e.camera_id, status: e.status }));
+      const hash = await sha256(text);
+      $("fileInfo").textContent = `${f.name} · ${events.length}건 · ${f.size} bytes · SHA-256 ${hash}`;
+      log(`이벤트 파일 로드: ${events.length}건 · SHA-256 ${hash}`);
+    } catch (e) { events = []; $("fileInfo").textContent = "파일 오류: " + e.message; log("파일 오류: " + e.message); }
+  };
+  function validate(list) {
+    if (!Array.isArray(list) || list.length === 0) return "events 배열이 비어 있음";
+    const state = {}; for (const c in CAMERAS) state[c] = CAMERAS[c] + "_idle";
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!CAMERAS[e.camera_id]) return `${i+1}번: 알 수 없는 카메라 ${e.camera_id}`;
+      if (!STATUSES.includes(e.status)) return `${i+1}번: 알 수 없는 상태 ${e.status}`;
+      if (!e.status.startsWith(CAMERAS[e.camera_id] + "_")) return `${i+1}번: ${e.camera_id}에 ${e.status}는 맞지 않음`;
+      if (state[e.camera_id] === e.status) return `${i+1}번: ${e.camera_id}가 이미 ${e.status} 상태 (변경 아님)`;
+      state[e.camera_id] = e.status;
+    }
+    return null;
+  }
+  $("btnSample").onclick = async () => {
+    // 4대가 idle → running → complete → idle 을 돌며 30건. 같은 설비 연속 상태는 항상 바뀐다.
+    const cams = Object.keys(CAMERAS), cycle = ["running","complete","idle"];
+    const list = []; let n = 0;
+    outer: for (let round = 0; ; round++) for (const cam of cams) for (const st of cycle) {
+      if (n >= 30) break outer;
+      list.push({ seq: ++n, camera_id: cam, status: CAMERAS[cam] + "_" + st });
+    }
+    const body = JSON.stringify({ generated: new Date().toISOString(), note: "wash_1·wash_2·cure_1·cure_2 × (running→complete→idle)", events: list }, null, 2);
+    download("events_sample_30.json", body, "application/json");
+    log("샘플 30건 생성 · SHA-256 " + await sha256(body));
+  };
+
+  // ---------- 시험 실행 ----------
+  $("btnStart").onclick = async () => {
+    if (!ws || ws.readyState !== 1) { log("먼저 WebSocket을 연결하세요"); return; }
+    if (events.length === 0) { log("먼저 이벤트 파일을 올리세요"); return; }
+    running = true; stopFlag = false; results = []; unmatched.length = 0; pending.length = 0;
+    $("btnStart").disabled = true; $("btnStop").disabled = false; $("btnCsv").disabled = true; $("btnJson").disabled = true;
+    $("result").querySelector("tbody").innerHTML = "";
+    const timeoutMs = Number($("timeout").value) * 1000, gapMs = Number($("gap").value);
+    log(`시험 시작: ${events.length}건 · 대기 한도 ${timeoutMs/1000}s · 간격 ${gapMs}ms`);
+    for (const ev of events) {
+      if (stopFlag) { log("중지됨"); break; }
+      $("progress").textContent = `${ev.seq}/${events.length} 진행 중 (${ev.camera_id} → ${ev.status})`;
+      const row = { seq: ev.seq, camera_id: ev.camera_id, status: ev.status, t_req: null, t_recv: null, latency_s: null, verdict: "FAIL", note: "" };
+      const waiter = new Promise(res => pending.push({ camera_id: ev.camera_id, status: ev.status, resolve: res }));
+      const dReq = new Date(), tReq = performance.now();
+      row.t_req = dReq;
+      try {
+        const post = simulate(ev.camera_id, ev.status);            // 발행 요청 — 수신은 POST 완료와 무관하게 WS 핸들러가 잡는다
+        const got = await Promise.race([ waiter.then(v => ({ ok:true, v })), sleep(timeoutMs).then(() => ({ ok:false })) ]);
+        await post.catch(e => { row.note = e.message; });
+        if (got.ok) {
+          row.t_recv = got.v.dRecv; row.latency_s = (got.v.tRecv - tReq) / 1000; row.server_ts = got.v.server_ts;
+          row.verdict = row.latency_s <= LIMIT_S ? "PASS" : "FAIL";
+        } else {
+          const i = pending.findIndex(p => p.camera_id === ev.camera_id && p.status === ev.status); if (i >= 0) pending.splice(i, 1);
+          row.note = (row.note ? row.note + " · " : "") + `수신 없음 (${timeoutMs/1000}s 초과)`;
+        }
+      } catch (e) { row.note = e.message; }
+      results.push(row); appendRow(row); updateSummary();
+      if (gapMs) await sleep(gapMs);
+    }
+    running = false; $("btnStart").disabled = false; $("btnStop").disabled = true;
+    $("btnCsv").disabled = results.length === 0; $("btnJson").disabled = results.length === 0;
+    $("progress").textContent = `완료 ${results.length}/${events.length}`;
+    log("시험 종료");
+  };
+  $("btnStop").onclick = () => { stopFlag = true; };
+
+  function appendRow(r) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="num">${r.seq}</td><td>${r.camera_id}</td><td>${r.status}</td><td>${kst(r.t_req)}</td><td>${r.t_recv ? kst(r.t_recv) : "-"}</td><td class="num">${r.latency_s == null ? "-" : r.latency_s.toFixed(3)}</td><td class="${r.verdict}">${r.verdict}</td><td>${r.note}</td>`;
+    $("result").querySelector("tbody").appendChild(tr);
+  }
+  function stats() {
+    const lat = results.filter(r => r.latency_s != null).map(r => r.latency_s);
+    const n = results.length, pass = results.filter(r => r.verdict === "PASS").length;
+    const mean = lat.length ? lat.reduce((a,b)=>a+b,0)/lat.length : null;
+    const max = lat.length ? Math.max(...lat) : null, min = lat.length ? Math.min(...lat) : null;
+    const verdict = n > 0 && pass === n && mean != null && mean <= LIMIT_S && max <= LIMIT_S ? "PASS" : "FAIL";
+    return { n, pass, mean, max, min, verdict };
+  }
+  function updateSummary() {
+    const s = stats();
+    $("sN").textContent = s.n; $("sPass").textContent = `${s.pass}/${s.n}`;
+    $("sMean").textContent = s.mean == null ? "-" : s.mean.toFixed(3);
+    $("sMax").textContent = s.max == null ? "-" : s.max.toFixed(3);
+    $("sMin").textContent = s.min == null ? "-" : s.min.toFixed(3);
+    $("sVerdict").textContent = s.verdict; $("sVerdict").className = s.verdict;
+  }
+
+  // ---------- 다운로드 ----------
+  $("btnCsv").onclick = () => {
+    const s = stats();
+    const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["순번","카메라","변경 후 상태","발행 요청 시각(KST)","수신 시각(KST)","응답시간(초)","판정(3초 이내)","비고"].map(esc).join(",")];
+    for (const r of results) lines.push([r.seq, r.camera_id, r.status, kst(r.t_req), r.t_recv ? kst(r.t_recv) : "", r.latency_s == null ? "" : r.latency_s.toFixed(3), r.verdict, r.note].map(esc).join(","));
+    lines.push(""); lines.push(["이벤트 수", s.n].map(esc).join(",")); lines.push(["평균 응답시간(초)", s.mean == null ? "" : s.mean.toFixed(3)].map(esc).join(","));
+    lines.push(["최대 응답시간(초)", s.max == null ? "" : s.max.toFixed(3)].map(esc).join(",")); lines.push(["3초 이내 건수", `${s.pass}/${s.n}`].map(esc).join(",")); lines.push(["판정", s.verdict].map(esc).join(","));
+    download(`latency_T1_${stamp()}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+  };
+  $("btnJson").onclick = () => download(`latency_T1_${stamp()}.json`, JSON.stringify({ limit_s: LIMIT_S, server: base(), events, results, unmatched, summary: stats(), exported: new Date().toISOString() }, null, 2), "application/json");
+
+  // ---------- 유틸 ----------
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function stamp() { const d = new Date(Date.now() + 9*3600*1000); return d.toISOString().slice(0,16).replace(/[-:T]/g,"").replace(/(\d{8})(\d{4})/, "$1_$2"); }   // KST 기준 파일명
+  function download(name, text, type) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+  async function sha256(text) { const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)); return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase(); }
+})();
+</script>
+</body>
+</html>
