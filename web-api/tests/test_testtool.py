@@ -29,6 +29,27 @@ def test_latency_page_targets_real_routes(client):
         assert p in paths, f"서버에 {p} 라우트가 없다"
 
 
+def test_events_test_data_locked():
+    """시험항목 1 시험데이터(events.json)는 규격서에 해시로 박히는 파일이다.
+    ① 서버 카메라·상태 정의와 일치 ② 같은 설비의 연속 이벤트는 상태가 바뀜(서버는 변경만 전송) ③ 해시 고정 — 바꾸려면 규격서도 같이."""
+    import hashlib, json
+    from app.vision.simulator import CAMERA_MAP
+    from app.vision.schemas import DeviceStatus
+
+    path = WEB_API_ROOT / "app" / "testtool" / "test_data_261013" / "events.json"
+    raw = path.read_bytes()
+    assert hashlib.sha256(raw).hexdigest().upper() == "BC8CAEBB903AAFB175D38DB2072C4727BBA0F60A8DCB16C53D78ED3FA54BCED3"
+    events = json.loads(raw)["events"]
+    assert [e["seq"] for e in events] == list(range(1, 31))
+    valid = {s.value for s in DeviceStatus}
+    state = {c: f'{v["device_type"]}_idle' for c, v in CAMERA_MAP.items()}
+    for e in events:
+        assert e["camera_id"] in CAMERA_MAP
+        assert e["status"] in valid and e["status"].startswith(CAMERA_MAP[e["camera_id"]]["device_type"] + "_")
+        assert state[e["camera_id"]] != e["status"], f"변경 아님: {e}"
+        state[e["camera_id"]] = e["status"]
+
+
 def test_t3_query_apis_respond_200(client, auth_headers):
     """시험항목 2 대상 조회 API 2종(설비·이벤트)이 비어 있는 서버에서도 200 — 대시보드는 Formlabs 데이터 전이라 503 허용.
     원격 접속(비 loopback)은 토큰이 있어야 한다 = 페이지의 로그인 흐름이 필요한 이유."""

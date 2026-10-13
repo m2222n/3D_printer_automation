@@ -1,0 +1,158 @@
+{
+  "name": "설비 상태 변경 이벤트 시퀀스 (KTR SW 성능 시험 · 시험항목 1)",
+  "version": "261013",
+  "precondition": "시험 시작 전 설비 4대(wash_1·wash_2·cure_1·cure_2) 상태를 idle로 초기화",
+  "rule": "같은 설비의 연속 이벤트는 반드시 상태가 바뀐다 (running → complete → idle 순환)",
+  "events": [
+    {
+      "seq": 1,
+      "camera_id": "wash_1",
+      "status": "wash_running"
+    },
+    {
+      "seq": 2,
+      "camera_id": "wash_1",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 3,
+      "camera_id": "wash_1",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 4,
+      "camera_id": "wash_2",
+      "status": "wash_running"
+    },
+    {
+      "seq": 5,
+      "camera_id": "wash_2",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 6,
+      "camera_id": "wash_2",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 7,
+      "camera_id": "cure_1",
+      "status": "cure_running"
+    },
+    {
+      "seq": 8,
+      "camera_id": "cure_1",
+      "status": "cure_complete"
+    },
+    {
+      "seq": 9,
+      "camera_id": "cure_1",
+      "status": "cure_idle"
+    },
+    {
+      "seq": 10,
+      "camera_id": "cure_2",
+      "status": "cure_running"
+    },
+    {
+      "seq": 11,
+      "camera_id": "cure_2",
+      "status": "cure_complete"
+    },
+    {
+      "seq": 12,
+      "camera_id": "cure_2",
+      "status": "cure_idle"
+    },
+    {
+      "seq": 13,
+      "camera_id": "wash_1",
+      "status": "wash_running"
+    },
+    {
+      "seq": 14,
+      "camera_id": "wash_1",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 15,
+      "camera_id": "wash_1",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 16,
+      "camera_id": "wash_2",
+      "status": "wash_running"
+    },
+    {
+      "seq": 17,
+      "camera_id": "wash_2",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 18,
+      "camera_id": "wash_2",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 19,
+      "camera_id": "cure_1",
+      "status": "cure_running"
+    },
+    {
+      "seq": 20,
+      "camera_id": "cure_1",
+      "status": "cure_complete"
+    },
+    {
+      "seq": 21,
+      "camera_id": "cure_1",
+      "status": "cure_idle"
+    },
+    {
+      "seq": 22,
+      "camera_id": "cure_2",
+      "status": "cure_running"
+    },
+    {
+      "seq": 23,
+      "camera_id": "cure_2",
+      "status": "cure_complete"
+    },
+    {
+      "seq": 24,
+      "camera_id": "cure_2",
+      "status": "cure_idle"
+    },
+    {
+      "seq": 25,
+      "camera_id": "wash_1",
+      "status": "wash_running"
+    },
+    {
+      "seq": 26,
+      "camera_id": "wash_1",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 27,
+      "camera_id": "wash_1",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 28,
+      "camera_id": "wash_2",
+      "status": "wash_running"
+    },
+    {
+      "seq": 29,
+      "camera_id": "wash_2",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 30,
+      "camera_id": "wash_2",
+      "status": "wash_idle"
+    }
+  ]
+}
