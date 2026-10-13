@@ -54,7 +54,9 @@ async def get_dashboard():
             )
         
         return data
-        
+
+    except HTTPException:
+        raise  # 503(초기화 중) 같은 의도된 상태 코드를 500으로 바꾸지 않는다 (10/13 · KTR 시험 대상 API)
     except Exception as e:
         logger.error(f"대시보드 조회 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))

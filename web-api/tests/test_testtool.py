@@ -23,9 +23,21 @@ def test_latency_page_targets_real_routes(client):
     """페이지의 하드코딩 경로가 서버 라우터에 실제로 있는지 — 라우터를 옮기면 여기서 잡힌다."""
     html = client.get("/test/latency").text
     paths = {route.path for route in client.app.routes}
-    for p in ("/api/v1/vision/simulate", "/api/v1/vision/devices", "/api/v1/vision/ws", "/api/v1/auth/login"):
+    for p in ("/api/v1/vision/simulate", "/api/v1/vision/devices", "/api/v1/vision/ws", "/api/v1/auth/login",
+              "/api/v1/vision/events", "/api/v1/dashboard"):
         assert p in html, f"페이지가 {p} 를 부르지 않는다"
         assert p in paths, f"서버에 {p} 라우트가 없다"
+
+
+def test_t3_query_apis_respond_200(client, auth_headers):
+    """시험항목 2 대상 조회 API 2종(설비·이벤트)이 비어 있는 서버에서도 200 — 대시보드는 Formlabs 데이터 전이라 503 허용.
+    원격 접속(비 loopback)은 토큰이 있어야 한다 = 페이지의 로그인 흐름이 필요한 이유."""
+    for p in ("/api/v1/vision/devices", "/api/v1/vision/events?page=1&page_size=50"):
+        assert client.get(p).status_code == 401, f"{p} 가 토큰 없이 열리면 안 된다"
+        r = client.get(p, headers=auth_headers)
+        assert r.status_code == 200, p
+    r = client.get("/api/v1/dashboard", headers=auth_headers)
+    assert r.status_code in (200, 503), r.status_code
 
 
 def test_latency_page_ws_message_type_matches_server():

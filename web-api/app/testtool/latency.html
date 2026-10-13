@@ -60,7 +60,7 @@
 
 <div class="tabs">
   <button class="active" data-tab="t1">시험항목 1 · 설비 상태 변경 → 화면 응답시간</button>
-  <button data-tab="t3" disabled title="작업 3에서 구현">시험항목 2 · 조회 API 응답시간 (준비 중)</button>
+  <button data-tab="t3">시험항목 2 · 조회 API 응답시간</button>
 </div>
 
 <section id="tab-t1">
@@ -112,6 +112,49 @@
   <div class="scroll">
   <table id="result">
     <thead><tr><th>순번</th><th>카메라</th><th>변경 후 상태</th><th>발행 요청 시각</th><th>수신 시각</th><th>응답시간(초)</th><th>판정</th><th>비고</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+</div>
+</section>
+
+<section id="tab-t3" style="display:none">
+<div class="card">
+  <h2>2. 대상 API · 사전조건</h2>
+  <div class="row">
+    <label><input type="checkbox" class="api" value="/api/v1/vision/devices" checked> 설비 상태 목록 <code>GET /api/v1/vision/devices</code></label>
+    <label><input type="checkbox" class="api" value="/api/v1/vision/events?page=1&page_size=50" checked> 설비 상태 변경 이력 <code>GET /api/v1/vision/events</code></label>
+    <label><input type="checkbox" class="api" value="/api/v1/dashboard" checked> 프린터 대시보드 <code>GET /api/v1/dashboard</code></label>
+  </div>
+  <p class="muted">사전조건: 시험항목 1을 먼저 수행해 설비 상태·이벤트 데이터가 있는 상태 · 로그인(원격일 때) · 대시보드는 서버가 프린터 데이터를 수집한 뒤 응답한다(초기화 중이면 HTTP 503 = FAIL로 기록).</p>
+</div>
+
+<div class="card">
+  <h2>3. 시험 실행</h2>
+  <div class="row">
+    <label>API당 회차</label><input type="number" id="t3n" value="30" min="1" max="500" style="width:70px">
+    <label>요청 사이 간격(ms)</label><input type="number" id="t3gap" value="200" min="0" max="5000" style="width:80px">
+    <button id="t3Start" class="primary">시험 시작</button>
+    <button id="t3Stop" disabled>중지</button>
+    <span id="t3progress" class="muted"></span>
+  </div>
+  <p class="muted">측정 기준: 요청 직전 시각 ↔ 응답 본문 수신 완료 시각 (이 브라우저 시계) · 캐시 사용 안 함 · HTTP 200이 아니면 FAIL</p>
+</div>
+
+<div class="card">
+  <h2>4. 결과 — API별 집계</h2>
+  <table id="t3sum">
+    <thead><tr><th>API</th><th>회차</th><th>평균(초)</th><th>최대(초)</th><th>최소(초)</th><th>3초 이내</th><th>HTTP 200</th><th>판정</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="row" style="margin:10px 0">
+    <span>전체 판정:</span><b id="t3verdict">-</b>
+    <button id="t3Csv" disabled>엑셀(CSV) 다운로드</button>
+    <button id="t3Json" disabled>원본 기록(JSON) 다운로드</button>
+  </div>
+  <div class="scroll">
+  <table id="t3result">
+    <thead><tr><th>API</th><th>회차</th><th>요청 시각</th><th>응답 시각</th><th>응답시간(초)</th><th>HTTP</th><th>판정</th><th>비고</th></tr></thead>
     <tbody></tbody>
   </table>
   </div>
@@ -318,6 +361,85 @@
     download(`latency_T1_${stamp()}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
   };
   $("btnJson").onclick = () => download(`latency_T1_${stamp()}.json`, JSON.stringify({ limit_s: LIMIT_S, server: base(), events, results, unmatched, summary: stats(), exported: new Date().toISOString() }, null, 2), "application/json");
+
+  // ---------- 탭 ----------
+  document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+    document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("active", x === b));
+    $("tab-t1").style.display = b.dataset.tab === "t1" ? "" : "none";
+    $("tab-t3").style.display = b.dataset.tab === "t3" ? "" : "none";
+  });
+
+  // ---------- 시험항목 2 · 조회 API 응답시간 ----------
+  let t3results = [], t3stop = false;
+  $("t3Start").onclick = async () => {
+    const apis = [...document.querySelectorAll("input.api:checked")].map(x => x.value);
+    if (apis.length === 0) { log("대상 API를 하나 이상 고르세요"); return; }
+    const n = Number($("t3n").value), gapMs = Number($("t3gap").value);
+    t3results = []; t3stop = false;
+    $("t3Start").disabled = true; $("t3Stop").disabled = false; $("t3Csv").disabled = true; $("t3Json").disabled = true;
+    $("t3result").querySelector("tbody").innerHTML = ""; $("t3sum").querySelector("tbody").innerHTML = ""; $("t3verdict").textContent = "-";
+    log(`조회 API 시험 시작: ${apis.length}종 × ${n}회 · 간격 ${gapMs}ms`);
+    outer: for (const api of apis) {
+      for (let i = 1; i <= n; i++) {
+        if (t3stop) { log("중지됨"); break outer; }
+        $("t3progress").textContent = `${api} ${i}/${n}`;
+        const row = { api, run: i, t_req: new Date(), t_res: null, latency_s: null, http: null, verdict: "FAIL", note: "" };
+        const t0 = performance.now();
+        try {
+          const r = await fetch(base() + api, { headers: headers(), cache: "no-store" });
+          await r.text();                                   // 본문 수신 완료까지
+          row.latency_s = (performance.now() - t0) / 1000; row.t_res = new Date(); row.http = r.status;
+          row.verdict = (r.status === 200 && row.latency_s <= LIMIT_S) ? "PASS" : "FAIL";
+          if (r.status !== 200) row.note = "HTTP " + r.status;
+        } catch (e) { row.latency_s = (performance.now() - t0) / 1000; row.t_res = new Date(); row.note = e.message; }
+        t3results.push(row); t3AppendRow(row);
+        if (gapMs) await sleep(gapMs);
+      }
+    }
+    t3Summary();
+    $("t3Start").disabled = false; $("t3Stop").disabled = true;
+    $("t3Csv").disabled = t3results.length === 0; $("t3Json").disabled = t3results.length === 0;
+    $("t3progress").textContent = `완료 ${t3results.length}건`;
+    log("조회 API 시험 종료");
+  };
+  $("t3Stop").onclick = () => { t3stop = true; };
+
+  function t3AppendRow(r) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${r.api}</td><td class="num">${r.run}</td><td>${kst(r.t_req)}</td><td>${r.t_res ? kst(r.t_res) : "-"}</td><td class="num">${r.latency_s == null ? "-" : r.latency_s.toFixed(3)}</td><td class="num">${r.http ?? "-"}</td><td class="${r.verdict}">${r.verdict}</td><td>${r.note}</td>`;
+    $("t3result").querySelector("tbody").appendChild(tr);
+  }
+  function t3Stats() {
+    const out = [];
+    for (const api of [...new Set(t3results.map(r => r.api))]) {
+      const rows = t3results.filter(r => r.api === api), lat = rows.map(r => r.latency_s).filter(v => v != null);
+      const pass = rows.filter(r => r.verdict === "PASS").length, ok200 = rows.filter(r => r.http === 200).length;
+      const mean = lat.length ? lat.reduce((a,b)=>a+b,0)/lat.length : null, max = lat.length ? Math.max(...lat) : null, min = lat.length ? Math.min(...lat) : null;
+      const verdict = rows.length > 0 && pass === rows.length && mean <= LIMIT_S && max <= LIMIT_S ? "PASS" : "FAIL";
+      out.push({ api, n: rows.length, mean, max, min, pass, ok200, verdict });
+    }
+    return out;
+  }
+  function t3Summary() {
+    const s = t3Stats(), tb = $("t3sum").querySelector("tbody"); tb.innerHTML = "";
+    for (const x of s) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${x.api}</td><td class="num">${x.n}</td><td class="num">${x.mean == null ? "-" : x.mean.toFixed(3)}</td><td class="num">${x.max == null ? "-" : x.max.toFixed(3)}</td><td class="num">${x.min == null ? "-" : x.min.toFixed(3)}</td><td class="num">${x.pass}/${x.n}</td><td class="num">${x.ok200}/${x.n}</td><td class="${x.verdict}">${x.verdict}</td>`;
+      tb.appendChild(tr);
+    }
+    const all = s.length > 0 && s.every(x => x.verdict === "PASS") ? "PASS" : "FAIL";
+    $("t3verdict").textContent = all; $("t3verdict").className = all;
+  }
+  $("t3Csv").onclick = () => {
+    const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["API","회차","요청 시각(KST)","응답 시각(KST)","응답시간(초)","HTTP","판정(3초 이내·200)","비고"].map(esc).join(",")];
+    for (const r of t3results) lines.push([r.api, r.run, kst(r.t_req), r.t_res ? kst(r.t_res) : "", r.latency_s == null ? "" : r.latency_s.toFixed(3), r.http ?? "", r.verdict, r.note].map(esc).join(","));
+    lines.push(""); lines.push(["API","회차","평균(초)","최대(초)","최소(초)","3초 이내","HTTP 200","판정"].map(esc).join(","));
+    for (const x of t3Stats()) lines.push([x.api, x.n, x.mean == null ? "" : x.mean.toFixed(3), x.max == null ? "" : x.max.toFixed(3), x.min == null ? "" : x.min.toFixed(3), `${x.pass}/${x.n}`, `${x.ok200}/${x.n}`, x.verdict].map(esc).join(","));
+    lines.push(["전체 판정", $("t3verdict").textContent].map(esc).join(","));
+    download(`latency_T3_${stamp()}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+  };
+  $("t3Json").onclick = () => download(`latency_T3_${stamp()}.json`, JSON.stringify({ limit_s: LIMIT_S, server: base(), results: t3results, summary: t3Stats(), exported: new Date().toISOString() }, null, 2), "application/json");
 
   // ---------- 유틸 ----------
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
