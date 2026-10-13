@@ -26,7 +26,7 @@ from app.vision.schemas import (
     SimulateScenarioRequest,
     VisionHealthResponse,
 )
-from app.vision.camera_manager import get_camera_manager
+from app.vision.camera_manager import get_camera_manager, as_kst
 from app.vision.mqtt_client import get_mqtt_client
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ async def list_devices():
     for c in cameras:
         elapsed = None
         if c.last_status_change:
-            elapsed = int((now - c.last_status_change).total_seconds())
+            elapsed = int((now - as_kst(c.last_status_change)).total_seconds())
 
         devices.append(DeviceResponse(
             type=c.device_type,
@@ -122,7 +122,7 @@ async def get_device(device_type: str, device_id: int):
     now = datetime.now(KST)
     elapsed = None
     if c.last_status_change:
-        elapsed = int((now - c.last_status_change).total_seconds())
+        elapsed = int((now - as_kst(c.last_status_change)).total_seconds())
 
     return DeviceResponse(
         type=c.device_type,

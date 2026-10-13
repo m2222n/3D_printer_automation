@@ -50,6 +50,27 @@ def test_events_test_data_locked():
         state[e["camera_id"]] = e["status"]
 
 
+def test_devices_api_ok_after_status_change(client, auth_headers):
+    """10/13 리허설에서 잡힌 500: 상태 변경이 한 번이라도 있으면 /vision/devices 가 터졌다
+    (SQLite 가 tz 를 버려 naive 로 돌아온 last_status_change 를 aware now 와 뺌).
+    MQTT 없이 camera_manager.handle_status 를 직접 불러 재현 → 200 + elapsed 정수."""
+    import asyncio
+    from app.local.database import init_local_db
+    from app.vision.camera_manager import get_camera_manager
+    from app.vision.schemas import MQTTStatusMessage
+
+    init_local_db()
+    m = get_camera_manager()
+    for st in ("wash_idle", "wash_running"):
+        asyncio.run(m.handle_status(MQTTStatusMessage(camera_id="wash_1", device_type="wash", device_id=1, status=st, confidence=0.9, timestamp=0.0)))
+    r = client.get("/api/v1/vision/devices", headers=auth_headers)
+    assert r.status_code == 200, r.text
+    d = next(x for x in r.json()["devices"] if x["camera_id"] == "wash_1")
+    assert d["status"] == "wash_running" and isinstance(d["elapsed_since_change_s"], int) and d["elapsed_since_change_s"] >= 0
+    r = client.get("/api/v1/vision/devices/wash/1", headers=auth_headers)
+    assert r.status_code == 200, r.text
+
+
 def test_t3_query_apis_respond_200(client, auth_headers):
     """시험항목 2 대상 조회 API 2종(설비·이벤트)이 비어 있는 서버에서도 200 — 대시보드는 Formlabs 데이터 전이라 503 허용.
     원격 접속(비 loopback)은 토큰이 있어야 한다 = 페이지의 로그인 흐름이 필요한 이유."""

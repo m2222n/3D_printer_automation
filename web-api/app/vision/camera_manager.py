@@ -25,6 +25,14 @@ logger = logging.getLogger(__name__)
 
 KST = timezone(timedelta(hours=9))
 
+
+def as_kst(dt: Optional[datetime]) -> Optional[datetime]:
+    """DB(SQLite)는 tz 를 버리고 naive 로 돌려준다 — 저장은 전부 datetime.now(KST) 이므로 KST 로 복원.
+    aware 끼리만 빼야 TypeError 가 안 난다 (10/13 · /vision/devices 500 수정)."""
+    if dt is None or dt.tzinfo is not None:
+        return dt
+    return dt.replace(tzinfo=KST)
+
 # 기본 카메라 설정
 DEFAULT_CAMERAS = {
     "wash_1": {"device_type": "wash", "device_id": 1, "name": "세척기 1호"},
@@ -82,9 +90,7 @@ class CameraManager:
                 with get_local_db_session() as db:
                     online_cameras = db.query(VisionCamera).filter_by(is_online=1).all()
                     for cam in online_cameras:
-                        last_seen = cam.last_seen
-                        if last_seen and last_seen.tzinfo is None:
-                            last_seen = last_seen.replace(tzinfo=KST)
+                        last_seen = as_kst(cam.last_seen)
                         if last_seen and (now - last_seen).total_seconds() > timeout:
                             logger.warning(f"카메라 {cam.camera_id} 하트비트 타임아웃 -> offline")
                             old_status = cam.status
