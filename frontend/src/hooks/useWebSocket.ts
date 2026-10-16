@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DashboardData, WebSocketMessage } from '../types/printer';
+import { wsUrl as cellWsUrl } from '../services/cellApi';
 
 interface UseWebSocketOptions {
   onMessage?: (data: WebSocketMessage) => void;
@@ -54,8 +55,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const connect = useCallback(() => {
     cleanupSocket();
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/v1/ws`;
+    // 🐛 10/16: 토큰 없이 열어 서버(jwt_middleware)가 4401 로 닫고 있었다 → 운영 화면은 늘 "폴링"이었다.
+    //    WebSocket 은 헤더를 못 실으므로 ?token= 으로 넘긴다(미들웨어 _extract_websocket_token 이 읽는 자리).
+    const wsUrl = cellWsUrl('/api/v1/ws');
 
     try {
       const ws = new WebSocket(wsUrl);

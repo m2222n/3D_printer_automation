@@ -10,6 +10,7 @@ import { useDashboard } from '../hooks/useDashboard';
 import PrinterCard from './PrinterCard';
 import { PrinterDetail } from './PrinterDetail';
 import { PrinterTimeline } from './PrinterTimeline';
+import CellMonitorPanels from './CellMonitorPanels';
 import { getPrintHistory } from '../services/api';
 import type { PrintHistoryItem } from '../types/printer';
 
@@ -59,21 +60,26 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
     );
   }
 
-  // 에러 상태
+  // 에러 상태 — 프린터(Formlabs 클라우드)가 안 와도 셀A·셀B 패널은 따로 산다(10/16 · 경로가 다르다)
   if (error && !dashboard) {
     return (
-      <div className="min-h-[60vh] bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
-          <div className="text-red-500 text-5xl mb-4">!</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">연결 오류</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={refresh}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            다시 시도
-          </button>
+      <div className="bg-gray-100">
+        <div className="min-h-[40vh] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full text-center">
+            <div className="text-red-500 text-5xl mb-4">!</div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">프린터 연결 오류</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={refresh}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              다시 시도
+            </button>
+          </div>
         </div>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+          <CellMonitorPanels />
+        </main>
       </div>
     );
   }
@@ -117,7 +123,7 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
-                프린터 모니터링
+                공정 모니터링 <span className="text-sm font-normal text-gray-500">프린터 · 셀A 설비 · 셀B 빈피킹</span>
               </h2>
             </div>
 
@@ -267,6 +273,9 @@ export default function Dashboard({ onOpenPrinterModal }: DashboardProps) {
                 <p className="text-gray-500">등록된 프린터가 없습니다.</p>
               </div>
             )}
+
+            {/* 셀A 설비 상태 · 셀B 빈피킹 — 10/16 통합 모니터링(프린터와 별도 WebSocket 2채널) */}
+            <CellMonitorPanels />
 
             {/* 타임라인 간트 차트 */}
             {dashboard && dashboard.printers.length > 0 && (
