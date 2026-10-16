@@ -117,6 +117,64 @@ def run_e2e(depth: Path, out_dir: Path, ckpt: Path, python: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# ②' 웹 보고 — 🆕 10/16 셀B 실제 모니터링 배선 (8/13 송신 함수·수신 라우터를 잇는 한 줄)
+#   · 인식 결과를 POST /api/v1/binpick/reports 로 보낸다 → 서버가 저장 + /binpick/ws 로 화면에 푸시
+#   · 🚨 보고 실패는 로봇을 멈추지 않는다(웹은 보고 경로 · web_reporter 설계원칙 1) — 경고만 찍고 소켓으로 간다
+#   · IPC 는 웹 서버(공장 PC)와 다른 PC 라 loopback 인증 면제가 안 된다 ⇒ JWT 필요
+#     토큰 = 환경변수 BINPICK_REPORT_TOKEN, 없으면 BINPICK_REPORT_USER/BINPICK_REPORT_PASSWORD 로 로그인해서 받는다
+#     🔒 비번을 인자·파일로 받지 않는다(명령 기록·커밋에 남는다)
+# ---------------------------------------------------------------------------
+REPORT_PATH = "/api/v1/binpick/reports"
+LOGIN_PATH = "/api/v1/auth/login"
+
+
+def _base_url(url: str) -> str:
+    """'http://host:8085' 또는 '…/api/v1/binpick/reports' 둘 다 받는다 → 'http://host:8085'."""
+    url = url.rstrip("/")
+    return url[: -len(REPORT_PATH)] if url.endswith(REPORT_PATH) else url
+
+
+def _report_token(base: str, timeout_s: float = 3.0) -> str | None:
+    import os
+    tok = os.environ.get("BINPICK_REPORT_TOKEN", "").strip()
+    if tok:
+        return tok
+    user = os.environ.get("BINPICK_REPORT_USER", "").strip()
+    pw = os.environ.get("BINPICK_REPORT_PASSWORD", "")
+    if not (user and pw):
+        return None                                   # 같은 PC(loopback)면 토큰 없이 된다
+    import urllib.request
+    req = urllib.request.Request(base + LOGIN_PATH, method="POST",
+                                 data=json.dumps({"username": user, "password": pw}).encode("utf-8"),
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+        return json.loads(resp.read().decode("utf-8"))["access_token"]
+
+
+def report_scene(six_path: Path, url: str, latency_ms: float | None) -> bool:
+    """six.json 한 장을 웹에 보고한다. 성패만 돌려주고 예외를 던지지 않는다(로그인 실패 포함)."""
+    from bin_picking.src.communication.web_reporter import WebReporter, http_transport
+    base = _base_url(url)
+    try:
+        token = _report_token(base)
+    except Exception as e:                           # noqa: BLE001 — 로그인 실패도 로봇을 멈추지 않는다
+        print(f"[보고] ⚠️ 로그인 실패 — 보고 생략: {type(e).__name__}: {e}")
+        return False
+    six = json.loads(Path(six_path).read_text(encoding="utf-8"))
+    rep = WebReporter(http_transport(base + REPORT_PATH, token=token))
+    try:
+        res = rep.report_bin_picking(six, latency_ms=latency_ms)
+    except Exception as e:                           # noqa: BLE001 — payload 를 못 만든 것(계약 위반)도 여기선 경고로
+        print(f"[보고] ⚠️ payload 생성 실패 — 보고 생략: {type(e).__name__}: {e}")
+        return False
+    if res.ok:
+        print(f"[보고] ✅ {res.detail} · scene={res.scene_id} · 검출 {len(six.get('detections') or [])}건 → 운영 화면 빈피킹 패널")
+    else:
+        print(f"[보고] ⚠️ 실패(로봇은 계속): {res.error}")
+    return res.ok
+
+
+# ---------------------------------------------------------------------------
 # ③ 소켓 서버 — 로봇(펜던트 MODE vision)이 붙어 좌표를 읽고 DONE 을 보낼 때까지 기다린다
 # ---------------------------------------------------------------------------
 def serve(six: Path, host: str, port: int, limit: int, cycles: int, python: str,
@@ -164,8 +222,12 @@ def main() -> int:
                          "만들기: python -m bin_picking.src.pipeline.roi_mask propose --depth <npy> --out <json>")
     ap.add_argument("--only-labels", default="",
                     help="🆕 로봇에 보낼 부품 이름만(쉼표) — 시연 = 02_sol_block_b,plate_e,13_x2_bcf8ccb4 · 비우면 전부")
+    ap.add_argument("--report-url", default="",
+                    help="🆕 10/16 인식 결과를 웹에 보고(셀B 모니터링) — 예: http://<웹서버>:8085 · 비우면 보고 안 함. "
+                         "다른 PC 면 환경변수 BINPICK_REPORT_TOKEN 또는 BINPICK_REPORT_USER/BINPICK_REPORT_PASSWORD")
     ap.add_argument("--python", default=sys.executable)
     args = ap.parse_args()
+    t_start = time.time()
     if not args.no_server and not args.calib:
         ap.error("--calib <cam_to_base.json> 이 필요하다 (서버 없이 촬영·추론만 보려면 --no-server)")
 
@@ -195,6 +257,11 @@ def main() -> int:
     six = run_e2e(depth, args.out_dir, args.checkpoint, args.python)
     if args.roi:
         roi_mask.rescore_scene_in_roi(six, depth, args.roi)   # 장면 게이트를 "빈 안쪽 면적" 기준으로 다시 쓴다(전체 화면 기준이면 마스크 뒤 항상 "비어 있다")
+    if args.report_url:
+        # ⭐ 게이트 재판정 뒤에 보낸다 — 화면에 뜨는 신뢰 판정이 로봇이 받은 것과 같아야 한다
+        report_scene(six, args.report_url, latency_ms=(time.time() - t_start) * 1000.0)
+    else:
+        print("[보고] 없음 — 운영 화면에 빈피킹이 안 뜬다. --report-url 권장")
     if args.no_server:
         print("[소켓] --no-server 로 종료. six =", six)
         return 0

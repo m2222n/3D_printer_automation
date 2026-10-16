@@ -145,6 +145,12 @@ def rescore_scene_in_roi(six_path: Path | str, masked_depth_path: Path | str, ro
     new["roi"] = roi["include"]
     new["full_frame"] = {"valid_ratio_pct": old.get("valid_ratio_pct"), "verdict": old.get("verdict")}
     d["gate_scene"] = new
+    # 🐛 10/16: 요약 판정도 같이 바꾼다 — 웹 보고(web_reporter._scene_verdict)는 gate_summary.scene_verdict 를 읽는다.
+    #    안 바꾸면 화면엔 "분포 밖"·신뢰 True·메모 "분포 안"이 한 장면에 같이 뜬다(셀B 배선 실물 시험에서 발견).
+    summ = d.get("gate_summary")
+    if isinstance(summ, dict):
+        summ["scene_verdict_full_frame"] = summ.get("scene_verdict")
+        summ["scene_verdict"] = new.get("verdict")
     six_path.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"[ROI] 장면 게이트 재판정(빈 안쪽 기준) = {new['verdict']}({new['valid_ratio_pct']}%) · 전체 화면 기준은 {old.get('valid_ratio_pct')}%")
     return new

@@ -48,6 +48,30 @@ def main() -> int:
           0 < psrc.find("filter_detections") < psrc.find("filter_by_labels") < psrc.find("det_to_base_pose"))
     check("pick_socket_server main 에 --only-labels", '"--only-labels"' in inspect.getsource(pss.main))
 
+    print("②' 🆕 10/16 셀B 웹 보고 배선 — 호출이 실제로 있는가")
+    i_report = src.find("report_scene(")
+    check("run_live_pick.main 이 report_scene 을 부른다", i_report > 0)
+    check("… ROI 재판정 **뒤**, 소켓 서버 **앞**에서 부른다(화면 판정 = 로봇 판정 · 로봇 대기 전에 화면에 뜬다)",
+          0 < i_rescore < i_report < src.find("serve("))
+    check("run_live_pick 에 --report-url 옵션", '"--report-url"' in src)
+    rsrc = inspect.getsource(rlp.report_scene)
+    check("report_scene 이 web_reporter.http_transport 로 보낸다", "http_transport(" in rsrc and "report_bin_picking(" in rsrc)
+    check("🔒 비번을 인자로 받지 않는다(환경변수만)", "password" not in src.lower().split("--report-url")[0][-200:]
+          and "BINPICK_REPORT_PASSWORD" in inspect.getsource(rlp._report_token))
+    import socket
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); closed_port = s.getsockname()[1]; s.close()   # 확실히 닫힌 포트
+    import json as _j, tempfile as _t
+    with _t.TemporaryDirectory() as td:
+        p = Path(td) / "x.six.json"
+        p.write_text(_j.dumps({"scene_id": "x", "detections": []}), encoding="utf-8")
+        try:
+            ok = rlp.report_scene(p, f"http://127.0.0.1:{closed_port}", 1.0)
+            check("서버가 꺼져 있어도 예외 없이 False(로봇은 계속)", ok is False)
+        except Exception as e:  # noqa: BLE001
+            check(f"서버가 꺼져 있어도 예외 없이 False — 예외 발생 {type(e).__name__}", False)
+    check("_base_url 은 전체 경로·끝 슬래시를 정리한다",
+          rlp._base_url("http://h:8085/api/v1/binpick/reports/") == "http://h:8085" == rlp._base_url("http://h:8085"))
+
     print("③ 부품 이름 필터")
     dets = [{"label": "02_sol_block_b"}, {"label": "r_guide_a_r"}, {"label": "plate_e"}]
     keep, drop = pss.filter_by_labels(dets, ["02_sol_block_b", "plate_e", "13_x2_bcf8ccb4"])
@@ -74,6 +98,25 @@ def main() -> int:
         # 🧪 그물: 마스크를 안 걸면 분포 밖이어야 한다(걸어도 같으면 마스크가 의미 없다)
         sc0 = input_gate.check_scene(raw)
         check(f"🧪 그물: 마스크 없이는 분포 밖 {sc0['verdict']}({sc0['valid_ratio_pct']}%)", sc0["verdict"] != "in_distribution")
+        # 🆕 10/16 재판정이 요약 판정까지 바꾸는가 — 웹 보고는 gate_summary.scene_verdict 를 읽는다
+        import json, tempfile
+        from bin_picking.src.communication.web_reporter import build_bin_picking_payload
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+            masked = td / "m.npy"
+            np.save(masked, roi_mask.apply_roi(raw, roi_mask.load_roi(cfg)))
+            six_p = td / "s.six.json"
+            six_p.write_text(json.dumps({"scene_id": "t", "detections": [],
+                                         "gate_scene": {"verdict": "out_of_distribution", "valid_ratio_pct": 0.9},
+                                         "gate_summary": {"scene_verdict": "out_of_distribution", "n_dropped": 0}}), encoding="utf-8")
+            roi_mask.rescore_scene_in_roi(six_p, masked, cfg)
+            d = json.loads(six_p.read_text(encoding="utf-8"))
+            check("재판정이 gate_summary.scene_verdict 도 바꾼다(장면 판정과 같다)",
+                  d["gate_summary"]["scene_verdict"] == d["gate_scene"]["verdict"] == "in_distribution")
+            check("… 원래 전체 화면 판정은 scene_verdict_full_frame 에 남긴다",
+                  d["gate_summary"].get("scene_verdict_full_frame") == "out_of_distribution")
+            check("웹 payload 판정 = 빈 안쪽 판정(화면과 로봇이 같은 판정을 본다)",
+                  build_bin_picking_payload(d)["scene_gate"]["verdict"] == "in_distribution")
     else:
         print("  ⚪ 실물 npy 없음 — 6000 에서만 도는 항목(건너뜀)")
     check("설정 파일 스키마 로드", roi_mask.load_roi(cfg)["include"] == [212, 32, 590, 406])
