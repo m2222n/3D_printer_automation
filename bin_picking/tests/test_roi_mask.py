@@ -69,6 +69,11 @@ def main() -> int:
             check("서버가 꺼져 있어도 예외 없이 False(로봇은 계속)", ok is False)
         except Exception as e:  # noqa: BLE001
             check(f"서버가 꺼져 있어도 예외 없이 False — 예외 발생 {type(e).__name__}", False)
+    # 🐛 10/16 공장: Cloudflare 터널이 Python 기본 UA 를 403 — 로그인·보고 둘 다 UA 를 실어야 한다
+    from bin_picking.src.communication import web_reporter as _wr
+    check("로그인·보고 요청에 User-Agent 를 싣는다(터널 403 방지)",
+          "User-Agent" in inspect.getsource(rlp._report_token) and "User-Agent" in inspect.getsource(_wr.http_transport)
+          and "urllib" not in _wr.HTTP_USER_AGENT)
     check("_base_url 은 전체 경로·끝 슬래시를 정리한다",
           rlp._base_url("http://h:8085/api/v1/binpick/reports/") == "http://h:8085" == rlp._base_url("http://h:8085"))
 

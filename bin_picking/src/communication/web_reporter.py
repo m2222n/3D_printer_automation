@@ -189,6 +189,9 @@ def file_transport(out_dir: Path) -> Callable[[dict], str]:
     return _send
 
 
+HTTP_USER_AGENT = "Mozilla/5.0 (compatible; orinu-binpick/1.0)"   # 터널(Cloudflare) 통과용 · 기본 UA 는 403
+
+
 def http_transport(url: str, *, timeout_s: float = 3.0,
                    token: Optional[str] = None) -> Callable[[dict], str]:
     """payload를 웹 API로 POST한다.
@@ -203,7 +206,9 @@ def http_transport(url: str, *, timeout_s: float = 3.0,
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(
             url, data=data, method="POST",
-            headers={"Content-Type": "application/json"})
+            headers={"Content-Type": "application/json",
+                     # 🐛 10/16 공장 실측: Cloudflare 터널이 Python 기본 UA(Python-urllib/3.x)를 403 으로 막는다
+                     "User-Agent": HTTP_USER_AGENT})
         if token:
             req.add_header("Authorization", f"Bearer {token}")
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:

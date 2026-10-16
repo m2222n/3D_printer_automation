@@ -144,9 +144,11 @@ def _report_token(base: str, timeout_s: float = 3.0) -> str | None:
     if not (user and pw):
         return None                                   # 같은 PC(loopback)면 토큰 없이 된다
     import urllib.request
+    from bin_picking.src.communication.web_reporter import HTTP_USER_AGENT
     req = urllib.request.Request(base + LOGIN_PATH, method="POST",
                                  data=json.dumps({"username": user, "password": pw}).encode("utf-8"),
-                                 headers={"Content-Type": "application/json"})
+                                 headers={"Content-Type": "application/json",
+                                          "User-Agent": HTTP_USER_AGENT})   # 🐛 10/16 터널 403 (Python 기본 UA 차단)
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         return json.loads(resp.read().decode("utf-8"))["access_token"]
 
