@@ -24,30 +24,67 @@ def test_latency_page_targets_real_routes(client):
     html = client.get("/test/latency").text
     paths = {route.path for route in client.app.routes}
     for p in ("/api/v1/vision/simulate", "/api/v1/vision/devices", "/api/v1/vision/ws", "/api/v1/auth/login",
-              "/api/v1/vision/events", "/api/v1/dashboard"):
+              "/api/v1/vision/events", "/api/v1/dashboard",
+              "/api/v1/binpick/reports", "/api/v1/binpick/ws"):          # 셀B 빈피킹 경로(10/16 통합)
         assert p in html, f"페이지가 {p} 를 부르지 않는다"
         assert p in paths, f"서버에 {p} 라우트가 없다"
 
 
+TEST_DATA = WEB_API_ROOT / "app" / "testtool" / "test_data_261016" / "events.json"
+TEST_DATA_SHA256 = "D87C093EEEB7C63D7D219D2B3CB9FD8C55FCE658427696C9FF11314CC14E5BE6"
+
+
 def test_events_test_data_locked():
-    """시험항목 1 시험데이터(events.json)는 규격서에 해시로 박히는 파일이다.
-    ① 서버 카메라·상태 정의와 일치 ② 같은 설비의 연속 이벤트는 상태가 바뀜(서버는 변경만 전송) ③ 해시 고정 — 바꾸려면 규격서도 같이."""
+    """시험항목 1 시험데이터(events.json · 셀A 18 + 셀B 12)는 규격서에 해시로 박히는 파일이다.
+    ① 셀A: 서버 카메라·상태 정의와 일치 · 같은 설비의 연속 이벤트는 상태가 바뀜(서버는 변경만 전송) · 끝 상태 전부 idle(재실행 가능)
+    ② 셀B: report 가 서버 수신 스키마(BinPickReportIn)로 그대로 파싱됨 · scene_id 고유 · 검출 ≥ 1
+    ③ 해시 고정 — 바꾸려면 규격서도 같이."""
     import hashlib, json
+    from app.binpick.schemas import BinPickReportIn
     from app.vision.simulator import CAMERA_MAP
     from app.vision.schemas import DeviceStatus
 
-    path = WEB_API_ROOT / "app" / "testtool" / "test_data_261013" / "events.json"
-    raw = path.read_bytes()
-    assert hashlib.sha256(raw).hexdigest().upper() == "BC8CAEBB903AAFB175D38DB2072C4727BBA0F60A8DCB16C53D78ED3FA54BCED3"
-    events = json.loads(raw)["events"]
+    raw = TEST_DATA.read_bytes()
+    assert hashlib.sha256(raw).hexdigest().upper() == TEST_DATA_SHA256
+    doc = json.loads(raw)
+    events = doc["events"]
     assert [e["seq"] for e in events] == list(range(1, 31))
+    cells = [e["cell"] for e in events]
+    assert cells.count("A") == 18 and cells.count("B") == 12 == doc["counts"]["cell_b_binpick"]
+    assert cells[:5] == ["A", "A", "B", "A", "B"], "순서 패턴 [A,A,B,A,B]"
+
     valid = {s.value for s in DeviceStatus}
     state = {c: f'{v["device_type"]}_idle' for c, v in CAMERA_MAP.items()}
+    scenes: set[str] = set()
     for e in events:
-        assert e["camera_id"] in CAMERA_MAP
-        assert e["status"] in valid and e["status"].startswith(CAMERA_MAP[e["camera_id"]]["device_type"] + "_")
-        assert state[e["camera_id"]] != e["status"], f"변경 아님: {e}"
-        state[e["camera_id"]] = e["status"]
+        if e["cell"] == "A":
+            assert e["kind"] == "vision" and e["camera_id"] in CAMERA_MAP
+            assert e["status"] in valid and e["status"].startswith(CAMERA_MAP[e["camera_id"]]["device_type"] + "_")
+            assert state[e["camera_id"]] != e["status"], f"변경 아님: {e}"
+            state[e["camera_id"]] = e["status"]
+        else:
+            assert e["kind"] == "binpick"
+            report = BinPickReportIn.model_validate(e["report"])       # 서버가 받는 스키마 그대로
+            assert report.scene_id == e["scene_id"] and e["scene_id"] not in scenes
+            scenes.add(e["scene_id"])
+            assert len(report.detections) >= 1 and report.summary.n_detections == len(report.detections)
+            assert report.scene_gate.verdict != "not_checked", "실물 결과는 게이트 판정이 있어야 한다"
+    assert all(st.endswith("_idle") for st in state.values()), f"끝 상태가 idle 이 아님: {state}"
+
+
+def test_cell_b_reports_ingest_201(client, auth_headers):
+    """시험데이터의 셀B report 12건이 실제 수신 경로(POST /api/v1/binpick/reports)에서 201 로 저장되는지 —
+    페이지는 이 응답과 무관하게 WS 로 수신을 재지만, 저장이 실패하면 WS 전송도 없다."""
+    import json
+    from app.local.database import init_local_db
+
+    init_local_db()
+    events = json.loads(TEST_DATA.read_text(encoding="utf-8"))["events"]
+    for e in (x for x in events if x["cell"] == "B"):
+        r = client.post("/api/v1/binpick/reports", json=e["report"], headers=auth_headers)
+        assert r.status_code == 201, (e["scene_id"], r.text)
+        body = r.json()
+        assert body["scene_id"] == e["scene_id"] and body["n_detections_stored"] == len(e["report"]["detections"])
 
 
 def test_devices_api_ok_after_status_change(client, auth_headers):
@@ -86,8 +123,11 @@ def test_latency_page_ws_message_type_matches_server():
     """camera_manager 가 보내는 WS 타입 문자열과 페이지가 거르는 타입이 같아야 한다."""
     html = (WEB_API_ROOT / "app" / "testtool" / "latency.html").read_text(encoding="utf-8")
     manager_src = (WEB_API_ROOT / "app" / "vision" / "camera_manager.py").read_text(encoding="utf-8")
+    binpick_src = (WEB_API_ROOT / "app" / "binpick" / "routes.py").read_text(encoding="utf-8")
     assert '"vision_status_change"' in manager_src
     assert 'vision_status_change' in html
+    assert '"binpick_scene"' in binpick_src and '"scene_id"' in binpick_src   # 셀B 채널: 타입 + 매칭 키
+    assert 'binpick_scene' in html
 
 
 def test_latency_page_simulator_cameras_match_server():

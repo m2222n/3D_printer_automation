@@ -1,0 +1,976 @@
+{
+  "name": "통합 모니터링 응답시간 시험 데이터 (시험항목 1 · 셀A 설비 상태 변경 + 셀B 빈피킹 인식 결과)",
+  "version": "261016",
+  "precondition": "시험 시작 전 설비 4대(wash_1·wash_2·cure_1·cure_2) 상태를 idle 로 초기화 · 측정 페이지가 WebSocket 2개(/api/v1/vision/ws · /api/v1/binpick/ws)에 연결",
+  "rule": "셀A: 같은 설비의 연속 이벤트는 반드시 상태가 바뀐다(running→complete→idle) · 셀B: 장면 ID 로 수신을 맞춘다 · 순서 = [A,A,B,A,B]×6",
+  "source_cell_b": "실물 인식 결과(six.json)를 운영 모듈 web_reporter.build_bin_picking_payload 로 변환 — 9/4 OVN2 대조표 5 · 9/16 팔 장착 실물 2 · 10/12 공장 447mm 5",
+  "counts": {
+    "total": 30,
+    "cell_a_vision": 18,
+    "cell_b_binpick": 12
+  },
+  "events": [
+    {
+      "seq": 1,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_1",
+      "status": "wash_running"
+    },
+    {
+      "seq": 2,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_2",
+      "status": "wash_running"
+    },
+    {
+      "seq": 3,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_0904_01_shot_001_c1",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_0904_01_shot_001_c1",
+        "timestamp": "2026-09-03T16:18:46",
+        "summary": {
+          "n_detections": 9,
+          "n_unique_labels": 8,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "in_distribution",
+          "trusted": true,
+          "valid_ratio_pct": 5.55,
+          "note": "유효율 5.5% — 학습 분포(2.0~10.0%) 안",
+          "n_dropped_by_size_gate": 0
+        },
+        "detections": [
+          {
+            "x": 438,
+            "y": 274,
+            "z": 454.7,
+            "angle": 92.49,
+            "label": "07_guide_paper_l",
+            "confidence": 0.9865
+          },
+          {
+            "x": 523,
+            "y": 274,
+            "z": 430.4,
+            "angle": 172.09,
+            "label": "06_sol_block_back",
+            "confidence": 0.9672
+          },
+          {
+            "x": 430,
+            "y": 196,
+            "z": 456.7,
+            "angle": 79.7,
+            "label": "08_r_guide_a",
+            "confidence": 0.9341
+          },
+          {
+            "x": 506,
+            "y": 192,
+            "z": 438.7,
+            "angle": 116.57,
+            "label": "03_sol_block_front",
+            "confidence": 0.8568
+          },
+          {
+            "x": 495,
+            "y": 128,
+            "z": 429.5,
+            "angle": 175.18,
+            "label": "18_button_function_niro",
+            "confidence": 0.6771
+          },
+          {
+            "x": 463,
+            "y": 308,
+            "z": 459.6,
+            "angle": 38.88,
+            "label": "plate_e",
+            "confidence": 0.6766
+          },
+          {
+            "x": 497,
+            "y": 210,
+            "z": 442.8,
+            "angle": 176.82,
+            "label": "r_guide_a_r",
+            "confidence": 0.4548
+          },
+          {
+            "x": 436,
+            "y": 258,
+            "z": 461.3,
+            "angle": 63.87,
+            "label": "18_button_function_niro",
+            "confidence": 0.302
+          },
+          {
+            "x": 406,
+            "y": 152,
+            "z": 457.3,
+            "angle": 82.87,
+            "label": "bracket_sen_1",
+            "confidence": 0.2032
+          }
+        ]
+      }
+    },
+    {
+      "seq": 4,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "cure_1",
+      "status": "cure_running"
+    },
+    {
+      "seq": 5,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_0904_02_shot_002_c1",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_0904_02_shot_002_c1",
+        "timestamp": "2026-09-03T16:18:48",
+        "summary": {
+          "n_detections": 9,
+          "n_unique_labels": 6,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "in_distribution",
+          "trusted": true,
+          "valid_ratio_pct": 4.27,
+          "note": "유효율 4.3% — 학습 분포(2.0~10.0%) 안",
+          "n_dropped_by_size_gate": 0
+        },
+        "detections": [
+          {
+            "x": 401,
+            "y": 222,
+            "z": 459.0,
+            "angle": 176.91,
+            "label": "08_r_guide_a",
+            "confidence": 0.9939
+          },
+          {
+            "x": 305,
+            "y": 249,
+            "z": 463.4,
+            "angle": 134.09,
+            "label": "plate_e",
+            "confidence": 0.9859
+          },
+          {
+            "x": 384,
+            "y": 298,
+            "z": 461.4,
+            "angle": 95.71,
+            "label": "03_sol_block_front",
+            "confidence": 0.979
+          },
+          {
+            "x": 344,
+            "y": 206,
+            "z": 452.7,
+            "angle": 7.13,
+            "label": "r_guide_a_l",
+            "confidence": 0.9513
+          },
+          {
+            "x": 318,
+            "y": 306,
+            "z": 445.4,
+            "angle": 180.0,
+            "label": "03_sol_block_front",
+            "confidence": 0.9502
+          },
+          {
+            "x": 479,
+            "y": 298,
+            "z": 452.4,
+            "angle": 93.76,
+            "label": "18_button_function_niro",
+            "confidence": 0.8916
+          },
+          {
+            "x": 422,
+            "y": 234,
+            "z": 467.0,
+            "angle": 176.86,
+            "label": "r_guide_a_l",
+            "confidence": 0.6333
+          },
+          {
+            "x": 469,
+            "y": 217,
+            "z": 464.8,
+            "angle": 180.0,
+            "label": "guide_paper_roll_cover_left",
+            "confidence": 0.5327
+          },
+          {
+            "x": 409,
+            "y": 302,
+            "z": 461.3,
+            "angle": 29.74,
+            "label": "03_sol_block_front",
+            "confidence": 0.34
+          }
+        ]
+      }
+    },
+    {
+      "seq": 6,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "cure_2",
+      "status": "cure_running"
+    },
+    {
+      "seq": 7,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_1",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 8,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_0904_03_shot_003_c1",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_0904_03_shot_003_c1",
+        "timestamp": "2026-09-03T16:18:50",
+        "summary": {
+          "n_detections": 9,
+          "n_unique_labels": 7,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "in_distribution",
+          "trusted": true,
+          "valid_ratio_pct": 5.28,
+          "note": "유효율 5.3% — 학습 분포(2.0~10.0%) 안",
+          "n_dropped_by_size_gate": 0
+        },
+        "detections": [
+          {
+            "x": 478,
+            "y": 254,
+            "z": 499.6,
+            "angle": 131.63,
+            "label": "plate_e",
+            "confidence": 0.9964
+          },
+          {
+            "x": 377,
+            "y": 293,
+            "z": 480.2,
+            "angle": 175.91,
+            "label": "08_r_guide_a",
+            "confidence": 0.9899
+          },
+          {
+            "x": 404,
+            "y": 220,
+            "z": 492.1,
+            "angle": 138.81,
+            "label": "06_sol_block_back",
+            "confidence": 0.9672
+          },
+          {
+            "x": 401,
+            "y": 300,
+            "z": 476.1,
+            "angle": 1.59,
+            "label": "r_guide_a_l",
+            "confidence": 0.9528
+          },
+          {
+            "x": 381,
+            "y": 298,
+            "z": 484.8,
+            "angle": 180.0,
+            "label": "r_guide_a_l",
+            "confidence": 0.91
+          },
+          {
+            "x": 313,
+            "y": 228,
+            "z": 467.8,
+            "angle": 94.4,
+            "label": "18_button_function_niro",
+            "confidence": 0.906
+          },
+          {
+            "x": 325,
+            "y": 301,
+            "z": 477.8,
+            "angle": 177.4,
+            "label": "bracket_sen_1",
+            "confidence": 0.7475
+          },
+          {
+            "x": 397,
+            "y": 224,
+            "z": 487.7,
+            "angle": 26.57,
+            "label": "03_sol_block_front",
+            "confidence": 0.343
+          },
+          {
+            "x": 408,
+            "y": 229,
+            "z": 492.0,
+            "angle": 93.47,
+            "label": "03_sol_block_front",
+            "confidence": 0.2172
+          }
+        ]
+      }
+    },
+    {
+      "seq": 9,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_2",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 10,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_0904_04_shot_004_c1",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_0904_04_shot_004_c1",
+        "timestamp": "2026-09-03T16:19:02",
+        "summary": {
+          "n_detections": 8,
+          "n_unique_labels": 5,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "in_distribution",
+          "trusted": true,
+          "valid_ratio_pct": 6.28,
+          "note": "유효율 6.3% — 학습 분포(2.0~10.0%) 안",
+          "n_dropped_by_size_gate": 0
+        },
+        "detections": [
+          {
+            "x": 353,
+            "y": 274,
+            "z": 459.8,
+            "angle": 100.3,
+            "label": "07_guide_paper_l",
+            "confidence": 0.9994
+          },
+          {
+            "x": 434,
+            "y": 193,
+            "z": 459.9,
+            "angle": 4.76,
+            "label": "r_guide_a_r",
+            "confidence": 0.9539
+          },
+          {
+            "x": 456,
+            "y": 271,
+            "z": 471.2,
+            "angle": 165.26,
+            "label": "06_sol_block_back",
+            "confidence": 0.9457
+          },
+          {
+            "x": 424,
+            "y": 150,
+            "z": 446.8,
+            "angle": 82.57,
+            "label": "07_guide_paper_l",
+            "confidence": 0.8569
+          },
+          {
+            "x": 343,
+            "y": 148,
+            "z": 451.5,
+            "angle": 39.4,
+            "label": "02_sol_block_b",
+            "confidence": 0.7783
+          },
+          {
+            "x": 428,
+            "y": 281,
+            "z": 468.9,
+            "angle": 85.6,
+            "label": "plate_e",
+            "confidence": 0.6953
+          },
+          {
+            "x": 338,
+            "y": 131,
+            "z": 453.8,
+            "angle": 91.47,
+            "label": "r_guide_a_r",
+            "confidence": 0.5361
+          },
+          {
+            "x": 364,
+            "y": 188,
+            "z": 454.4,
+            "angle": 47.29,
+            "label": "02_sol_block_b",
+            "confidence": 0.3735
+          }
+        ]
+      }
+    },
+    {
+      "seq": 11,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "cure_1",
+      "status": "cure_complete"
+    },
+    {
+      "seq": 12,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "cure_2",
+      "status": "cure_complete"
+    },
+    {
+      "seq": 13,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_0904_05_shot_005_c1",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_0904_05_shot_005_c1",
+        "timestamp": "2026-09-03T16:19:04",
+        "summary": {
+          "n_detections": 8,
+          "n_unique_labels": 6,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "in_distribution",
+          "trusted": true,
+          "valid_ratio_pct": 7.5,
+          "note": "유효율 7.5% — 학습 분포(2.0~10.0%) 안",
+          "n_dropped_by_size_gate": 0
+        },
+        "detections": [
+          {
+            "x": 417,
+            "y": 256,
+            "z": 476.7,
+            "angle": 10.89,
+            "label": "07_guide_paper_l",
+            "confidence": 0.9961
+          },
+          {
+            "x": 352,
+            "y": 202,
+            "z": 467.8,
+            "angle": 172.87,
+            "label": "13_x2_bcf8ccb4",
+            "confidence": 0.8323
+          },
+          {
+            "x": 306,
+            "y": 181,
+            "z": 452.3,
+            "angle": 90.0,
+            "label": "06_sol_block_back",
+            "confidence": 0.7277
+          },
+          {
+            "x": 440,
+            "y": 184,
+            "z": 480.3,
+            "angle": 175.91,
+            "label": "plate_e",
+            "confidence": 0.5413
+          },
+          {
+            "x": 355,
+            "y": 172,
+            "z": 461.9,
+            "angle": 94.18,
+            "label": "09_guide_paper_r",
+            "confidence": 0.4527
+          },
+          {
+            "x": 345,
+            "y": 244,
+            "z": 485.8,
+            "angle": 178.26,
+            "label": "02_sol_block_b",
+            "confidence": 0.3704
+          },
+          {
+            "x": 411,
+            "y": 170,
+            "z": 468.8,
+            "angle": 143.75,
+            "label": "06_sol_block_back",
+            "confidence": 0.2718
+          },
+          {
+            "x": 331,
+            "y": 180,
+            "z": 453.7,
+            "angle": 79.38,
+            "label": "07_guide_paper_l",
+            "confidence": 0.2263
+          }
+        ]
+      }
+    },
+    {
+      "seq": 14,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_1",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 15,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_0916_06_shot_001_c1_sA",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_0916_06_shot_001_c1_sA",
+        "timestamp": "2026-09-16T12:57:00",
+        "summary": {
+          "n_detections": 4,
+          "n_unique_labels": 4,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "borderline",
+          "trusted": false,
+          "valid_ratio_pct": 17.66,
+          "note": "유효율 17.7%가 학습 p99(10.0%)를 넘는다 — 빈 밖 물체가 화면에 들어왔을 수 있다 (8/5 c2 = 30.5%에서 박스를 부품으로 오인)",
+          "n_dropped_by_size_gate": 0
+        },
+        "detections": [
+          {
+            "x": 441,
+            "y": 283,
+            "z": 482.0,
+            "angle": 273.33,
+            "label": "18_button_function_niro",
+            "confidence": 0.9888
+          },
+          {
+            "x": 391,
+            "y": 168,
+            "z": 502.2,
+            "angle": 8.75,
+            "label": "09_guide_paper_r",
+            "confidence": 0.8653
+          },
+          {
+            "x": 480,
+            "y": 164,
+            "z": 492.6,
+            "angle": 321.34,
+            "label": "15_roller_bracket",
+            "confidence": 0.8316
+          },
+          {
+            "x": 373,
+            "y": 198,
+            "z": 511.0,
+            "angle": 0.0,
+            "label": "r_guide_a_l",
+            "confidence": 0.6603
+          }
+        ]
+      }
+    },
+    {
+      "seq": 16,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_2",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 17,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "cure_1",
+      "status": "cure_idle"
+    },
+    {
+      "seq": 18,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_0916_07_live_20260916_122522",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_0916_07_live_20260916_122522",
+        "timestamp": "2026-09-16T12:25:22",
+        "summary": {
+          "n_detections": 2,
+          "n_unique_labels": 1,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "out_of_distribution",
+          "trusted": false,
+          "valid_ratio_pct": 58.47,
+          "note": "유효율 58.5% > 25.0% — 배경이 depth로 채워졌다. 학습은 빈 안 촬영이라 배경이 거의 무효였다 (8/5 c3 = 89.1%에서 TP 0/FP 96으로 완전 실패)",
+          "n_dropped_by_size_gate": 2
+        },
+        "detections": [
+          {
+            "x": 467,
+            "y": 399,
+            "z": 518.1,
+            "angle": 0.0,
+            "label": "r_guide_a_r",
+            "confidence": 0.4102
+          },
+          {
+            "x": 280,
+            "y": 389,
+            "z": 490.6,
+            "angle": 0.0,
+            "label": "r_guide_a_r",
+            "confidence": 0.3946
+          }
+        ]
+      }
+    },
+    {
+      "seq": 19,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "cure_2",
+      "status": "cure_idle"
+    },
+    {
+      "seq": 20,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_1012_08_shot_001_c1_sA",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_1012_08_shot_001_c1_sA",
+        "timestamp": "2026-10-12T18:30:00",
+        "summary": {
+          "n_detections": 1,
+          "n_unique_labels": 1,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "out_of_distribution",
+          "trusted": false,
+          "valid_ratio_pct": 48.16,
+          "note": "유효율 48.2% > 25.0% — 배경이 depth로 채워졌다. 학습은 빈 안 촬영이라 배경이 거의 무효였다 (8/5 c3 = 89.1%에서 TP 0/FP 96으로 완전 실패)",
+          "n_dropped_by_size_gate": 7
+        },
+        "detections": [
+          {
+            "x": 438,
+            "y": 278,
+            "z": 473.3,
+            "angle": 42.27,
+            "label": "13_x2_bcf8ccb4",
+            "confidence": 0.9967
+          }
+        ]
+      }
+    },
+    {
+      "seq": 21,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_1",
+      "status": "wash_running"
+    },
+    {
+      "seq": 22,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_2",
+      "status": "wash_running"
+    },
+    {
+      "seq": 23,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_1012_09_shot_001_c1_sA_roi",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_1012_09_shot_001_c1_sA_roi",
+        "timestamp": "2026-10-12T23:10:00",
+        "summary": {
+          "n_detections": 5,
+          "n_unique_labels": 4,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "in_distribution",
+          "trusted": true,
+          "valid_ratio_pct": 4.89,
+          "note": "유효율 4.9% — 학습 분포(2.0~10.0%) 안",
+          "n_dropped_by_size_gate": 2
+        },
+        "detections": [
+          {
+            "x": 438,
+            "y": 279,
+            "z": 473.3,
+            "angle": 42.27,
+            "label": "13_x2_bcf8ccb4",
+            "confidence": 0.9974
+          },
+          {
+            "x": 242,
+            "y": 236,
+            "z": 530.9,
+            "angle": 90.0,
+            "label": "07_guide_paper_l",
+            "confidence": 0.8647
+          },
+          {
+            "x": 358,
+            "y": 197,
+            "z": 494.2,
+            "angle": 126.87,
+            "label": "bracket_sen_1",
+            "confidence": 0.7962
+          },
+          {
+            "x": 393,
+            "y": 234,
+            "z": 489.7,
+            "angle": 49.18,
+            "label": "plate_e",
+            "confidence": 0.66
+          },
+          {
+            "x": 328,
+            "y": 220,
+            "z": 508.5,
+            "angle": 14.74,
+            "label": "plate_e",
+            "confidence": 0.5908
+          }
+        ]
+      }
+    },
+    {
+      "seq": 24,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_1",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 25,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_1012_10_shot_001_c1_sA_roi",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_1012_10_shot_001_c1_sA_roi",
+        "timestamp": "2026-10-12T23:20:00",
+        "summary": {
+          "n_detections": 3,
+          "n_unique_labels": 3,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "out_of_distribution",
+          "trusted": false,
+          "valid_ratio_pct": 1.6,
+          "note": "유효율 1.6% < 2.0% — 장면이 거의 비어 있다 (카메라가 빈을 안 보거나 거리가 스펙 밖일 수 있다)",
+          "n_dropped_by_size_gate": 2
+        },
+        "detections": [
+          {
+            "x": 396,
+            "y": 234,
+            "z": 491.3,
+            "angle": 49.18,
+            "label": "plate_e",
+            "confidence": 0.9871
+          },
+          {
+            "x": 438,
+            "y": 279,
+            "z": 473.3,
+            "angle": 42.27,
+            "label": "13_x2_bcf8ccb4",
+            "confidence": 0.9201
+          },
+          {
+            "x": 448,
+            "y": 197,
+            "z": 481.6,
+            "angle": 126.87,
+            "label": "r_guide_a_r",
+            "confidence": 0.4933
+          }
+        ]
+      }
+    },
+    {
+      "seq": 26,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_2",
+      "status": "wash_complete"
+    },
+    {
+      "seq": 27,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_1",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 28,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_1012_11_shot_001_c1_sA_roi",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_1012_11_shot_001_c1_sA_roi",
+        "timestamp": "2026-10-12T23:30:00",
+        "summary": {
+          "n_detections": 3,
+          "n_unique_labels": 3,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "out_of_distribution",
+          "trusted": true,
+          "valid_ratio_pct": 4.62,
+          "note": "[ROI 안 기준] 유효율 4.6% — 학습 분포(2.0~10.0%) 안",
+          "n_dropped_by_size_gate": 2
+        },
+        "detections": [
+          {
+            "x": 396,
+            "y": 234,
+            "z": 491.3,
+            "angle": 49.18,
+            "label": "plate_e",
+            "confidence": 0.9871
+          },
+          {
+            "x": 438,
+            "y": 279,
+            "z": 473.3,
+            "angle": 42.27,
+            "label": "13_x2_bcf8ccb4",
+            "confidence": 0.9201
+          },
+          {
+            "x": 448,
+            "y": 197,
+            "z": 481.6,
+            "angle": 126.87,
+            "label": "r_guide_a_r",
+            "confidence": 0.4933
+          }
+        ]
+      }
+    },
+    {
+      "seq": 29,
+      "cell": "A",
+      "kind": "vision",
+      "camera_id": "wash_2",
+      "status": "wash_idle"
+    },
+    {
+      "seq": 30,
+      "cell": "B",
+      "kind": "binpick",
+      "scene_id": "ktr_1012_12_shot_001_c1_sA_roi",
+      "report": {
+        "schema_version": "1.0.0",
+        "module": "bin_picking",
+        "scene_id": "ktr_1012_12_shot_001_c1_sA_roi",
+        "timestamp": "2026-10-13T00:10:00",
+        "summary": {
+          "n_detections": 3,
+          "n_unique_labels": 3,
+          "recognition_track": "depth_track",
+          "latency_ms": null
+        },
+        "scene_gate": {
+          "verdict": "out_of_distribution",
+          "trusted": true,
+          "valid_ratio_pct": 2.61,
+          "note": "[ROI 안 기준] 유효율 2.6% — 학습 분포(2.0~10.0%) 안",
+          "n_dropped_by_size_gate": 1
+        },
+        "detections": [
+          {
+            "x": 438,
+            "y": 279,
+            "z": 473.3,
+            "angle": 42.51,
+            "label": "13_x2_bcf8ccb4",
+            "confidence": 0.7582
+          },
+          {
+            "x": 396,
+            "y": 234,
+            "z": 491.3,
+            "angle": 49.18,
+            "label": "02_sol_block_b",
+            "confidence": 0.6196
+          },
+          {
+            "x": 448,
+            "y": 197,
+            "z": 481.6,
+            "angle": 128.66,
+            "label": "01_sol_block_a",
+            "confidence": 0.5203
+          }
+        ]
+      }
+    }
+  ]
+}
