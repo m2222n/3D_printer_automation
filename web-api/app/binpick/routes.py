@@ -199,6 +199,7 @@ async def ingest_report(report: BinPickReportIn):
         "type": "binpick_scene",
         "scene_pk": scene_pk,
         "scene_id": scene_id,
+        "request_id": report.request_id,   # 10/19 시험 요청번호 왕복(실제 모듈은 None)
         "n_detections": n_actual,
         "gate_verdict": verdict,
         "latency_ms": latency,

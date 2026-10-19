@@ -141,3 +141,77 @@ def test_latency_page_simulator_cameras_match_server():
     for st in ("wash_idle", "wash_running", "wash_complete", "cure_idle", "cure_running", "cure_complete"):
         assert st in html
         assert st in {s.value for s in DeviceStatus}
+
+
+# ===== 10/19 요청번호(request_id) 1:1 대응 — 시험기관 지적("요청과 웹소켓 응답이 1:1 이라는 근거") =====
+
+def test_vision_ws_echoes_request_id(monkeypatch):
+    """셀A: 측정 도구가 붙인 요청번호가 MQTT 메시지를 거쳐 화면(WS) 메시지에 그대로 돌아온다.
+    실제 카메라 메시지(요청번호 없음)는 None — 운영 동작 불변."""
+    import asyncio
+    from app.local.database import init_local_db
+    from app.vision import camera_manager as cm
+    from app.vision.schemas import MQTTStatusMessage
+
+    init_local_db()
+    m = cm.get_camera_manager()
+    sent = []
+
+    async def capture(message):
+        sent.append(message)
+    monkeypatch.setattr(m, "_broadcast_ws", capture)
+    asyncio.run(m.handle_status(MQTTStatusMessage(camera_id="cure_2", device_type="cure", device_id=2, status="cure_idle", timestamp=0.0)))
+    asyncio.run(m.handle_status(MQTTStatusMessage(camera_id="cure_2", device_type="cure", device_id=2, status="cure_running", timestamp=0.0,
+                                                  request_id="R20261019-000000-007")))
+    asyncio.run(m.handle_status(MQTTStatusMessage(camera_id="cure_2", device_type="cure", device_id=2, status="cure_complete", timestamp=0.0)))
+    changes = [x["data"] for x in sent if x["type"] == "vision_status_change"]
+    assert changes[-2]["status"] == "cure_running" and changes[-2]["request_id"] == "R20261019-000000-007"
+    assert changes[-1]["status"] == "cure_complete" and changes[-1]["request_id"] is None
+
+
+def test_simulate_payload_carries_request_id(monkeypatch):
+    """시뮬레이터 API → MQTT 발행 payload 에 요청번호가 실린다(없으면 키 자체가 없다)."""
+    import asyncio
+    from app.vision import simulator
+
+    published = []
+
+    class FakeMqtt:
+        async def publish(self, topic, payload, qos=1):
+            published.append(payload)
+    monkeypatch.setattr(simulator, "get_mqtt_client", lambda: FakeMqtt())
+    asyncio.run(simulator.publish_simulated_status("wash_1", "wash_running", request_id="R-1"))
+    asyncio.run(simulator.publish_simulated_status("wash_1", "wash_complete"))
+    assert published[0]["request_id"] == "R-1"
+    assert "request_id" not in published[1]
+
+
+def test_binpick_ws_echoes_request_id(client, auth_headers, monkeypatch):
+    """셀B: 인식 결과 보고에 붙인 요청번호가 화면(WS) 메시지에 그대로 돌아온다 · 실제 모듈 보고(없음)는 None."""
+    import json
+    from app.local.database import init_local_db
+    from app.binpick import routes as br
+
+    init_local_db()
+    sent = []
+
+    async def capture(message):
+        sent.append(message)
+    monkeypatch.setattr(br, "_broadcast_ws", capture)
+    events = json.loads(TEST_DATA.read_text(encoding="utf-8"))["events"]
+    rep = next(x for x in events if x["cell"] == "B")["report"]
+    r = client.post("/api/v1/binpick/reports", json={**rep, "scene_id": "rid_test_1", "request_id": "R20261019-000000-003"}, headers=auth_headers)
+    assert r.status_code == 201, r.text
+    r = client.post("/api/v1/binpick/reports", json={**rep, "scene_id": "rid_test_2"}, headers=auth_headers)
+    assert r.status_code == 201, r.text
+    scenes = [x for x in sent if x["type"] == "binpick_scene"]
+    assert scenes[-2]["scene_id"] == "rid_test_1" and scenes[-2]["request_id"] == "R20261019-000000-003"
+    assert scenes[-1]["request_id"] is None
+
+
+def test_latency_page_matches_only_by_request_id():
+    """측정 페이지가 내용(설비+상태)이 아니라 요청번호로만 대응하는지 — 옛 내용 키가 남아 있으면 실패."""
+    html = (Path(__file__).resolve().parents[1] / "app" / "testtool" / "latency.html").read_text(encoding="utf-8")
+    assert "resolvePending(m.data.request_id" in html and "resolvePending(m.request_id" in html
+    assert '"v:" + m.data.camera_id' not in html and '"b:" + m.scene_id' not in html
+    assert "publish(ev, key)" in html and "body.request_id = request_id" in html and "{ ...report, request_id }" in html

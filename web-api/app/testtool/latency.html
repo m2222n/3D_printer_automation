@@ -60,8 +60,8 @@
 </div>
 
 <div class="tabs">
-  <button class="active" data-tab="t1">시험항목 1 · 설비 상태 변경 → 화면 응답시간 (셀A 세척기·경화기 + 셀B 빈피킹)</button>
-  <button data-tab="t3">시험항목 2 · 조회 API 응답시간</button>
+  <button class="active" data-tab="t1">시험항목 1 · 설비 상태 변경 → 화면 응답시간 + 시험항목 2 · 기능정확성 (셀A 세척기·경화기 + 셀B 빈피킹)</button>
+  <button data-tab="t3">시험항목 3 · 조회 API 응답시간</button>
 </div>
 
 <section id="tab-t1">
@@ -83,7 +83,7 @@
   </div>
   <p class="muted">형식: <code>{"events":[{"seq":1,"cell":"A","kind":"vision","camera_id":"wash_1","status":"wash_running"}, {"seq":3,"cell":"B","kind":"binpick","scene_id":"…","report":{…빈피킹 모듈 payload…}}, …]}</code><br>
   셀A: 카메라 = wash_1 · wash_2 · cure_1 · cure_2 · 상태 = wash_idle/wash_running/wash_complete · cure_idle/cure_running/cure_complete · 같은 설비의 연속 이벤트는 상태가 바뀌어야 합니다(같은 상태는 서버가 변경으로 치지 않음).<br>
-  셀B: <code>report</code>는 빈피킹 모듈이 서버에 보내는 인식 결과 그대로(<code>POST /api/v1/binpick/reports</code>) · 화면 수신은 <code>scene_id</code>로 맞춥니다. 정식 시험 데이터는 규격서에 해시로 고정된 파일을 씁니다.</p>
+  셀B: <code>report</code>는 빈피킹 모듈이 서버에 보내는 인식 결과 그대로(<code>POST /api/v1/binpick/reports</code>) · 정식 시험 데이터는 규격서에 해시로 고정된 파일을 씁니다.</p>
 </div>
 
 <div class="card">
@@ -108,15 +108,19 @@
     <div><span>판정</span><b id="sVerdict">-</b></div>
     <div><span>셀A 건수 · 평균 · 최대(초)</span><b id="sCellA">-</b></div>
     <div><span>셀B 건수 · 평균 · 최대(초)</span><b id="sCellB">-</b></div>
+    <div><span>시험항목 2 · 입력↔화면 일치</span><b id="sMatch">-</b></div>
+    <div><span>시험항목 2 · 판정(100%)</span><b id="sMatchVerdict">-</b></div>
+    <div><span>대응 없는 수신(계산 제외)</span><b id="sUnmatched">-</b></div>
+    <div><span>시험 회차 ID</span><b id="sRun">-</b></div>
   </div>
   <div class="row" style="margin:10px 0">
     <button id="btnCsv" disabled>엑셀(CSV) 다운로드</button>
     <button id="btnJson" disabled>원본 기록(JSON) 다운로드</button>
-    <span class="muted">측정 기준: 발행 요청 직전 시각 ↔ 화면의 WebSocket 수신 시각 (둘 다 이 브라우저 시계) · 셀A = 상태 메시지 발행 → 설비 상태 채널 수신 · 셀B = 인식 결과 보고 → 빈피킹 채널 수신(장면 ID 일치)</span>
+    <span class="muted">측정 기준: 발행 요청 직전 시각 ↔ 화면의 WebSocket 수신 시각 (둘 다 이 브라우저 시계) · <b>요청↔수신 대응 = 요청번호</b>(요청마다 고유 · 서버가 화면 메시지에 그대로 돌려줌 · 요청번호가 같은 수신만 그 요청의 응답) · 요청은 한 번에 1건 · 대응 없는 수신은 계산에서 제외하고 원본 기록(JSON)에 남김 · 시험항목 2 = 같은 실행에서 입력값(셀A 설비·상태 / 셀B 장면·검출 수)과 화면이 받은 값의 일치</span>
   </div>
   <div class="scroll">
   <table id="result">
-    <thead><tr><th>순번</th><th>셀</th><th>대상</th><th>내용</th><th>발행 요청 시각</th><th>수신 시각</th><th>응답시간(초)</th><th>판정</th><th>비고</th></tr></thead>
+    <thead><tr><th>순번</th><th>요청번호</th><th>셀</th><th>대상</th><th>내용</th><th>발행 요청 시각</th><th>수신 시각</th><th>응답시간(초)</th><th>판정(3초)</th><th>화면 수신 값</th><th>일치(항목2)</th><th>비고</th></tr></thead>
     <tbody></tbody>
   </table>
   </div>
@@ -180,13 +184,16 @@
   const $ = id => document.getElementById(id);
 
   let token = null, ws = null, wsB = null, events = [], results = [], running = false, stopFlag = false;
-  const pending = [];            // {key, resolve}  key = "v:<camera_id>:<status>" (셀A) | "b:<scene_id>" (셀B)
-  const unmatched = [];          // 수신했지만 대기 중인 요청이 없던 메시지
-  const keyOf = ev => ev.kind === "binpick" ? "b:" + ev.scene_id : "v:" + ev.camera_id + ":" + ev.status;
+  const pending = [];            // {key, resolve}  key = 요청번호(request_id) — 10/19: 내용(설비+상태)이 아니라 요청마다 고유한 번호로만 대응
+  const unmatched = [];          // 수신했지만 대기 중인 요청이 없던 메시지(늦게 온 응답 · 요청번호 없는 실설비 메시지 등) — 계산 제외
+  let runId = null;              // 시험 회차 ID — 요청번호 앞부분. 다른 회차·다른 창의 메시지와 섞이지 않게
+  const pad3 = n => String(n).padStart(3, "0");
+  const ridOf = ev => `${runId}-${pad3(ev.seq)}`;
   function resolvePending(key, payload, label) {
+    if (!key) { unmatched.push({ at: payload.dRecv.toISOString(), key: null, reason: "요청번호 없음", data: payload.data }); return; }
     const i = pending.findIndex(p => p.key === key);
     if (i >= 0) { const p = pending.splice(i, 1)[0]; p.resolve(payload); }
-    else { unmatched.push({ at: payload.dRecv.toISOString(), key, data: payload.data }); log("대기 중인 요청 없는 수신: " + label); }
+    else { unmatched.push({ at: payload.dRecv.toISOString(), key, reason: "대기 중인 요청 없음(늦은 수신 등)", data: payload.data }); log("대응 없는 수신(계산 제외): " + key + " · " + label); }
   }
 
   $("base").value = window.location.origin;
@@ -237,25 +244,28 @@
   }
   function onVisionMessage(m, tRecv, dRecv) {
     if (m.type !== "vision_status_change" || !m.data) return;
-    resolvePending("v:" + m.data.camera_id + ":" + m.data.status, { tRecv, dRecv, server_ts: m.data.timestamp, data: m.data }, m.data.camera_id + " → " + m.data.status);
+    resolvePending(m.data.request_id || null, { tRecv, dRecv, server_ts: m.data.timestamp, data: m.data }, m.data.camera_id + " → " + m.data.status);
   }
   function onBinpickMessage(m, tRecv, dRecv) {
     if (m.type !== "binpick_scene" || !m.scene_id) return;
-    resolvePending("b:" + m.scene_id, { tRecv, dRecv, server_ts: m.received_at, data: m }, "빈피킹 장면 " + m.scene_id);
+    resolvePending(m.request_id || null, { tRecv, dRecv, server_ts: m.received_at, data: m }, "빈피킹 장면 " + m.scene_id);
   }
   function wsReady() { return ws && ws.readyState === 1 && wsB && wsB.readyState === 1; }
 
   // ---------- 이벤트 발행 (셀A = 상태 시뮬레이터 · 셀B = 빈피킹 결과 보고) ----------
-  async function simulate(camera_id, status) {
-    const r = await fetch(base() + "/api/v1/vision/simulate", { method:"POST", headers: headers(),
-      body: JSON.stringify({ camera_id, status, confidence: 0.95 }) });
+  async function simulate(camera_id, status, request_id) {
+    const body = { camera_id, status, confidence: 0.95 }; if (request_id) body.request_id = request_id;
+    const r = await fetch(base() + "/api/v1/vision/simulate", { method:"POST", headers: headers(), body: JSON.stringify(body) });
     if (!r.ok) throw new Error("simulate HTTP " + r.status + " " + (await r.text()).slice(0, 120));
   }
-  async function reportBinpick(report) {
-    const r = await fetch(base() + "/api/v1/binpick/reports", { method:"POST", headers: headers(), body: JSON.stringify(report) });
+  async function reportBinpick(report, request_id) {
+    const r = await fetch(base() + "/api/v1/binpick/reports", { method:"POST", headers: headers(), body: JSON.stringify({ ...report, request_id }) });
     if (!r.ok) throw new Error("binpick/reports HTTP " + r.status + " " + (await r.text()).slice(0, 120));
   }
-  function publish(ev) { return ev.kind === "binpick" ? reportBinpick(ev.report) : simulate(ev.camera_id, ev.status); }
+  function publish(ev, rid) { return ev.kind === "binpick" ? reportBinpick(ev.report, rid) : simulate(ev.camera_id, ev.status, rid); }
+  // 시험항목 2 — 화면이 받은 값이 입력과 같은가
+  const expectOf = ev => ev.kind === "binpick" ? `${ev.scene_id} · 검출 ${ev.report.detections.length}` : `${ev.camera_id} · ${ev.status}`;
+  const gotOf = (ev, d) => ev.kind === "binpick" ? `${d.scene_id} · 검출 ${d.n_detections}` : `${d.camera_id} · ${d.status}`;
   $("btnReset").onclick = async () => {
     try {
       for (const [cam, type] of Object.entries(CAMERAS)) { await simulate(cam, type + "_idle"); await sleep(150); }
@@ -338,25 +348,30 @@
     if (!wsReady()) { log("먼저 WebSocket 2개(셀A·셀B)를 연결하세요"); return; }
     if (events.length === 0) { log("먼저 이벤트 파일을 올리세요"); return; }
     running = true; stopFlag = false; results = []; unmatched.length = 0; pending.length = 0;
+    const t = new Date(Date.now() + 9 * 3600 * 1000);   // 회차 ID 는 시험용 PC 시간대와 무관하게 KST(화면·CSV 시각과 같게)
+    runId = "R" + t.getUTCFullYear() + pad3(t.getUTCMonth()+1).slice(1) + pad3(t.getUTCDate()).slice(1) + "-" + pad3(t.getUTCHours()).slice(1) + pad3(t.getUTCMinutes()).slice(1) + pad3(t.getUTCSeconds()).slice(1);
+    $("sRun").textContent = runId;
     $("btnStart").disabled = true; $("btnStop").disabled = false; $("btnCsv").disabled = true; $("btnJson").disabled = true;
     $("result").querySelector("tbody").innerHTML = "";
     const timeoutMs = Number($("timeout").value) * 1000, gapMs = Number($("gap").value);
-    log(`시험 시작: ${events.length}건 · 대기 한도 ${timeoutMs/1000}s · 간격 ${gapMs}ms`);
+    log(`시험 시작: ${events.length}건 · 회차 ${runId} · 대기 한도 ${timeoutMs/1000}s · 간격 ${gapMs}ms · 요청은 한 번에 1건(앞 건 수신 또는 대기 한도 뒤 다음 건)`);
     for (const ev of events) {
       if (stopFlag) { log("중지됨"); break; }
       $("progress").textContent = `${ev.seq}/${events.length} 진행 중 (셀${ev.cell} ${target(ev)} · ${detail(ev)})`;
-      const row = { seq: ev.seq, cell: ev.cell, kind: ev.kind, target: target(ev), detail: detail(ev), t_req: null, t_recv: null, latency_s: null, verdict: "FAIL", note: "" };
-      const key = keyOf(ev);
+      const key = ridOf(ev);
+      const row = { seq: ev.seq, request_id: key, cell: ev.cell, kind: ev.kind, target: target(ev), detail: detail(ev), t_req: null, t_recv: null, latency_s: null, verdict: "FAIL", expected: expectOf(ev), received: "", match: "불일치", note: "" };
       const waiter = new Promise(res => pending.push({ key, resolve: res }));
       const dReq = new Date(), tReq = performance.now();
       row.t_req = dReq;
       try {
-        const post = publish(ev);                                  // 발행 요청 — 수신은 POST 완료와 무관하게 WS 핸들러가 잡는다
+        const post = publish(ev, key);                                  // 발행 요청 — 수신은 POST 완료와 무관하게 WS 핸들러가 잡는다
         const got = await Promise.race([ waiter.then(v => ({ ok:true, v })), sleep(timeoutMs).then(() => ({ ok:false })) ]);
         await post.catch(e => { row.note = e.message; });
         if (got.ok) {
           row.t_recv = got.v.dRecv; row.latency_s = (got.v.tRecv - tReq) / 1000; row.server_ts = got.v.server_ts;
           row.verdict = row.latency_s <= LIMIT_S ? "PASS" : "FAIL";
+          row.received = gotOf(ev, got.v.data);
+          row.match = row.received === row.expected ? "일치" : "불일치";
         } else {
           const i = pending.findIndex(p => p.key === key); if (i >= 0) pending.splice(i, 1);
           row.note = (row.note ? row.note + " · " : "") + `수신 없음 (${timeoutMs/1000}s 초과)`;
@@ -374,7 +389,7 @@
 
   function appendRow(r) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td class="num">${r.seq}</td><td>${r.cell}</td><td>${r.target}</td><td>${r.detail}</td><td>${kst(r.t_req)}</td><td>${r.t_recv ? kst(r.t_recv) : "-"}</td><td class="num">${r.latency_s == null ? "-" : r.latency_s.toFixed(3)}</td><td class="${r.verdict}">${r.verdict}</td><td>${r.note}</td>`;
+    tr.innerHTML = `<td class="num">${r.seq}</td><td>${r.request_id}</td><td>${r.cell}</td><td>${r.target}</td><td>${r.detail}</td><td>${kst(r.t_req)}</td><td>${r.t_recv ? kst(r.t_recv) : "-"}</td><td class="num">${r.latency_s == null ? "-" : r.latency_s.toFixed(3)}</td><td class="${r.verdict}">${r.verdict}</td><td>${r.received || "-"}</td><td class="${r.match === "일치" ? "PASS" : "FAIL"}">${r.match}</td><td>${r.note}</td>`;
     $("result").querySelector("tbody").appendChild(tr);
   }
   function statsOf(rows) {
@@ -389,6 +404,9 @@
     const all = statsOf(results);
     all.cellA = statsOf(results.filter(r => r.cell === "A"));
     all.cellB = statsOf(results.filter(r => r.cell === "B"));
+    all.match = results.filter(r => r.match === "일치").length;
+    all.matchVerdict = results.length > 0 && all.match === results.length ? "PASS" : "FAIL";
+    all.unmatched = unmatched.length;
     return all;
   }
   const f3 = v => v == null ? "-" : v.toFixed(3);
@@ -399,21 +417,24 @@
     $("sMean").textContent = f3(s.mean); $("sMax").textContent = f3(s.max); $("sMin").textContent = f3(s.min);
     $("sVerdict").textContent = s.verdict; $("sVerdict").className = s.verdict;
     $("sCellA").textContent = cellText(s.cellA); $("sCellB").textContent = cellText(s.cellB);
+    $("sMatch").textContent = `${s.match}/${s.n}`; $("sMatchVerdict").textContent = s.n ? s.matchVerdict : "-"; $("sMatchVerdict").className = s.matchVerdict;
+    $("sUnmatched").textContent = s.unmatched;
   }
 
   // ---------- 다운로드 ----------
   $("btnCsv").onclick = () => {
     const s = stats();
     const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const lines = [["순번","셀","대상","내용","발행 요청 시각(KST)","수신 시각(KST)","응답시간(초)","판정(3초 이내)","비고"].map(esc).join(",")];
-    for (const r of results) lines.push([r.seq, r.cell, r.target, r.detail, kst(r.t_req), r.t_recv ? kst(r.t_recv) : "", r.latency_s == null ? "" : r.latency_s.toFixed(3), r.verdict, r.note].map(esc).join(","));
+    const lines = [["시험 회차", runId].map(esc).join(","), ["순번","요청번호","셀","대상","내용","발행 요청 시각(KST)","수신 시각(KST)","응답시간(초)","판정(3초 이내)","입력 값","화면 수신 값","일치(시험항목 2)","비고"].map(esc).join(",")];
+    for (const r of results) lines.push([r.seq, r.request_id, r.cell, r.target, r.detail, kst(r.t_req), r.t_recv ? kst(r.t_recv) : "", r.latency_s == null ? "" : r.latency_s.toFixed(3), r.verdict, r.expected, r.received, r.match, r.note].map(esc).join(","));
     lines.push(""); lines.push(["이벤트 수", s.n].map(esc).join(",")); lines.push(["평균 응답시간(초)", s.mean == null ? "" : s.mean.toFixed(3)].map(esc).join(","));
-    lines.push(["최대 응답시간(초)", s.max == null ? "" : s.max.toFixed(3)].map(esc).join(",")); lines.push(["3초 이내 건수", `${s.pass}/${s.n}`].map(esc).join(",")); lines.push(["판정", s.verdict].map(esc).join(","));
+    lines.push(["최대 응답시간(초)", s.max == null ? "" : s.max.toFixed(3)].map(esc).join(",")); lines.push(["3초 이내 건수", `${s.pass}/${s.n}`].map(esc).join(",")); lines.push(["시험항목 1 판정", s.verdict].map(esc).join(","));
+    lines.push(["시험항목 2 입력↔화면 일치", `${s.match}/${s.n}`].map(esc).join(",")); lines.push(["시험항목 2 판정(100%)", s.matchVerdict].map(esc).join(",")); lines.push(["대응 없는 수신(계산 제외)", s.unmatched].map(esc).join(","));
     lines.push(""); lines.push(["셀","건수","평균(초)","최대(초)","3초 이내","판정"].map(esc).join(","));
     for (const [name, c] of [["A 설비 상태(세척기·경화기)", s.cellA], ["B 빈피킹 인식 결과", s.cellB]]) lines.push([name, c.n, c.mean == null ? "" : c.mean.toFixed(3), c.max == null ? "" : c.max.toFixed(3), `${c.pass}/${c.n}`, c.n ? c.verdict : ""].map(esc).join(","));
     download(`latency_T1_${stamp()}.csv`, "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
   };
-  $("btnJson").onclick = () => download(`latency_T1_${stamp()}.json`, JSON.stringify({ limit_s: LIMIT_S, server: base(), events, results, unmatched, summary: stats(), exported: new Date().toISOString() }, null, 2), "application/json");
+  $("btnJson").onclick = () => download(`latency_T1_${stamp()}.json`, JSON.stringify({ limit_s: LIMIT_S, run_id: runId, server: base(), events, results, unmatched, summary: stats(), exported: new Date().toISOString() }, null, 2), "application/json");
 
   // ---------- 탭 ----------
   document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {

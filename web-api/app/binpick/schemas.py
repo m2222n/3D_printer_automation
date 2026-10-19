@@ -65,6 +65,7 @@ class BinPickReportIn(BaseModel):
     schema_version: str
     module: str = "bin_picking"
     scene_id: Optional[str] = None
+    request_id: Optional[str] = Field(default=None, max_length=64)   # 시험용 요청번호(10/19) — 측정 도구가 요청마다 붙이고 서버가 화면 메시지에 그대로 돌려준다. 요청↔응답 1:1 대응의 근거. 실제 카메라·모듈은 보내지 않는다(None)
     timestamp: Optional[str] = None
     summary: SummaryIn = Field(default_factory=SummaryIn)
     scene_gate: SceneGateIn = Field(default_factory=SceneGateIn)

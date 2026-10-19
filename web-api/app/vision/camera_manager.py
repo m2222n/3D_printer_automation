@@ -173,6 +173,7 @@ class CameraManager:
                         "status": msg.status,
                         "confidence": msg.confidence,
                         "timestamp": now.isoformat(),
+                        "request_id": msg.request_id,   # 10/19 시험 요청번호 왕복(실제 카메라는 None)
                     },
                 })
 

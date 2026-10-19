@@ -221,7 +221,7 @@ async def simulate_status(req: SimulateRequest):
         raise HTTPException(status_code=403, detail="시뮬레이터 비활성화 상태")
 
     from app.vision.simulator import publish_simulated_status
-    await publish_simulated_status(req.camera_id, req.status, req.confidence)
+    await publish_simulated_status(req.camera_id, req.status, req.confidence, request_id=req.request_id)
 
     return {"message": f"시뮬레이션 전송: {req.camera_id} -> {req.status}"}
 

@@ -39,6 +39,7 @@ class MQTTStatusMessage(BaseModel):
     consecutive_count: int = 0
     fps: float = 0.0
     mem_free: int = 0
+    request_id: Optional[str] = None   # 시험용 요청번호(10/19) — 측정 도구가 요청마다 붙이고 서버가 화면 메시지에 그대로 돌려준다. 요청↔응답 1:1 대응의 근거. 실제 카메라·모듈은 보내지 않는다(None)
 
 
 class MQTTHeartbeatMessage(BaseModel):
@@ -133,6 +134,7 @@ class SimulateRequest(BaseModel):
     camera_id: str = Field(..., description="카메라 ID (wash_1, wash_2, cure_1, cure_2)")
     status: str = Field(..., description="상태 값 (wash_running, wash_complete 등)")
     confidence: float = Field(default=0.95, ge=0.0, le=1.0)
+    request_id: Optional[str] = Field(default=None, max_length=64, description="시험용 요청번호(10/19) — 측정 도구가 요청마다 붙이고 서버가 화면 메시지에 그대로 돌려준다. 요청↔응답 1:1 대응의 근거. 실제 카메라·모듈은 보내지 않는다(None)")
 
 
 class SimulateScenarioRequest(BaseModel):

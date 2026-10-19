@@ -53,7 +53,8 @@ SCENARIOS = {
 }
 
 
-async def publish_simulated_status(camera_id: str, status: str, confidence: float = 0.95):
+async def publish_simulated_status(camera_id: str, status: str, confidence: float = 0.95,
+                                   request_id: str | None = None):
     """단건 시뮬레이션 상태 발행"""
     settings = get_settings()
     mqtt = get_mqtt_client()
@@ -76,6 +77,8 @@ async def publish_simulated_status(camera_id: str, status: str, confidence: floa
         "fps": 15.0,
         "mem_free": 50000,
     }
+    if request_id:
+        payload["request_id"] = request_id   # 10/19 시험 요청번호 — 서버가 WS 메시지에 그대로 돌려준다
 
     await mqtt.publish(topic, payload, qos=1)
     logger.info(f"[시뮬레이터] {camera_id} -> {status} (confidence: {confidence})")
