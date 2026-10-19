@@ -58,7 +58,9 @@ NEAR_WARN_PCT = 5.0            # 화면의 이 % 이상이 근접 컷에 걸리�
 def find_blobs(depth_mm: np.ndarray, intr: dict, *, min_height_mm: float = 8.0,
                min_area_px: int = 40, max_area_px: int = 20000, roi_frac: float = 0.8,
                near_cut_mm: float = NEAR_CUT_MM, far_cut_mm: float = FAR_CUT_MM,
-               floor_mm: float | None = None) -> dict:
+               floor_mm: float | None = None, return_labels: bool = False) -> dict:
+    """return_labels=True 면 결과에 "_labels"(연결 성분 번호 배열)를 붙이고 블롭마다 "comp" 번호를 남긴다
+    — 🆕 10/19 blob_fusion 이 검출 영역과 블롭 픽셀의 겹침을 재기 위해 쓴다(JSON 저장 경로에서는 끈다)."""
     import cv2
 
     depth_mm = np.asarray(depth_mm)
@@ -135,16 +137,21 @@ def find_blobs(depth_mm: np.ndarray, intr: dict, *, min_height_mm: float = 8.0,
             "bbox": [int(stats[i, cv2.CC_STAT_LEFT]), int(stats[i, cv2.CC_STAT_TOP]),
                      int(stats[i, cv2.CC_STAT_WIDTH]), int(stats[i, cv2.CC_STAT_HEIGHT])],
         })
+        if return_labels:
+            blobs[-1]["comp"] = i
     # 왼쪽 위 → 오른쪽 아래 순으로 (사람이 로봇으로 찍는 순서와 맞추기 쉽게)
     blobs.sort(key=lambda b: (round(b["v"] / 60), b["u"]))
     for k, b in enumerate(blobs, 1):
         b["id"] = k
-    return {
+    res = {
         "floor_depth_mm": round(floor, 1), "floor_visible": floor_visible, "floor_how": floor_how,
         "roi_valid_pct": round(roi_valid_pct, 1), "near_cut_mm": near_cut_mm, "near_pct": round(near_pct, 1),
         "near_bands_u": near_bands,
         "min_height_mm": min_height_mm, "n_blobs": len(blobs), "blobs": blobs, "warnings": warnings,
     }
+    if return_labels:
+        res["_labels"] = labels
+    return res
 
 
 def _self_test() -> int:

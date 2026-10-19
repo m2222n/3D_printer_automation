@@ -15,6 +15,8 @@ r"""
   · ① 촬영 = 🔴 **카메라 없는 6000 에선 못 돌렸다** — `blaze_ace2_capture_dual.py` 의 검증된 함수(open_cam·setup_blaze)를
     그대로 import 해 **한 프레임만** 받는다. IPC 첫 실행 때 `--capture --no-server` 로 npy 한 장 먼저 확인할 것.
   · 상주 프로세스가 아니다 — 매 사이클 모델을 다시 로드한다(IPC 1.3초 + 로드). 데모엔 충분.
+  · 🆕 10/19 **검출∩덩어리 융합 기본 ON**(`blob_fusion`) — 10/16 사이클 1·3 이 모델 좌표로 빈 바닥·옆 부품에 간 것을 막는다.
+    로봇 좌표 = 검출이 덮은 깊이 덩어리의 중심·윗면(사이클 2 성공 방식). 버린 검출은 이유와 함께 출력 · `--no-fuse` 로 끈다.
 
 사용 (IPC · C:\binpick_venv):
   # 촬영 없이 기존 npy 로 (연습·재택)
@@ -39,6 +41,9 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from bin_picking.src.utils.console_utf8 import enable_utf8_console  # noqa: E402  (cp949 방어 · 8/28)
 from bin_picking.src.pipeline import roi_mask  # noqa: E402  (10/12 빈 안쪽만 — 벽이 크롭에 들어오면 진짜 부품이 사라진다)
+from bin_picking.src.pipeline import blob_fusion  # noqa: E402  (10/19 검출∩덩어리 — 좌표는 덩어리에서)
+
+DEFAULT_INTR = REPO / "bin_picking" / "config" / "blaze_intrinsics.json"
 
 CAPTURE_SCRIPT_DIR = REPO / "bin_picking" / "depth_track" / "scripts"
 DEFAULT_BLAZE_IP = "192.168.20.10"      # 8/28 IPC 실측(카메라에 저장된 값) — 인자로 덮어쓸 수 있다
@@ -227,6 +232,13 @@ def main() -> int:
     ap.add_argument("--report-url", default="",
                     help="🆕 10/16 인식 결과를 웹에 보고(셀B 모니터링) — 예: http://<웹서버>:8085 · 비우면 보고 안 함. "
                          "다른 PC 면 환경변수 BINPICK_REPORT_TOKEN 또는 BINPICK_REPORT_USER/BINPICK_REPORT_PASSWORD")
+    ap.add_argument("--no-fuse", action="store_true",
+                    help="🆕 10/19 검출∩덩어리 융합을 끈다(모델 좌표를 그대로 보냄 — 10/16 사이클 1·3 처럼 빈 곳으로 갈 수 있다)")
+    ap.add_argument("--pick-unmatched", action="store_true",
+                    help="🆕 10/19 모델이 못 본 덩어리도 'unlabeled' 로 뒤에 붙인다(이름 없이 찾아 집기 · --only-labels 와 같이 쓰면 걸러진다)")
+    ap.add_argument("--max-blob-height", type=float, default=blob_fusion.MAX_HEIGHT_MM,
+                    help="이보다 높은 덩어리 = 빈 벽·케이블로 보고 제외(mm · 10/16 부품 15~21 · 벽 34~68)")
+    ap.add_argument("--intr", type=Path, default=DEFAULT_INTR)
     ap.add_argument("--python", default=sys.executable)
     args = ap.parse_args()
     t_start = time.time()
@@ -259,6 +271,20 @@ def main() -> int:
     six = run_e2e(depth, args.out_dir, args.checkpoint, args.python)
     if args.roi:
         roi_mask.rescore_scene_in_roi(six, depth, args.roi)   # 장면 게이트를 "빈 안쪽 면적" 기준으로 다시 쓴다(전체 화면 기준이면 마스크 뒤 항상 "비어 있다")
+    if args.no_fuse:
+        print("[융합] 끔(--no-fuse) — 모델 좌표를 그대로 보낸다. 🚨 10/16 사이클 1·3 은 이 상태에서 빈 곳·옆 부품으로 갔다")
+    else:
+        if not args.roi:
+            print("[융합] ⚠️ --roi 없음 — 빈 벽 덩어리를 테두리 규칙으로 못 거른다(높이 규칙만)")
+        six, fusion = blob_fusion.fuse_file(six, depth, args.intr, roi_path=args.roi,
+                                            pick_unmatched=args.pick_unmatched, max_height_mm=args.max_blob_height)
+        blob_fusion.print_summary(fusion)
+        n_out = fusion["n_kept"] + (len(fusion["unmatched_blob_ids"]) if args.pick_unmatched else 0)
+        if n_out == 0:
+            print("[융합] 🔴 로봇에 보낼 후보 0 — 빈에 부품이 덩어리로 보이는지(위 표) · 모델이 못 봤으면 --pick-unmatched")
+        if args.pick_unmatched and args.only_labels:
+            print("[융합] ⚠️ --only-labels 가 있으면 이름 없는(unlabeled) 후보는 서버에서 걸러진다")
+        print(f"[융합] → {six.name}")
     if args.report_url:
         # ⭐ 게이트 재판정 뒤에 보낸다 — 화면에 뜨는 신뢰 판정이 로봇이 받은 것과 같아야 한다
         report_scene(six, args.report_url, latency_ms=(time.time() - t_start) * 1000.0)
