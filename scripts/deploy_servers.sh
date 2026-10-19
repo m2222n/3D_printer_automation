@@ -86,12 +86,12 @@ deploy_6000() {
         return 1
     fi
 
+    # 10/19: 루프백(127.0.0.1)은 JWT 미들웨어가 인증을 면제한다(5/29 sequence_service 회귀 대응) → 여기선 200 이 정상.
+    #        인증 ON 여부는 아래 verify_external 의 외부 주소 401 로만 판정한다(예전엔 여기서 "인증 미설정?" 거짓 경고가 났다).
     local code
-    code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8085/api/v1/dashboard)
-    if [ "$code" = "401" ]; then
-        color_green "  ✅ JWT 인증 활성 (401 expected)"
-    elif [ "$code" = "200" ]; then
-        color_red "  ⚠️  인증 미설정? (200 응답 — .env 확인)"
+    code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8085/api/v1/dashboard || true)
+    if [ "$code" = "200" ] || [ "$code" = "401" ]; then
+        color_green "  ✅ 로컬 응답 $code (루프백은 인증 면제 — 인증 판정은 외부 검증에서)"
     else
         color_red "  ⚠️  예상 외 응답: $code"
     fi
@@ -151,11 +151,9 @@ else
     exit 1
 fi
 
-CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8085/api/v1/dashboard)
-if [ "$CODE" = "401" ]; then
-    echo "  ✅ JWT 인증 활성 (401 expected)"
-elif [ "$CODE" = "200" ]; then
-    echo "  ⚠️  인증 미설정? (200 응답)"
+CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8085/api/v1/dashboard || true)
+if [ "$CODE" = "200" ] || [ "$CODE" = "401" ]; then
+    echo "  ✅ 로컬 응답 $CODE (루프백은 인증 면제 — 인증 판정은 외부 검증에서)"
 else
     echo "  ⚠️  예상 외 응답: $CODE"
 fi
@@ -169,22 +167,24 @@ verify_external() {
     color_blue "=========================================="
     color_blue "  외부 접속 검증"
     color_blue "=========================================="
+    # 10/19: 재시작 직후엔 연결이 거부될 수 있다(10/6·10/19 exit 7 로 스크립트가 여기서 죽었다) → 잠깐 기다리고, 실패는 000 으로 적고 계속 간다
+    sleep 5
 
     if [ "$DEPLOY_6000" = true ]; then
         local code_6000
-        code_6000=$(curl -s -o /dev/null -w "%{http_code}" http://${DEV_SERVER_HOST}:8085/api/v1/dashboard)
+        code_6000=$(curl -s -o /dev/null -w "%{http_code}" http://${DEV_SERVER_HOST}:8085/api/v1/dashboard || true)
         echo "  6000 서버:    $code_6000 $([ "$code_6000" = "401" ] && echo '✅' || echo '⚠️')"
     fi
 
     if [ "$DEPLOY_KAKAO" = true ]; then
         local code_kakao
-        code_kakao=$(curl -s -o /dev/null -w "%{http_code}" http://${KAKAO_HOST#*@}:8085/api/v1/dashboard)
+        code_kakao=$(curl -s -o /dev/null -w "%{http_code}" http://${KAKAO_HOST#*@}:8085/api/v1/dashboard || true)
         echo "  카카오 VM:    $code_kakao $([ "$code_kakao" = "401" ] && echo '✅' || echo '⚠️')"
     fi
 
     local code_factory
-    code_factory=$(curl -s -o /dev/null -w "%{http_code}" https://factory.flickdone.com/api/v1/dashboard)
-    echo "  공장 PC:      $code_factory $([ "$code_factory" = "401" ] && echo '(이전 배포 상태)' || echo '(미배포 또는 인증 미설정)')"
+    code_factory=$(curl -s -o /dev/null -w "%{http_code}" https://factory.flickdone.com/api/v1/dashboard || true)
+    echo "  공장 PC:      $code_factory $([ "$code_factory" = "401" ] && echo '✅ 인증 ON (코드 반영 여부는 번들 해시로 따로 본다)' || echo '⚠️ 인증 미설정 또는 응답 없음')"
     echo ""
     echo "  ⚠️  공장 PC는 별도 배포 필요:"
     echo "     AnyDesk → 관리자 cmd:"
