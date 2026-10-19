@@ -115,6 +115,9 @@ class Settings(BaseSettings):
     PREFORM_SERVER_HOST: str = "localhost"
     PREFORM_SERVER_PORT: int = 44388
     PREFORM_SERVER_TIMEOUT: int = 60  # 초 (STL 처리 시간 고려)
+    # 10/19: true 면 PreFormServer·file_receiver 로 나가는 요청을 가짜 응답으로 대체(app/local/preform_simulator.py)
+    #        공장 밖(개발자 PC · 6000 · 시험 인스턴스)에서 출력 흐름을 돌리기 위한 것 · 🚨 운영 .env 에는 절대 켜지 않는다
+    PREFORM_SIMULATE: bool = False
 
     # 파일 업로드 설정
     UPLOAD_DIR: str = "./uploads"

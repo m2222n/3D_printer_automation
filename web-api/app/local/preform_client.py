@@ -36,12 +36,20 @@ class PreFormServerClient:
         self.base_url = f"http://{self.settings.PREFORM_SERVER_HOST}:{self.settings.PREFORM_SERVER_PORT}"
         self._client: Optional[httpx.AsyncClient] = None
 
+    def _transport_kwargs(self) -> dict:
+        """10/19 PREFORM_SIMULATE=true 면 가짜 전송 계층 — 호출 코드는 그대로, 응답만 시뮬레이터가 만든다."""
+        if getattr(self.settings, "PREFORM_SIMULATE", False):
+            from app.local.preform_simulator import get_simulator
+            return {"transport": get_simulator(self.settings.PRINTER_SERIAL_MAP).transport}
+        return {}
+
     async def _get_client(self) -> httpx.AsyncClient:
         """HTTP 클라이언트 반환 (재사용)"""
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
-                timeout=httpx.Timeout(self.settings.PREFORM_SERVER_TIMEOUT)
+                timeout=httpx.Timeout(self.settings.PREFORM_SERVER_TIMEOUT),
+                **self._transport_kwargs(),
             )
         return self._client
 
@@ -202,7 +210,7 @@ class PreFormServerClient:
             filename = Path(file_path).name
             receiver_url = f"http://{self.settings.FILE_RECEIVER_HOST}:{self.settings.FILE_RECEIVER_PORT}/upload"
 
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with httpx.AsyncClient(timeout=60, **self._transport_kwargs()) as client:
                 with open(file_path, "rb") as f:
                     response = await client.post(
                         receiver_url,
@@ -618,7 +626,7 @@ class PreFormServerClient:
         """공장 PC file_receiver에서 스크린샷 이미지 다운로드"""
         try:
             url = f"http://{self.settings.FILE_RECEIVER_HOST}:{self.settings.FILE_RECEIVER_PORT}/screenshots/{filename}"
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=30, **self._transport_kwargs()) as client:
                 response = await client.get(url)
             if response.status_code == 200:
                 return response.content

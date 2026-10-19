@@ -143,7 +143,9 @@ async def health_check():
     return {
         "local_api": "ok",
         "preform_server": "connected" if preform_connected else "disconnected",
-        "preform_server_url": f"http://{settings.PREFORM_SERVER_HOST}:{settings.PREFORM_SERVER_PORT}"
+        "preform_server_url": f"http://{settings.PREFORM_SERVER_HOST}:{settings.PREFORM_SERVER_PORT}",
+        # 10/19 가짜 PreFormServer 모드 표시 — 실제로 mock 을 쓰는 client 의 settings 에서 읽는다(모듈 settings 는 import 시점 값)
+        "simulated": bool(getattr(client.settings, "PREFORM_SIMULATE", False)),
     }
 
 
