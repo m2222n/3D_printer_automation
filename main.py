@@ -66,16 +66,14 @@ def resolve_web_api_python(cwd: Path) -> str:
 def build_web_api_cmd(root: Path) -> tuple[list[str], Path, dict[str, str]]:
     cwd = root / "web-api"
     python_exec = resolve_web_api_python(cwd)
-    cmd = [
-        python_exec,
-        "-m",
-        "uvicorn",
-        "app.main:app",
-        "--host",
-        os.getenv("WEB_API_HOST", "0.0.0.0"),
-        "--port",
-        os.getenv("WEB_API_PORT", "8085"),
-    ]
+    host = os.getenv("WEB_API_HOST", "0.0.0.0")
+    port = os.getenv("WEB_API_PORT", "8085")
+    if sys.platform == "win32":
+        # 10/19: Windows 기본(Proactor) 루프는 add_reader 가 없어 MQTT 구독·발행이 전부 실패한다
+        # (공장 PC 실측 NotImplementedError → simulate 500 · '연결 끊김' 5초마다). serve.py 가 Selector 루프로 띄운다.
+        cmd = [python_exec, "serve.py", "--host", host, "--port", port]
+    else:
+        cmd = [python_exec, "-m", "uvicorn", "app.main:app", "--host", host, "--port", port]
     env = os.environ.copy()
     env.setdefault("DEBUG", "true")
     return cmd, cwd, env
