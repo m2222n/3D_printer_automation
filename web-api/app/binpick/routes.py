@@ -53,6 +53,14 @@ logger = logging.getLogger(__name__)
 
 KST = timezone(timedelta(hours=9))
 
+
+def _as_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """created_at 은 SQLite CURRENT_TIMESTAMP(UTC)로 저장되고 tz 없이(naive) 읽힌다.
+    그대로 내보내면 브라우저가 현지(KST) 시각으로 읽어 9시간 이르게 표시된다(10/19 발견) ⇒ UTC 를 붙인다."""
+    if dt is None or dt.tzinfo is not None:
+        return dt
+    return dt.replace(tzinfo=timezone.utc)
+
 router = APIRouter(prefix="/binpick", tags=["BinPicking"])
 
 # 게이트가 "믿을 만하다"고 판정하지 않은 장면을 세는 기준.
@@ -110,7 +118,7 @@ def _scene_response(scene: BinPickScene) -> SceneResponse:
         latency_ms=scene.latency_ms,
         scene_gate=_gate_of(scene),
         reported_at=scene.reported_at,
-        received_at=scene.created_at,
+        received_at=_as_utc(scene.created_at),
     )
 
 
@@ -220,7 +228,7 @@ async def binpick_health():
             BinPickScene.gate_verdict.in_(_UNTRUSTED_VERDICTS)).count()
         latest = (db.query(BinPickScene)
                   .order_by(BinPickScene.created_at.desc()).first())
-        last_at = latest.created_at if latest else None
+        last_at = _as_utc(latest.created_at) if latest else None
 
     return BinPickHealthResponse(
         status="healthy",

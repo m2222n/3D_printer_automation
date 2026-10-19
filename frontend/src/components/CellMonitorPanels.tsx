@@ -108,7 +108,7 @@ function SceneView({ scene }: { scene: BinpickScene }) {
         <span className="text-sm text-gray-700">
           찾은 부품 <b data-testid="binpick-count">{scene.n_detections}</b>개
         </span>
-        {latencyS && <span className="text-sm text-gray-500">인식 {latencyS}초</span>}
+        {latencyS && <span className="text-sm text-gray-500" title="산업용 PC에서 촬영부터 인식까지 걸린 시간(서버·화면 전송 시간은 포함하지 않음)">촬영·인식(산업용 PC) {latencyS}초</span>}
         <span className="text-xs text-gray-400 ml-auto">수신 {fmtTime(scene.received_at)}</span>
       </div>
       {scene.scene_gate?.note && (

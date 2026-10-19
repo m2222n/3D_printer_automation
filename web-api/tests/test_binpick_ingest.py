@@ -298,3 +298,19 @@ def test_missing_scene_returns_404(client):
     resp = client.get("/api/v1/binpick/scenes/does-not-exist",
                       headers=_auth_headers(client))
     assert resp.status_code == 404
+
+
+def test_received_at_carries_timezone(client, real_payload_builder, six_like):
+    """조회 응답의 received_at 에 시간대가 붙어야 한다 — 없으면 브라우저가 UTC 를 KST 로 읽어 9시간 이르게 보인다(10/19)."""
+    from datetime import datetime, timezone
+    p = real_payload_builder(six_like)
+    p["scene_id"] = "tz_check"
+    _post(client, p)
+    headers = _auth_headers(client)
+    latest = client.get("/api/v1/binpick/scenes/latest", headers=headers).json()
+    raw = latest["received_at"]
+    dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    assert dt.tzinfo is not None, f"시간대 없음: {raw}"
+    assert abs((datetime.now(timezone.utc) - dt).total_seconds()) < 120, f"실제 시각과 어긋남: {raw}"
+    health = client.get("/api/v1/binpick/health", headers=headers).json()
+    assert datetime.fromisoformat(health["last_scene_at"].replace("Z", "+00:00")).tzinfo is not None
