@@ -1,6 +1,6 @@
 {
   "name": "통합 모니터링 응답시간 시험 데이터 (시험항목 1 · 셀A 설비 상태 변경 + 셀B 빈피킹 인식 결과)",
-  "version": "261016",
+  "version": "261020",
   "precondition": "시험 시작 전 설비 4대(wash_1·wash_2·cure_1·cure_2) 상태를 idle 로 초기화 · 측정 페이지가 WebSocket 2개(/api/v1/vision/ws · /api/v1/binpick/ws)에 연결",
   "rule": "셀A: 같은 설비의 연속 이벤트는 반드시 상태가 바뀐다(running→complete→idle) · 셀B: 장면 ID 로 수신을 맞춘다 · 순서 = [A,A,B,A,B]×6",
   "source_cell_b": "실물 인식 결과(six.json)를 운영 모듈 web_reporter.build_bin_picking_payload 로 변환 — 9/4 OVN2 대조표 5 · 9/16 팔 장착 실물 2 · 10/12 공장 447mm 5",
@@ -28,11 +28,11 @@
       "seq": 3,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_0904_01_shot_001_c1",
+      "scene_id": "cert_0904_01_shot_001_c1",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_0904_01_shot_001_c1",
+        "scene_id": "cert_0904_01_shot_001_c1",
         "timestamp": "2026-09-03T16:18:46",
         "summary": {
           "n_detections": 9,
@@ -134,11 +134,11 @@
       "seq": 5,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_0904_02_shot_002_c1",
+      "scene_id": "cert_0904_02_shot_002_c1",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_0904_02_shot_002_c1",
+        "scene_id": "cert_0904_02_shot_002_c1",
         "timestamp": "2026-09-03T16:18:48",
         "summary": {
           "n_detections": 9,
@@ -247,11 +247,11 @@
       "seq": 8,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_0904_03_shot_003_c1",
+      "scene_id": "cert_0904_03_shot_003_c1",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_0904_03_shot_003_c1",
+        "scene_id": "cert_0904_03_shot_003_c1",
         "timestamp": "2026-09-03T16:18:50",
         "summary": {
           "n_detections": 9,
@@ -353,11 +353,11 @@
       "seq": 10,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_0904_04_shot_004_c1",
+      "scene_id": "cert_0904_04_shot_004_c1",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_0904_04_shot_004_c1",
+        "scene_id": "cert_0904_04_shot_004_c1",
         "timestamp": "2026-09-03T16:19:02",
         "summary": {
           "n_detections": 8,
@@ -458,11 +458,11 @@
       "seq": 13,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_0904_05_shot_005_c1",
+      "scene_id": "cert_0904_05_shot_005_c1",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_0904_05_shot_005_c1",
+        "scene_id": "cert_0904_05_shot_005_c1",
         "timestamp": "2026-09-03T16:19:04",
         "summary": {
           "n_detections": 8,
@@ -556,11 +556,11 @@
       "seq": 15,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_0916_06_shot_001_c1_sA",
+      "scene_id": "cert_0916_06_shot_001_c1_sA",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_0916_06_shot_001_c1_sA",
+        "scene_id": "cert_0916_06_shot_001_c1_sA",
         "timestamp": "2026-09-16T12:57:00",
         "summary": {
           "n_detections": 4,
@@ -629,11 +629,11 @@
       "seq": 18,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_0916_07_live_20260916_122522",
+      "scene_id": "cert_0916_07_live_20260916_122522",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_0916_07_live_20260916_122522",
+        "scene_id": "cert_0916_07_live_20260916_122522",
         "timestamp": "2026-09-16T12:25:22",
         "summary": {
           "n_detections": 2,
@@ -679,11 +679,11 @@
       "seq": 20,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_1012_08_shot_001_c1_sA",
+      "scene_id": "cert_1012_08_shot_001_c1_sA",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_1012_08_shot_001_c1_sA",
+        "scene_id": "cert_1012_08_shot_001_c1_sA",
         "timestamp": "2026-10-12T18:30:00",
         "summary": {
           "n_detections": 1,
@@ -728,11 +728,11 @@
       "seq": 23,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_1012_09_shot_001_c1_sA_roi",
+      "scene_id": "cert_1012_09_shot_001_c1_sA_roi",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_1012_09_shot_001_c1_sA_roi",
+        "scene_id": "cert_1012_09_shot_001_c1_sA_roi",
         "timestamp": "2026-10-12T23:10:00",
         "summary": {
           "n_detections": 5,
@@ -802,11 +802,11 @@
       "seq": 25,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_1012_10_shot_001_c1_sA_roi",
+      "scene_id": "cert_1012_10_shot_001_c1_sA_roi",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_1012_10_shot_001_c1_sA_roi",
+        "scene_id": "cert_1012_10_shot_001_c1_sA_roi",
         "timestamp": "2026-10-12T23:20:00",
         "summary": {
           "n_detections": 3,
@@ -867,11 +867,11 @@
       "seq": 28,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_1012_11_shot_001_c1_sA_roi",
+      "scene_id": "cert_1012_11_shot_001_c1_sA_roi",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_1012_11_shot_001_c1_sA_roi",
+        "scene_id": "cert_1012_11_shot_001_c1_sA_roi",
         "timestamp": "2026-10-12T23:30:00",
         "summary": {
           "n_detections": 3,
@@ -925,11 +925,11 @@
       "seq": 30,
       "cell": "B",
       "kind": "binpick",
-      "scene_id": "ktr_1012_12_shot_001_c1_sA_roi",
+      "scene_id": "cert_1012_12_shot_001_c1_sA_roi",
       "report": {
         "schema_version": "1.0.0",
         "module": "bin_picking",
-        "scene_id": "ktr_1012_12_shot_001_c1_sA_roi",
+        "scene_id": "cert_1012_12_shot_001_c1_sA_roi",
         "timestamp": "2026-10-13T00:10:00",
         "summary": {
           "n_detections": 3,

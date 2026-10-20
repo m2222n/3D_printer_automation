@@ -12,6 +12,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from app.core.config import get_settings
+from app.core.cert_evidence import evidence
 from app.local.database import get_local_db_session
 from app.vision.models import VisionCamera, VisionEvent
 from app.vision.schemas import (
@@ -146,6 +147,8 @@ class CameraManager:
             camera.last_seen = now
 
             # 상태 변경 시에만 이벤트 저장
+            if old_status == msg.status:
+                evidence("NO_CHANGE", "A", msg.request_id, msg.camera_id, msg.status)
             if old_status != msg.status:
                 camera.last_status_change = now
 
@@ -164,6 +167,7 @@ class CameraManager:
                     f"(confidence: {msg.confidence:.2f})"
                 )
 
+                evidence("WS_OUT", "A", msg.request_id, msg.camera_id, msg.status)
                 await self._broadcast_ws({
                     "type": "vision_status_change",
                     "data": {

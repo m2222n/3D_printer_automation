@@ -27,6 +27,7 @@ from app.vision.schemas import (
     VisionHealthResponse,
 )
 from app.vision.camera_manager import get_camera_manager, as_kst
+from app.core.cert_evidence import evidence
 from app.vision.mqtt_client import get_mqtt_client
 
 logger = logging.getLogger(__name__)
@@ -220,6 +221,7 @@ async def simulate_status(req: SimulateRequest):
     if not settings.VISION_SIMULATOR_ENABLED:
         raise HTTPException(status_code=403, detail="시뮬레이터 비활성화 상태")
 
+    evidence("REQ_IN", "A", req.request_id, req.camera_id, req.status)   # 시험 증적(요청번호 있을 때만)
     from app.vision.simulator import publish_simulated_status
     await publish_simulated_status(req.camera_id, req.status, req.confidence, request_id=req.request_id)
 

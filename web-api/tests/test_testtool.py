@@ -30,8 +30,8 @@ def test_latency_page_targets_real_routes(client):
         assert p in paths, f"서버에 {p} 라우트가 없다"
 
 
-TEST_DATA = WEB_API_ROOT / "app" / "testtool" / "test_data_261016" / "events.json"
-TEST_DATA_SHA256 = "D87C093EEEB7C63D7D219D2B3CB9FD8C55FCE658427696C9FF11314CC14E5BE6"
+TEST_DATA = WEB_API_ROOT / "app" / "testtool" / "test_data_261020" / "events.json"
+TEST_DATA_SHA256 = "633642F9F94542862911E3E88510F8FB323EF7B1A3E0710150734E19DDBD95DA"
 
 
 def test_events_test_data_locked():
@@ -215,3 +215,36 @@ def test_latency_page_matches_only_by_request_id():
     assert "resolvePending(m.data.request_id" in html and "resolvePending(m.request_id" in html
     assert '"v:" + m.data.camera_id' not in html and '"b:" + m.scene_id' not in html
     assert "publish(ev, key)" in html and "body.request_id = request_id" in html and "{ ...report, request_id }" in html
+
+
+def test_cert_evidence_lines_server_side(client, auth_headers, caplog):
+    """10/20 시험 증적: 요청번호가 있는 요청은 서버 로그에 REQ_IN·WS_OUT(셀B)과
+    WS_OUT·NO_CHANGE(셀A) 줄을 남기고, 요청번호가 없는 운영 호출은 아무것도 남기지 않는다."""
+    import asyncio, json, logging
+    from app.local.database import init_local_db
+    from app.vision.camera_manager import get_camera_manager
+    from app.vision.schemas import MQTTStatusMessage
+
+    init_local_db()
+    caplog.set_level(logging.INFO, logger="cert.evidence")
+
+    # 셀B — 실제 수신 경로
+    e = next(x for x in json.loads(TEST_DATA.read_text(encoding="utf-8"))["events"] if x["cell"] == "B")
+    rep = dict(e["report"], request_id="R-TEST-B-001", scene_id=e["scene_id"] + "_ev")
+    assert client.post("/api/v1/binpick/reports", json=rep, headers=auth_headers).status_code == 201
+    # 셀A — MQTT 수신 처리(handle_status)를 직접 호출: 변경 1회 → WS_OUT, 같은 상태 재수신 → NO_CHANGE
+    m = get_camera_manager()
+    for st in ("wash_idle", "wash_running", "wash_running"):
+        asyncio.run(m.handle_status(MQTTStatusMessage(camera_id="wash_2", device_type="wash", device_id=2,
+                                                      status=st, confidence=0.9, timestamp=0.0, request_id="R-TEST-A-" + st)))
+    # 요청번호 없는 운영 호출 — 증적 0
+    asyncio.run(m.handle_status(MQTTStatusMessage(camera_id="wash_2", device_type="wash", device_id=2,
+                                                  status="wash_complete", confidence=0.9, timestamp=0.0)))
+
+    lines = [r.getMessage() for r in caplog.records if r.name == "cert.evidence"]
+    assert any("stage=REQ_IN cell=B rid=R-TEST-B-001" in l for l in lines), lines
+    assert any("stage=WS_OUT cell=B rid=R-TEST-B-001" in l for l in lines), lines
+    assert any("stage=WS_OUT cell=A rid=R-TEST-A-wash_running target=wash_2 value=wash_running" in l for l in lines), lines
+    assert any("stage=NO_CHANGE cell=A rid=R-TEST-A-wash_running" in l for l in lines), lines
+    assert all("rid=None" not in l and "wash_complete" not in l for l in lines), lines
+    assert all(l.startswith("CERT ") and "+09:00" in l for l in lines), lines

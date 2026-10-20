@@ -37,6 +37,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 
 from app.local.database import get_local_db_session
+from app.core.cert_evidence import evidence
 from app.binpick.models import BinPickScene, BinPickDetection
 from app.binpick.schemas import (
     BinPickHealthResponse,
@@ -135,6 +136,7 @@ async def ingest_report(report: BinPickReportIn):
         reporter.report_bin_picking(six, latency_ms=...)
     """
     warnings: list[str] = []
+    evidence("REQ_IN", "B", report.request_id, report.scene_id or "-", str(len(report.detections)))   # 시험 증적
 
     # ⭐ 실제 길이를 신뢰한다. summary는 모듈이 계산한 값이라 어긋날 수 있다.
     n_actual = len(report.detections)
@@ -195,6 +197,7 @@ async def ingest_report(report: BinPickReportIn):
     logger.info("빈피킹 장면 수신 (scene=%s, n=%d, gate=%s)",
                 scene_id, n_actual, verdict)
 
+    evidence("WS_OUT", "B", report.request_id, scene_id or "-", str(n_actual))
     await _broadcast_ws({
         "type": "binpick_scene",
         "scene_pk": scene_pk,

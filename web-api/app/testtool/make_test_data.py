@@ -12,7 +12,7 @@ SW 성능 시험(정량목표 2 · 통합 모니터링 응답속도 3초)의 시
                출처 = 9/4 OVN2 대조표 5장면(8/18 공장 촬영) · 9/16 팔 장착 Blaze 실물 2장면 · 10/12 공장 447mm 5장면
   · 순서 = [A, A, B, A, B] × 6 — 두 셀이 섞여 들어와도 화면이 각각 3초 안에 반영되는지 본다
 
-사용:  cd web-api && venv/bin/python -m app.testtool.make_test_data [--out app/testtool/test_data_261016]
+사용:  cd web-api && venv/bin/python -m app.testtool.make_test_data [--out app/testtool/test_data_261020]
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from bin_picking.src.communication.web_reporter import build_bin_picking_payload  # noqa: E402
 
-VERSION = "261016"
+VERSION = "261020"
 CAMERAS = {"wash_1": "wash", "wash_2": "wash", "cure_1": "cure", "cure_2": "cure"}
 CYCLE = ("running", "complete", "idle")
 
@@ -88,7 +88,7 @@ def cell_b_events() -> list[dict]:
             raise SystemExit(f"🔴 실물 six.json 없음: {p}")
         six = json.loads(p.read_text(encoding="utf-8"))
         payload = build_bin_picking_payload(six, latency_ms=None, timestamp=ts)
-        payload["scene_id"] = f"ktr_{tag}_{i:02d}_{six.get('scene_id') or p.stem}"
+        payload["scene_id"] = f"cert_{tag}_{i:02d}_{six.get('scene_id') or p.stem}"
         # 운영 모듈이 보내는 그대로 — 좌표·각도·라벨·게이트 판정은 실물 값
         if not payload["detections"]:
             raise SystemExit(f"🔴 검출 0건 장면은 쓰지 않는다: {p}")
