@@ -1,0 +1,12 @@
+{
+  "_설명": "watch_cameras.py --config 용 예시. 공장 PC 에 복사해 cameras.json 으로 두고 웹캠 번호를 실제 장치 순서로 맞춘다(장치 관리자 → 카메라 순서 · 안 맞으면 --cam wash_1=dir:폴더 로 먼저 루프만 확인). 프린터는 API 라 카메라 없음(10/20 결정). 셀B 는 Blaze(빈피킹) 별도.",
+  "interval_s": 15,
+  "heartbeat_s": 120,
+  "change_threshold": 6.0,
+  "cameras": [
+    {"camera_id": "wash_1", "source": 0, "_위치": "세척기 1호 전면 30cm · 패널+거치대 암이 한 화면"},
+    {"camera_id": "wash_2", "source": 1, "_위치": "세척기 2호 전면 30cm"},
+    {"camera_id": "cure_1", "source": 2, "_위치": "경화기 1호 전면 · 창(램프)과 화면이 같이"},
+    {"camera_id": "cure_2", "source": 3, "_위치": "경화기 2호 전면"}
+  ]
+}
